@@ -6,19 +6,6 @@
 #define CONNTRACK_SIZE 65535
 
 
-struct conntrack_priv {
-
-	struct conntrack_priv *next;
-	int ct_priv_type;
-	void *priv;
-
-};
-
-struct conntrack_entry {
-
-	struct conntrack_priv *privs;
-
-};
 
 struct conntrack_reg *conntracks[MAX_CONNTRACK];
 struct conntrack_entry ct_table[CONNTRACK_SIZE];

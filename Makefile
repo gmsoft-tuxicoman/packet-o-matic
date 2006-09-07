@@ -13,15 +13,15 @@ RULES_OBJS = rules.o
 
 LIBS = -lpcap -ldl
 
-all: doctricks
+all: packet-o-matic
 
 
 %.so: %.c %.h
 	gcc -shared -fPIC ${CFLAGS} $< -o $@
 
 
-doctricks: ${MAIN_OBJS} ${CORE_OBJS} ${MATCH_OBJS} ${INPUT_OBJS} ${TARGET_OBJS} ${RULES_OBJS} ${CONNTRACK_OBJS}
-	gcc -o doctricks ${LIBS} ${CORE_OBJS} ${FILTERS_OBJS} ${MAIN_OBJS} ${RULES_OBJS} ${CONNTRACK_OBJS}
+packet-o-matic: ${MAIN_OBJS} ${CORE_OBJS} ${MATCH_OBJS} ${INPUT_OBJS} ${TARGET_OBJS} ${RULES_OBJS} ${CONNTRACK_OBJS}
+	gcc -o packet-o-matic ${LIBS} ${CORE_OBJS} ${FILTERS_OBJS} ${MAIN_OBJS} ${RULES_OBJS} ${CONNTRACK_OBJS}
 
 input.o: input.h
 input_docsis.so: input_docsis.h
