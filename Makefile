@@ -48,4 +48,4 @@ rules.o: rules.h
 
 
 clean:
-	rm *.o *.so doctricks
+	rm *.o *.so packet-o-matic
