@@ -12,16 +12,18 @@ struct ipv4_priv {
 
 };
 
-int conntrack_register_ipv4() {
-
-	struct conntrack_reg r;
-	r.get_id = conntrack_get_id_ipv4;
-
-	return conntrack_register(&r, "ipv4");
+int conntrack_register_ipv4(struct conntrack_reg *r) {
+	
+	r->get_hash = conntrack_get_hash_ipv4;
+	r->doublecheck = conntrack_doublecheck_ipv4;
+	r->alloc_match_priv = conntrack_alloc_match_priv_ipv4;
+	r->cleanup_match_priv = conntrack_cleanup_match_priv_ipv4;
+	
+	return 1;
 }
 
 
-__u32 conntrack_get_id_ipv4(struct rule_match *m, void *frame, unsigned int len, u32 init) {
+__u32 conntrack_get_hash_ipv4(struct rule_match *m, void *frame, unsigned int len, u32 init) {
 
 	struct iphdr* hdr;
 	

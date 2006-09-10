@@ -7,9 +7,20 @@
 
 #define INITVAL 0xdf92b6eb
 
-struct conntrack_reg *conntracks[MAX_CONNTRACK];
-struct conntrack_entry ct_table[CONNTRACK_SIZE];
 
+struct conntrack_reg *conntracks[MAX_CONNTRACK];
+struct conntrack_entry *ct_table[CONNTRACK_SIZE];
+
+int conntrack_init() {
+
+	int i;
+	
+	for (i = 0; i < CONNTRACK_SIZE; i ++)
+		ct_table[i] = NULL;
+
+	return 1;
+
+}
 
 int conntrack_register(const char *conntrack_name) {
 
@@ -17,7 +28,7 @@ int conntrack_register(const char *conntrack_name) {
 	int id;
 	id = match_get_type(conntrack_name);
 	if (id == -1) {
-		dprint("Unable to register conntrack %s. Corresponding match not found\n", name);
+		dprint("Unable to register conntrack %s. Corresponding match not found\n", conntrack_name);
 		return -1;
 	}
 
@@ -64,8 +75,6 @@ int conntrack_register(const char *conntrack_name) {
 
 	conntracks[id] = malloc(sizeof(struct conntrack_reg));
 	memcpy(conntracks[id], my_conntrack, sizeof(struct conntrack_reg));
-	conntracks[id]->conntrack_name = malloc(strlen(conntrack_name) + 1);
-	strcpy(conntracks[id]->conntrack_name, conntrack_name);
 	conntracks[id]->dl_handle = handle;
 
 	dprint("Conntrack %s registered\n", conntrack_name);
@@ -82,42 +91,144 @@ struct conntrack *conntrack_alloc(int conntrack_type) {
 		dprint("Input type %u is not registered\n", conntrack_type);
 		return NULL;
 	}
-	struct conntrack *i = malloc(sizeof(struct conntrack));
-	i->conntrack_type = conntrack_type;
-	t->get_priv = conntrack_get_priv;
-	t->add_priv = conntrack_add_priv;
-	t->remove_priv = conntrack_remove_priv;
+	struct conntrack *ct = malloc(sizeof(struct conntrack));
+	ct->add_target_priv = conntrack_add_target_priv;
+	ct->get_target_priv = conntrack_get_target_priv;
+	ct->remove_target_priv = conntrack_remove_target_priv;
 	
 	if (conntracks[conntrack_type]->init)
-		if (!(*conntracks[conntrack_type]->init) (i)) {
-			free(i);
+		if (!(*conntracks[conntrack_type]->init) (ct)) {
+			free(ct);
 			return NULL;
 		}
 	
-	return i;
+	return ct;
 }
 
-void *conntrack_get_target_priv(int conntrack_type, struct rule_node *n) {
+
+int conntrack_add_target_priv(int target_type, void *priv, struct rule_node *n, void* frame) {
+
+	__u32 hash;
+	hash = conntrack_hash(n, frame);
+
+	struct conntrack_entry *ce;
+	ce = conntrack_get_entry(hash, n, frame);
+
+	if (!ce) {
+		ce = malloc(sizeof(struct conntrack_entry));
+		ct_table[hash] = ce;
+	}
+
+	struct conntrack_privs *cp;
+	cp = ce->target_privs;
+
+	while (cp) {
+		if (cp->priv_type == target_type) {
+			dprint("Warning. Target priv already added\n");
+			return 0;
+		}
+		cp = cp->next;
+	}
+
+	cp = malloc(sizeof(struct conntrack_privs));
+
+	cp->next = ce->target_privs;
+	ce->target_privs = cp->next;
+
+	cp->priv_type = target_type;
+	cp->priv = priv;
+	
+	
+	return 1;
+}
 
 
+void *conntrack_get_target_priv(int target_type, struct rule_node *n, void *frame) {
+
+
+	__u32 hash;
+	hash = conntrack_hash(n, frame);
+
+	struct conntrack_entry *ce;
+	ce = conntrack_get_entry(hash, n, frame);
+
+	if (!ce)
+		return NULL;
+
+	struct conntrack_privs *cp;
+	cp = ce->target_privs;
+	while (cp) {
+		if (cp->priv_type == target_type)
+			return cp->priv;
+		cp = cp->next;
+	}
 
 	return NULL;
 }
 
-void conntrack_add_target_priv(int conntrack_type, void *priv) {
+int conntrack_remove_target_priv(int target_type, struct rule_node *n, void *frame) {
 
-	struct conntrack_priv *p;
-	p = conntrack_get_priv(id, priv_type);
+	__u32 hash;
+	hash = conntrack_hash(n, frame);
 
-	if (!p) {
-		p = malloc(sizeof(struct conntrack_priv));
-		p->ct_priv_type = priv_type;
+	struct conntrack_entry *ce;
+	ce = conntrack_get_entry(hash, n, frame);
+
+	struct conntrack_privs *cp, *cp_prev;
+	cp = ce->target_privs;
+	cp_prev = NULL;
+
+	// Remove the target priv
+	while (cp) {
+		if (cp->priv_type == target_type) {
+			if (!cp_prev)
+				ce->target_privs = cp->next;
+			else
+				cp_prev->next = cp->next;
+			
+			free(cp);
+			break;
+		}
+		cp_prev = cp;
+		cp = cp->next;
 	}
 	
-	p->priv = priv;
+	// If there are no target priv, we can remove this connection tracking entry
+	if (!ce->target_privs) {
+		cp = ce->match_privs;
+		while (cp) {
+			if (conntracks[cp->priv_type]->cleanup_match_priv)
+				(*conntracks[cp->priv_type]->cleanup_match_priv) (cp->priv);
 
-	return ;
+			cp_prev = cp;
+			cp = cp->next;
+			free(cp_prev);
+		}
+		
+		ce->match_privs = NULL;
+		ce->target_privs = NULL;
+	}
+
+	ce = ct_table[hash];
+
+	struct conntrack_entry *ce_prev = NULL;
+	while (ce) {
+
+		if (!ce->match_privs) {
+			if (!ce_prev) 
+				ct_table[hash] = ce->next;
+			else
+				ce_prev->next = ce->next;
+
+		}
+		
+		ce_prev = ce;
+		ce = ce->next;
+	}
+	
+	return 1;
 }
+
 
 __u32 conntrack_hash(struct rule_node *n, void *frame) {
 
@@ -131,7 +242,7 @@ __u32 conntrack_hash(struct rule_node *n, void *frame) {
 	while (m) {
 
 		if (conntracks[m->match_type]) {
-			int start = node_find_header_start(*n, cp->conntrack_type);
+			int start = node_find_header_start(n, m->match_type);
 			res = (*conntracks[m->match_type]->get_hash) (frame, start);
 			hash = jhash_2words(hash, res, INITVAL);
 
@@ -144,18 +255,18 @@ __u32 conntrack_hash(struct rule_node *n, void *frame) {
 	return hash;
 }
 
-struct conntrack_entry *conntrack_get_entry(__u32 hash, struct rule_node *n, frame) {
+struct conntrack_entry *conntrack_get_entry(__u32 hash, struct rule_node *n, void *frame) {
 	
 	// Doublecheck that we are talking about the right thing
 
 	struct conntrack_entry *ce;
-	ce = conntracks[hash];
+	ce = ct_table[hash];
 		
 	struct conntrack_privs *cp;
 	cp = ce->match_privs;
 
 	while (cp) {
-		int start = node_find_header_start(*n, cp->conntrack_type);
+		int start = node_find_header_start(n, cp->priv_type);
 		if (!(*conntracks[cp->priv_type]->doublecheck) (frame, start, cp->priv)) {
 			ce = ce->next; // If it's not the right conntrack entry, go to next one
 			dprint("Collision detected\n");
@@ -168,6 +279,6 @@ struct conntrack_entry *conntrack_get_entry(__u32 hash, struct rule_node *n, fra
 		cp = cp->next;
 	}
 
-	return hash;
+	return ce;
 
 }

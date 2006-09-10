@@ -16,7 +16,7 @@
 #include <dlfcn.h>
 
 #define __KERNEL__
-#include <linux/types.h>
+#include <asm/types.h>
 #undef __KERNEL__
 
 #include "rules.h"

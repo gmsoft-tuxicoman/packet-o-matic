@@ -14,7 +14,7 @@
 #include <string.h>
 
 #define __KERNEL__ // we need u32 definition for <linux/jhash.h>
-#include <linux/types.h>
+#include <asm/types.h>
 #undef __KERNEL__
 
 
