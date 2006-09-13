@@ -38,12 +38,12 @@ void dprint_hex(unsigned char *str, unsigned int len) {
 #ifdef NDEBUG
 #define ndprint(x, y...) printf(x, ##y)
 #define ndprint_hex(x, y) dprint_hex(x, y)
-#else
+#else // NDEBUG
 #define ndprint(x,y...)
 #define ndprint_hex(a, b)
-#endif
+#endif // NDEBUG
 
-#else
+#else // DEBUG
 
 #define dprint(x,y...)
 #define dprint_hex(x, y)
@@ -51,10 +51,9 @@ void dprint_hex(unsigned char *str, unsigned int len) {
 #define ndprint_hex(c, d)
 
 
-#endif
+#endif // DEBUG
 
-#endif
-#endif
+#endif // __COMMON_H__
 
 
 #include "rules.h"
@@ -100,3 +99,5 @@ int node_find_header_start(struct rule_node *node, int header_type) {
 
 #define mask_compare(a, b, c, d) mask_compare2(a, c, b, c, d)
 
+
+#endif // __MODULES_COMMON_H__

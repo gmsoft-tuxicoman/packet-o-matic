@@ -1,7 +1,7 @@
 CFLAGS = -Wall -g -ggdb3 -DDEBUG -pipe
 #CFLAGS = -Wall -O3 -pipe
 
-CFLAGS += -DNDEBUG
+#CFLAGS += -DNDEBUG
 
 CORE_OBJS = input.o match.o conntrack.o target.o
 CONNTRACK_OBJS = conntrack_ipv4.so # conntrack_udp.so
