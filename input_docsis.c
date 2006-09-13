@@ -11,7 +11,6 @@
 
 #include <sys/ioctl.h>
 
-#include "modules_common.h"
 #include "input_docsis.h"
 
 #define DEMUX_BUFFER_SIZE 2097152 // 2Megs
@@ -489,6 +488,7 @@ int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int buffl
 			// Copy the remaining part into our temp buffer
 			p->temp_buff_pos = MPEG_TS_LEN - mpeg_buff[4] - 5;
 			memcpy(p->temp_buff, mpeg_buff + mpeg_buff[4] + 5, p->temp_buff_pos);
+
 			return packet_pos;
 
 

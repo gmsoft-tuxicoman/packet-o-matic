@@ -19,6 +19,44 @@
 #include <asm/types.h>
 #undef __KERNEL__
 
+// Those two collide // TOBE REMOVED
+#ifndef __COMMON_H__
+
+#ifdef DEBUG
+#define dprint(x, y...) printf(x, ##y)
+
+
+void dprint_hex(unsigned char *str, unsigned int len) {
+
+	int i;
+	
+	for (i = 0; i < len; i++)
+		printf("%02X ", *(str + i));
+}
+
+
+#ifdef NDEBUG
+#define ndprint(x, y...) printf(x, ##y)
+#define ndprint_hex(x, y) dprint_hex(x, y)
+#else
+#define ndprint(x,y...)
+#define ndprint_hex(a, b)
+#endif
+
+#else
+
+#define dprint(x,y...)
+#define dprint_hex(x, y)
+#define ndprint(a,b...)
+#define ndprint_hex(c, d)
+
+
+#endif
+
+#endif
+#endif
+
+
 #include "rules.h"
 
 inline int mask_compare2(unsigned char *value1, unsigned char *mask1, unsigned char *value2, unsigned char *mask2, unsigned int len) {
@@ -62,39 +100,3 @@ int node_find_header_start(struct rule_node *node, int header_type) {
 
 #define mask_compare(a, b, c, d) mask_compare2(a, c, b, c, d)
 
-// Those two collide // TOBE REMOVED
-#ifndef __COMMON_H__
-
-#ifdef DEBUG
-#define dprint(x, y...) printf(x, ##y)
-
-
-void dprint_hex(unsigned char *str, unsigned int len) {
-
-	int i;
-	
-	for (i = 0; i < len; i++)
-		printf("%02X ", *(str + i));
-}
-
-
-#ifdef NDEBUG
-#define ndprint(x, y...) printf(x, ##y)
-#define ndprint_hex(x, y) dprint_hex(x, y)
-#else
-#define ndprint(x,y...)
-#define ndprint_hex(a, b)
-#endif
-
-#else
-
-#define dprint(x,y...)
-#define dprint_hex(x, y)
-#define ndprint(a,b...)
-#define ndprint_hex(c, d)
-
-
-#endif
-
-#endif
-#endif

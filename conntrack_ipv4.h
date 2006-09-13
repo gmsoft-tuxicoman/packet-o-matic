@@ -3,13 +3,21 @@
 #define __CONNTRACK_IPV4_H__
 
 
-#include "common.h"
+#include "modules_common.h"
 #include "conntrack.h"
 
-int conntrack_register_ipv4();
+struct conntrack_priv_ipv4 {
 
-__u32 conntrack_get_id_ipv4(struct rule_match *m, void *frame, unsigned int len, u32 init);
+	__u32 saddr;
+	__u32 daddr;
 
+};
+
+int conntrack_register_ipv4(struct conntrack_reg *r);
+__u32 conntrack_get_hash_ipv4(void *frame, unsigned int start);
+int conntrack_doublecheck_ipv4(void *frame, unsigned int start, void *priv);
+void *conntrack_alloc_match_priv_ipv4(void *frame, unsigned int start);
+int conntrack_cleanup_match_priv_ipv4(void *priv);
 
 
 #endif

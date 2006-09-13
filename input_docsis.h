@@ -7,6 +7,7 @@
 
 #include <linux/dvb/frontend.h>
 
+#include "common.h"
 #include "input.h"
 
 

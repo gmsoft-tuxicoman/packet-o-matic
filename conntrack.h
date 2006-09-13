@@ -22,7 +22,7 @@ struct conntrack_reg {
 	int (*init) (struct conntrack *c);
 	__u32 (*get_hash) (void* frame, unsigned int);
 	int (*doublecheck) (void *frame, unsigned int start, void *priv);
-	void* (*alloc_match_privs) (void *frame, unsigned int start);
+	void* (*alloc_match_priv) (void *frame, unsigned int start);
 	int (*cleanup_match_priv) (void *priv);
 	int (*cleanup) (struct conntrack *c);
 

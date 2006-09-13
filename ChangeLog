@@ -1,4 +1,6 @@
-
+* 2006/09/13 Guy Martin <gmsoft@tuxicoman.be>
+Added input_pcap.
+Some more work on conntrack. Now compiles and conntrak_ipv4 is done.
 
 * 2006/09/07 Guy Martin <gmsoft@tuxicoman.be>
-Some work on conntrack
+Some work on conntrack.
