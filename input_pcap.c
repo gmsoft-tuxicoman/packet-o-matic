@@ -89,7 +89,6 @@ int input_read_pcap(struct input *i, unsigned char *buffer, unsigned int bufflen
 		phdr->caplen = bufflen;
 		
 	}
-	dprint("%u\n",  phdr->caplen);
 	memcpy(buffer, next_pkt, phdr->caplen);
 
 
