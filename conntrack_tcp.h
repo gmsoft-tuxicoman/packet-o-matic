@@ -1,6 +1,6 @@
 
-#ifndef __CONNTRACK_UDP_H__
-#define __CONNTRACK_UDP_H__
+#ifndef __CONNTRACK_TCP_H__
+#define __CONNTRACK_TCP_H__
 
 
 #include "modules_common.h"
