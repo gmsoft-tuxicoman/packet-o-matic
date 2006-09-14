@@ -4,7 +4,7 @@ CFLAGS = -Wall -g -ggdb3 -DDEBUG -pipe
 #CFLAGS += -DNDEBUG
 
 CORE_OBJS = input.o match.o conntrack.o target.o
-CONNTRACK_OBJS = conntrack_ipv4.so # conntrack_udp.so
+CONNTRACK_OBJS = conntrack_ipv4.so conntrack_udp.so conntrack_tcp.so
 TARGET_OBJS = target_null.so target_inject.so target_pcap.so  target_tap.so
 INPUT_OBJS = input_docsis.so input_pcap.so
 MATCH_OBJS = match_undefined.so match_ethernet.so match_ipv4.so match_tcp.so match_udp.so

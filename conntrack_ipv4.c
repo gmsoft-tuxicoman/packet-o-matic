@@ -3,7 +3,7 @@
 
 #include "conntrack_ipv4.h"
 
-#define INITVAL 0x5fb83a0c
+#define INITVAL 0x5fb83a0c // Random value
 
 int conntrack_register_ipv4(struct conntrack_reg *r) {
 	
