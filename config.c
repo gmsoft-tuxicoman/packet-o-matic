@@ -9,6 +9,8 @@
 
 #include "target.h"
 
+#include "conntrack.h"
+
 struct rule_list *alloc_rule_list() {
 
 	struct rule_list *rules;
@@ -50,6 +52,9 @@ struct rule_list* do_config() {
 	int target_pcap = target_register("pcap");
 	int target_dump_payload = target_register("dump_payload");
 	int target_inject = target_register("inject");
+
+	conntrack_register("ipv4");
+	conntrack_register("tcp");
 
 	/***** FIRST RULE *****/
 

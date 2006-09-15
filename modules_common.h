@@ -70,7 +70,7 @@ inline int mask_compare2(unsigned char *value1, unsigned char *mask1, unsigned c
 };
 
 
-int node_find_payload_start(struct rule_node *node) {
+unsigned int node_find_payload_start(struct rule_node *node) {
 
 	if (!node)
 		return -1;
@@ -87,7 +87,7 @@ int node_find_payload_start(struct rule_node *node) {
 
 }
 
-int node_find_header_start(struct rule_node *node, int header_type) {
+unsigned int node_find_header_start(struct rule_node *node, int header_type) {
 	
 	if (!node) 
 		return -1;

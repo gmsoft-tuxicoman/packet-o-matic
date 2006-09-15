@@ -116,6 +116,7 @@ int conntrack_add_target_priv(int target_type, void *priv, struct rule_node *n, 
 
 	if (!ce) {
 		ce = malloc(sizeof(struct conntrack_entry));
+		bzero(ce, sizeof(struct conntrack_entry));
 		ct_table[hash] = ce;
 	}
 
@@ -133,7 +134,7 @@ int conntrack_add_target_priv(int target_type, void *priv, struct rule_node *n, 
 	cp = malloc(sizeof(struct conntrack_privs));
 
 	cp->next = ce->target_privs;
-	ce->target_privs = cp->next;
+	ce->target_privs = cp;
 
 	cp->priv_type = target_type;
 	cp->priv = priv;
@@ -158,8 +159,9 @@ void *conntrack_get_target_priv(int target_type, struct rule_node *n, void *fram
 	struct conntrack_privs *cp;
 	cp = ce->target_privs;
 	while (cp) {
-		if (cp->priv_type == target_type)
+		if (cp->priv_type == target_type) {
 			return cp->priv;
+		}
 		cp = cp->next;
 	}
 
@@ -251,7 +253,7 @@ __u32 conntrack_hash(struct rule_node *n, void *frame) {
 	}
 
 	hash %= CONNTRACK_SIZE;
-	
+
 	return hash;
 }
 
@@ -270,7 +272,7 @@ struct conntrack_entry *conntrack_get_entry(__u32 hash, struct rule_node *n, voi
 
 	while (cp) {
 		int start = node_find_header_start(n, cp->priv_type);
-		if (!(*conntracks[cp->priv_type]->doublecheck) (frame, start, cp->priv)) {
+		if (conntracks[cp->priv_type] && !(*conntracks[cp->priv_type]->doublecheck) (frame, start, cp->priv)) {
 			ce = ce->next; // If it's not the right conntrack entry, go to next one
 			dprint("Collision detected\n");
 			if (!ce)

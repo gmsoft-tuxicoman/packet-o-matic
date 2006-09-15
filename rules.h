@@ -34,7 +34,7 @@ struct rule_list {
 
 int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list *rules);
 
-int node_find_header_start(struct rule_node *node, int header_type);
+unsigned int node_find_header_start(struct rule_node *node, int header_type);
 
 int node_match(void *frame, unsigned int start, unsigned int len, struct rule_node *node);
 

@@ -92,7 +92,7 @@ int input_read_pcap(struct input *i, unsigned char *buffer, unsigned int bufflen
 	memcpy(buffer, next_pkt, phdr->caplen);
 
 
-	return 1;
+	return phdr->caplen;
 }
 
 int input_close_pcap(struct input *i) {

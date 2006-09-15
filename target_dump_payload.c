@@ -60,7 +60,8 @@ int target_process_dump_payload(struct target *t, struct rule_node *node, void *
 
 	cp = (*t->conntrack_get_priv) (t->target_type, node, frame);
 
-	int start = node_find_payload_start(node);
+	unsigned int start = node_find_payload_start(node);
+
 
 	if (!cp) {
 
