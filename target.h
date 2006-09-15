@@ -9,6 +9,10 @@ struct target {
 	int target_type;
 	void *target_priv;
 	int (*match_register) (const char *);
+	int (*conntrack_add_priv) (int target_type, void *priv, struct rule_node *n, void* frame);
+	void* (*conntrack_get_priv) (int target_type, struct rule_node *n, void *frame);
+	int (*conntrack_remove_priv) (int target_type, struct rule_node *n, void *frame);
+
 };
 
 struct target_reg {

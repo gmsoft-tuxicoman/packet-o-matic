@@ -1,5 +1,6 @@
 
 #include "target.h"
+#include "conntrack.h"
 
 #define MAX_TARGET 16
 
@@ -82,6 +83,9 @@ struct target *target_alloc(int target_type) {
 	struct target *t = malloc(sizeof(struct target));
 	t->target_type = target_type;
 	t->match_register = match_register;
+	t->conntrack_add_priv = conntrack_add_target_priv;
+	t->conntrack_get_priv = conntrack_get_target_priv;
+	t->conntrack_remove_priv = conntrack_remove_target_priv;
 	
 	if (targets[target_type]->init)
 		if (!(*targets[target_type]->init) (t)) {

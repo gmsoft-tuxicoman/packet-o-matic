@@ -1,4 +1,9 @@
 
+* 2006/09/15 Guy Martin <gmsoft@tuxicoman.be>
+Added target_dump_payload.
+Continue to work on conntrack.
+Fix next_start in match_tcp and match_udp.
+
 * 2006/09/14 Guy Martin <gmsoft@tuxicoman.be>
 Fixed conntrack_udp and added conntrack_tcp.
 

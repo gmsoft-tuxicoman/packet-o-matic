@@ -6,7 +6,7 @@
 
 #include <linux/jhash.h>
 
-struct conntrack {
+/*struct conntrack {
 
 	void *conntrack_priv;
 
@@ -14,17 +14,17 @@ struct conntrack {
 	void* (*get_target_priv) (int target_type, struct rule_node *n, void *frame);
 	int (*remove_target_priv) (int target_type, struct rule_node *n, void *frame);
 
-};
+};*/
 
 struct conntrack_reg {
 
 	void *dl_handle;
-	int (*init) (struct conntrack *c);
+	//int (*init) (struct conntrack *c);
 	__u32 (*get_hash) (void* frame, unsigned int);
 	int (*doublecheck) (void *frame, unsigned int start, void *priv);
 	void* (*alloc_match_priv) (void *frame, unsigned int start);
 	int (*cleanup_match_priv) (void *priv);
-	int (*cleanup) (struct conntrack *c);
+	//int (*cleanup) (struct conntrack *c);
 
 };
 

@@ -84,7 +84,7 @@ int conntrack_register(const char *conntrack_name) {
 
 
 }
-
+/*
 struct conntrack *conntrack_alloc(int conntrack_type) {
 
 	if (!conntracks[conntrack_type]) {
@@ -103,7 +103,7 @@ struct conntrack *conntrack_alloc(int conntrack_type) {
 		}
 	
 	return ct;
-}
+}*/
 
 
 int conntrack_add_target_priv(int target_type, void *priv, struct rule_node *n, void* frame) {
@@ -261,6 +261,9 @@ struct conntrack_entry *conntrack_get_entry(__u32 hash, struct rule_node *n, voi
 
 	struct conntrack_entry *ce;
 	ce = ct_table[hash];
+
+	if (!ce)
+		return NULL;
 		
 	struct conntrack_privs *cp;
 	cp = ce->match_privs;

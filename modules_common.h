@@ -70,6 +70,23 @@ inline int mask_compare2(unsigned char *value1, unsigned char *mask1, unsigned c
 };
 
 
+int node_find_payload_start(struct rule_node *node) {
+
+	if (!node)
+		return -1;
+	
+	struct match *m = node->match;
+
+	if (!m)
+		return -1;
+
+	while (m->next)
+		m = m->next;
+
+	return m->next_start;
+
+}
+
 int node_find_header_start(struct rule_node *node, int header_type) {
 	
 	if (!node) 
@@ -77,9 +94,9 @@ int node_find_header_start(struct rule_node *node, int header_type) {
 	
 
 	struct match *m = node->match;
-	if (!m) {
+
+	if (!m)
 		return -1;
-	}
 
 	if(m->match_type == header_type) {
 		// Matched the start of the packet

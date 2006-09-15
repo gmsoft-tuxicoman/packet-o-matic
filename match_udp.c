@@ -40,6 +40,7 @@ int match_eval_udp(struct match* match, void *frame, unsigned int start, unsigne
 	ndprint("Processing UDP packet -> SPORT : %u | DPORT %u\n", sport, dport);
 
 	match->next_layer = match_undefined_id;
+	match->next_start = start + sizeof(struct udphdr);
 
 	if (!match->match_priv)
 		return 1;
