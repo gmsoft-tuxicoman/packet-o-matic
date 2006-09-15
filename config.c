@@ -53,6 +53,7 @@ struct rule_list* do_config() {
 	int target_dump_payload = target_register("dump_payload");
 	int target_inject = target_register("inject");
 
+	conntrack_init();
 	conntrack_register("ipv4");
 	conntrack_register("tcp");
 

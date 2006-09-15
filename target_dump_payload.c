@@ -76,7 +76,7 @@ int target_process_dump_payload(struct target *t, struct rule_node *node, void *
 
 		char outstr[20];
 		bzero(outstr, 20);
-		// 20060915-20:28:56
+		// YYYYMMDD-HHMMSS-UUUUUU
 		char *format = "%Y%m%d-%H%M%S-";
 		struct timeval tv;
 		struct tm *tmp;
@@ -88,7 +88,7 @@ int target_process_dump_payload(struct target *t, struct rule_node *node, void *
 		strcat(filename, outstr);
 		sprintf(outstr, "%u", (unsigned int)tv.tv_usec);
 		strcat(filename, outstr);
-		cp->fd = open(filename, O_RDWR | O_CREAT);
+		cp->fd = open(filename, O_RDWR | O_CREAT, 0666);
 
 		if (cp->fd == -1) {
 			free(cp);

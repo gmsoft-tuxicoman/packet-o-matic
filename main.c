@@ -40,8 +40,6 @@ void process_packet(unsigned char* packet, unsigned int  len, struct rule_list *
 int main(int argc, char *argv[]) {
 
 
-	
-
 
 	struct rule_list *rules;
 	rules = do_config();

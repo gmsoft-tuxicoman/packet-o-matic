@@ -1,7 +1,8 @@
 
+
 #include "conntrack.h"
 
-#define MAX_CONNTRACK 255
+#define MAX_CONNTRACK 16
 
 #define CONNTRACK_SIZE 65535
 
@@ -84,27 +85,6 @@ int conntrack_register(const char *conntrack_name) {
 
 
 }
-/*
-struct conntrack *conntrack_alloc(int conntrack_type) {
-
-	if (!conntracks[conntrack_type]) {
-		dprint("Input type %u is not registered\n", conntrack_type);
-		return NULL;
-	}
-	struct conntrack *ct = malloc(sizeof(struct conntrack));
-	ct->add_target_priv = conntrack_add_target_priv;
-	ct->get_target_priv = conntrack_get_target_priv;
-	ct->remove_target_priv = conntrack_remove_target_priv;
-	
-	if (conntracks[conntrack_type]->init)
-		if (!(*conntracks[conntrack_type]->init) (ct)) {
-			free(ct);
-			return NULL;
-		}
-	
-	return ct;
-}*/
-
 
 int conntrack_add_target_priv(int target_type, void *priv, struct rule_node *n, void* frame) {
 
@@ -114,13 +94,32 @@ int conntrack_add_target_priv(int target_type, void *priv, struct rule_node *n, 
 	struct conntrack_entry *ce;
 	ce = conntrack_get_entry(hash, n, frame);
 
+	struct conntrack_privs *cp;
+
 	if (!ce) {
 		ce = malloc(sizeof(struct conntrack_entry));
 		bzero(ce, sizeof(struct conntrack_entry));
+		ce->next = ct_table[hash];
 		ct_table[hash] = ce;
+
+		struct match *m = n->match;
+		// TODO : add matches in the opposite direction for speed
+		while (m) {
+			if (conntracks[m->match_type] && conntracks[m->match_type]->alloc_match_priv) {
+				int start = 0;
+				if (m->prev)
+					start = m->prev->next_start;
+				void *priv = (*conntracks[m->match_type]->alloc_match_priv) (frame, start);
+				cp = malloc(sizeof(struct conntrack_privs));
+				cp->priv_type = m->match_type;
+				cp->priv = priv;
+				cp->next = ce->match_privs;
+				ce->match_privs = cp;
+			}
+			m = m->next;
+		}
 	}
 
-	struct conntrack_privs *cp;
 	cp = ce->target_privs;
 
 	while (cp) {
@@ -272,9 +271,8 @@ struct conntrack_entry *conntrack_get_entry(__u32 hash, struct rule_node *n, voi
 
 	while (cp) {
 		int start = node_find_header_start(n, cp->priv_type);
-		if (conntracks[cp->priv_type] && !(*conntracks[cp->priv_type]->doublecheck) (frame, start, cp->priv)) {
+		if (!(*conntracks[cp->priv_type]->doublecheck) (frame, start, cp->priv)) {
 			ce = ce->next; // If it's not the right conntrack entry, go to next one
-			dprint("Collision detected\n");
 			if (!ce)
 				return NULL; // No entry matched
 			cp = ce->match_privs;

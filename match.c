@@ -10,10 +10,7 @@ struct match_reg *matchs[MAX_MATCH];
 
 int match_register(const char *match_name) {
 
-
 	int i;
-
-
 
 	for (i = 0; i < MAX_MATCH; i++) {
 		if (matchs[i] != NULL) {

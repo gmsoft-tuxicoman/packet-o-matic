@@ -44,10 +44,8 @@ int conntrack_doublecheck_udp(void *frame, unsigned int start, void *priv) {
 	struct conntrack_priv_udp *p;
 	p = priv;
 	
-	if (p->sport != hdr->source || p->dport != hdr->dest) {
-		printf("Warning, collision detected in UDP header !!!\n");
+	if (p->sport != hdr->source || p->dport != hdr->dest)
 		return 0;
-	}
 
 	return 1;
 }

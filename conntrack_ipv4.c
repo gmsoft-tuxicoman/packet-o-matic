@@ -44,10 +44,8 @@ int conntrack_doublecheck_ipv4(void *frame, unsigned int start, void *priv) {
 	struct conntrack_priv_ipv4 *p;
 	p = priv;
 	
-	if (p->saddr != hdr->saddr || p->daddr != hdr->daddr) {
-		printf("Warning, collision detected in IPV4 header !!!\n");
+	if (p->saddr != hdr->saddr || p->daddr != hdr->daddr)
 		return 0;
-	}
 
 	return 1;
 }
