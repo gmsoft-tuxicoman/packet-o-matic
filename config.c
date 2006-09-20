@@ -9,8 +9,6 @@
 
 #include "target.h"
 
-#include "conntrack.h"
-
 struct rule_list *alloc_rule_list() {
 
 	struct rule_list *rules;
@@ -50,12 +48,7 @@ struct rule_list* do_config() {
 	//int target_null = target_register("null");
 	int target_tap = target_register("tap");
 	int target_pcap = target_register("pcap");
-	int target_dump_payload = target_register("dump_payload");
 	int target_inject = target_register("inject");
-
-	conntrack_init();
-	conntrack_register("ipv4");
-	conntrack_register("tcp");
 
 	/***** FIRST RULE *****/
 
@@ -64,7 +57,7 @@ struct rule_list* do_config() {
 	
 	
 	rules->target = target_alloc(target_tap);
-	target_open(rules->target, "pom0");
+	target_open(rules->target, "docsis0");
 	
 	
 
@@ -72,47 +65,8 @@ struct rule_list* do_config() {
 	node = alloc_rule_node();
 	rules->node = node;
 	node->match = match_alloc(match_ethernet);
-
-	/***** FIRST RULE BIS :) *****/
-	
-	dprint("Adding rule 1bis\n");
-
-	// Let's save all the tcp traffic on port 80
-
-	rules->next = alloc_rule_list();
-	rules = rules->next;
 	
 
-	rules->target = target_alloc(target_dump_payload);
-	target_open(rules->target, "/tmp/payload-");
-	
-
-	// Adding ethernet as first rule	
-	node = alloc_rule_node();
-	rules->node = node;
-	node->match = match_alloc(match_ethernet);
-
-	// Adding ipv4
-	node->a = alloc_rule_node();
-	node = node->a;
-	node->match = match_alloc(match_ipv4);
-
-	// Adding tcp
-	node->a = alloc_rule_node();
-	node = node->a;
-	node->match = match_alloc(match_tcp);
-	
-	// Match port 80
-	struct match_priv_tcp *mt = malloc(sizeof(struct match_priv_tcp));
-	bzero(mt, sizeof(struct match_priv_tcp));
-	mt->sport_min = 80;
-	mt->sport_max = 80;
-	mt->dport_min = 0;
-	mt->dport_max = 65535;
-	match_config(node->match, mt);
-
-
-	return head;
 	/***** SECOND RULE *****/
 
 	dprint("Adding rule 2\n");
@@ -159,7 +113,7 @@ struct rule_list* do_config() {
 	node->match = match_alloc(match_tcp);
 
 	// Match port 25
-	mt = malloc(sizeof(struct match_priv_tcp));
+	struct match_priv_tcp *mt = malloc(sizeof(struct match_priv_tcp));
 	bzero(mt, sizeof(struct match_priv_tcp));
 	mt->sport_min = 0;
 	mt->sport_max = 65535;

@@ -24,13 +24,11 @@ void process_packet(unsigned char* packet, unsigned int  len, struct rule_list *
 	if (len == 0)
 		return;
 
-/*
 	// Byte 0 and 1 are set to 0 if it's an ethernet packet. If not, skip it
 	if (packet[0] || packet[1]) {
 		return;
 	}
 	do_rules(packet+ 6, 0, len - 6, rules);
-*/
 		
 	do_rules(packet, 0, len,  rules);
 
@@ -43,7 +41,6 @@ int main(int argc, char *argv[]) {
 
 	struct rule_list *rules;
 	rules = do_config();
-/*
 
 	struct input_open_docsis_params op;
 	op.eurodocsis = 1;
@@ -51,7 +48,7 @@ int main(int argc, char *argv[]) {
 	op.modulation = QAM_256;
 
 	int input_type = input_register("docsis");
-*/
+/*
 	struct input_open_pcap_params op;
 	op.filename = 0;
 	op.interface = "wlan0";
@@ -59,6 +56,7 @@ int main(int argc, char *argv[]) {
 	op.promisc = 0;
 
 	int input_type = input_register("pcap");
+*/
 	if (input_type == -1)
 		return 1;
 

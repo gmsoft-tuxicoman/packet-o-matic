@@ -1,4 +1,9 @@
 
+* 2006/09/20 Guy Martin <gmsoft@tuxicoman.be>
+More detailed drop statistics from input_docsis.
+Fixed error detection in input_docsis.
+Fixed setup of the demux buffer size.
+
 * 2006/09/15 Guy Martin <gmsoft@tuxicoman.be>
 Added target_dump_payload.
 Continue to work on conntrack.

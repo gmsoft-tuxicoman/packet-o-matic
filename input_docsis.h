@@ -40,6 +40,9 @@ struct input_priv_docsis {
 	unsigned char last_seq;
 	unsigned long total_packets;
 	unsigned long missed_packets;
+	unsigned long error_packets;
+	unsigned long dropped_packets;
+	unsigned long invalid_packets;
 
 
 };

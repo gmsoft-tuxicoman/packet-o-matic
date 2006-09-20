@@ -10,6 +10,7 @@
 #include <linux/dvb/dmx.h>
 
 #include <sys/ioctl.h>
+#include <errno.h>
 
 #include "input_docsis.h"
 
@@ -53,15 +54,22 @@ int input_open_docsis(struct input *i, void *params) {
 	struct input_open_docsis_params *op = params;
 
 	p->frontend_fd = open(FRONT, O_RDWR);
-	if (!p->frontend_fd) {
+	if (p->frontend_fd == -1) {
 		dprint("Unable to open frontend\n");
 		return 0;
 	}
 
 	p->demux_fd = open(DEMUX, O_RDWR);
-	if (!p->demux_fd) {
+	if (p->demux_fd == -1) {
 		dprint("Unable to open demux\n");
 		return 0;
+	}
+
+
+	// Let's use a larger buffer
+
+	if (ioctl(p->demux_fd, DMX_SET_BUFFER_SIZE, (unsigned long) DEMUX_BUFFER_SIZE) != 0) {
+		dprint("Unable to set the buffer size on the demux : %s\n", strerror(errno));
 	}
 
 
@@ -75,21 +83,16 @@ int input_open_docsis(struct input *i, void *params) {
 
 
 	if (ioctl(p->demux_fd, DMX_SET_PES_FILTER, &filter) != 0) {
-		dprint("Unable to set demuxer.\n");
+		dprint("Unable to set demuxer\n");
 		return 0;
 	}
 
-	// Let's use a larger buffer
-
-	if (!ioctl(p->demux_fd, DMX_GET_STC, DEMUX_BUFFER_SIZE)) {
-		dprint("Unable to set the buffer size on the demux\n");
-	}
 
 	// Let's open the dvr device
 
 
 	p->dvr_fd = open(DVR, O_RDONLY);
-	if (!p->dvr_fd) {
+	if (p->dvr_fd == -1) {
 		dprint("Unable to open dvr\n");
 		return 0;
 	}
@@ -382,6 +385,7 @@ int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int buffl
 
 	struct input_priv_docsis *p = i->input_priv;
 
+	// Set to 1 if there are some mpeg packets lost for the current docsis packet
 	unsigned int missing_parts = 0;
 	unsigned int packet_pos = 0;
 	unsigned char mpeg_buff[MPEG_TS_LEN];
@@ -397,7 +401,6 @@ int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int buffl
 	packet_pos = p->temp_buff_pos;
 
 	do {
-		// Set to 1 if there are some mpeg packets lost for the current docsis packet
 
 		// Fill the mpeg buffer
 		size_t len = 0, r = 0;
@@ -420,28 +423,40 @@ int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int buffl
 		}
 		
 		// Check transport error indicator
-		if (mpeg_buff[1] & 0x80)
+		if (mpeg_buff[1] & 0x80) {
+			p->error_packets++;
 			continue;
+		}
 		
 		// Check if payload unit start indicator is present and if it is valid
-		if (mpeg_buff[1] & 0x40 && (mpeg_buff[4] > 183))
+		if (mpeg_buff[1] & 0x40 && (mpeg_buff[4] > 183)) {
+			p->invalid_packets++;
 			continue;
+		}
 		
 		// Check the transport priority
-		if (mpeg_buff[1] & 0x20)
+		if (mpeg_buff[1] & 0x20) {
+			p->invalid_packets++;
 			continue;
+		}
 
 		// Check for the right PID, normaly the demux handle this
-		if ( ((mpeg_buff[1] & 0x1F) != 0x1F) && (mpeg_buff[2] != 0xFE))
+		if ( ((mpeg_buff[1] & 0x1F) != 0x1F) && (mpeg_buff[2] != 0xFE)) {
+			p->invalid_packets++;
 			continue;
+		}
 
 		// Check the transport scrambling control
-		if (mpeg_buff[3] & 0xC0)
+		if (mpeg_buff[3] & 0xC0) {
+			p->invalid_packets++;
 			continue;
+		}
 
 		// Check the adaptation field control
-		if ((mpeg_buff[3] & 0x30) != 0x10)
+		if ((mpeg_buff[3] & 0x30) != 0x10) {
+			p->invalid_packets++;
 			continue;
+		}
 		
 		// Enough checking. Let's see if we got a new packet here
 		p->total_packets++;
@@ -466,7 +481,7 @@ int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int buffl
 				missing_parts = 0;
 				
 			} else { // Discard any other part
-				p->missed_packets++;
+				p->dropped_packets++;
 				continue;
 			}
 
@@ -525,7 +540,21 @@ int input_close_docsis(struct input *i) {
 	close(p->demux_fd);
 	close(p->dvr_fd);
 
-	dprint("0x%02x; DOCSIS : Total packet read %lu, missed or dropped packets %lu, packet loss %f percent\n", (unsigned int) i->input_priv, p->total_packets, p->missed_packets, 100.0 / (double) p->total_packets * (double) p->missed_packets);
+	dprint("0x%02x; DOCSIS : Total packet read %lu, missed %lu (%.1f%%), dropped %lu (%.1f%%), erroneous %lu (%.1f%%), invalid %lu (%.1f%%), total dropped %lu (%.1f%%)\n", \
+		(unsigned int) i->input_priv, \
+		p->total_packets, \
+		p->missed_packets, \
+		100.0 / (double) p->total_packets * (double) p->missed_packets, \
+		p->dropped_packets, \
+		100.0 / (double) p->total_packets * (double) p->dropped_packets, \
+		p->error_packets, \
+		100.0 / (double) p->total_packets * (double) p->error_packets, \
+		p->invalid_packets, \
+		100.0 / (double) p->total_packets * (double) p->invalid_packets, \
+		p->missed_packets + p->dropped_packets + p->error_packets + p->invalid_packets, \
+		100.0 / (double) p->total_packets * (double) (p->missed_packets + p->dropped_packets + p->error_packets + p->invalid_packets));
+
+
 
 
 	return 1;
