@@ -1,6 +1,6 @@
 CFLAGS = -Wall -O3 -pipe
-
-#CFLAGS += -g -ggdb3 -DDEBUG
+CFLAGS += -g -ggdb3
+CFLAGS += -DDEBUG
 #CFLAGS += -DNDEBUG
 
 CORE_OBJS = input.o match.o conntrack.o target.o

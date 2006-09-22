@@ -1,5 +1,6 @@
 
 #include <signal.h>
+#include <sys/time.h>
 
 #include "conntrack.h"
 
@@ -27,8 +28,21 @@ int conntrack_init() {
 	for (i = 0; i < CONNTRACK_SIZE; i ++)
 		ct_table[i] = NULL;
 
+	// Setup signal handler for the timer
 
 	signal(SIGALRM, conntrack_timeout_handler);
+
+	// Setup the timer
+	
+	struct itimerval timer;
+	bzero(&timer, sizeof(struct itimerval));
+	timer.it_interval.tv_sec = 1;
+	timer.it_value.tv_usec = 500000;
+
+	if (setitimer(ITIMER_REAL, &timer, NULL) != 0) {
+		dprint("Error while setting up the timer for conntrack timeouts\n");
+		return 0;
+	}
 	
 	return 1;
 

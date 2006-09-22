@@ -48,6 +48,7 @@ int match_eval_ipv4(struct match* match, void* frame, unsigned int start, unsign
 
 	ndprint(" | IHL : %u", hdr->ihl * 4);
 	match->next_start = start + (hdr->ihl * 4);
+	match->next_size = ntohs(hdr->tot_len) - (hdr->ihl * 4);
 
 	switch (hdr->protocol) {
 		case IPPROTO_ICMP: // 1

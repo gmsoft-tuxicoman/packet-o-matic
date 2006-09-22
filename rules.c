@@ -15,7 +15,7 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 	match_undefined_id = match_get_type("undefined");
 	
 	if (r == NULL) {
-		printf("No rules given !\n");
+		dprint("No rules given !\n");
 		return 1;
 	}
 	do {
@@ -40,7 +40,7 @@ int node_match(void *frame, unsigned int start, unsigned int len, struct rule_no
 	
 	result = match_eval(m, frame, start, len);
 	
-
+	len = m->next_start + m->next_size;
 
 	if (result == 0)
 		return 0;

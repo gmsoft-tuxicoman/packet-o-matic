@@ -35,7 +35,7 @@ int target_init_pcap(struct target *t) {
 	// FIXME: for now we only handle ethernet packets
 	priv->p = pcap_open_dead(DLT_EN10MB, SNAPLEN);
 	if (!priv->p) {
-		printf("Unable to open pcap !\n");
+		dprint("Unable to open pcap !\n");
 		return 0;
 	}
 
@@ -51,13 +51,13 @@ int target_open_pcap(struct target *t, const char *filename) {
 	struct target_priv_pcap *priv = t->target_priv;
 
 	if (!priv->p) {
-		printf("Target pcap not initialized !\n");
+		dprint("Target pcap not initialized !\n");
 		return 0;
 	}
 	
 	priv->pdump = pcap_dump_open(priv->p, filename);
 	if (!priv->pdump) {
-		printf("Unable to open pcap dumper !\n");
+		dprint("Unable to open pcap dumper !\n");
 		return 0;
 	}
 
@@ -71,14 +71,14 @@ int target_process_pcap(struct target *t, struct rule_node *node, void *frame, u
 	struct target_priv_pcap *priv = t->target_priv;
 	
 	if (!priv->pdump) {
-		printf("Error, pcap target not opened !\n");
+		dprint("Error, pcap target not opened !\n");
 		return 0;
 	}
 	
 	int start = node_find_header_start(node, match_ethernet_id);
 
 	if (start == -1) {
-		printf("Unable to find the start of the packet\n");
+		dprint("Unable to find the start of the packet\n");
 		return 0;
 
 	}

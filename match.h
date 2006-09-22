@@ -10,6 +10,7 @@ struct match {
 	unsigned int match_type; // Type of match
 	int next_start; // Position of the header for the next match
 	int next_layer; // Next layer found
+	int next_size; // Length of the packet's content
 	void *match_priv;
 	struct match *next;
 	struct match *prev;

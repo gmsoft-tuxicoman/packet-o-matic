@@ -18,7 +18,7 @@ int finish = 0;
 
 void signal_handler(int signal) {
 	
-	printf("Received signal. Finishing ... !\n");
+	dprint("Received signal. Finishing ... !\n");
 	finish = 1;
 
 }

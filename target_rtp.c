@@ -75,7 +75,7 @@ int target_process_rtp(struct rule_target *t, struct rule_node *node, void *fram
 	int start = match_find_header_start(node, match_udp_id);
 
 	if (start == -1) {
-		printf("Unable to find the start of the packet\n");
+		dprint("Unable to find the start of the packet\n");
 		return 0;
 
 	}

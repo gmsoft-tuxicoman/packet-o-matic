@@ -162,7 +162,23 @@ void *conntrack_alloc_match_priv_udp(void *frame, unsigned int start, struct con
 int conntrack_cleanup_match_priv_udp(void *priv) {
 
 	struct conntrack_priv_udp *p = priv;
-	if (p->timeout) {
+	
+	struct conntrack_udp_timeout *tmp;
+	tmp = p->timeout;
+
+	if (tmp) {
+
+		if (tmp->prev)
+			tmp->prev->next = tmp->next;
+		else
+			timeouts = tmp->next;
+
+		if (tmp->next)
+			tmp->next->prev = tmp->prev;
+		else
+			timeouts_tail = tmp->prev;
+
+
 		free(p->timeout);
 	}
 
@@ -181,8 +197,6 @@ int conntrack_do_timeouts_udp(int (*conntrack_close_connection) (struct conntrac
 		ce = timeouts->ce;
 		ndprint("Connection 0x%x expired\n", (unsigned) ce);
 
-		timeouts = timeouts->next;
-		timeouts->prev = NULL;
 		(*conntrack_close_connection) (ce);
 
 	}

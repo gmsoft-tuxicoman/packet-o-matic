@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <sys/time.h>
 #include <time.h>
+#include <errno.h>
 
 #include "target_dump_payload.h"
 
@@ -93,7 +94,7 @@ int target_process_dump_payload(struct target *t, struct rule_node *node, void *
 
 		if (cp->fd == -1) {
 			free(cp);
-			dprint("Unable to open file %s for writing\n", filename);
+			dprint("Unable to open file %s for writing : %s\n", filename, strerror(errno));
 			return -1;
 		}
 

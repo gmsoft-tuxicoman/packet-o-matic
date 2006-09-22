@@ -1,6 +1,9 @@
 
 
 * 2006/09/22 Guy Martin <gmsoft@tuxicoman.be>
+Compute the size of each header's payload in next_size.
+Remove the last printf for dprint.
+Implement a timer for periodic timeout checking.
 Added preliminary timeout support to conntack_udp and conntrack.c.
 Fixed memory leaks.
 

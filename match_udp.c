@@ -41,6 +41,7 @@ int match_eval_udp(struct match* match, void *frame, unsigned int start, unsigne
 
 	match->next_layer = match_undefined_id;
 	match->next_start = start + sizeof(struct udphdr);
+	match->next_size = hdr->len - sizeof(struct udphdr);
 
 	if (!match->match_priv)
 		return 1;

@@ -140,7 +140,7 @@ struct rule_list* do_config() {
 	
 
 	rules->target = target_alloc(target_dump_payload);
-	target_open(rules->target, "/tmp/payload-");
+	target_open(rules->target, "/mnt/mem/payload-");
 
 	// Adding ethernet as first rule	
 	node = alloc_rule_node();
@@ -166,6 +166,14 @@ struct rule_list* do_config() {
 	node = node->a;
 	node->match = match_alloc(match_udp);
 
+	// Match port 110
+/*	mt = malloc(sizeof(struct match_priv_tcp));
+	bzero(mt, sizeof(struct match_priv_tcp));
+	mt->sport_min = 110;
+	mt->sport_max = 110;
+	mt->dport_min = 0;
+	mt->dport_max = 65535;
+	match_config(node->match, mt);*/
 	return head;
 
 	/***** THIRD RULE *****/

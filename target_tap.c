@@ -72,14 +72,14 @@ int target_process_tap(struct target *t, struct rule_node *node, void *frame, un
 	struct target_priv_tap *priv = t->target_priv;
 
 	if (priv->fd < 1) {
-		printf("Error, tap target not opened !\n");
+		dprint("Error, tap target not opened !\n");
 		return 0;
 	}
 	
 	int start = node_find_header_start(node, match_ethernet_id);
 
 	if (start == -1) {
-		printf("Unable to find the start of the packet\n");
+		dprint("Unable to find the start of the packet\n");
 		return 0;
 
 	}

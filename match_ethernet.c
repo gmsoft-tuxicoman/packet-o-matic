@@ -36,6 +36,7 @@ int match_eval_ethernet(struct match* match, void* frame, unsigned int start, un
 	struct ethhdr *ehdr = frame + start;
 
 	match->next_start = start + sizeof(struct ethhdr);
+	match->next_size = len - sizeof(struct ethhdr);
 
 	ndprint("Processing ethernet frame -> SMAC : ");
 	ndprint_hex(ehdr->h_source, 6);
