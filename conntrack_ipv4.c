@@ -51,7 +51,7 @@ int conntrack_doublecheck_ipv4(void *frame, unsigned int start, void *priv) {
 }
 
 
-void *conntrack_alloc_match_priv_ipv4(void *frame, unsigned int start) {
+void *conntrack_alloc_match_priv_ipv4(void *frame, unsigned int start, struct conntrack_entry *ce) {
 	
 	struct iphdr* hdr;
 	hdr = frame + start;

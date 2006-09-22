@@ -56,8 +56,7 @@ int target_register(const char *target_name) {
 			}
 
 
-			targets[i] = malloc(sizeof(struct target_reg));
-			memcpy(targets[i], my_target, sizeof(struct target_reg));
+			targets[i] = my_target;
 			targets[i]->target_name = malloc(strlen(target_name) + 1);
 			strcpy(targets[i]->target_name, target_name);
 			targets[i]->dl_handle = handle;
@@ -77,7 +76,7 @@ int target_register(const char *target_name) {
 struct target *target_alloc(int target_type) {
 
 	if (!targets[target_type]) {
-		dprint("Input type %u is not registered\n", target_type);
+		dprint("Target type %u is not registered\n", target_type);
 		return NULL;
 	}
 	struct target *t = malloc(sizeof(struct target));
@@ -85,7 +84,6 @@ struct target *target_alloc(int target_type) {
 	t->match_register = match_register;
 	t->conntrack_add_priv = conntrack_add_target_priv;
 	t->conntrack_get_priv = conntrack_get_target_priv;
-	t->conntrack_remove_priv = conntrack_remove_target_priv;
 	
 	if (targets[target_type]->init)
 		if (!(*targets[target_type]->init) (t)) {
@@ -112,6 +110,14 @@ int target_process(struct target *t, struct rule_node *node, unsigned char *buff
 
 	if (targets[t->target_type]->process)
 		return (*targets[t->target_type]->process) (t, node,  buffer, bufflen);
+	return 1;
+
+}
+
+int target_close_connection(int target_type, void *conntrack_priv) {
+
+	if (targets[target_type] && targets[target_type]->close_connection)
+		return (*targets[target_type]->close_connection) (conntrack_priv);
 	return 1;
 
 }
@@ -149,6 +155,7 @@ int target_unregister_all() {
 	for (; i < MAX_INPUT && targets[i]; i++) {
 		free(targets[i]->target_name);
 		dlclose(targets[i]->dl_handle);
+		free(targets[i]);
 		targets[i] = NULL;
 
 	}

@@ -52,11 +52,11 @@ int match_register(const char *match_name) {
 			
 			if (!(*register_my_match) (my_match)) {
 				dprint("Error while loading match %s. Could not load match !\n", match_name);
+				free(my_match);
 				return -1;
 			}
 
-			matchs[i] = malloc(sizeof(struct match_reg));
-			memcpy(matchs[i], my_match, sizeof(struct match_reg));
+			matchs[i] = my_match;
 			matchs[i]->match_name = malloc(strlen(match_name) + 1);
 			strcpy(matchs[i]->match_name, match_name);
 			matchs[i]->dl_handle = handle;
@@ -146,6 +146,7 @@ int match_unregister_all() {
 	for (; i < MAX_MATCH && matchs[i]; i++) {
 		free(matchs[i]->match_name);
 		dlclose(matchs[i]->dl_handle);
+		free(matchs[i]);
 		matchs[i] = NULL;
 
 	}

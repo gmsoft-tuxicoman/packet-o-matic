@@ -51,7 +51,7 @@ int conntrack_doublecheck_tcp(void *frame, unsigned int start, void *priv) {
 }
 
 
-void *conntrack_alloc_match_priv_tcp(void *frame, unsigned int start) {
+void *conntrack_alloc_match_priv_tcp(void *frame, unsigned int start, struct conntrack_entry *ce) {
 	
 	struct tcphdr* hdr;
 	hdr = frame + start;

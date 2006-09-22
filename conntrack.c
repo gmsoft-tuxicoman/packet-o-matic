@@ -1,4 +1,5 @@
 
+#include <signal.h>
 
 #include "conntrack.h"
 
@@ -12,6 +13,13 @@
 struct conntrack_reg *conntracks[MAX_CONNTRACK];
 struct conntrack_entry *ct_table[CONNTRACK_SIZE];
 
+void conntrack_timeout_handler(int signal) {
+
+	ndprint("Looking for timeouts ...\n");
+	conntrack_do_timeouts();
+
+}
+
 int conntrack_init() {
 
 	int i;
@@ -19,6 +27,9 @@ int conntrack_init() {
 	for (i = 0; i < CONNTRACK_SIZE; i ++)
 		ct_table[i] = NULL;
 
+
+	signal(SIGALRM, conntrack_timeout_handler);
+	
 	return 1;
 
 }
@@ -74,8 +85,7 @@ int conntrack_register(const char *conntrack_name) {
 		return -1;
 	}
 
-	conntracks[id] = malloc(sizeof(struct conntrack_reg));
-	memcpy(conntracks[id], my_conntrack, sizeof(struct conntrack_reg));
+	conntracks[id] = my_conntrack;
 	conntracks[id]->dl_handle = handle;
 
 	dprint("Conntrack %s registered\n", conntrack_name);
@@ -86,7 +96,7 @@ int conntrack_register(const char *conntrack_name) {
 
 }
 
-int conntrack_add_target_priv(int target_type, void *priv, struct rule_node *n, void* frame) {
+int conntrack_add_target_priv(struct target *t, void *priv, struct rule_node *n, void* frame) {
 
 	__u32 hash;
 	hash = conntrack_hash(n, frame);
@@ -101,6 +111,7 @@ int conntrack_add_target_priv(int target_type, void *priv, struct rule_node *n, 
 		bzero(ce, sizeof(struct conntrack_entry));
 		ce->next = ct_table[hash];
 		ct_table[hash] = ce;
+		ce->hash = hash;
 
 		struct match *m = n->match;
 		// TODO : add matches in the opposite direction for speed
@@ -109,7 +120,7 @@ int conntrack_add_target_priv(int target_type, void *priv, struct rule_node *n, 
 				int start = 0;
 				if (m->prev)
 					start = m->prev->next_start;
-				void *priv = (*conntracks[m->match_type]->alloc_match_priv) (frame, start);
+				void *priv = (*conntracks[m->match_type]->alloc_match_priv) (frame, start, ce);
 				cp = malloc(sizeof(struct conntrack_privs));
 				cp->priv_type = m->match_type;
 				cp->priv = priv;
@@ -120,30 +131,35 @@ int conntrack_add_target_priv(int target_type, void *priv, struct rule_node *n, 
 		}
 	}
 
+	// Let's see if that priv_type is already present
+
 	cp = ce->target_privs;
 
 	while (cp) {
-		if (cp->priv_type == target_type) {
+		if (cp->priv_type == t->target_type) {
 			dprint("Warning. Target priv already added\n");
 			return 0;
 		}
 		cp = cp->next;
 	}
 
+	// Ok it's not. Creating a new conntrack_priv for our target
+
 	cp = malloc(sizeof(struct conntrack_privs));
+	bzero(cp, sizeof(struct conntrack_privs));
 
 	cp->next = ce->target_privs;
 	ce->target_privs = cp;
 
-	cp->priv_type = target_type;
+	cp->priv_type = t->target_type;
 	cp->priv = priv;
-	
+
 	
 	return 1;
 }
 
 
-void *conntrack_get_target_priv(int target_type, struct rule_node *n, void *frame) {
+void *conntrack_get_target_priv(struct target *t, struct rule_node *n, void *frame) {
 
 
 	__u32 hash;
@@ -158,76 +174,13 @@ void *conntrack_get_target_priv(int target_type, struct rule_node *n, void *fram
 	struct conntrack_privs *cp;
 	cp = ce->target_privs;
 	while (cp) {
-		if (cp->priv_type == target_type) {
+		if (cp->priv_type == t->target_type) {
 			return cp->priv;
 		}
 		cp = cp->next;
 	}
 
 	return NULL;
-}
-
-int conntrack_remove_target_priv(int target_type, struct rule_node *n, void *frame) {
-
-	__u32 hash;
-	hash = conntrack_hash(n, frame);
-
-	struct conntrack_entry *ce;
-	ce = conntrack_get_entry(hash, n, frame);
-
-	struct conntrack_privs *cp, *cp_prev;
-	cp = ce->target_privs;
-	cp_prev = NULL;
-
-	// Remove the target priv
-	while (cp) {
-		if (cp->priv_type == target_type) {
-			if (!cp_prev)
-				ce->target_privs = cp->next;
-			else
-				cp_prev->next = cp->next;
-			
-			free(cp);
-			break;
-		}
-		cp_prev = cp;
-		cp = cp->next;
-	}
-	
-	// If there are no target priv, we can remove this connection tracking entry
-	if (!ce->target_privs) {
-		cp = ce->match_privs;
-		while (cp) {
-			if (conntracks[cp->priv_type]->cleanup_match_priv)
-				(*conntracks[cp->priv_type]->cleanup_match_priv) (cp->priv);
-
-			cp_prev = cp;
-			cp = cp->next;
-			free(cp_prev);
-		}
-		
-		ce->match_privs = NULL;
-		ce->target_privs = NULL;
-	}
-
-	ce = ct_table[hash];
-
-	struct conntrack_entry *ce_prev = NULL;
-	while (ce) {
-
-		if (!ce->match_privs) {
-			if (!ce_prev) 
-				ct_table[hash] = ce->next;
-			else
-				ce_prev->next = ce->next;
-
-		}
-		
-		ce_prev = ce;
-		ce = ce->next;
-	}
-	
-	return 1;
 }
 
 
@@ -285,3 +238,99 @@ struct conntrack_entry *conntrack_get_entry(__u32 hash, struct rule_node *n, voi
 	return ce;
 
 }
+int conntrack_close_connnection (struct conntrack_entry *ce) {
+
+
+	struct conntrack_privs *p, *tmp;
+	p = ce->target_privs;
+	while (p) {
+		if (p->priv)
+			target_close_connection(p->priv_type, p->priv);
+		tmp = p;
+		p = p->next;
+		free(tmp);
+
+	}
+
+	// Ok this connection is closed. let's remove it
+
+	// Remove the match privs
+	p = ce->match_privs;
+	while (p) {
+		if (conntracks[p->priv_type] && conntracks[p->priv_type]->cleanup_match_priv)
+			(*conntracks[p->priv_type]->cleanup_match_priv) (p->priv);
+
+		tmp = p;
+		p = p->next;
+		free(tmp);
+	}
+
+	// Free the conntrack_entry itself
+	
+
+	if (ct_table[ce->hash] == ce) {
+		ct_table[ce->hash] = ce->next;
+	} else {
+		struct conntrack_entry *tmpce;
+		tmpce = ct_table[ce->hash];
+		while (tmpce->next) {
+			if (tmpce->next == ce) {
+				tmpce->next = ce->next;
+				break;
+			}
+			tmpce = tmpce->next;
+		}
+	}
+	
+	free (ce);
+
+
+	return 1;
+}
+
+int conntrack_cleanup() {
+
+	int i;
+
+	for (i = 0; i < CONNTRACK_SIZE; i ++) {
+		while (ct_table[i]) {
+			conntrack_close_connnection(ct_table[i]);
+		}
+	}
+
+	return 1;
+
+}
+
+int conntrack_unregister_all() {
+
+	int i;
+
+	for (i = 0; i < MAX_CONNTRACK; i++) {
+		if (conntracks[i]) {
+			dlclose(conntracks[i]->dl_handle);
+			free(conntracks[i]);
+			conntracks[i] = NULL;
+		}
+
+	}
+
+	return 1;
+
+}
+
+int conntrack_do_timeouts() {
+
+	int i;
+	
+	for (i = 0; i < MAX_CONNTRACK; i++ ) {
+
+		if (conntracks[i] && conntracks[i]->conntrack_do_timeouts) {
+			(*conntracks[i]->conntrack_do_timeouts) (conntrack_close_connnection);
+		}
+	}
+
+	return 1;
+}
+
+

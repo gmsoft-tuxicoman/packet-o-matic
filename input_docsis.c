@@ -168,7 +168,7 @@ int input_open_docsis(struct input *i, void *params) {
 		}
 	}
 
-	printf("Docsis stream opened successfullly\n");
+	dprint("Docsis stream opened successfullly\n");
 	
 	return 1;
 }
@@ -389,6 +389,7 @@ int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int buffl
 	unsigned int missing_parts = 0;
 	unsigned int packet_pos = 0;
 	unsigned char mpeg_buff[MPEG_TS_LEN];
+	bzero(mpeg_buff, MPEG_TS_LEN);
 
 	// Copy the leftover from last time
 	if (p->temp_buff_pos > bufflen) {

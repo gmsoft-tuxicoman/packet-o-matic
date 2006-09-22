@@ -7,6 +7,8 @@
 #include "match_tcp.h"
 #include "match_udp.h"
 
+#include "conntrack.h"
+
 #include "target.h"
 
 struct rule_list *alloc_rule_list() {
@@ -49,6 +51,12 @@ struct rule_list* do_config() {
 	int target_tap = target_register("tap");
 	int target_pcap = target_register("pcap");
 	int target_inject = target_register("inject");
+	int target_dump_payload = target_register("dump_payload");
+
+	conntrack_init();
+	conntrack_register("ipv4");
+	conntrack_register("udp");
+	conntrack_register("tcp");
 
 	/***** FIRST RULE *****/
 
@@ -120,6 +128,43 @@ struct rule_list* do_config() {
 	mt->dport_min = 25;
 	mt->dport_max = 25;
 	match_config(node->match, mt);
+
+	/***** SECOND RULE *****/
+
+	dprint("Adding rule 2\n");
+	
+	// Let's reinject port 25 packets !
+
+	rules->next = alloc_rule_list();
+	rules = rules->next;
+	
+
+	rules->target = target_alloc(target_dump_payload);
+	target_open(rules->target, "/tmp/payload-");
+
+	// Adding ethernet as first rule	
+	node = alloc_rule_node();
+	rules->node = node;
+	node->match = match_alloc(match_ethernet);
+
+	// Adding ipv4
+	node->a = alloc_rule_node();
+	node = node->a;
+	node->match = match_alloc(match_ipv4);
+
+	// Match my ip address
+/*	mi = malloc(sizeof(struct match_priv_ipv4));
+	bzero(mi, sizeof(struct match_priv_ipv4));
+	bzero(mi, sizeof(struct match_priv_ipv4));
+	inet_aton("85.28.84.48", &mi->daddr);
+	inet_aton("255.255.255.255", &mi->dnetmask);
+	match_config(node->match, mi);*/
+	
+
+	// Adding udp
+	node->a = alloc_rule_node();
+	node = node->a;
+	node->match = match_alloc(match_udp);
 
 	return head;
 

@@ -1,4 +1,9 @@
 
+
+* 2006/09/22 Guy Martin <gmsoft@tuxicoman.be>
+Added preliminary timeout support to conntack_udp and conntrack.c.
+Fixed memory leaks.
+
 * 2006/09/20 Guy Martin <gmsoft@tuxicoman.be>
 More detailed drop statistics from input_docsis.
 Fixed error detection in input_docsis.

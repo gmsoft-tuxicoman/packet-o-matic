@@ -57,7 +57,7 @@ int target_open_inject(struct target *t, const char *device) {
 	struct target_priv_inject *priv = t->target_priv;
 
 	if (!priv) {
-		printf("Error, inject target not initialized !\n");
+		dprint("Error, inject target not initialized !\n");
 		return 0;
 	}
 
@@ -115,11 +115,13 @@ int target_close_inject(struct target *t) {
 		return 0;
 
 	struct target_priv_inject *priv = t->target_priv;
+
+	dprint("0x%x; INJECT : %u bytes injected\n", (unsigned int) priv, priv->size);
+
 	close(priv->socket);
 	free(priv);
 	t->target_priv = NULL;
 
-	dprint("0x%x; INJECT : %u bytes injected\n", (unsigned int) priv, priv->size);
 	
 	return 1;
 }

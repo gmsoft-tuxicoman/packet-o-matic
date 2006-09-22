@@ -58,8 +58,7 @@ int input_register(const char *input_name) {
 				return -1;
 			}
 
-			inputs[i] = malloc(sizeof(struct input_reg));
-			memcpy(inputs[i], my_input, sizeof(struct input_reg));
+			inputs[i] = my_input;
 			inputs[i]->input_name = malloc(strlen(input_name) + 1);
 			strcpy(inputs[i]->input_name, input_name);
 			inputs[i]->dl_handle = handle;
@@ -148,6 +147,7 @@ int input_unregister_all() {
 	for (; i < MAX_INPUT && inputs[i]; i++) {
 		free(inputs[i]->input_name);
 		dlclose(inputs[i]->dl_handle);
+		free(inputs[i]);
 		inputs[i] = NULL;
 
 	}

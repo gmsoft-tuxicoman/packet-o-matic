@@ -16,7 +16,7 @@ struct conntrack_priv_tcp {
 int conntrack_register_tcp(struct conntrack_reg *r);
 __u32 conntrack_get_hash_tcp(void *frame, unsigned int start);
 int conntrack_doublecheck_tcp(void *frame, unsigned int start, void *priv);
-void *conntrack_alloc_match_priv_tcp(void *frame, unsigned int start);
+void *conntrack_alloc_match_priv_tcp(void *frame, unsigned int start, struct conntrack_entry *ce);
 int conntrack_cleanup_match_priv_tcp(void *priv);
 
 

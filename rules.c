@@ -137,8 +137,10 @@ int list_destroy(struct rule_list *list) {
 		list = list->next;
 		if (tmp->node)
 			node_destroy(tmp->node);
-		if (tmp->target)
+		if (tmp->target) {
 			target_close(tmp->target);
+			target_cleanup(tmp->target);
+		}
 			
 		free(tmp);
 

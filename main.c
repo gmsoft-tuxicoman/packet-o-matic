@@ -1,9 +1,14 @@
 
+#ifdef DEBUG
+#include <mcheck.h>
+#endif
+
 #include <signal.h>
 
 #include "common.h"
 #include "input_docsis.h"
 #include "input_pcap.h"
+#include "conntrack.h"
 #include "config.h"
 
 #define SNAPLEN 2000
@@ -37,7 +42,9 @@ void process_packet(unsigned char* packet, unsigned int  len, struct rule_list *
 
 int main(int argc, char *argv[]) {
 
-
+#ifdef DEBUG
+	mtrace();
+#endif
 
 	struct rule_list *rules;
 	rules = do_config();
@@ -89,12 +96,14 @@ int main(int argc, char *argv[]) {
 	}
 	input_close(in);
 	input_cleanup(in);
+	conntrack_cleanup();
 
 
 	list_destroy(rules);
 
 	target_unregister_all();
 	match_unregister_all();
+	conntrack_unregister_all();
 	input_unregister_all();
 
 
