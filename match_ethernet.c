@@ -6,7 +6,6 @@ int match_ipv4_id, match_ipv6_id, match_arp_id;
 int match_register_ethernet(struct match_reg *r) {
 
 
-	dprint("Registering\n");
 	r->init = match_init_ethernet;
 	r->config = match_config_ethernet;
 	r->eval = match_eval_ethernet;

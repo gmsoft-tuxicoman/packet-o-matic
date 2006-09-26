@@ -1,4 +1,10 @@
-
+* 2006/09/26 Guy Martin <gmsoft@tuxicoman.be>
+Added target_wave to save rtp payload.
+Remove obsolete target_rtp.
+Added node_find_payload_size() to get the exact payload size.
+Fixed some debugging.
+Fixed a bug when the next layer was undefined, it was not possible to have the
+size of the next header.
 
 * 2006/09/22 Guy Martin <gmsoft@tuxicoman.be>
 Compute the size of each header's payload in next_size.

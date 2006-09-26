@@ -87,6 +87,23 @@ unsigned int node_find_payload_start(struct rule_node *node) {
 
 }
 
+unsigned int node_find_payload_size(struct rule_node *node) {
+
+	if (!node)
+		return -1;
+	
+	struct match *m = node->match;
+
+	if (!m)
+		return -1;
+
+	while (m->next)
+		m = m->next;
+
+	return m->next_size;
+
+}
+
 unsigned int node_find_header_start(struct rule_node *node, int header_type) {
 	
 	if (!node) 

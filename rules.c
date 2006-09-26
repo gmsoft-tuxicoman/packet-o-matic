@@ -50,13 +50,16 @@ int node_match(void *frame, unsigned int start, unsigned int len, struct rule_no
 
 
 	if (!node->b) {
-		if (node->a->match && (m->next_layer == match_undefined_id || node->a->match->match_type == m->next_layer) && node_match(frame, m->next_start, len, node->a)) {
+		if (m->next_layer == match_undefined_id)
+			m->next_layer = node->a->match->match_type;
+		if (node->a->match && node->a->match->match_type == m->next_layer && node_match(frame, m->next_start, len, node->a)) {
 			m->next = node->a->match;
 			node->a->match->prev = m;
 			return 1;
 		}
 		return 0;
 	} else if (node->andor) { // AND = 1
+
 
 		if (node->b->match && ((m->next_layer == match_undefined_id) || (node->a->match->match_type == m->next_layer)) && node->b->match->match_type == m->next_layer) {
 			int aresult, bresult;
@@ -71,6 +74,8 @@ int node_match(void *frame, unsigned int start, unsigned int len, struct rule_no
 			// If both match, it means both have the same next_layer and thus next_start
 			// We can thus choose only the first one
 			m->next = node->a->match;
+			if (m->next_layer == match_undefined_id)
+				m->next_layer = node->a->match->match_type;
 			return 1;
 		} else
 			return 0;
@@ -79,6 +84,7 @@ int node_match(void *frame, unsigned int start, unsigned int len, struct rule_no
 		if (node->a->match && ((m->next_layer == match_undefined_id) || (node->a->match->match_type == m->next_layer))) {
 			aresult = node_match(frame, m->next_start, len, node->a);
 			m->next = node->a->match;
+			m->next_layer = node->a->match->match_type;
 			node->a->match->prev = m;
 		} else
 			aresult = 0;
@@ -86,6 +92,7 @@ int node_match(void *frame, unsigned int start, unsigned int len, struct rule_no
 		if (node->b->match && ((m->next_layer == match_undefined_id) || (node->b->match->match_type == m->next_layer))) {
 			bresult = node_match(frame, m->next_start, len, node->b);
 			m->next = node->b->match;
+			m->next_layer = node->b->match->match_type;
 			node->b->match->prev = m;
 		} else
 			bresult = 0;

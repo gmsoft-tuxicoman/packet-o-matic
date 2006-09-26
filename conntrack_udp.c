@@ -143,7 +143,7 @@ void *conntrack_alloc_match_priv_udp(void *frame, unsigned int start, struct con
 
 	// Put the timeout at the end of the list
 	
-	ndprint("Addding 0x%x to the list\n", (unsigned) t);
+	ndprint("Adding 0x%x to the list\n", (unsigned) t);
 	
 	if (timeouts == NULL) {
 		timeouts = t;

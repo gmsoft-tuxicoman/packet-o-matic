@@ -18,7 +18,7 @@ int target_register_null(struct target_reg *r) {
 
 int target_process_null(struct target *t, struct rule_node *node, void *frame, unsigned int len) {
 
-	dprint("Packet processed\n");
+	ndprint("Packet processed\n");
 
 	return 1;
 

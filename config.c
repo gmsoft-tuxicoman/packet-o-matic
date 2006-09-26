@@ -46,17 +46,19 @@ struct rule_list* do_config() {
 	int match_ipv4 = match_register("ipv4");
 	int match_tcp = match_register("tcp");
 	int match_udp = match_register("udp");
+	int match_rtp = match_register("rtp");
 
-	//int target_null = target_register("null");
+	int target_wave = target_register("wave");
 	int target_tap = target_register("tap");
 	int target_pcap = target_register("pcap");
 	int target_inject = target_register("inject");
-	int target_dump_payload = target_register("dump_payload");
+	//int target_dump_payload = target_register("dump_payload");
 
 	conntrack_init();
 	conntrack_register("ipv4");
 	conntrack_register("udp");
 	conntrack_register("tcp");
+	conntrack_register("rtp");
 
 	/***** FIRST RULE *****/
 
@@ -129,6 +131,7 @@ struct rule_list* do_config() {
 	mt->dport_max = 25;
 	match_config(node->match, mt);
 
+
 	/***** SECOND RULE *****/
 
 	dprint("Adding rule 2\n");
@@ -139,8 +142,8 @@ struct rule_list* do_config() {
 	rules = rules->next;
 	
 
-	rules->target = target_alloc(target_dump_payload);
-	target_open(rules->target, "/mnt/mem/payload-");
+	rules->target = target_alloc(target_wave);
+	target_open(rules->target, "/mnt/mem/rtp-");
 
 	// Adding ethernet as first rule	
 	node = alloc_rule_node();
@@ -152,13 +155,13 @@ struct rule_list* do_config() {
 	node = node->a;
 	node->match = match_alloc(match_ipv4);
 
-	// Match my ip address
-/*	mi = malloc(sizeof(struct match_priv_ipv4));
+	// Match some ipv4
+	mi = malloc(sizeof(struct match_priv_ipv4));
 	bzero(mi, sizeof(struct match_priv_ipv4));
 	bzero(mi, sizeof(struct match_priv_ipv4));
-	inet_aton("85.28.84.48", &mi->daddr);
-	inet_aton("255.255.255.255", &mi->dnetmask);
-	match_config(node->match, mi);*/
+	inet_aton("10.0.0.0", &mi->daddr);
+	inet_aton("255.0.0.0", &mi->dnetmask);
+	match_config(node->match, mi);
 	
 
 	// Adding udp
@@ -166,14 +169,22 @@ struct rule_list* do_config() {
 	node = node->a;
 	node->match = match_alloc(match_udp);
 
-	// Match port 110
-/*	mt = malloc(sizeof(struct match_priv_tcp));
-	bzero(mt, sizeof(struct match_priv_tcp));
-	mt->sport_min = 110;
-	mt->sport_max = 110;
-	mt->dport_min = 0;
-	mt->dport_max = 65535;
-	match_config(node->match, mt);*/
+	// Match port > 3000
+	struct match_priv_udp *mu = malloc(sizeof(struct match_priv_udp));
+	bzero(mu, sizeof(struct match_priv_udp));
+	mu->sport_min = 3000;
+	mu->sport_max = 65535;
+	mu->dport_min = 3000;
+	mu->dport_max = 65535;
+	match_config(node->match, mu);
+
+
+	// Adding rtp
+	node->a = alloc_rule_node();
+	node = node->a;
+	node->match = match_alloc(match_rtp);
+
+
 	return head;
 
 	/***** THIRD RULE *****/
@@ -304,7 +315,7 @@ struct rule_list* do_config() {
 	node->match = match_alloc(match_udp);
 
 	// Match rtp ports
-	struct match_priv_udp *mu = malloc(sizeof(struct match_priv_udp));
+	mu = malloc(sizeof(struct match_priv_udp));
 	bzero(mu, sizeof(struct match_priv_udp));
 	mu->sport_min = 0;
 	mu->sport_max = 65535;
