@@ -78,12 +78,31 @@ int target_process_wave(struct target *t, struct rule_node *node, void *frame, u
 		if (start >= len)
 			return 1;
 
-		// Do not create if we don't handle the payload type;
+		// Allocate the audio header
+		struct au_hdr *auhdr;
+		auhdr = malloc(sizeof(struct au_hdr));
+		bzero(auhdr, sizeof(struct au_hdr));
+		memcpy(auhdr->magic, ".snd", 4);
+		auhdr->hdr_size = htonl(24);
+		auhdr->data_size = 0;
+		switch (rtphdr->payload_type) {
+			case 1: // G.711U
+				auhdr->encoding = htonl(1);
+				break;
+			case 8: // G.711A
+				auhdr->encoding = htonl(27);
+				break;
+			case 9: // G.722
+				auhdr->encoding = htonl(24);
+				break;
+			default:
+				ndprint("WAVE: Payload type %u not supported\n", rtphdr->payload_type);
+				free(auhdr);
+				return 0;
 
-		if (rtphdr->payload_type != 8) {
-			dprint("WAVE: payload type %u not supported\n", rtphdr->payload_type);
-			return 1;
 		}
+		auhdr->sample_rate = htonl(8000);
+		auhdr->channels = htonl(1);
 
 		// New connection
 		cp = malloc(sizeof(struct target_conntrack_priv_wave));
@@ -119,20 +138,12 @@ int target_process_wave(struct target *t, struct rule_node *node, void *frame, u
 		(*t->conntrack_add_priv) (t, cp, node, frame);
 
 
-		struct au_hdr *auhdr;
-		auhdr = malloc(sizeof(struct au_hdr));
-		bzero(auhdr, sizeof(struct au_hdr));
-		memcpy(auhdr->magic, ".snd", 4);
-		auhdr->hdr_size = htonl(24);
-		auhdr->data_size = 0;
-		auhdr->encoding = htonl(27); //A-Law
-		auhdr->sample_rate = htonl(8000);
-		auhdr->channels = htonl(1);
 
 		cp->last_seq = ntohs(rtphdr->seq_num) - 1;
 
 		write(cp->fd, auhdr, sizeof(struct au_hdr));
 
+		free(auhdr);
 
 	}
 
@@ -144,7 +155,15 @@ int target_process_wave(struct target *t, struct rule_node *node, void *frame, u
 
 	if (cp->last_seq != cur_seq) {
 		char *buffer = malloc(size);
-		memset(buffer, 0x55, size);
+		switch (rtphdr->payload_type) {
+			case 1: // G.711U
+			case 8: // G.711A
+				memset(buffer, 0x55, size);
+				break;
+			default: 
+				memset(buffer, 0x0, size);
+		}
+
 		while (cp->last_seq != cur_seq) { // Fill with 0
 			write(cp->fd, buffer, size);
 			cp->last_seq++;

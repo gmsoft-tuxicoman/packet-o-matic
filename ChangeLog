@@ -1,3 +1,7 @@
+
+* 2006/09/27 Guy Martin <gmsoft@tuxicoman.be>
+Added support for G.711U and G.722 in target_wave.
+
 * 2006/09/26 Guy Martin <gmsoft@tuxicoman.be>
 Added target_wave to save rtp payload.
 Remove obsolete target_rtp.

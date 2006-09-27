@@ -132,6 +132,7 @@ struct rule_list* do_config() {
 	match_config(node->match, mt);
 
 
+	return head;
 	/***** SECOND RULE *****/
 
 	dprint("Adding rule 2\n");
