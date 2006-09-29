@@ -3,7 +3,7 @@
 Fixed memory leak in target_wave.
 Added missing match_rtp and conntrack_rtp in svn.
 Entirely moved timer management to conntrack core.
-
+Add header size checking for match_rtp.
 
 * 2006/09/27 Guy Martin <gmsoft@tuxicoman.be>
 Added support for G.711U and G.722 in target_wave.
