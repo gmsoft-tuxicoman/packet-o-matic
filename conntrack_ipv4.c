@@ -5,7 +5,7 @@
 
 #define INITVAL 0x5fb83a0c // Random value
 
-int conntrack_register_ipv4(struct conntrack_reg *r) {
+int conntrack_register_ipv4(struct conntrack_reg *r, struct conntrack_functions *ct_funcs) {
 	
 	r->get_hash = conntrack_get_hash_ipv4;
 	r->doublecheck = conntrack_doublecheck_ipv4;
@@ -32,7 +32,7 @@ __u32 conntrack_get_hash_ipv4(void *frame, unsigned int start) {
 
 }
 
-int conntrack_doublecheck_ipv4(void *frame, unsigned int start, void *priv) {
+int conntrack_doublecheck_ipv4(void *frame, unsigned int start, void *priv, struct conntrack_entry *ce) {
 
 	
 

@@ -132,7 +132,6 @@ struct rule_list* do_config() {
 	match_config(node->match, mt);
 
 
-	return head;
 	/***** SECOND RULE *****/
 
 	dprint("Adding rule 2\n");
@@ -144,7 +143,7 @@ struct rule_list* do_config() {
 	
 
 	rules->target = target_alloc(target_wave);
-	target_open(rules->target, "/mnt/mem/rtp-");
+	target_open(rules->target, "/mnt/nfs/temp/rtp/rtp-");
 
 	// Adding ethernet as first rule	
 	node = alloc_rule_node();

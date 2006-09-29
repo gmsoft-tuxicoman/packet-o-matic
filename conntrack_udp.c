@@ -8,45 +8,17 @@
 
 #define UDP_TIMEOUT 180 // 180 sec of timeout for udp connections
 
-struct conntrack_udp_timeout *timeouts; // Head of the timeout list
-struct conntrack_udp_timeout *timeouts_tail; // Tail of the timeout list
-
-/*
-void check_list (struct conntrack_udp_timeout *t) {
-
-	if (t->prev != NULL)
-		dprint("t->prev != NULL\n");
+struct conntrack_functions *ct_functions;
 
 
-	struct conntrack_udp_timeout *prev;
-	prev = t;
-	t = t->next;
-	while (t) {
-		
-		if (!t->next)
-			if (t != timeouts_tail)
-				dprint("Tail not set correctly\n");
-		// else 
-			//if (t->next->prev != t)
-			//	dprint("Prev not set correctly for 0x%x (0x%x)\n", (unsigned) t->next, (unsigned) t->next->prev);
-
-		t = t->next;
-
-	}
-	
-} */
-
-
-int conntrack_register_udp(struct conntrack_reg *r) {
+int conntrack_register_udp(struct conntrack_reg *r, struct conntrack_functions *ct_funcs) {
 	
 	r->get_hash = conntrack_get_hash_udp;
 	r->doublecheck = conntrack_doublecheck_udp;
 	r->alloc_match_priv = conntrack_alloc_match_priv_udp;
 	r->cleanup_match_priv = conntrack_cleanup_match_priv_udp;
-	r->conntrack_do_timeouts = conntrack_do_timeouts_udp;
 	
-	timeouts = NULL;
-	timeouts_tail = NULL;
+	ct_functions = ct_funcs;
 	
 	return 1;
 }
@@ -67,7 +39,7 @@ __u32 conntrack_get_hash_udp(void *frame, unsigned int start) {
 
 }
 
-int conntrack_doublecheck_udp(void *frame, unsigned int start, void *priv) {
+int conntrack_doublecheck_udp(void *frame, unsigned int start, void *priv, struct conntrack_entry *ce) {
 
 	
 
@@ -82,34 +54,12 @@ int conntrack_doublecheck_udp(void *frame, unsigned int start, void *priv) {
 	if (p->sport != hdr->source || p->dport != hdr->dest)
 		return 0;
 
-	// Update the timeout of the connection
-	
-	struct conntrack_udp_timeout *t, *tmp;
-	t = p->timeout;
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	t->expires = tv.tv_sec + UDP_TIMEOUT;
 
-	if (t == timeouts_tail)
-		return 1;
-	// Remove is from the list
+	// Remove the timer from the queue
+	(*ct_functions->dequeue_timer) (p->timer);
 
-	if (t == timeouts) {
-		timeouts = timeouts->next;
-		timeouts->prev = NULL;
-	} else {
-		tmp = t->prev;
-		tmp->next = t->next;
-		tmp->next->prev = tmp;
-	}
-
-
-	// Put it at the end
-	t->prev = timeouts_tail;
-	timeouts_tail->next = t;
-	t->next = NULL;
-	timeouts_tail = t;
-	
+	// And requeue it at the end
+	(*ct_functions->queue_timer) (p->timer, UDP_TIMEOUT);
 
 	return 1;
 }
@@ -130,30 +80,14 @@ void *conntrack_alloc_match_priv_udp(void *frame, unsigned int start, struct con
 
 
 	// Allocate the timeout and set it up
-	struct conntrack_udp_timeout *t;
-	t = malloc(sizeof(struct conntrack_udp_timeout));
-	bzero(t, sizeof(struct conntrack_udp_timeout));
+	struct conntrack_timer *t;
+	t = (*ct_functions->alloc_timer) (ce);
 
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
-	t->expires = tv.tv_sec + UDP_TIMEOUT;
-	t->ce = ce;
-
-	priv->timeout = t;
+	priv->timer = t;
 
 	// Put the timeout at the end of the list
 	
-	ndprint("Adding 0x%x to the list\n", (unsigned) t);
-	
-	if (timeouts == NULL) {
-		timeouts = t;
-		timeouts_tail = t;
-	} else {
-		t->prev = timeouts_tail;
-		timeouts_tail->next = t;
-		timeouts_tail = t;
-	}
-
+	(*ct_functions->queue_timer) (t, UDP_TIMEOUT);
 
 	return priv;
 
@@ -163,29 +97,15 @@ int conntrack_cleanup_match_priv_udp(void *priv) {
 
 	struct conntrack_priv_udp *p = priv;
 	
-	struct conntrack_udp_timeout *tmp;
-	tmp = p->timeout;
-
-	if (tmp) {
-
-		if (tmp->prev)
-			tmp->prev->next = tmp->next;
-		else
-			timeouts = tmp->next;
-
-		if (tmp->next)
-			tmp->next->prev = tmp->prev;
-		else
-			timeouts_tail = tmp->prev;
-
-
-		free(p->timeout);
+	if (p->timer) {
+		(*ct_functions->dequeue_timer) (p->timer);
+		(*ct_functions->cleanup_timer) (p->timer);
 	}
 
 	free(priv);
 	return 1;
 }
-
+/*
 int conntrack_do_timeouts_udp(int (*conntrack_close_connection) (struct conntrack_entry *ce)) {
 
 	struct timeval tv;
@@ -204,4 +124,4 @@ int conntrack_do_timeouts_udp(int (*conntrack_close_connection) (struct conntrac
 	return 1;
 }
 
-
+*/

@@ -10,14 +10,68 @@
 
 #define INITVAL 0xdf92b6eb
 
+/*
+void check_list (struct conntrack_timer_queue *tq) {
 
+
+	struct conntrack_timer *t;
+
+	t = tq->head;
+
+	if (t->prev != NULL)
+		dprint("t->prev != NULL\n");
+
+
+	while (t) {
+		dprint("t\t0x%x (expires %u, conn 0x%u)\n", (unsigned) t, (unsigned) t->expires, (unsigned) t->ce);	
+		if (!t->next) {
+			if (t != tq->tail)
+				dprint("Tail not set correctly\n");
+		} else {
+			if (t->next->prev != t)
+				dprint("Prev not set correctly for 0x%x (0x%x)\n", (unsigned) t->next, (unsigned) t->next->prev);
+		}
+		t = t->next;
+
+	}
+	
+} 
+
+void check_queues (struct conntrack_timer_queue *tq) {
+
+
+	dprint("checking queues\n");
+	
+	if (tq->prev != NULL)
+		dprint("tq->prev != NULL\n");
+
+
+	while (tq) {
+		dprint("q 0x%x (expiry %u, head 0x%x, tail 0x%x)\n", (unsigned)tq, tq->expiry, (unsigned) tq->head, (unsigned) tq->tail);
+		
+		if (tq->next) {
+			if (tq->next->prev != tq)
+				dprint("Prev queue not set correctly for 0x%x (0x%x)\n", (unsigned) tq->next, (unsigned) tq->next->prev);
+		}
+		check_list(tq);
+
+		tq = tq->next;
+
+	}
+	
+} 
+*/
 struct conntrack_reg *conntracks[MAX_CONNTRACK];
 struct conntrack_entry *ct_table[CONNTRACK_SIZE];
+struct conntrack_timer_queue *timer_queues;
+struct conntrack_functions *ct_funcs;
+struct itimerval conntrack_itimer;
 
 void conntrack_timeout_handler(int signal) {
 
 	ndprint("Looking for timeouts ...\n");
-	conntrack_do_timeouts();
+
+	conntrack_do_timers();
 
 }
 
@@ -34,15 +88,22 @@ int conntrack_init() {
 
 	// Setup the timer
 	
-	struct itimerval timer;
-	bzero(&timer, sizeof(struct itimerval));
-	timer.it_interval.tv_sec = 1;
-	timer.it_value.tv_usec = 500000;
+	bzero(&conntrack_itimer, sizeof(struct itimerval));
+	conntrack_itimer.it_interval.tv_sec = 1;
+	conntrack_itimer.it_value.tv_usec = 500000;
 
-	if (setitimer(ITIMER_REAL, &timer, NULL) != 0) {
+	if (setitimer(ITIMER_REAL, &conntrack_itimer, NULL) != 0) {
 		dprint("Error while setting up the timer for conntrack timeouts\n");
 		return 0;
 	}
+
+	timer_queues = NULL;
+
+	ct_funcs = malloc(sizeof(struct conntrack_functions));
+	ct_funcs->alloc_timer = conntrack_timer_alloc;
+	ct_funcs->cleanup_timer = conntrack_timer_cleanup;
+	ct_funcs->queue_timer = conntrack_timer_queue;
+	ct_funcs->dequeue_timer = conntrack_timer_dequeue;
 	
 	return 1;
 
@@ -81,7 +142,7 @@ int conntrack_register(const char *conntrack_name) {
 	strcpy(name, "conntrack_register_");
 	strcat(name, conntrack_name);
 
-	int (*register_my_conntrack) (struct conntrack_reg *);
+	int (*register_my_conntrack) (struct conntrack_reg *, struct conntrack_functions *);
 
 	
 	register_my_conntrack = dlsym(handle, name);
@@ -94,8 +155,9 @@ int conntrack_register(const char *conntrack_name) {
 	bzero(my_conntrack, sizeof(struct conntrack_reg));
 
 	
-	if (!(*register_my_conntrack) (my_conntrack)) {
+	if (!(*register_my_conntrack) (my_conntrack, ct_funcs)) {
 		dprint("Error while loading conntrack %s. Could not load conntrack !\n", conntrack_name);
+		free(my_conntrack);
 		return -1;
 	}
 
@@ -238,7 +300,7 @@ struct conntrack_entry *conntrack_get_entry(__u32 hash, struct rule_node *n, voi
 
 	while (cp) {
 		int start = node_find_header_start(n, cp->priv_type);
-		if (!(*conntracks[cp->priv_type]->doublecheck) (frame, start, cp->priv)) {
+		if (!(*conntracks[cp->priv_type]->doublecheck) (frame, start, cp->priv, ce)) {
 			ce = ce->next; // If it's not the right conntrack entry, go to next one
 			if (!ce)
 				return NULL; // No entry matched
@@ -306,10 +368,41 @@ int conntrack_cleanup() {
 
 	int i;
 
+	// Stop the timers
+	
+	conntrack_itimer.it_value.tv_sec = 0;
+	conntrack_itimer.it_value.tv_usec = 0;
+
+
+	// Close remaining connections
+
 	for (i = 0; i < CONNTRACK_SIZE; i ++) {
 		while (ct_table[i]) {
 			conntrack_close_connnection(ct_table[i]);
 		}
+	}
+
+	free(ct_funcs);
+
+
+
+	while (timer_queues) {
+		struct conntrack_timer_queue *tmpq;
+		tmpq = timer_queues;
+
+		while (tmpq->head) {
+			
+			struct conntrack_timer *tmp;
+			tmp = tmpq->head;
+
+			tmpq->head = tmpq->head->next;
+
+			free(tmp);
+
+		}
+		timer_queues = timer_queues->next;
+
+		free(tmpq);
 	}
 
 	return 1;
@@ -333,18 +426,218 @@ int conntrack_unregister_all() {
 
 }
 
-int conntrack_do_timeouts() {
+int conntrack_do_timers() {
 
-	int i;
-	
-	for (i = 0; i < MAX_CONNTRACK; i++ ) {
 
-		if (conntracks[i] && conntracks[i]->conntrack_do_timeouts) {
-			(*conntracks[i]->conntrack_do_timeouts) (conntrack_close_connnection);
+	struct conntrack_timer_queue *tq;
+	tq = timer_queues;
+
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+
+	while (tq) {
+		while (tq->head && tq->head->expires <= tv.tv_sec) {
+				// Should we always close the connection when a timer pops up or should the conntrack handle it ?
+				ndprint("Timer 0x%x for 0x%x reached. closing ...\n", (unsigned) tq->head, (unsigned)tq->head->ce);
+				conntrack_close_connnection(tq->head->ce);
 		}
+		tq = tq->next;
+
 	}
 
 	return 1;
 }
 
+struct conntrack_timer *conntrack_timer_alloc(struct conntrack_entry *ce) {
 
+	struct conntrack_timer *t;
+	t = malloc(sizeof(struct conntrack_timer));
+	bzero(t, sizeof(struct conntrack_timer));
+
+	t->ce = ce;
+
+	return t;
+}
+
+int conntrack_timer_cleanup(struct conntrack_timer *t) {
+
+	if (t->next || t->prev) {
+		dprint("Error timer not dequeued before cleanup\n");
+		return 0;
+	}
+
+	free(t);
+	
+	return 1;
+}
+
+int conntrack_timer_queue(struct conntrack_timer *t, unsigned int expiry) {
+
+	struct conntrack_timer_queue *tq;
+	tq = timer_queues;
+
+	if (t->prev || t->next) {
+		dprint("Error, timer not dequeued correctly\n");
+		return -1;
+	}
+
+	// First find the right queue or create it
+	
+	if (!tq) {
+
+		// There is no queue yet
+		tq = malloc(sizeof(struct conntrack_timer_queue));
+		bzero(tq, sizeof(struct conntrack_timer_queue));
+		timer_queues = tq;
+
+		tq->expiry = expiry;
+
+	} else {
+
+		while (tq) {
+			
+			if (tq->expiry == expiry) { // The right queue already exists
+				
+				break;
+
+			} else if (tq->expiry > expiry) { // The right queue doesn't exists and we are too far in the list
+
+				struct conntrack_timer_queue *tmp;
+				tmp = malloc(sizeof(struct conntrack_timer_queue));
+				bzero(tmp, sizeof(struct conntrack_timer_queue));
+
+				tmp->prev = tq->prev;
+				tmp->next = tq;
+				tq->prev = tmp;
+
+				if (tmp->prev)
+					tmp->prev->next = tmp;
+				else
+					timer_queues = tmp;
+
+
+				tq = tmp;
+				tq->expiry = expiry;
+
+				break;
+			
+			} else if (!tq->next) { // Looks like we are at the end of our list
+
+				struct conntrack_timer_queue *tmp;
+				tmp = malloc(sizeof(struct conntrack_timer_queue));
+				bzero(tmp, sizeof(struct conntrack_timer_queue));
+
+				tmp->prev = tq;
+				
+				tq->next = tmp;
+
+				tq = tmp;
+
+				tq->expiry = expiry;
+				
+				break;
+			}
+
+			tq = tq->next;
+		}
+
+	}
+
+	// Now we can queue the timer
+	
+	if (tq->head == NULL) {
+		tq->head = t;
+		tq->tail = t;
+	} else {
+		t->prev = tq->tail;
+		tq->tail->next = t;
+		tq->tail = t;
+	}
+
+	// Update the expiry time
+
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	t->expires = tv.tv_sec + expiry;
+
+	return 1;
+}
+
+
+int conntrack_timer_dequeue(struct conntrack_timer *t) {
+
+	
+	// First let's check if it's the one at the begining of the queue
+
+	if (t->prev) {
+		t->prev->next = t->next;
+	} else {
+		struct conntrack_timer_queue *tq;
+		tq = timer_queues;
+		while (tq) {
+			//dprint("tq->head = 0x%x, t = 0x%x\n", (unsigned) tq->head, (unsigned) t);
+			if (tq->head == t) {
+				tq->head = t->next;
+
+				// Let's see if the queue is empty
+			
+				/* WE SHOULD NOT TRY TO REMOVE QUEUES FROM THE QUEUE LIST
+				if (!tq->head) { // If it is, remove that queue from the queue list
+					dprint("Removing queue 0x%x from the queue list\n", (unsigned) tq);
+					if (tq->prev)
+						tq->prev->next = tq->next;
+					else
+						timer_queues = tq->next;
+
+					if (tq->next)
+						tq->next->prev = tq->prev;
+
+
+					free (tq);
+					return 1;
+				}*/
+				break;
+			}
+			tq = tq->next;
+		}
+#ifdef DEBUG
+		if (!tq)
+			dprint("Warning, timer 0x%x not found in conntrack queues heads\n", (unsigned) t);
+#endif
+	}
+
+	if (!timer_queues) {
+		dprint("WTF\n");
+		return 1;
+	}
+
+	if (t->next) {
+		t->next->prev = t->prev;
+	} else {
+		struct conntrack_timer_queue *tq;
+		tq = timer_queues;
+		while (tq) {
+			if (tq->tail == t) {
+				tq->tail = t->prev;
+				break;
+			}
+			tq = tq->next;
+		}
+#ifdef DEBUG
+		if (!tq) {
+			dprint("Warning, timer 0x%x not found in conntrack queues tails\n", (unsigned) t);
+		}
+#endif
+	}
+
+
+	// Make sure this timer will not reference anything
+
+	t->prev = NULL;
+	t->next = NULL;
+
+
+
+
+	return 1;
+}

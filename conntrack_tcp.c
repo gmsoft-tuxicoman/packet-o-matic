@@ -5,7 +5,7 @@
 
 #define INITVAL 0x84fa0b2c
 
-int conntrack_register_tcp(struct conntrack_reg *r) {
+int conntrack_register_tcp(struct conntrack_reg *r, struct conntrack_functions *ct_funcs) {
 	
 	r->get_hash = conntrack_get_hash_tcp;
 	r->doublecheck = conntrack_doublecheck_tcp;
@@ -32,7 +32,7 @@ __u32 conntrack_get_hash_tcp(void *frame, unsigned int start) {
 
 }
 
-int conntrack_doublecheck_tcp(void *frame, unsigned int start, void *priv) {
+int conntrack_doublecheck_tcp(void *frame, unsigned int start, void *priv, struct conntrack_entry *ce) {
 
 	
 

@@ -168,6 +168,8 @@ int target_process_wave(struct target *t, struct rule_node *node, void *frame, u
 			write(cp->fd, buffer, size);
 			cp->last_seq++;
 		}
+
+		free(buffer);
 	}
 
 	cp->total_size += size;
