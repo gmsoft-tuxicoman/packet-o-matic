@@ -1,7 +1,7 @@
 
 * 2006/09/29 Guy Martin <gmsoft@tuxicoman.be>
 Fixed memory leak in target_wave.
-Added missing match_rtp in svn.
+Added missing match_rtp and conntrack_rtp in svn.
 Entirely moved timer management to conntrack core.
 
 
