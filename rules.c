@@ -40,7 +40,12 @@ int node_match(void *frame, unsigned int start, unsigned int len, struct rule_no
 	
 	result = match_eval(m, frame, start, len);
 	
-	len = m->next_start + m->next_size;
+	unsigned int new_len;
+	new_len = m->next_start + m->next_size;
+	if (new_len > len) {
+		dprint("Error, new len greater than the computed maximum len or buffer (maximum %u, new %u)\n", len, new_len);
+		return 0;
+	}
 
 	if (result == 0)
 		return 0;

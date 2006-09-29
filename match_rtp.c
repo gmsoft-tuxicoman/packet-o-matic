@@ -50,7 +50,7 @@ int match_eval_rtp(struct match* match, void *frame, unsigned int start, unsigne
 	ndprint("Processing RTP packet -> SSRC : %x | Payload type %u | SEQ : %04x", hdr->ssrc, hdr->payload_type, ntohs(hdr->seq_num));
 #ifdef NDEBUG
 	int i;
-	for (i = 0; i < hdr->csrc_count && (hdr->csrc[i] + 4) < (frame + len); i++) {
+	for (i = 0; i < hdr->csrc_count && ((unsigned)hdr->csrc[i] + 4) < ((unsigned)frame + len); i++) {
 		ndprint(" | CSRC : %x", hdr->csrc[i]);
 	}
 #endif
