@@ -30,7 +30,7 @@ int match_config_rtp(struct match *m, void *params) {
 int match_eval_rtp(struct match* match, void *frame, unsigned int start, unsigned int len) {
 	struct rtphdr *hdr = frame + start;
 
-	if (len < 12) {
+	if ((len - start) < 12) {
 		ndprint("Invalid size for RTP packet\n");
 		return 0;
 	}
@@ -42,7 +42,7 @@ int match_eval_rtp(struct match* match, void *frame, unsigned int start, unsigne
 	hdr_len = 12; // Len up to ssrc included
 	hdr_len += hdr->csrc_count * 4;
 
-	if (len < hdr_len) {
+	if (len < (hdr_len + start)) {
 		ndprint("Invalid size for RTP packet\n");
 		return 0;
 	}
@@ -59,13 +59,13 @@ int match_eval_rtp(struct match* match, void *frame, unsigned int start, unsigne
 		ext = frame + start + hdr_len;
 		hdr_len += ntohs(ext->length);
 		ndprint(" | Extension header %u bytes", ntohs(ext->length));
-		if (len < hdr_len) {
+		if (len < (hdr_len + start)) {
 			ndprint(" Invalid size for RTP packet\n");
 			return 0;
 		}
 	}
 	match->next_start = start + hdr_len;
-	match->next_size = len - (match->next_start);
+	match->next_size = len - match->next_start;
 
 	if (hdr->padding) {
 		match->next_size = *(((unsigned char*) (frame)) + len - 1);
