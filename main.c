@@ -35,8 +35,6 @@ void process_packet(unsigned char* packet, unsigned int  len, struct rule_list *
 	}
 	do_rules(packet+ 6, 0, len - 6, rules);
 		
-	do_rules(packet, 0, len,  rules);
-
 }
 
 

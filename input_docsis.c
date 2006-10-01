@@ -476,7 +476,7 @@ int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int buffl
 				packet_pos = MPEG_TS_LEN - mpeg_buff[4] - 5;
 				if (packet_pos > bufflen) {
 					dprint("Please increase your read buffer (needed %u, given %u)\n", packet_pos, bufflen);
-					return -1;
+					return 0;
 				}
 				memcpy(buffer, mpeg_buff + mpeg_buff[4] + 5, packet_pos);
 				missing_parts = 0;
@@ -494,7 +494,7 @@ int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int buffl
 				// Copy the first part in the provided buffer
 				if (packet_pos + mpeg_buff[4] > bufflen) {
 					dprint("Please increase your read buffer (needed %u, given %u)\n", packet_pos + mpeg_buff[4], bufflen);
-					return -1;
+					return 0;
 				}
 				memcpy(buffer + packet_pos, mpeg_buff + 5, mpeg_buff[4]);
 				packet_pos += mpeg_buff[4];
@@ -514,7 +514,7 @@ int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int buffl
 
 			if (packet_pos + MPEG_TS_LEN - 4 > bufflen) {
 				dprint("Please increase your read buffer (needed %u, given %u)\n", packet_pos + MPEG_TS_LEN - 4, bufflen);
-				return -1;
+				return 0;
 			}
 			memcpy(buffer + packet_pos, mpeg_buff + 4, MPEG_TS_LEN - 4);
 			packet_pos += MPEG_TS_LEN - 4;

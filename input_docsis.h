@@ -22,6 +22,15 @@
 #define TEMP_BUFF_LEN 2000
 
 
+char *input_docsis_params[4][3] = {
+	{ "eurodocsis", "1", "DOCSIS specification to use" },
+	{ "frequency", "0", "Frequency to scan to. If 0, a scan will be performed" },
+	{ "modulation", "QAM256", "The modulation to use. Either QAM64 or QAM256" },
+	{ 0, 0, 0 },
+
+};
+
+
 struct input_open_docsis_params {
 
 	int eurodocsis; // Is eurodocsis ?
