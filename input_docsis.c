@@ -106,8 +106,14 @@ int input_open_docsis(struct input *i, void *params) {
 			symboleRate = 5056941;
 		else // QAM_256
 			symboleRate = 5360537;
-
-		if (input_docsis_tune(i, op->frequency, symboleRate, op->modulation) != 1) {
+		int try, tuned;
+		for (try = 0; try < 3; try++) {
+			tuned = input_docsis_tune(i, op->frequency, symboleRate, op->modulation);
+			if (tuned == 1)
+				break;
+		}
+		
+		if (tuned != 1) {
 			dprint("Error while tuning to the right freq.\n");
 			return 0;
 		}
@@ -197,7 +203,7 @@ int input_docsis_check_downstream(struct input *i) {
 		tv.tv_usec = 0;
 
 		if (res == -1) {
-			dprint("Error select()\n");
+			dprint("Error select() : %s\n", strerror(errno));
 			break;
 		} else if (res == 0) {
 			dprint("Timeout while waiting for data\n");

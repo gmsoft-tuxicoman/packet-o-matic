@@ -2,6 +2,7 @@
 * 2006/10/01 Guy Martin <gmsoft@tuxicoman.be>
 Do not abort but drop the packet if the buffer is too small in input_docsis.
 Fix double rule processing in main.c.
+Try to avoid to fail on initial locking in input_docis.
 
 * 2006/09/29 Guy Martin <gmsoft@tuxicoman.be>
 Fixed memory leak in target_wave.

@@ -44,8 +44,6 @@ int main(int argc, char *argv[]) {
 	mtrace();
 #endif
 
-	struct rule_list *rules;
-	rules = do_config();
 
 	struct input_open_docsis_params op;
 	op.eurodocsis = 1;
@@ -73,6 +71,8 @@ int main(int argc, char *argv[]) {
 
 
 	
+	struct rule_list *rules;
+	rules = do_config();
 	
 	// Install the signal handler
 	signal(SIGHUP, signal_handler);
