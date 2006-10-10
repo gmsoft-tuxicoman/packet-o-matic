@@ -47,7 +47,7 @@ int match_reconfig_tcp(struct match *m) {
 	}
 
 	struct match_priv_tcp *p = m->match_priv;
-	if (!sscanf(m->params_value[0], "%hu:%hu", &p->sport_min, &p->sport_max) != 2) {
+	if (sscanf(m->params_value[0], "%hu:%hu", &p->sport_min, &p->sport_max) != 2) {
 		if (sscanf(m->params_value[0], "%hu", &p->sport_min)) {
 			p->sport_max = p->sport_min;
 		} else
@@ -83,12 +83,14 @@ int match_eval_tcp(struct match* match, void* frame, unsigned int start, unsigne
 		return 1;
 	
 	struct match_priv_tcp *mp = match->match_priv;
-	
+
+
 	if (sport < mp->sport_min || sport > mp->sport_max)
 		return 0;
-	
+
 	if (dport < mp->dport_min || dport > mp->dport_max)
 		return 0;
+
 	
 	return 1;
 

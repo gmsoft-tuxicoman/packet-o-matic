@@ -47,13 +47,13 @@ int match_reconfig_udp(struct match *m) {
 	}
 
 	struct match_priv_udp *p = m->match_priv;
-	if (!sscanf(m->params_value[0], "%hu:%hu", &p->sport_min, &p->sport_max) != 2) {
+	if (sscanf(m->params_value[0], "%hu:%hu", &p->sport_min, &p->sport_max) != 2) {
 		if (sscanf(m->params_value[0], "%hu", &p->sport_min)) {
 			p->sport_max = p->sport_min;
 		} else
 			return 0;
 	}
-	if (!sscanf(m->params_value[1], "%hu:%hu", &p->dport_min, &p->dport_max) != 2) {
+	if (sscanf(m->params_value[1], "%hu:%hu", &p->dport_min, &p->dport_max) != 2) {
 		if (sscanf(m->params_value[1], "%hu", &p->dport_min)) {
 			p->dport_max = p->dport_min;
 		} else
@@ -81,10 +81,10 @@ int match_eval_udp(struct match* match, void *frame, unsigned int start, unsigne
 	
 	struct match_priv_udp *mp = match->match_priv;
 	
-	if (sport < mp->sport_min || sport > mp->sport_max)
+	if (sport <= mp->sport_min || sport >= mp->sport_max)
 		return 0;
 	
-	if (dport < mp->dport_min || dport > mp->dport_max)
+	if (dport <= mp->dport_min || dport >= mp->dport_max)
 		return 0;
 	
 	return 1;
