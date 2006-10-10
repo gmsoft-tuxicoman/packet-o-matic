@@ -10,7 +10,6 @@
 #include "input_docsis.h"
 #include "input_pcap.h"
 #include "conntrack.h"
-#include "config.h"
 
 #define SNAPLEN 2000
 

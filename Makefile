@@ -2,7 +2,7 @@ CFLAGS = -Wall -pipe $(shell xml2-config --cflags)
 #CFLAGS += -O3
 CFLAGS += -g -ggdb3
 CFLAGS += -DDEBUG
-CFLAGS += -DNDEBUG
+#CFLAGS += -DNDEBUG
 
 CORE_OBJS = input.o match.o conntrack.o target.o
 CONNTRACK_OBJS = conntrack_ipv4.so conntrack_udp.so conntrack_tcp.so conntrack_rtp.so
@@ -26,7 +26,6 @@ packet-o-matic: ${MAIN_OBJS} ${CORE_OBJS} ${MATCH_OBJS} ${INPUT_OBJS} ${TARGET_O
 input.o: input.h
 conntrack.o: conntrack.h
 common.o: common.h
-config.o: config.h
 target.o: target.h
 rules.o: rules.h
 conf.o: conf.h
