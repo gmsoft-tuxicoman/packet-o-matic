@@ -10,15 +10,21 @@
 #include "target_wave.h"
 #include "match_rtp.h"
 
+#define PARAMS_NUM 1
+char *target_wave_params[PARAMS_NUM][3] = {
+	{ "prefix", "rtp", "Prefix of wave files including directory"},
+};
+
 unsigned int match_rtp_id;
 
 int target_register_wave(struct target_reg *r) {
 
+	copy_params(r->params_name, target_wave_params, 0, PARAMS_NUM);
+	copy_params(r->params_help, target_wave_params, 2, PARAMS_NUM);
+
 	r->init = target_init_wave;
-	r->open = target_open_wave;
 	r->process = target_process_wave;
 	r->close_connection = target_close_connection_wave;
-	r->close = target_close_wave;
 	r->cleanup = target_cleanup_wave;
 
 
@@ -28,8 +34,7 @@ int target_register_wave(struct target_reg *r) {
 
 int target_cleanup_wave(struct target *t) {
 
-	if (t->target_priv)
-		free(t->target_priv);
+	clean_params(t->params_value, PARAMS_NUM);
 
 	return 1;
 }
@@ -37,30 +42,17 @@ int target_cleanup_wave(struct target *t) {
 
 int target_init_wave(struct target *t) {
 
+	copy_params(t->params_value, target_wave_params, 1, PARAMS_NUM);
 
-	struct target_priv_wave *priv = malloc(sizeof(struct target_priv_wave));
-	bzero(priv, sizeof(struct target_priv_wave));
-
-	t->target_priv = priv;
-	
 	match_rtp_id = (*t->match_register) ("rtp");
 
 	return 1;
 }
 
 
-int target_open_wave(struct target *t, const char *prefix) {
-
-	struct target_priv_wave *priv = t->target_priv;
-	strncpy(priv->prefix, prefix, NAME_MAX);
-
-	return 1;	
-}
-
 
 int target_process_wave(struct target *t, struct rule_node *node, void *frame, unsigned int len) {
 
-	struct target_priv_wave *priv = t->target_priv;
 	struct target_conntrack_priv_wave *cp;
 
 	cp = (*t->conntrack_get_priv) (t, node, frame);
@@ -86,7 +78,7 @@ int target_process_wave(struct target *t, struct rule_node *node, void *frame, u
 		auhdr->hdr_size = htonl(24);
 		auhdr->data_size = 0;
 		switch (rtphdr->payload_type) {
-			case 1: // G.711U
+			case 0: // G.711U
 				auhdr->encoding = htonl(1);
 				break;
 			case 8: // G.711A
@@ -113,14 +105,14 @@ int target_process_wave(struct target *t, struct rule_node *node, void *frame, u
 		char outstr[20];
 		bzero(outstr, 20);
 		// YYYYMMDD-HHMMSS-UUUUUU
-		char *format = "%Y%m%d-%H%M%S-";
+		char *format = "-%Y%m%d-%H%M%S-";
 		struct timeval tv;
 		struct tm *tmp;
 		gettimeofday(&tv, NULL);
 		tmp = localtime(&tv.tv_sec);
 		strftime(outstr, 20, format, tmp);
 
-		strcpy(filename, priv->prefix);
+		strcpy(filename, t->params_value[0]);
 		strcat(filename, outstr);
 		sprintf(outstr, "%u", (unsigned int)tv.tv_usec);
 		strcat(filename, outstr);
@@ -198,11 +190,6 @@ int target_close_connection_wave(void *conntrack_priv) {
 	return 1;
 
 }
-
-int target_close_wave(struct target *t) {
-	
-	return 1;
-};
 
 
 

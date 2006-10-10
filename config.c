@@ -1,5 +1,4 @@
 
-#include "common.h"
 #include "config.h"
 
 #include "match_ethernet.h"
@@ -67,7 +66,8 @@ struct rule_list* do_config() {
 	
 	
 	rules->target = target_alloc(target_tap);
-	target_open(rules->target, "docsis0");
+	target_set_param(rules->target, "interface", "docsis0");
+	target_open(rules->target);
 	
 	
 
@@ -88,7 +88,8 @@ struct rule_list* do_config() {
 	
 
 	rules->target = target_alloc(target_inject);
-	target_open(rules->target, "eth0.4");
+	target_set_param(rules->target, "interface", "eth0.4");
+	target_open(rules->target);
 
 	// Adding ethernet as first rule	
 	node = alloc_rule_node();
@@ -131,6 +132,7 @@ struct rule_list* do_config() {
 	mt->dport_max = 25;
 	match_config(node->match, mt);
 
+	return head;
 
 	/***** SECOND RULE *****/
 
@@ -143,7 +145,7 @@ struct rule_list* do_config() {
 	
 
 	rules->target = target_alloc(target_wave);
-	target_open(rules->target, "/mnt/nfs/temp/rtp/rtp-");
+//	target_open(rules->target, "/mnt/nfs/temp/rtp/rtp-");
 
 	// Adding ethernet as first rule	
 	node = alloc_rule_node();
@@ -198,7 +200,7 @@ struct rule_list* do_config() {
 	
 
 	rules->target = target_alloc(target_pcap);
-	target_open(rules->target, "port110.cap");
+//	target_open(rules->target, "port110.cap");
 	
 	
 
@@ -236,7 +238,7 @@ struct rule_list* do_config() {
 	rules = rules->next;
 	
 	rules->target = target_alloc(target_pcap);
-	target_open(rules->target, "port6667.cap");
+//	target_open(rules->target, "port6667.cap");
 	
 	
 
@@ -290,7 +292,7 @@ struct rule_list* do_config() {
 	rules = rules->next;
 
 	rules->target = target_alloc(target_pcap);
-	target_open(rules->target, "rtp.cap");
+//	target_open(rules->target, "rtp.cap");
 
 	// Adding ethernet as first rule	
 	node = alloc_rule_node();

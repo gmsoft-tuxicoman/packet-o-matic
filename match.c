@@ -63,6 +63,7 @@ int match_register(const char *match_name) {
 
 			dprint("Match %s registered\n", match_name);
 
+
 			return i;
 
 		}
@@ -106,17 +107,27 @@ struct match *match_alloc(int match_type) {
 	return m;
 }
 
+int match_set_param(struct match *m, char *name, char *value) {
 
-int match_config(struct match *m, void *params) {
-
-	if (!m)
+	if (!matchs[m->match_type]->params_name)
 		return 0;
 
-	if (matchs[m->match_type] && matchs[m->match_type]->config)
-		return (*matchs[m->match_type]->config) (m, params);
-	return 1;
+	int i;
+	for (i = 0; matchs[m->match_type]->params_name[i]; i++) {
+		if (!strcmp(matchs[m->match_type]->params_name[i], name)) {
+			free(m->params_value[i]);
+			m->params_value[i] = malloc(strlen(value) + 1);
+			strcpy(m->params_value[i], value);
+			if(matchs[m->match_type]->reconfig)
+				return (*matchs[m->match_type]->reconfig) (m);
+			return 1;
+		}
+	}
+
+	return 0;
 
 }
+
 
 inline int match_eval(struct match *m, void* frame, unsigned int start, unsigned int len) {
 	
@@ -130,8 +141,9 @@ int match_cleanup(struct match *m) {
 	if (!m)
 		return 0;
 
-	if (!matchs[m->match_type] && matchs[m->match_type]->cleanup)
+	if (matchs[m->match_type] && matchs[m->match_type]->cleanup)
 		(*matchs[m->match_type]->cleanup) (m);
+	
 
 	free(m);
 
@@ -144,6 +156,15 @@ int match_unregister_all() {
 	int i = 0;
 
 	for (; i < MAX_MATCH && matchs[i]; i++) {
+		if (matchs[i]->params_name) {
+			int j;
+			for (j = 0; matchs[i]->params_name[j]; j++) {
+				free(matchs[i]->params_name[j]);
+				free(matchs[i]->params_help[j]);
+			}
+			free(matchs[i]->params_name);
+			free(matchs[i]->params_help);
+		}
 		free(matchs[i]->match_name);
 		dlclose(matchs[i]->dl_handle);
 		free(matchs[i]);

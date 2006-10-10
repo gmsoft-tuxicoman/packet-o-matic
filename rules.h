@@ -3,9 +3,6 @@
 #ifndef __RULES_H__
 #define __RULES_H__
 
-#include "common.h"
-
-#include "match.h"
 
 #define RULE_OP_AND	0
 #define RULE_OP_OR	1
@@ -21,7 +18,8 @@ struct rule_node {
 };
 
 
-// We need to declare rule_node before including target.h
+// We need to declare rule_node before including target.h and match.h
+#include "match.h"
 #include "target.h"
 
 

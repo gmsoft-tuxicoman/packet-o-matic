@@ -20,7 +20,7 @@ int match_register_udp();
 
 int match_register_udp();
 int match_init_udp(struct match *m);
-int match_config_udp(struct match *m, void *params);
+int match_reconfig_udp(struct match *m);
 int match_eval_udp(struct match* match, void* frame, unsigned int start, unsigned int len);
 int match_cleanup_udp(struct match *m);
 

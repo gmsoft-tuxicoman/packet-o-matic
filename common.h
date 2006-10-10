@@ -20,6 +20,7 @@
 
 #include "rules.h"
 
+unsigned int node_find_header_start(struct rule_node *node, int header_type);
 
 #ifdef DEBUG
 #define dprint(x, y...) printf(x, ##y)

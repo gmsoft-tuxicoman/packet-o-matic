@@ -36,10 +36,8 @@ struct target_conntrack_priv_wave {
 int target_register_wave();
 
 int target_init_wave(struct target *t);
-int target_open_wave(struct target *t, const char *filename);
 int target_process_wave(struct target *t, struct rule_node *node, void *frame, unsigned int len);
 int target_close_connection_wave(void *conntrack_priv);
-int target_close_wave(struct target *t);
 int target_cleanup_wave(struct target *t);
 
 #endif

@@ -19,7 +19,7 @@ struct target_priv_pcap {
 };
 
 int target_init_pcap(struct target *t);
-int target_open_pcap(struct target *t, const char *device);
+int target_open_pcap(struct target *t);
 int target_process_pcap(struct target *t, struct rule_node *node, void *frame, unsigned int len);
 int target_close_pcap(struct target *t);
 int target_cleanup_pcap(struct target *t);

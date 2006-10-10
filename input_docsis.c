@@ -16,7 +16,20 @@
 
 #define DEMUX_BUFFER_SIZE 2097152 // 2Megs
 
+#define PARAMS_NUM 3
+
+char *input_docsis_params[PARAMS_NUM][3] = {
+	{ "eurodocsis", "1", "DOCSIS specification to use" },
+	{ "frequency", "0", "Frequency to scan to. If 0, a scan will be performed" },
+	{ "modulation", "QAM256", "The modulation to use. Either QAM64 or QAM256" },
+};
+
 int input_register_docsis(struct input_reg *r) {
+
+
+	copy_params(r->params_name, input_docsis_params, 0, PARAMS_NUM);
+	copy_params(r->params_help, input_docsis_params, 2, PARAMS_NUM);
+
 
 	r->init = input_init_docsis;
 	r->open = input_open_docsis;
@@ -33,11 +46,15 @@ int input_init_docsis(struct input *i) {
 	i->input_priv = malloc(sizeof(struct input_priv_docsis));
 	bzero(i->input_priv, sizeof(struct input_priv_docsis));
 
+	copy_params(i->params_value, input_docsis_params, 1, PARAMS_NUM);
+
 	return 1;
 
 }
 
 int input_cleanup_docsis(struct input *i) {
+
+	clean_params(i->params_value, PARAMS_NUM);
 
 	if (i->input_priv)
 		free(i->input_priv);
@@ -46,12 +63,25 @@ int input_cleanup_docsis(struct input *i) {
 
 };
 
-int input_open_docsis(struct input *i, void *params) {
+int input_open_docsis(struct input *i) {
 
 	struct dmx_pes_filter_params filter;
 
 	struct input_priv_docsis *p = i->input_priv;
-	struct input_open_docsis_params *op = params;
+
+	int eurodocsis, frequency;
+	sscanf(i->params_value[0], "%u", &eurodocsis);
+	sscanf(i->params_value[1], "%u", &frequency);
+
+	fe_modulation_t modulation;
+	if (!strcmp(i->params_value[2], "QAM64"))
+		modulation = QAM_64;
+	else if (!strcmp(i->params_value[2], "QAM256"))
+		modulation = QAM_256;
+	else {
+		dprint("Invalid modulation. Valid modulation are QAM64 or QAM256\n");
+		return 0;
+	}	
 
 	p->frontend_fd = open(FRONT, O_RDWR);
 	if (p->frontend_fd == -1) {
@@ -98,17 +128,17 @@ int input_open_docsis(struct input *i, void *params) {
 	}
 
 	// Frequency and modulation supplied. Tuning to that
-	if (op->frequency != -1) {
+	if (frequency != -1) {
 		unsigned int symboleRate;
-		if (op->eurodocsis)
+		if (eurodocsis)
 			symboleRate = 6952000;
-		else if (op->modulation == QAM_64)
+		else if (modulation == QAM_64)
 			symboleRate = 5056941;
 		else // QAM_256
 			symboleRate = 5360537;
 		int try, tuned;
 		for (try = 0; try < 3; try++) {
-			tuned = input_docsis_tune(i, op->frequency, symboleRate, op->modulation);
+			tuned = input_docsis_tune(i, frequency, symboleRate, modulation);
 			if (tuned == 1)
 				break;
 		}
@@ -128,7 +158,7 @@ int input_open_docsis(struct input *i, void *params) {
 		unsigned int start, end, step, symboleRate;
 		int j;
 		fe_modulation_t modulation;
-		if (op->eurodocsis) {
+		if (eurodocsis) {
 			start = 112000000;
 			end = 858000000;
 			step = 1000000;

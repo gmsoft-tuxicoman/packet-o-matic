@@ -54,7 +54,7 @@ int match_register_rtp();
 
 int match_register_rtp();
 int match_init_rtp(struct match *m);
-int match_config_rtp(struct match *m, void *params);
+int match_reconfig_rtp(struct match *m);
 int match_eval_rtp(struct match* match, void* frame, unsigned int start, unsigned int len);
 int match_cleanup_rtp(struct match *m);
 

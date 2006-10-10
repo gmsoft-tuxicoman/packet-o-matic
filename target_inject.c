@@ -6,9 +6,20 @@
 // Maximum segment len with ethernet header
 #define MAX_SEGMENT_LEN 1518
 
+
+#define PARAMS_NUM 1
+
+char *target_inject_params[PARAMS_NUM][3] = {
+	{ "interface", "eth0", "Interface to inject packets on"},
+};
+
 int match_ethernet_id;
 
 int target_register_inject(struct target_reg *r) {
+
+	copy_params(r->params_name, target_inject_params, 0, PARAMS_NUM);
+	copy_params(r->params_help, target_inject_params, 2, PARAMS_NUM);
+
 
 	r->init = target_init_inject;
 	r->open = target_open_inject;
@@ -23,6 +34,8 @@ int target_register_inject(struct target_reg *r) {
 
 int target_cleanup_inject(struct target *t) {
 
+	clean_params(t->params_value, PARAMS_NUM);
+
 	if (t->target_priv)
 		free(t->target_priv);
 
@@ -31,6 +44,9 @@ int target_cleanup_inject(struct target *t) {
 
 
 int target_init_inject(struct target *t) {
+
+	copy_params(t->params_value, target_inject_params, 1, PARAMS_NUM);
+
 
 	match_ethernet_id = (*t->match_register) ("ethernet");
 	if (match_ethernet_id == -1)
@@ -51,7 +67,7 @@ int target_init_inject(struct target *t) {
 	return 1;
 }
 
-int target_open_inject(struct target *t, const char *device) {
+int target_open_inject(struct target *t) {
 
 	
 	struct target_priv_inject *priv = t->target_priv;
@@ -64,9 +80,9 @@ int target_open_inject(struct target *t, const char *device) {
 	
 	// find out the interface number
 	struct ifreq req;
-	strcpy(req.ifr_name, device);
+	strcpy(req.ifr_name, t->params_value[0]);
 	if (ioctl(priv->socket, SIOCGIFINDEX, &req)) {
-		dprint("Interface %s not found\n", device);
+		dprint("Interface %s not found\n", t->params_value[0]);
 		return 0;
 	}
 	dprint("Found interface number %u\n", req.ifr_ifindex);

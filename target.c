@@ -94,14 +94,33 @@ struct target *target_alloc(int target_type) {
 	return t;
 }
 
+int target_set_param(struct target *t, char *name, char* value) {
 
-int target_open(struct target *t, const char *params) {
+	if (!targets[t->target_type]->params_name)
+		return 0;
+
+	int i;
+	for (i = 0; targets[t->target_type]->params_name[i]; i++) {
+		if (!strcmp(targets[t->target_type]->params_name[i], name)) {
+			free(t->params_value[i]);
+			t->params_value[i] = malloc(strlen(value) + 1);
+			strcpy(t->params_value[i], value);
+			return 1;
+		}
+	}
+
+
+	return 0;
+
+}
+
+int target_open(struct target *t) {
 
 	if (!t)
 		return 0;
 
 	if (targets[t->target_type] && targets[t->target_type]->open)
-		return (*targets[t->target_type]->open) (t, params);
+		return (*targets[t->target_type]->open) (t);
 	return 1;
 
 }
@@ -153,6 +172,13 @@ int target_unregister_all() {
 	int i = 0;
 
 	for (; i < MAX_INPUT && targets[i]; i++) {
+		int j;
+		for (j = 0; targets[i]->params_name[j]; j++) {
+			free(targets[i]->params_name[j]);
+			free(targets[i]->params_help[j]);
+		}
+		free(targets[i]->params_name);
+		free(targets[i]->params_help);
 		free(targets[i]->target_name);
 		dlclose(targets[i]->dl_handle);
 		free(targets[i]);

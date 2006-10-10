@@ -2,12 +2,21 @@
 
 #include "match_rtp.h"
 
+#define PARAMS_NUM 1
 
+char *match_rtp_params[PARAMS_NUM][3] = {
+
+	{ "payload", "0", "payload" },
+
+};
 
 int match_register_rtp(struct match_reg *r) {
 
+	copy_params(r->params_name, match_rtp_params, 0, PARAMS_NUM);
+	copy_params(r->params_help, match_rtp_params, 2, PARAMS_NUM);
+
 	r->init = match_init_rtp;
-	r->config = match_config_rtp;
+	r->reconfig = match_reconfig_rtp;
 	r->eval = match_eval_rtp;
 	r->cleanup = match_cleanup_rtp;
 
@@ -17,14 +26,23 @@ int match_register_rtp(struct match_reg *r) {
 
 int match_init_rtp(struct match *m) {
 
+	copy_params(m->params_value, match_rtp_params, 1, PARAMS_NUM);
+
 	return 1;
 
 }
 
-int match_config_rtp(struct match *m, void *params) {
+int match_reconfig_rtp(struct match *m) {
 
-	m->match_priv = params;
-	return 1;
+	if (!m->match_priv) {
+		m->match_priv = malloc(sizeof(struct match_priv_rtp));
+		bzero(m->match_priv, sizeof(struct match_priv_rtp));
+	}
+
+	struct match_priv_rtp *p = m->match_priv;
+
+
+	return sscanf(m->params_value[0], "%hhu", &(p->payload_type));
 }
 
 int match_eval_rtp(struct match* match, void *frame, unsigned int start, unsigned int len) {
@@ -88,6 +106,8 @@ int match_eval_rtp(struct match* match, void *frame, unsigned int start, unsigne
 }
 
 int match_cleanup_rtp(struct match *m) {
+
+	clean_params(m->params_value, PARAMS_NUM);
 
 	if (m->match_priv)
 		free(m->match_priv);

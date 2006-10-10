@@ -9,14 +9,19 @@
 
 #include "target_dump_payload.h"
 
+#define PARAMS_NUM 1
+char *target_dump_payload_params[PARAMS_NUM][3] = {
+	{"prefix", "dump", "Prefix of wave files including directory"},
+};
 
 int target_register_dump_payload(struct target_reg *r) {
 
+	copy_params(r->params_name, target_dump_payload_params, 0, PARAMS_NUM);
+	copy_params(r->params_help, target_dump_payload_params, 2, PARAMS_NUM);
+
 	r->init = target_init_dump_payload;
-	r->open = target_open_dump_payload;
 	r->process = target_process_dump_payload;
 	r->close_connection = target_close_connection_dump_payload;
-	r->close = target_close_dump_payload;
 	r->cleanup = target_cleanup_dump_payload;
 
 
@@ -26,8 +31,7 @@ int target_register_dump_payload(struct target_reg *r) {
 
 int target_cleanup_dump_payload(struct target *t) {
 
-	if (t->target_priv)
-		free(t->target_priv);
+	clean_params(t->params_value, PARAMS_NUM);
 
 	return 1;
 }
@@ -35,23 +39,9 @@ int target_cleanup_dump_payload(struct target *t) {
 
 int target_init_dump_payload(struct target *t) {
 
-
-	struct target_priv_dump_payload *priv = malloc(sizeof(struct target_priv_dump_payload));
-	bzero(priv, sizeof(struct target_priv_dump_payload));
-
-	t->target_priv = priv;
-	
+	copy_params(t->params_value, target_dump_payload_params, 1, PARAMS_NUM);
 
 	return 1;
-}
-
-
-int target_open_dump_payload(struct target *t, const char *prefix) {
-
-	struct target_priv_dump_payload *priv = t->target_priv;
-	strncpy(priv->prefix, prefix, NAME_MAX);
-
-	return 1;	
 }
 
 
@@ -122,11 +112,6 @@ int target_close_connection_dump_payload(void *conntrack_priv) {
 	return 1;
 
 }
-
-int target_close_dump_payload(struct target *t) {
-	
-	return 1;
-};
 
 
 

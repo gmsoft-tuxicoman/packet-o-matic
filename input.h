@@ -7,6 +7,7 @@
 
 struct input {
 	int input_type;
+	char **params_value;
 	void *input_priv;
 };
 
@@ -14,8 +15,10 @@ struct input_reg {
 
 	char *input_name;
 	void *dl_handle;
+	char **params_name;
+	char **params_help;
 	int (*init) (struct input *i);
-	int (*open) (struct input *i, void *params);
+	int (*open) (struct input *i);
 	int (*read) (struct input *i, unsigned char *buffer, unsigned int bufflen);
 	int (*close) (struct input *i);
 	int (*cleanup) (struct input *i);
@@ -24,7 +27,8 @@ struct input_reg {
 
 int input_register(const char *input_name);
 struct input *input_alloc(int input_type);
-int input_open(struct input *i, void *params);
+int input_set_param(struct input *i, char *name, char* value);
+int input_open(struct input *i);
 inline int input_read(struct input *i, unsigned char *buffer, unsigned int bufflen);
 int input_close(struct input *i);
 int input_cleanup(struct input *i);

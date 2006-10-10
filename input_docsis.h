@@ -7,7 +7,7 @@
 
 #include <linux/dvb/frontend.h>
 
-#include "common.h"
+#include "modules_common.h"
 #include "input.h"
 
 
@@ -22,22 +22,6 @@
 #define TEMP_BUFF_LEN 2000
 
 
-char *input_docsis_params[4][3] = {
-	{ "eurodocsis", "1", "DOCSIS specification to use" },
-	{ "frequency", "0", "Frequency to scan to. If 0, a scan will be performed" },
-	{ "modulation", "QAM256", "The modulation to use. Either QAM64 or QAM256" },
-	{ 0, 0, 0 },
-
-};
-
-
-struct input_open_docsis_params {
-
-	int eurodocsis; // Is eurodocsis ?
-	uint32_t frequency; // If 0 -> scan for downstream
-	fe_modulation_t modulation; // What modulation to use
-
-};
 
 struct input_priv_docsis {
 
@@ -58,7 +42,7 @@ struct input_priv_docsis {
 
 
 int input_init_docsis(struct input *i);
-int input_open_docsis(struct input *i, void *params);
+int input_open_docsis(struct input *i);
 int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int bufflen);
 int input_close_docsis(struct input *i);
 int input_cleanup_docsis(struct input *i);

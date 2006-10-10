@@ -6,6 +6,7 @@
 #include <signal.h>
 
 #include "common.h"
+#include "conf.h"
 #include "input_docsis.h"
 #include "input_pcap.h"
 #include "conntrack.h"
@@ -45,34 +46,23 @@ int main(int argc, char *argv[]) {
 #endif
 
 
-	struct input_open_docsis_params op;
-	op.eurodocsis = 1;
-	op.frequency = 442000000;
-	op.modulation = QAM_256;
+	conntrack_init();
 
-	int input_type = input_register("docsis");
-/*
-	struct input_open_pcap_params op;
-	op.filename = 0;
-	op.interface = "wlan0";
-	op.snaplen = 1500;
-	op.promisc = 0;
+	struct conf *c = config_alloc();
 
-	int input_type = input_register("pcap");
-*/
-	if (input_type == -1)
+	if (!config_parse(c, "pom.xml.conf")) {
+		dprint("Error while parsing config\n");
+		config_cleanup(c);
 		return 1;
+	}
 
-	struct input *in = input_alloc(input_type);
-	if (!input_open(in, &op)) {
+	if (!input_open(c->input)) {
 		dprint("Error while opening input\n");
 		return 1;
-	};
-
-
+	}
 	
-	struct rule_list *rules;
-	rules = do_config();
+//	struct rule_list *rules;
+//	rules = do_config();
 	
 	// Install the signal handler
 	signal(SIGHUP, signal_handler);
@@ -84,20 +74,20 @@ int main(int argc, char *argv[]) {
 	unsigned int len;
 
 	while (!finish) {
-		len = input_read(in, packet, SNAPLEN);
+		len = input_read(c->input, packet, SNAPLEN);
 		if (len == -1) {
 			dprint("Error while reading. Abording\n");
 			break;
 		}
 
-		process_packet(packet, len, rules);
+		process_packet(packet, len, c->rules);
 	}
-	input_close(in);
-	input_cleanup(in);
+
+	input_close(c->input);
+
 	conntrack_cleanup();
+	config_cleanup(c);
 
-
-	list_destroy(rules);
 
 	target_unregister_all();
 	match_unregister_all();

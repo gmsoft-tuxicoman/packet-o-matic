@@ -6,21 +6,11 @@
 
 #include <pcap.h>
 
-#include "common.h"
+#include "modules_common.h"
 
 #include "input.h"
 
 
-
-struct input_open_pcap_params {
-
-	char *filename; // Filename or NULL to open an interface
-	char *interface; // Interface name to open or "any"
-	int snaplen; // Snaplen if reading from an iface
-	int promisc; // Switch the specified interface into promisc mode ?
-	
-
-};
 
 struct input_priv_pcap {
 
@@ -30,7 +20,7 @@ struct input_priv_pcap {
 
 
 int input_init_pcap(struct input *i);
-int input_open_pcap(struct input *i, void *params);
+int input_open_pcap(struct input *i);
 int input_read_pcap(struct input *i, unsigned char *buffer, unsigned int bufflen);
 int input_close_pcap(struct input *i);
 int input_cleanup_pcap(struct input *i);

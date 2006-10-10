@@ -35,6 +35,10 @@ int node_match(void *frame, unsigned int start, unsigned int len, struct rule_no
 
 	struct match *m = node->match;
 
+	if (!m) {
+		dprint("no match defined in rule\n");
+		return 1;
+	}
 
 	int result;
 	
@@ -116,22 +120,19 @@ int node_destroy(struct rule_node *node) {
 
 	if (!node)
 		return 1;
-	
-	struct rule_node *tmp;
-	
-	do {
-		tmp = node;
-		if (tmp->b)
-			node_destroy(tmp->b);
-		node = node->a;
-		if (tmp->match) {
-			if (tmp->match->match_priv)
-				free(tmp->match->match_priv);
-			free(tmp->match);
-		}
-		free(tmp);
 
-	} while (node);
+	if (node->a)
+		node_destroy(node->a);
+	
+	if (node->b)
+		node_destroy(node->b);
+
+
+	if (node->match)
+		match_cleanup(node->match);
+
+	free(node);
+
 	
 	return 1;
 
