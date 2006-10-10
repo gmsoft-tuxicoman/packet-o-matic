@@ -4,10 +4,10 @@
 #define PARAMS_NUM 4
 
 char *input_pcap_params[PARAMS_NUM][3] = {
-	{ "filename", "", "Filename to read packets from. reads from an interface if empty" },
-	{ "interface", "eth0", "Interface to read from" },
-	{ "snaplen", "1500", "Snaplen if reading from an iface" },
-	{ "promisc", "0", "Set the interface in promisc mode if != 0" },
+	{ "filename", "", "filename to read packets from. reads from an interface if empty" },
+	{ "interface", "eth0", "interface to read from" },
+	{ "snaplen", "1500", "snaplen if reading from an iface" },
+	{ "promisc", "0", "set the interface in promisc mode if != 0" },
 };
 
 

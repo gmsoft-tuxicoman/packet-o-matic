@@ -12,7 +12,7 @@
 
 #define PARAMS_NUM 1
 char *target_wave_params[PARAMS_NUM][3] = {
-	{ "prefix", "rtp", "Prefix of wave files including directory"},
+	{ "prefix", "rtp", "prefix of wave files including directory"},
 };
 
 unsigned int match_rtp_id;

@@ -3,7 +3,7 @@
 
 #define PARAMS_NUM 1
 char *target_pcap_params[PARAMS_NUM][3] = {
-	{ "filename", "dump.cap", "Filename to save packets to"},
+	{ "filename", "dump.cap", "filename to save packets to"},
 };
 
 int match_ethernet_id;

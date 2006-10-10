@@ -4,7 +4,7 @@
 #define PARAMS_NUM 1
 
 char *target_tap_params[PARAMS_NUM][3] = {
-	{ "ifname", "pom0", "Interface to inject packets on"},
+	{ "ifname", "pom0", "interface to send packets to"},
 };
 
 int match_ethernet_id;

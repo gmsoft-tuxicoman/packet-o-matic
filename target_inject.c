@@ -10,7 +10,7 @@
 #define PARAMS_NUM 1
 
 char *target_inject_params[PARAMS_NUM][3] = {
-	{ "interface", "eth0", "Interface to inject packets on"},
+	{ "interface", "eth0", "interface to inject packets on"},
 };
 
 int match_ethernet_id;

@@ -11,7 +11,7 @@
 
 #define PARAMS_NUM 1
 char *target_dump_payload_params[PARAMS_NUM][3] = {
-	{"prefix", "dump", "Prefix of wave files including directory"},
+	{"prefix", "dump", "prefix of dumped files including directory"},
 };
 
 int target_register_dump_payload(struct target_reg *r) {

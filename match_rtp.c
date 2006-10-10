@@ -6,7 +6,7 @@
 
 char *match_rtp_params[PARAMS_NUM][3] = {
 
-	{ "payload", "0", "payload" },
+	{ "payload", "0", "payload type to match (see RFC 1890)" },
 
 };
 
