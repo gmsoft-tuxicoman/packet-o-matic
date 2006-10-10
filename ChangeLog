@@ -3,7 +3,10 @@
 Added useable text parameters to all modules.
 Added xml config file support.
 Added example config.
-Removed unused config.c and config.hh files.
+Removed unused config.c and config.h files.
+Added options -c to specify the config file.
+Added option -h to see inputs, targets and matchs parameters.
+
 
 * 2006/10/01 Guy Martin <gmsoft@tuxicoman.be>
 Do not abort but drop the packet if the buffer is too small in input_docsis.

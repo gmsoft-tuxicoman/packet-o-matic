@@ -38,6 +38,7 @@ int match_set_param(struct match *m, char *name, char *value);
 int match_eval(struct match* m, void* frame, unsigned int start, unsigned int len);
 int match_cleanup(struct match *m);
 int match_unregister_all();
+void match_print_help();
 
 
 

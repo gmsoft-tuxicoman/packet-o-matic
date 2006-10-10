@@ -190,3 +190,20 @@ int target_unregister_all() {
 
 }
 
+void target_print_help() {
+
+	int i, j;
+
+
+	for (i = 0; targets[i]; i++) {
+		printf("* TARGET %s *\n", targets[i]->target_name);
+
+		if (!targets[i]->params_name) 
+			printf("No parameter for this target\n");
+		else
+			for (j = 0; targets[i]->params_name[j]; j++)
+				printf("%s : %s\n", targets[i]->params_name[j], targets[i]->params_help[j]);
+
+		printf("\n");
+	}
+}

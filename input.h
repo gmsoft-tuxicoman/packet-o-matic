@@ -33,7 +33,7 @@ inline int input_read(struct input *i, unsigned char *buffer, unsigned int buffl
 int input_close(struct input *i);
 int input_cleanup(struct input *i);
 int input_unregister_all();
-
+void input_print_help();
 
 
 #endif

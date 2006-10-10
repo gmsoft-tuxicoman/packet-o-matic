@@ -38,6 +38,7 @@ int target_close_connection(int target_type, void *conntrack_privs);
 int target_close(struct target *t);
 int target_cleanup(struct target *t);
 int target_unregister_all();
+void target_print_help();
 
 
 #endif

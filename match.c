@@ -176,3 +176,20 @@ int match_unregister_all() {
 
 }
 
+void match_print_help() {
+
+	int i, j;
+
+
+	for (i = 0; matchs[i]; i++) {
+		printf("* MATCH %s *\n", matchs[i]->match_name);
+
+		if (!matchs[i]->params_name) 
+			printf("No parameter for this match\n");
+		else
+			for (j = 0; matchs[i]->params_name[j]; j++)
+				printf("%s : %s\n", matchs[i]->params_name[j], matchs[i]->params_help[j]);
+
+		printf("\n");
+	}
+}

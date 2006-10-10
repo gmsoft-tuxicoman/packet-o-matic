@@ -4,12 +4,18 @@
 #endif
 
 #include <signal.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <dirent.h>
+
 
 #include "common.h"
 #include "conf.h"
 #include "input_docsis.h"
 #include "input_pcap.h"
 #include "conntrack.h"
+
+
 
 #define SNAPLEN 2000
 
@@ -37,6 +43,67 @@ void process_packet(unsigned char* packet, unsigned int  len, struct rule_list *
 		
 }
 
+void print_help() {
+	
+	printf("Usage : packet-o-matic [-c config_file] [-h]\n");
+
+	DIR *d;
+	d = opendir("./");
+	if (!d) {
+		printf("No module found.\n");
+		return;
+	}
+
+	struct dirent *dp;
+	char type[NAME_MAX];
+
+	while ((dp = readdir(d))) {
+
+		if (sscanf(dp->d_name, "input_%s", type) == 1) {
+			while (strlen(type) > 0) {
+				if (type[strlen(type) - 1] == '.') {
+					type[strlen(type) - 1] = 0;
+					break;
+				}
+				type[strlen(type) - 1] = 0;
+			}
+			input_register(type) + 1;
+		}
+
+		if (sscanf(dp->d_name, "target_%s", type) == 1) {
+			while (strlen(type) > 0) {
+				if (type[strlen(type) - 1] == '.') {
+					type[strlen(type) - 1] = 0;
+					break;
+				}
+				type[strlen(type) - 1] = 0;
+			}
+			target_register(type) + 1;
+		}
+
+		if (sscanf(dp->d_name, "match_%s", type) == 1) {
+			while (strlen(type) > 0) {
+				if (type[strlen(type) - 1] == '.') {
+					type[strlen(type) - 1] = 0;
+					break;
+				}
+				type[strlen(type) - 1] = 0;
+			}
+			match_register(type) + 1;
+		}
+	}
+
+
+	printf("\nINPUTS :\n--------\n\n");
+	input_print_help();
+
+	printf("\nTARGETS :\n---------\n\n");
+	target_print_help();
+
+	printf("\nMATCHS :\n-------\n\n");
+	match_print_help();
+
+}
 
 int main(int argc, char *argv[]) {
 
@@ -44,11 +111,33 @@ int main(int argc, char *argv[]) {
 	mtrace();
 #endif
 
+	char *cfgfile = "pom.xml.conf";
+
+	int o;
+
+	while ((o = getopt(argc, argv, "hc:")) != -1 ) {
+		switch(o) {
+			case 'h':
+				print_help();
+				return 0;
+			case 'c':
+				cfgfile = optarg;
+				dprint("Config file is %s\n", optarg);
+				break;
+			case '?':
+				print_help();
+				return 1;
+			default:
+				abort();
+
+		}
+	}
+
 
 
 	struct conf *c = config_alloc();
 
-	if (!config_parse(c, "pom.xml.conf")) {
+	if (!config_parse(c, cfgfile)) {
 		dprint("Error while parsing config\n");
 		config_cleanup(c);
 		return 1;

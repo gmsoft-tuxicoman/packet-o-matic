@@ -183,3 +183,21 @@ int input_unregister_all() {
 	return 1;
 
 }
+
+void input_print_help() {
+
+	int i, j;
+
+
+	for (i = 0; inputs[i]; i++) {
+		printf("* INPUT %s *\n", inputs[i]->input_name);
+
+		if (!inputs[i]->params_name) 
+			printf("No parameter for this input\n");
+		else
+			for (j = 0; inputs[i]->params_name[j]; j++)
+				printf("%s : %s\n", inputs[i]->params_name[j], inputs[i]->params_help[j]);
+
+		printf("\n");
+	}
+}
