@@ -45,7 +45,6 @@ int main(int argc, char *argv[]) {
 #endif
 
 
-	conntrack_init();
 
 	struct conf *c = config_alloc();
 
@@ -60,8 +59,7 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-//	struct rule_list *rules;
-//	rules = do_config();
+	conntrack_init();
 	
 	// Install the signal handler
 	signal(SIGHUP, signal_handler);
