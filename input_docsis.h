@@ -11,10 +11,6 @@
 #include "input.h"
 
 
-#define DEMUX "/dev/dvb/adapter0/demux0"
-#define FRONT "/dev/dvb/adapter0/frontend0"
-#define DVR "/dev/dvb/adapter0/dvr0"
-
 #define DOCSIS_PID 0x1FFE
 
 #define MPEG_TS_LEN 188

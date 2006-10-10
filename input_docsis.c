@@ -16,12 +16,14 @@
 
 #define DEMUX_BUFFER_SIZE 2097152 // 2Megs
 
-#define PARAMS_NUM 3
+#define PARAMS_NUM 5
 
 char *input_docsis_params[PARAMS_NUM][3] = {
 	{ "eurodocsis", "1", "DOCSIS specification to use" },
 	{ "frequency", "0", "frequency to scan to. if 0, a scan will be performed" },
 	{ "modulation", "QAM256", "the modulation to use. either QAM64 or QAM256" },
+	{ "adapter", "0", "DVB adapter to use" },
+	{ "frontend", "0", "DVB frontend to use" },
 };
 
 int input_register_docsis(struct input_reg *r) {
@@ -82,14 +84,28 @@ int input_open_docsis(struct input *i) {
 		dprint("Invalid modulation. Valid modulation are QAM64 or QAM256\n");
 		return 0;
 	}	
+	
+	char adapter[NAME_MAX];
+	bzero(adapter, NAME_MAX);
+	strcpy(adapter, "/dev/dvb/adapter");
+	strcat(adapter, i->params_value[3]);
 
-	p->frontend_fd = open(FRONT, O_RDWR);
+	char frontend[NAME_MAX];
+	strcpy(frontend, adapter);
+	strcat(frontend, "/frontend");
+	strcat(frontend, i->params_value[4]);
+
+	p->frontend_fd = open(frontend, O_RDWR);
 	if (p->frontend_fd == -1) {
 		dprint("Unable to open frontend\n");
 		return 0;
 	}
 
-	p->demux_fd = open(DEMUX, O_RDWR);
+	char demux[NAME_MAX];
+	strcpy(demux, adapter);
+	strcat(demux, "/demux0");
+
+	p->demux_fd = open(demux, O_RDWR);
 	if (p->demux_fd == -1) {
 		dprint("Unable to open demux\n");
 		return 0;
@@ -120,8 +136,11 @@ int input_open_docsis(struct input *i) {
 
 	// Let's open the dvr device
 
+	char dvr[NAME_MAX];
+	strcpy(dvr, adapter);
+	strcat(dvr, "/dvr0");
 
-	p->dvr_fd = open(DVR, O_RDONLY);
+	p->dvr_fd = open(dvr, O_RDONLY);
 	if (p->dvr_fd == -1) {
 		dprint("Unable to open dvr\n");
 		return 0;
