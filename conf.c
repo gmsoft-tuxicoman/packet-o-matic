@@ -26,8 +26,8 @@ int config_cleanup(struct conf* c) {
 }
 
 struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
-	xmlChar *input_type;
-	input_type = xmlGetProp(cur, "type");
+	char *input_type;
+	input_type = (char*) xmlGetProp(cur, (const xmlChar*) "type");
 	if (!input_type) {
 		dprint("No type given in the input tag\n");
 		return NULL;
@@ -43,10 +43,10 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 	xmlNodePtr pcur = cur->xmlChildrenNode;
 	while (pcur) {
 		if (!xmlStrcmp(pcur->name, (const xmlChar*) "param")) {
-			xmlChar *param_type = xmlGetProp(pcur, "name");
+			char *param_type = (char *) xmlGetProp(pcur, (const xmlChar*) "name");
 			if (!param_type)
 				continue;
-			xmlChar *value = xmlNodeListGetString(doc, pcur->xmlChildrenNode, 1);
+			char *value = (char *) xmlNodeListGetString(doc, pcur->xmlChildrenNode, 1);
 			if (!value) {
 				xmlFree(param_type);
 				continue;
@@ -68,8 +68,8 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 struct target *parse_target(xmlDocPtr doc, xmlNodePtr cur) {
 
 	
-	xmlChar *target_type;
-	target_type = xmlGetProp(cur, "type");
+	char *target_type;
+	target_type = (char*) xmlGetProp(cur, (const xmlChar*) "type");
 	if (!target_type) {
 		dprint("No type given in the target tag\n");
 		return NULL;
@@ -85,10 +85,10 @@ struct target *parse_target(xmlDocPtr doc, xmlNodePtr cur) {
 	xmlNodePtr pcur = cur->xmlChildrenNode;
 	while (pcur) {
 		if (!xmlStrcmp(pcur->name, (const xmlChar*) "param")) {
-			xmlChar *param_type = xmlGetProp(pcur, "name");
+			char *param_type = (char *) xmlGetProp(pcur, (const xmlChar*) "name");
 			if (!param_type)
 				continue;
-			xmlChar *value = xmlNodeListGetString(doc, pcur->xmlChildrenNode, 1);
+			char *value = (char *) xmlNodeListGetString(doc, pcur->xmlChildrenNode, 1);
 			if (!value) {
 				xmlFree(param_type);
 				continue;
@@ -125,7 +125,7 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 		if (!xmlStrcmp(cur->name, (const xmlChar *) "match")) {
 			
 			
-			xmlChar *match_type = xmlGetProp(cur, "type");
+			char *match_type = (char *) xmlGetProp(cur, (const xmlChar*) "type");
 			if (!match_type) {
 				dprint("No type given in the match tag\n");
 				return NULL;
@@ -149,10 +149,10 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 			xmlNodePtr pcur = cur->xmlChildrenNode;
 			while (pcur) {
 				if (!xmlStrcmp(pcur->name, (const xmlChar*) "param")) {
-					xmlChar *param_type = xmlGetProp(pcur, "name");
+					char *param_type = (char *) xmlGetProp(pcur, (const xmlChar*) "name");
 					if (!param_type)
 						continue;
-					xmlChar *value = xmlNodeListGetString(doc, pcur->xmlChildrenNode, 1);
+					char *value = (char *) xmlNodeListGetString(doc, pcur->xmlChildrenNode, 1);
 					if (!value) {
 						xmlFree(param_type);
 						continue;
@@ -175,7 +175,7 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 			n->a = parse_match(doc, cur->next);
 			return n;
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "node")) {
-			xmlChar* op = xmlGetProp(cur, "op");
+			xmlChar* op = xmlGetProp(cur, (const xmlChar*) "op");
 			if (!op) {
 				dprint("No op specified in node tag\n");
 				return NULL;
@@ -186,9 +186,9 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 			bzero(n, sizeof(struct rule_node));
 			ndprint("Creating new rule_node\n");
 
-			if (!xmlStrcmp(op, "or"))
+			if (!xmlStrcmp(op, (const xmlChar*) "or"))
 				n->andor = RULE_OP_OR;
-			else if (!xmlStrcmp(op, "and" ))
+			else if (!xmlStrcmp(op, (const xmlChar*) "and" ))
 				n->andor = RULE_OP_AND;
 			else {
 				dprint("Invalid operation %s for node\n", op);

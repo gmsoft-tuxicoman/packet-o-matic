@@ -101,7 +101,7 @@ int match_eval_ethernet(struct match* match, void* frame, unsigned int start, un
 	if (!mask_compare(mp->dmac, ehdr->h_dest, mp->dmac_mask, 6))
 		return 0;
 
-	if (!mask_compare(mp->proto, (char*)&ehdr->h_proto, mp->proto_mask, 2))
+	if (!mask_compare(mp->proto, (unsigned char*)&ehdr->h_proto, mp->proto_mask, 2))
 		return 0;
 
 
