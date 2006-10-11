@@ -1,4 +1,7 @@
 
+* 2006/10/11 Guy Martin <gmsoft@tuxicoman.be>
+Fix compilation errors with newer kernel headers.
+
 * 2006/10/09 Guy Martin <gmsoft@tuxicoman.be>
 Added useable text parameters to all modules.
 Added xml config file support.

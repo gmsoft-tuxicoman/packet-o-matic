@@ -5,16 +5,16 @@
 
 // Common stuff used in modules
 
-#include <arpa/inet.h>
+#include <stdlib.h>
 
 
 #include <stdio.h>
 #include <stdint.h>
-#include <stdlib.h>
 #include <string.h>
 
 #include <dlfcn.h>
 
+#include <arpa/inet.h>
 
 // Those two collide // TOBE REMOVED
 #ifndef __COMMON_H__

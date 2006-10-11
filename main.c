@@ -67,7 +67,7 @@ void print_help() {
 				}
 				type[strlen(type) - 1] = 0;
 			}
-			input_register(type) + 1;
+			input_register(type);
 		}
 
 		if (sscanf(dp->d_name, "target_%s", type) == 1) {
@@ -78,7 +78,7 @@ void print_help() {
 				}
 				type[strlen(type) - 1] = 0;
 			}
-			target_register(type) + 1;
+			target_register(type);
 		}
 
 		if (sscanf(dp->d_name, "match_%s", type) == 1) {
@@ -89,7 +89,7 @@ void print_help() {
 				}
 				type[strlen(type) - 1] = 0;
 			}
-			match_register(type) + 1;
+			match_register(type);
 		}
 	}
 

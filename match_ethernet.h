@@ -2,10 +2,12 @@
 #ifndef __MATCH_ETHERNET_H__
 #define __MATCH_ETHERNET_H__
 
-#include <linux/if_ether.h>
 
 #include "modules_common.h"
 #include "match.h"
+
+#include <linux/if_ether.h>
+
 
 struct match_priv_ethernet {
 
