@@ -19,7 +19,7 @@
 #define PARAMS_NUM 5
 
 char *input_docsis_params[PARAMS_NUM][3] = {
-	{ "eurodocsis", "1", "DOCSIS specification to use" },
+	{ "eurodocsis", "1", "DOCSIS specification to use. 1 for eurodocsis else 0" },
 	{ "frequency", "0", "frequency to scan to. if 0, a scan will be performed" },
 	{ "modulation", "QAM256", "the modulation to use. either QAM64 or QAM256" },
 	{ "adapter", "0", "DVB adapter to use" },

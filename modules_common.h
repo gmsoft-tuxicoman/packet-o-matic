@@ -15,9 +15,6 @@
 
 #include <dlfcn.h>
 
-#define __KERNEL__
-#include <asm/types.h>
-#undef __KERNEL__
 
 // Those two collide // TOBE REMOVED
 #ifndef __COMMON_H__
