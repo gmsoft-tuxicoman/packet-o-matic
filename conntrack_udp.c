@@ -41,8 +41,6 @@ __u32 conntrack_get_hash_udp(void *frame, unsigned int start) {
 
 int conntrack_doublecheck_udp(void *frame, unsigned int start, void *priv, struct conntrack_entry *ce) {
 
-	
-
 	struct udphdr* hdr;
 	hdr = frame + start;
 
@@ -79,7 +77,7 @@ void *conntrack_alloc_match_priv_udp(void *frame, unsigned int start, struct con
 	priv->dport = hdr->dest;
 
 
-	// Allocate the timeout and set it up
+	// Allocate the timer and set it up
 	struct conntrack_timer *t;
 	t = (*ct_functions->alloc_timer) (ce);
 

@@ -6,10 +6,13 @@
 #include "modules_common.h"
 #include "conntrack.h"
 
+
 struct conntrack_priv_tcp {
 
 	__u16 sport;
 	__u16 dport;
+	struct conntrack_timer *timer;
+	int state;
 
 };
 
@@ -19,6 +22,8 @@ int conntrack_doublecheck_tcp(void *frame, unsigned int start, void *priv, struc
 void *conntrack_alloc_match_priv_tcp(void *frame, unsigned int start, struct conntrack_entry *ce);
 int conntrack_cleanup_match_priv_tcp(void *priv);
 
+
+int conntrack_tcp_update_timer(struct conntrack_priv_tcp *priv, struct tcphdr *hdr);
 
 #endif
 

@@ -47,12 +47,12 @@ int target_init_dump_payload(struct target *t) {
 
 int target_process_dump_payload(struct target *t, struct rule_node *node, void *frame, unsigned int len) {
 
-	struct target_priv_dump_payload *priv = t->target_priv;
 	struct target_conntrack_priv_dump_payload *cp;
 
 	cp = (*t->conntrack_get_priv) (t, node, frame);
 
 	unsigned int start = node_find_payload_start(node);
+	unsigned int size = node_find_payload_size(node);
 
 
 	if (!cp) {
@@ -69,14 +69,14 @@ int target_process_dump_payload(struct target *t, struct rule_node *node, void *
 		char outstr[20];
 		bzero(outstr, 20);
 		// YYYYMMDD-HHMMSS-UUUUUU
-		char *format = "%Y%m%d-%H%M%S-";
+		char *format = "-%Y%m%d-%H%M%S-";
 		struct timeval tv;
 		struct tm *tmp;
 		gettimeofday(&tv, NULL);
 		tmp = localtime(&tv.tv_sec);
 		strftime(outstr, 20, format, tmp);
 
-		strcpy(filename, priv->prefix);
+		strcpy(filename, t->params_value[0]);
 		strcat(filename, outstr);
 		sprintf(outstr, "%u", (unsigned int)tv.tv_usec);
 		strcat(filename, outstr);
@@ -93,7 +93,7 @@ int target_process_dump_payload(struct target *t, struct rule_node *node, void *
 		(*t->conntrack_add_priv) (t, cp, node, frame);
 	}
 
-	write(cp->fd, frame + start, len - start);
+	write(cp->fd, frame + start, size);
 
 	return 1;
 };

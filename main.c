@@ -134,6 +134,8 @@ int main(int argc, char *argv[]) {
 	}
 
 
+	// Conntrack must be initialized before registering any conntrack
+	conntrack_init();
 
 	struct conf *c = config_alloc();
 
@@ -148,7 +150,6 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 	
-	conntrack_init();
 	
 	// Install the signal handler
 	signal(SIGHUP, signal_handler);

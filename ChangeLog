@@ -1,4 +1,10 @@
 
+* 2006/10/14 Guy Martin <gmsoft@tuxicoman.be>
+Fix parameter parsing in target_dump_payload.
+Use node_find_payload_size in target_dump_payload.
+Added timers to conntrack_tcp.
+Changed select into pselect in input_docsis to void interupted system call.
+
 * 2006/10/11 Guy Martin <gmsoft@tuxicoman.be>
 Fix compilation errors with newer kernel headers.
 Fix variable endianess warnings.

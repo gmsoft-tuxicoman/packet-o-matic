@@ -104,6 +104,8 @@ int conntrack_init() {
 	ct_funcs->cleanup_timer = conntrack_timer_cleanup;
 	ct_funcs->queue_timer = conntrack_timer_queue;
 	ct_funcs->dequeue_timer = conntrack_timer_dequeue;
+
+	dprint("Conntrack initialized\n");
 	
 	return 1;
 
@@ -154,7 +156,7 @@ int conntrack_register(const char *conntrack_name) {
 	struct conntrack_reg *my_conntrack = malloc(sizeof(struct conntrack_reg));
 	bzero(my_conntrack, sizeof(struct conntrack_reg));
 
-	
+
 	if (!(*register_my_conntrack) (my_conntrack, ct_funcs)) {
 		dprint("Error while loading conntrack %s. Could not load conntrack !\n", conntrack_name);
 		free(my_conntrack);

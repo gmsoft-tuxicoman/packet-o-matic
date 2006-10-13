@@ -51,6 +51,8 @@ int node_match(void *frame, unsigned int start, unsigned int len, struct rule_no
 		return 0;
 	}
 
+	len = new_len;
+
 	if (result == 0)
 		return 0;
 

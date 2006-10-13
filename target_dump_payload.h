@@ -6,12 +6,6 @@
 #include "modules_common.h"
 #include "rules.h"
 
-struct target_priv_dump_payload {
-
-	char prefix[NAME_MAX];
-
-};
-
 struct target_conntrack_priv_dump_payload {
 
 	int fd;
