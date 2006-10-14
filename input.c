@@ -86,6 +86,7 @@ struct input *input_alloc(int input_type) {
 	bzero(i, sizeof(struct input));
 
 	i->input_type = input_type;
+	i->match_register = match_register;
 	
 	if (inputs[input_type]->init)
 		if (!(*inputs[input_type]->init) (i)) {
@@ -125,6 +126,12 @@ int input_open(struct input *i) {
 	if (inputs[i->input_type] && inputs[i->input_type]->open)
 		return (*inputs[i->input_type]->open) (i);
 	return 1;
+
+}
+
+int input_get_first_layer(struct input *i) {
+
+	return (*inputs[i->input_type]->get_first_layer) (i);
 
 }
 

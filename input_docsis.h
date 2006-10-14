@@ -25,6 +25,7 @@ struct input_priv_docsis {
 	int demux_fd;
 	int dvr_fd;
 	char temp_buff[TEMP_BUFF_LEN];
+	int output_layer;
 	unsigned int temp_buff_pos;
 	unsigned char last_seq;
 	unsigned long total_packets;
@@ -39,6 +40,7 @@ struct input_priv_docsis {
 
 int input_init_docsis(struct input *i);
 int input_open_docsis(struct input *i);
+int input_get_first_layer_docsis(struct input *i);
 int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int bufflen);
 int input_close_docsis(struct input *i);
 int input_cleanup_docsis(struct input *i);

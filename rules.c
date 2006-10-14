@@ -6,7 +6,7 @@ int match_undefined_id;
 
 
 
-int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list *rules) {
+int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list *rules, int first_layer) {
 
 	
 	struct rule_list *r = rules;
@@ -18,8 +18,9 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 		dprint("No rules given !\n");
 		return 1;
 	}
+
 	do {
-		if (r->node)
+		if (r->node && r->node->match && r->node->match->match_type == first_layer)
 			if (node_match(frame, start, len, r->node))
 				if (r->target)
 					target_process(r->target, r->node, frame, len);

@@ -80,6 +80,17 @@ int input_open_pcap(struct input *i) {
 		p->p = pcap_open_live(interface, snaplen, promisc, 0, errbuf);
 	}
 
+	switch (pcap_datalink(p->p)) {
+		case DLT_EN10MB:
+			p->output_layer = match_register("ethernet");
+		case DLT_DOCSIS:
+			p->output_layer = match_register("docsis");
+
+		default:
+			p->output_layer = match_register("undefined_id");
+
+	}
+
 	if (strlen(errbuf) > 0)
 		dprint("PCAP warning : %s\n", errbuf);
 	
@@ -94,6 +105,10 @@ int input_open_pcap(struct input *i) {
 	return 1;
 }
 
+int input_get_first_layer_docsis(struct input *i) {
+	struct input_priv_pcap *p = i->input_priv;
+	return p->output_layer;
+}
 
 
 int input_read_pcap(struct input *i, unsigned char *buffer, unsigned int bufflen) {

@@ -29,19 +29,6 @@ void signal_handler(int signal) {
 
 }
 
-void process_packet(unsigned char* packet, unsigned int  len, struct rule_list *rules) {
-
-	// If packet is empty, skip
-	if (len == 0)
-		return;
-
-	// Byte 0 and 1 are set to 0 if it's an ethernet packet. If not, skip it
-	if (packet[0] || packet[1]) {
-		return;
-	}
-	do_rules(packet+ 6, 0, len - 6, rules);
-		
-}
 
 void print_help() {
 	
@@ -159,6 +146,7 @@ int main(int argc, char *argv[]) {
 
 	unsigned char packet[SNAPLEN];
 	unsigned int len;
+	int first_layer = input_get_first_layer(c->input);
 
 	while (!finish) {
 		len = input_read(c->input, packet, SNAPLEN);
@@ -167,7 +155,8 @@ int main(int argc, char *argv[]) {
 			break;
 		}
 
-		process_packet(packet, len, c->rules);
+		if (len > 0)
+			do_rules(packet, 0, len, c->rules, first_layer);
 	}
 
 	input_close(c->input);

@@ -17,7 +17,7 @@
 
 #define DEMUX_BUFFER_SIZE 2097152 // 2Megs
 
-#define PARAMS_NUM 5
+#define PARAMS_NUM 6
 
 char *input_docsis_params[PARAMS_NUM][3] = {
 	{ "eurodocsis", "1", "DOCSIS specification to use. 1 for eurodocsis else 0" },
@@ -25,7 +25,10 @@ char *input_docsis_params[PARAMS_NUM][3] = {
 	{ "modulation", "QAM256", "the modulation to use. either QAM64 or QAM256" },
 	{ "adapter", "0", "DVB adapter to use" },
 	{ "frontend", "0", "DVB frontend to use" },
+	{ "outlayer", "ethernet", "choose output layer : ethernet or docsis" },
 };
+
+int  match_ethernet_id, match_docsis_id;
 
 int input_register_docsis(struct input_reg *r) {
 
@@ -36,6 +39,7 @@ int input_register_docsis(struct input_reg *r) {
 
 	r->init = input_init_docsis;
 	r->open = input_open_docsis;
+	r->get_first_layer = input_get_first_layer_docsis;
 	r->read = input_read_docsis;
 	r->close = input_close_docsis;
 	r->cleanup = input_cleanup_docsis;
@@ -50,6 +54,10 @@ int input_init_docsis(struct input *i) {
 	bzero(i->input_priv, sizeof(struct input_priv_docsis));
 
 	copy_params(i->params_value, input_docsis_params, 1, PARAMS_NUM);
+
+	match_ethernet_id = (*i->match_register) ("ethernet");
+	match_docsis_id = (*i->match_register) ("docsis");
+
 
 	return 1;
 
@@ -71,6 +79,15 @@ int input_open_docsis(struct input *i) {
 	struct dmx_pes_filter_params filter;
 
 	struct input_priv_docsis *p = i->input_priv;
+
+	if (!strcmp(i->params_value[5], "ethernet")) {
+		p->output_layer = match_ethernet_id;
+	} else if (!strcmp(i->params_value[5], "docsis")) {
+		p->output_layer = match_docsis_id;
+	} else {
+		dprint("Invalid output layer :%s\n", i->params_value[5]);
+		return 0;
+	}
 
 	int eurodocsis, frequency;
 	sscanf(i->params_value[0], "%u", &eurodocsis);
@@ -441,6 +458,13 @@ int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symboleRate,
 
 }
 
+int input_get_first_layer_docsis(struct input *i) {
+
+	struct input_priv_docsis *p = i->input_priv;
+	return p->output_layer;
+
+}
+
 int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int bufflen) {
 
 	struct input_priv_docsis *p = i->input_priv;
@@ -565,6 +589,16 @@ int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int buffl
 			p->temp_buff_pos = MPEG_TS_LEN - mpeg_buff[4] - 5;
 			memcpy(p->temp_buff, mpeg_buff + mpeg_buff[4] + 5, p->temp_buff_pos);
 
+			if (p->output_layer == match_ethernet_id) {
+				// Byte 0 and 1 are set to 0 if it's an ethernet packet. If not, skip it
+				if (buffer[0] || buffer[1]) {
+					return 0;
+				} else if (packet_pos > 6) {
+					memmove(buffer, buffer + 6, packet_pos - 6);
+					return packet_pos - 6;
+				} else 
+					return 0;
+			}
 			return packet_pos;
 
 

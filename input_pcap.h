@@ -15,6 +15,7 @@
 struct input_priv_pcap {
 
 	pcap_t *p;
+	int output_layer;
 
 };
 

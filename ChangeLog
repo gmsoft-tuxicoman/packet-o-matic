@@ -1,4 +1,8 @@
 
+* 2006/10/15 Guy Martin <gmsoft@tuxicoman.be>
+Added get_first_layer() to all inputs.
+Make do_rule() check the first match with the first layer.
+
 * 2006/10/14 Guy Martin <gmsoft@tuxicoman.be>
 Fix parameter parsing in target_dump_payload.
 Use node_find_payload_size in target_dump_payload.

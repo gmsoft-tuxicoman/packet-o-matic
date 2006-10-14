@@ -30,7 +30,7 @@ struct rule_list {
 };
 
 
-int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list *rules);
+int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list *rules, int first_layer);
 
 unsigned int node_find_header_start(struct rule_node *node, int header_type);
 
