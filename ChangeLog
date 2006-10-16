@@ -1,6 +1,9 @@
 
 * 2006/10/16 Guy Martin <gmsoft@tuxicoman.be>
 Added target tcpkill.
+Added match ipv6.
+Fixed input_pcap.
+Moved pom.xml.conf to pom.xml.conf.example.
 
 * 2006/10/15 Guy Martin <gmsoft@tuxicoman.be>
 Added get_first_layer() to all inputs.

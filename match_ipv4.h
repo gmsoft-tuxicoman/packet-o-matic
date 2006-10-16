@@ -13,8 +13,6 @@ struct match_priv_ipv4 {
 	struct in_addr snetmask;
 	struct in_addr daddr;
 	struct in_addr dnetmask;
-	unsigned int proto;
-	unsigned int proto_mask;
 };
 
 

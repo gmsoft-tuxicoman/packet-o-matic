@@ -3,8 +3,8 @@
 
 <input type="docsis">
 	<param name="eurodocsis">1</param>
-	<param name="frequency">442000000</param>
-	<param name="modulation">QAM256</param>
+	<param name="frequency">462000000</param>
+	<param name="modulation">QAM64</param>
 </input>
 
 <rule>
@@ -18,11 +18,11 @@
 	<target type="inject"><param name="interface">eth0.4</param></target>
 	<matches>
 		<match type="ethernet">
-			<param name="dmac">00:10:a7:0e:20:67</param>
+			<param name="dmac">00:ab:cd:ef:12:34</param>
 			<param name="dmac_mask">ff:ff:ff:ff:ff:ff</param>
 		</match>
 		<match type="ipv4">
-			<param name="daddr">85.28.84.48</param>
+			<param name="daddr">1.2.3.4</param>
 			<param name="dnetmask">255.255.255.255</param>
 		</match>
 		<match type="tcp">
@@ -47,16 +47,6 @@
 	</matches>
 </rule>
 <rule>
-	<target type="dump_payload"><param name="prefix">/mnt/mem/imap</param></target>
-	<matches>
-		<match type="ethernet"/>
-		<match type="ipv4"/>
-		<match type="tcp">
-			<param name="sport">143</param>
-		</match>
-	</matches>
-</rule>
-<rule>
 	<target type="dump_payload"><param name="prefix">/mnt/mem/pop3</param></target>
 	<matches>
 		<match type="ethernet"/>
@@ -72,11 +62,11 @@
 	<matches>
 		<match type="ethernet"/>
 		<match type="ipv4">
-			<param name="daddr">85.28.86.225</param>
+			<param name="daddr">1.2.3.4</param>
 			<param name="dnetmask">255.255.255.255</param>
 		</match>
 		<match type="tcp">
-			<param name="dport">23</param>
+			<param name="dport">80</param>
 		</match>
 	</matches>
 </rule>

@@ -22,6 +22,7 @@ struct input_priv_pcap {
 
 int input_init_pcap(struct input *i);
 int input_open_pcap(struct input *i);
+int input_get_first_layer_pcap(struct input *i);
 int input_read_pcap(struct input *i, unsigned char *buffer, unsigned int bufflen);
 int input_close_pcap(struct input *i);
 int input_cleanup_pcap(struct input *i);

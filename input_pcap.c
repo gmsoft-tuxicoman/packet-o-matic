@@ -19,6 +19,7 @@ int input_register_pcap(struct input_reg *r) {
 
 	r->init = input_init_pcap;
 	r->open = input_open_pcap;
+	r->get_first_layer = input_get_first_layer_pcap;
 	r->read = input_read_pcap;
 	r->close = input_close_pcap;
 	r->cleanup = input_cleanup_pcap;
@@ -82,12 +83,17 @@ int input_open_pcap(struct input *i) {
 
 	switch (pcap_datalink(p->p)) {
 		case DLT_EN10MB:
-			p->output_layer = match_register("ethernet");
+			dprint("PCAP output type is ethernet\n");
+			p->output_layer = (*i->match_register) ("ethernet");
+			break;
 		case DLT_DOCSIS:
-			p->output_layer = match_register("docsis");
+			dprint("PCAP output type is docsis\n");
+			p->output_layer = (*i->match_register) ("docsis");
+			break;
 
 		default:
-			p->output_layer = match_register("undefined_id");
+			dprint("PCAP output type is undefined\n");
+			p->output_layer = (*i->match_register) ("undefined_id");
 
 	}
 
@@ -105,7 +111,7 @@ int input_open_pcap(struct input *i) {
 	return 1;
 }
 
-int input_get_first_layer_docsis(struct input *i) {
+int input_get_first_layer_pcap(struct input *i) {
 	struct input_priv_pcap *p = i->input_priv;
 	return p->output_layer;
 }

@@ -114,7 +114,7 @@ int target_process_inject(struct target *t, struct rule_node *node, void *frame,
 		len = MAX_SEGMENT_LEN;
 	
 	//memcpy(&priv->sal.sll_addr, frame + 6, 6);
-	if(sendto(priv->socket, frame + start, len - start, 0, (struct sockaddr *)&priv->sal, sizeof(priv->sal))) {
+	if(sendto(priv->socket, frame + start, len - start, 0, (struct sockaddr *)&priv->sal, sizeof(priv->sal)) == len) {
 		priv->size += len;
 		dprint("0x%x; Packet injected (%u bytes (+%u bytes))!\n", (unsigned int) priv, priv->size, len);
 		return 1;
