@@ -82,6 +82,13 @@ struct target *parse_target(xmlDocPtr doc, xmlNodePtr cur) {
 		return NULL;
 	}
 	struct target *tp = target_alloc(tt);
+
+	if (!tp) {
+		dprint("Error, unable to allocate target of type %s\n", target_type);
+		xmlFree(target_type);
+		return NULL;
+	}
+
 	xmlNodePtr pcur = cur->xmlChildrenNode;
 	while (pcur) {
 		if (!xmlStrcmp(pcur->name, (const xmlChar*) "param")) {

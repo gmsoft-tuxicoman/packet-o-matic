@@ -1,4 +1,7 @@
 
+* 2006/10/16 Guy Martin <gmsoft@tuxicoman.be>
+Added target tcpkill.
+
 * 2006/10/15 Guy Martin <gmsoft@tuxicoman.be>
 Added get_first_layer() to all inputs.
 Make do_rule() check the first match with the first layer.
