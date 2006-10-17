@@ -58,7 +58,7 @@ int target_process_dump_payload(struct target *t, struct rule_node *node, void *
 	if (!cp) {
 
 		// Do not create a file is there is nothing to save
-		if (start >= len)
+		if (size == 0)
 			return 1;
 
 		// New connection
@@ -92,7 +92,7 @@ int target_process_dump_payload(struct target *t, struct rule_node *node, void *
 
 		(*t->conntrack_add_priv) (t, cp, node, frame);
 	}
-
+	
 	write(cp->fd, frame + start, size);
 
 	return 1;
