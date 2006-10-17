@@ -63,8 +63,11 @@ int input_open_pcap(struct input *i) {
 	sscanf(i->params_value[0], "%255s", filename);
 	
 	if (strlen(filename) > 0) {
-		dprint("Error opening file %s for reading\n", filename);
 		p->p = pcap_open_offline(filename, errbuf);
+		if (!p->p) {
+			dprint("Error opening file %s for reading\n", filename);
+			return 0;
+		}
 	} else {
 		char interface[256];
 		bzero(interface, 256);
@@ -79,6 +82,10 @@ int input_open_pcap(struct input *i) {
 			snaplen = 64;
 		dprint("Opening interface %s with a snaplen of %u\n", interface, snaplen);
 		p->p = pcap_open_live(interface, snaplen, promisc, 0, errbuf);
+		if (!p->p) {
+			dprint("Error when opening interface %s : %s\n", filename, errbuf);
+			return 0;
+		}
 	}
 
 	switch (pcap_datalink(p->p)) {

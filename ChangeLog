@@ -2,6 +2,7 @@
 * 2006/10/17 Guy Martin <gmsoft@tuxicoman.be>
 Changed snaplen of input pcap to 1522 to include ethernet with vlan.
 Added conntrack ipv6.
+Improve input pcap open error.
 
 * 2006/10/16 Guy Martin <gmsoft@tuxicoman.be>
 Added target tcpkill.
