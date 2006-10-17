@@ -60,6 +60,8 @@ int match_reconfig_tcp(struct match *m) {
 			return 0;
 	}
 
+	ndprint("Match TCP : sport %u:%u, dport %u:%u\n", p->sport_min ,p->sport_max, p->dport_min , p->dport_max);
+
 
 	return 1;
 }

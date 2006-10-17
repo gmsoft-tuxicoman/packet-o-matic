@@ -173,13 +173,15 @@ int input_unregister_all() {
 	int i = 0;
 
 	for (; i < MAX_INPUT && inputs[i]; i++) {
-		int j;
-		for (j = 0; inputs[i]->params_name[j]; j++) {
-			free(inputs[i]->params_name[j]);
-			free(inputs[i]->params_help[j]);
+		if (inputs[i]->params_name) {
+			int j;
+			for (j = 0; inputs[i]->params_name[j]; j++) {
+				free(inputs[i]->params_name[j]);
+				free(inputs[i]->params_help[j]);
+			}
+			free(inputs[i]->params_name);
+			free(inputs[i]->params_help);
 		}
-		free(inputs[i]->params_name);
-		free(inputs[i]->params_help);
 		free(inputs[i]->input_name);
 		dlclose(inputs[i]->dl_handle);
 		free(inputs[i]);

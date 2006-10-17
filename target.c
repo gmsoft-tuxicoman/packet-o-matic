@@ -172,13 +172,15 @@ int target_unregister_all() {
 	int i = 0;
 
 	for (; i < MAX_INPUT && targets[i]; i++) {
-		int j;
-		for (j = 0; targets[i]->params_name[j]; j++) {
-			free(targets[i]->params_name[j]);
-			free(targets[i]->params_help[j]);
+		if (targets[i]->params_name) {
+			int j;
+			for (j = 0; targets[i]->params_name[j]; j++) {
+				free(targets[i]->params_name[j]);
+				free(targets[i]->params_help[j]);
+			}
+			free(targets[i]->params_name);
+			free(targets[i]->params_help);
 		}
-		free(targets[i]->params_name);
-		free(targets[i]->params_help);
 		free(targets[i]->target_name);
 		dlclose(targets[i]->dl_handle);
 		free(targets[i]);

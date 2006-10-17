@@ -4,10 +4,11 @@
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
 #include <netinet/tcp.h>
+#include <linux/if_ether.h>
 
 #include "target_tcpkill.h"
 
-#define PARAMS_NUM 1
+#define PARAMS_NUM 3
 
 int cksum(__u16 *addr, int len)
 {
@@ -34,9 +35,11 @@ int cksum(__u16 *addr, int len)
 
 char *target_tcpkill_params[PARAMS_NUM][3] = {
 	{ "severity", "2", "numbers of tcp rst packet by try"},
+	{ "mode", "routed", "operating mode : 'routed' (default) let linux decide where to send packets to but is IPv4 only. 'normal' send the packet to the specified interface"},
+	{ "interface", "eth0", "interface to send packets to in non routed mode" },
 };
 
-int match_ipv4_id, match_ipv6_id, match_tcp_id;
+int match_ipv4_id, match_ipv6_id, match_tcp_id, match_ethernet_id;
 
 int target_register_tcpkill(struct target_reg *r) {
 
@@ -74,26 +77,12 @@ int target_init_tcpkill(struct target *t) {
 	match_ipv4_id = (*t->match_register) ("ipv4");
 	match_ipv6_id = (*t->match_register) ("ipv6");
 	match_tcp_id = (*t->match_register) ("tcp");
+	match_ethernet_id = (*t->match_register) ("ethernet");
 	if (match_tcp_id == -1)
 		return 0;
 
 	struct target_priv_tcpkill *priv = malloc(sizeof(struct target_priv_tcpkill));
 	bzero(priv, sizeof(struct target_priv_tcpkill));
-
-	priv->socket = socket(PF_INET, SOCK_RAW, IPPROTO_TCP);
-
-	if (priv->socket < 0) {
-		dprint("Unable to open socket to send TCP RST\n");
-		free(priv);
-		return 0;
-	}
-	
-	int one = 1;
-	if (setsockopt (priv->socket, IPPROTO_IP, IP_HDRINCL, &one, sizeof (one)) < 0) {
-		dprint("Unable to set IP_HDRINCL on socket !\n");
-		return 0;
-	}
-
 
 	t->target_priv = priv;
 	
@@ -116,77 +105,187 @@ int target_open_tcpkill(struct target *t) {
 		p->severity = 2;
 	}
 
+	if (!strcmp(t->params_value[1], "routed")) {
+		p->routed = 1;
+
+		int one = 1;
+
+
+		// Open IPv4 socket
+
+		p->socket = socket(PF_INET, SOCK_RAW, IPPROTO_TCP);
+
+		if (p->socket < 0) {
+			dprint("Unable to open IPv4 socket to send TCP RST\n");
+			return 0;
+		}
+		if (setsockopt (p->socket, IPPROTO_IP, IP_HDRINCL, &one, sizeof (one)) < 0) {
+			dprint("Unable to set IP_HDRINCL on IPv4 socket !\n");
+			return 0;
+		}
+
+	} else {
+
+		p->socket = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+
+		if (p->socket < 0) {
+			dprint("Unable to open ethernet socket to send TCP RST\n");
+			return 0;
+		}
+
+		// find out the interface number
+		struct ifreq req;
+		strcpy(req.ifr_name, t->params_value[2]);
+		if (ioctl(p->socket, SIOCGIFINDEX, &req)) {
+			dprint("Interface %s not found\n", t->params_value[2]);
+			return 0;
+		}
+		dprint("Found interface number %u\n", req.ifr_ifindex);
+
+		p->ifindex = req.ifr_ifindex;
+
+	}
+
+
 	return 1;
 }
 
 int target_process_tcpkill(struct target *t, struct rule_node *node, void *frame, unsigned int len) {
-	
+
+
 	struct target_priv_tcpkill *priv = t->target_priv;
 
-	if (priv->socket <= 0) {
-		dprint("Error, tcpkill target not opened !\n");
-		return 0;
-	}
-	int ipv4start, ipv6start, tcpstart;
-	ipv4start = node_find_header_start(node, match_ipv4_id);
-	ipv6start = node_find_header_start(node, match_ipv6_id);
-	tcpstart = node_find_header_start(node, match_tcp_id);
 
-	if (ipv4start == -1 && ipv6start == -1) {
-		dprint("Unable to find either ipv4 or ipv6 header\n");
-		return 0;
-	}
+	int ipv4start, tcpstart;
+
+	tcpstart = node_find_header_start(node, match_tcp_id);
 	if (tcpstart == -1) {
 		dprint("No TCP header found in this packet\n");
 		return 0;
 	}
 
-	struct sockaddr_in sin;
-	bzero(&sin, sizeof(struct sockaddr_in));
+	struct tcphdr *shdr = (struct tcphdr*) (frame + tcpstart);
 
-	char buffer[1024]; // FIXME sizeof(struct iphdr) + sizeof(struct tcphdr);
+	ipv4start = node_find_header_start(node, match_ipv4_id);
+
+	struct sockaddr_storage addr;
+	socklen_t addrlen;
+	bzero(&addr, sizeof(struct sockaddr_storage));
+
+	char buffer[1024];
 	bzero(buffer, 1024);
-	int pos, blen;
 
-	int sum = 0;
+	int tcpsum;
+	int blen = 0; // Buffer len
 
-	if (ipv4start != -1 ) {
-	
-		blen = sizeof(struct iphdr) + sizeof(struct tcphdr);
-		pos = sizeof(struct iphdr);
+	if (priv->routed) {
+		
+		if (ipv4start == -1) {
+			dprint("No IPv4 header found in this packet\n");
+			return 0;
+		}
+
+		if (priv->socket <= 0) {
+			dprint("Error, IPv4 socket not opened. Cannot send TCP RST\n");
+			return 0;
+		}
+
+		blen = sizeof(struct iphdr);
 		struct iphdr *dv4hdr = (struct iphdr*) buffer, *sv4hdr = (struct iphdr *) (frame + ipv4start);
-		sin.sin_family = AF_INET;
-		sin.sin_addr.s_addr = sv4hdr->saddr;
+		struct sockaddr_in *sin = (struct sockaddr_in *) &addr;
+		addrlen = sizeof(struct sockaddr_in);
+		sin->sin_family = AF_INET;
+		sin->sin_addr.s_addr = sv4hdr->saddr;
+		sin->sin_port = shdr->source;
 		dv4hdr->saddr = sv4hdr->daddr;
 		dv4hdr->daddr = sv4hdr->saddr;
-		dv4hdr->protocol = sv4hdr->protocol;
+		dv4hdr->protocol = IPPROTO_TCP;
 		dv4hdr->ttl = 255;
 		dv4hdr->ihl = 5;
 		dv4hdr->version = 4;
 		dv4hdr->tot_len = blen;
 
-		sum = cksum((__u16 *)&dv4hdr->saddr, 8);
+		tcpsum = cksum((__u16 *)&dv4hdr->saddr, 8);
 
 
-	} else if (ipv6start != -1) {
-/*		blen = sizeof(struct ip6_hdr) + sizeof(struct tcphdr);
-		buffer = malloc(blen);
-		bzero(buffer, blen);
-		struct ipv6_hdr *dv6hdr = buffer, sv6hdr = frame + ipv6start;
-		memcpy(dv6hdr->saddr, sv6hdr->daddr, sizeof(dv6hdr->saddr));
-		memcpy(dv6hdr->daddr, sv6hdr->saddr, sizeof(dv6hdr->daddr));*/
-
-		dprint("IPv6 packets are not yet supported for target tcpkill\n");
-
-		return 0;
 	} else {
-		// Error
-		dprint("Error, shouldn't be reached !\n");
-		return 0;
+
+		int ipv6start, ethernetstart;
+		ethernetstart = node_find_header_start(node, match_ethernet_id);
+		if (ethernetstart == -1) {
+			dprint("No ethernet header found in this packet\n");
+			return 0;
+		}
+		
+		ipv6start = node_find_header_start(node, match_ipv6_id);
+
+		if (ipv4start == -1 && ipv6start == -1) {
+			dprint("Neither IPv4 or IPv6 header found in this packet\n");
+			return 0;
+		}
+
+		// First copy create the right ethernet header
+		
+		struct ethhdr *dehdr = (struct ethhdr *) buffer, *sehdr = (struct ethhdr*) (frame + ethernetstart);
+		memcpy(dehdr->h_source, sehdr->h_dest, sizeof(dehdr->h_source));
+		memcpy(dehdr->h_dest, sehdr->h_source, sizeof(dehdr->h_dest));
+		dehdr->h_proto = sehdr->h_proto;
+
+		struct sockaddr_ll *sal = (struct sockaddr_ll *) &addr;
+		addrlen = sizeof(struct sockaddr_ll);
+		sal->sll_family = AF_PACKET;
+		sal->sll_halen = 6;
+		sal->sll_ifindex = priv->ifindex;
+
+		blen = sizeof(struct ethhdr);
+
+
+		if (ipv4start != -1) {
+
+			struct iphdr *dv4hdr = (struct iphdr*) (buffer + blen), *sv4hdr = (struct iphdr *) (frame + ipv4start);
+			dv4hdr->saddr = sv4hdr->daddr;
+			dv4hdr->daddr = sv4hdr->saddr;
+			dv4hdr->protocol = IPPROTO_TCP;
+			dv4hdr->ttl = 255;
+			dv4hdr->ihl = 5;
+			dv4hdr->version = 4;
+			dv4hdr->tot_len = htons(sizeof(struct iphdr) + sizeof(struct tcphdr));
+			int ipsum;
+			ipsum = cksum((__u16 *)dv4hdr, dv4hdr->ihl * 4);
+
+	    		while (ipsum >> 16)
+				ipsum = (ipsum & 0xFFFF)+(ipsum >> 16);
+			dv4hdr->check = ~ipsum;
+
+			tcpsum = cksum((__u16 *)&dv4hdr->saddr, 8);
+			blen += sizeof(struct tcphdr);
+
+
+		} else if (ipv6start != -1) {
+			
+			struct ip6_hdr *dv6hdr = (struct ip6_hdr *) (buffer + blen), *sv6hdr = (struct ip6_hdr *) (frame + ipv6start);
+			memcpy(dv6hdr->ip6_src.s6_addr, sv6hdr->ip6_dst.s6_addr, sizeof(dv6hdr->ip6_src));
+			memcpy(dv6hdr->ip6_dst.s6_addr, sv6hdr->ip6_src.s6_addr, sizeof(dv6hdr->ip6_dst));
+			buffer[blen] = 0x6 << 4;
+			dv6hdr->ip6_nxt = IPPROTO_TCP;
+			dv6hdr->ip6_plen = htons(sizeof(struct tcphdr));
+			dv6hdr->ip6_hlim = 255;
+
+			tcpsum = cksum((__u16 *)&dv6hdr->ip6_src, 32);
+			blen += sizeof(struct ip6_hdr);
+
+		} else {
+			dprint("ERROR : Shouldn't be reached\n");
+			return 0;
+		}
+
 	}
 
-	struct tcphdr *dhdr = (struct tcphdr*) (buffer + pos), *shdr = (struct tcphdr*) (frame + tcpstart);
-	sin.sin_port = shdr->source;
+
+
+
+		
+	struct tcphdr *dhdr = (struct tcphdr*) (buffer + blen);
 	dhdr->source = shdr->dest;
 	dhdr->dest = shdr->source;
 	dhdr->seq = shdr->ack_seq;
@@ -195,26 +294,27 @@ int target_process_tcpkill(struct target *t, struct rule_node *node, void *frame
 	dhdr->window = shdr->window;
 	dhdr->doff = sizeof(struct tcphdr) / 4;
 
+	blen += sizeof(struct tcphdr);
 
-	sum += ntohs(IPPROTO_TCP + sizeof(struct tcphdr));
+	tcpsum += ntohs(IPPROTO_TCP + sizeof(struct tcphdr));
 
 	int i;
 	for (i = 0; i < priv->severity; i++) {
-		dhdr->check = 0;
-		dhdr->seq += shdr->window;
 
-
-		int mysum = sum + cksum((__u16*)(dhdr), sizeof(struct tcphdr));
+		int mysum = tcpsum + cksum((__u16*)(dhdr), sizeof(struct tcphdr));
 	
 	    	while (mysum >> 16)
 			mysum = (mysum & 0xFFFF)+(mysum >> 16);
 
 		dhdr->check = ~mysum;
 
-		if(sendto(priv->socket, buffer, blen, 0, (struct sockaddr *) &sin, sizeof(sin)) == -1) {
+		if(sendto(priv->socket, buffer, blen, 0, (struct sockaddr *) &addr, addrlen) <= 0) {
 			dprint("Error while inject TCP RST : %s\n", strerror(errno));
 			return 0;
 		}
+
+
+		dhdr->seq += shdr->window;
 
 	}
 

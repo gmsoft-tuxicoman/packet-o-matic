@@ -17,7 +17,9 @@
 
 struct target_priv_tcpkill {
 
+	int routed; // 1 if mode is routed
 	int socket;
+	int ifindex;
 	unsigned int severity;
 };
 

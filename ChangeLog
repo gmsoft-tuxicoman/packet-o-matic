@@ -3,6 +3,7 @@
 Changed snaplen of input pcap to 1522 to include ethernet with vlan.
 Added conntrack ipv6.
 Improve input pcap open error.
+Improved target tcpkill to support two modes and IPv6.
 
 * 2006/10/16 Guy Martin <gmsoft@tuxicoman.be>
 Added target tcpkill.
