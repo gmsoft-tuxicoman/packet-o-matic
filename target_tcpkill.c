@@ -296,8 +296,6 @@ int target_process_tcpkill(struct target *t, struct rule_node *node, void *frame
 	// Add the IPv6 header if any
 	if (ipv6start != -1) {
 		
-		dprint("Found ipv6 header at %u\n", ipv6start);
-
 		struct ip6_hdr *dv6hdr = (struct ip6_hdr *) (buffer + blen), *sv6hdr = (struct ip6_hdr *) (frame + ipv6start);
 		memcpy(dv6hdr->ip6_src.s6_addr, sv6hdr->ip6_dst.s6_addr, sizeof(dv6hdr->ip6_src));
 		memcpy(dv6hdr->ip6_dst.s6_addr, sv6hdr->ip6_src.s6_addr, sizeof(dv6hdr->ip6_dst));
