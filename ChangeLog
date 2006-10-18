@@ -2,6 +2,7 @@
 * 2006/10/18 Guy Martin <gmsoft@tuxicoman.be>
 Make target tcpkill works as well for IPv6 tunneled in IPv4 connections in
 normal and routed mode.
+Fix typo in input pcap, load match undefined instead of undefined_id.
 
 * 2006/10/17 Guy Martin <gmsoft@tuxicoman.be>
 Changed snaplen of input pcap to 1522 to include ethernet with vlan.

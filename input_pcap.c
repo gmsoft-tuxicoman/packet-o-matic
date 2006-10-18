@@ -120,7 +120,7 @@ int input_open_pcap(struct input *i) {
 
 		default:
 			dprint("PCAP output type is undefined\n");
-			p->output_layer = (*i->match_register) ("undefined_id");
+			p->output_layer = (*i->match_register) ("undefined");
 
 	}
 
