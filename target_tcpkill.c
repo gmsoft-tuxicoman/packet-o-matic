@@ -176,7 +176,7 @@ int target_process_tcpkill(struct target *t, struct rule_node *node, void *frame
 	struct target_priv_tcpkill *priv = t->target_priv;
 
 
-	int ipv4start, tcpstart;
+	int ipv4start, ipv6start, tcpstart, i;
 
 	tcpstart = node_find_header_start(node, match_tcp_id);
 	if (tcpstart == -1) {
@@ -187,50 +187,44 @@ int target_process_tcpkill(struct target *t, struct rule_node *node, void *frame
 	struct tcphdr *shdr = (struct tcphdr*) (frame + tcpstart);
 
 	ipv4start = node_find_header_start(node, match_ipv4_id);
+	ipv6start = node_find_header_start(node, match_ipv6_id);
 
+	// init sockaddr
 	struct sockaddr_storage addr;
 	socklen_t addrlen;
 	bzero(&addr, sizeof(struct sockaddr_storage));
 
+	
+	// init temp buffer
 	char buffer[1024];
 	bzero(buffer, 1024);
+
 
 	int tcpsum;
 	int blen = 0; // Buffer len
 
-	if (priv->routed) {
-		
-		if (ipv4start == -1) {
-			dprint("No IPv4 header found in this packet\n");
-			return 0;
-		}
+	// In routed mode, we can only send ipv4 packets. linux API doesn't allow random souce addr for ipv6
+	if (priv->routed  && ipv4start == -1) {
+		dprint("No IPv4 header found in this packet\n");
+		return 0;
+	}
 
-		if (priv->socket <= 0) {
-			dprint("Error, IPv4 socket not opened. Cannot send TCP RST\n");
-			return 0;
-		}
+	// In normal mode we need at least an ipv6 or ipv4 header
+	if (!priv->routed && ipv4start == -11 && ipv6start == -1) {
+		dprint("No IPv4 or IPv6 header found in this packet\n");
+		return 0;
+	}
 
-		blen = sizeof(struct iphdr);
-		struct iphdr *dv4hdr = (struct iphdr*) buffer, *sv4hdr = (struct iphdr *) (frame + ipv4start);
-		struct sockaddr_in *sin = (struct sockaddr_in *) &addr;
-		addrlen = sizeof(struct sockaddr_in);
-		sin->sin_family = AF_INET;
-		sin->sin_addr.s_addr = sv4hdr->saddr;
-		sin->sin_port = shdr->source;
-		dv4hdr->saddr = sv4hdr->daddr;
-		dv4hdr->daddr = sv4hdr->saddr;
-		dv4hdr->protocol = IPPROTO_TCP;
-		dv4hdr->ttl = 255;
-		dv4hdr->ihl = 5;
-		dv4hdr->version = 4;
-		dv4hdr->tot_len = blen;
-
-		tcpsum = cksum((__u16 *)&dv4hdr->saddr, 8);
+	// Check if the socket is opened
+	if (priv->socket <= 0) {
+		dprint("Error, socket not opened. Cannot send TCP RST\n");
+		return 0;
+	}
 
 
-	} else {
-
-		int ipv6start, ethernetstart;
+	// In normal mode, we have to include the ethernet header
+	if (!priv->routed) {
+		int ethernetstart;
 		ethernetstart = node_find_header_start(node, match_ethernet_id);
 		if (ethernetstart == -1) {
 			dprint("No ethernet header found in this packet\n");
@@ -259,59 +253,65 @@ int target_process_tcpkill(struct target *t, struct rule_node *node, void *frame
 
 		blen = sizeof(struct ethhdr);
 
-
-		if (ipv4start != -1) {
-
-			struct iphdr *dv4hdr = (struct iphdr*) (buffer + blen), *sv4hdr = (struct iphdr *) (frame + ipv4start);
-			dv4hdr->saddr = sv4hdr->daddr;
-			dv4hdr->daddr = sv4hdr->saddr;
-			if (ipv6start != -1) { // IPv6 in IPv4
-				dv4hdr->protocol = IPPROTO_IPV6;
-				dv4hdr->tot_len = htons(sizeof(struct iphdr) + sizeof(struct ip6_hdr) + sizeof(struct tcphdr));
-			} else {
-				dv4hdr->protocol = IPPROTO_TCP;
-				dv4hdr->tot_len = htons(sizeof(struct iphdr) + sizeof(struct tcphdr));
-			}
-			dv4hdr->ttl = 255;
-			dv4hdr->ihl = 5;
-			dv4hdr->version = 4;
-			int ipsum;
-			ipsum = cksum((__u16 *)dv4hdr, dv4hdr->ihl * 4);
-
-	    		while (ipsum >> 16)
-				ipsum = (ipsum & 0xFFFF)+(ipsum >> 16);
-			dv4hdr->check = ~ipsum;
-
-			tcpsum = cksum((__u16 *)&dv4hdr->saddr, 8);
-			blen += sizeof(struct tcphdr);
-
-
-		} 
-		
-		if (ipv6start != -1) {
-			
-			struct ip6_hdr *dv6hdr = (struct ip6_hdr *) (buffer + blen), *sv6hdr = (struct ip6_hdr *) (frame + ipv6start);
-			memcpy(dv6hdr->ip6_src.s6_addr, sv6hdr->ip6_dst.s6_addr, sizeof(dv6hdr->ip6_src));
-			memcpy(dv6hdr->ip6_dst.s6_addr, sv6hdr->ip6_src.s6_addr, sizeof(dv6hdr->ip6_dst));
-			buffer[blen] = 0x6 << 4;
-			dv6hdr->ip6_nxt = IPPROTO_TCP;
-			dv6hdr->ip6_plen = htons(sizeof(struct tcphdr));
-			dv6hdr->ip6_hlim = 255;
-
-			tcpsum = cksum((__u16 *)&dv6hdr->ip6_src, 32);
-			blen += sizeof(struct ip6_hdr);
-
-		} else {
-			dprint("ERROR : Shouldn't be reached\n");
-			return 0;
-		}
-
 	}
 
+	// Let's see if we have a IPv4 header. This can only be false in normal mode in case of an IPv6 packet
+	if (ipv4start != -1) {
 
-
-
+		struct iphdr *dv4hdr = (struct iphdr*) (buffer + blen), *sv4hdr = (struct iphdr *) (frame + ipv4start);
 		
+		if (priv->routed) { // Create the right sockaddr_in in routed mode
+			struct sockaddr_in *sin = (struct sockaddr_in *) &addr;
+			addrlen = sizeof(struct sockaddr_in);
+			sin->sin_family = AF_INET;
+			sin->sin_addr.s_addr = sv4hdr->saddr;
+			sin->sin_port = shdr->source;
+		}
+
+		dv4hdr->saddr = sv4hdr->daddr;
+		dv4hdr->daddr = sv4hdr->saddr;
+		if (ipv6start != -1) { // IPv6 in IPv4
+			dv4hdr->protocol = IPPROTO_IPV6;
+			dv4hdr->tot_len = htons(sizeof(struct iphdr) + sizeof(struct ip6_hdr) + sizeof(struct tcphdr));
+		} else {
+			dv4hdr->protocol = IPPROTO_TCP;
+			dv4hdr->tot_len = htons(sizeof(struct iphdr) + sizeof(struct tcphdr));
+		}
+		dv4hdr->ttl = 255;
+		dv4hdr->ihl = 5;
+		dv4hdr->version = 4;
+		int ipsum;
+		ipsum = cksum((__u16 *)dv4hdr, dv4hdr->ihl * 4);
+
+		while (ipsum >> 16)
+			ipsum = (ipsum & 0xFFFF)+(ipsum >> 16);
+		dv4hdr->check = ~ipsum;
+
+		tcpsum = cksum((__u16 *)&dv4hdr->saddr, 8);
+		blen += sizeof(struct tcphdr);
+
+
+	} 
+
+	// Add the IPv6 header if any
+	if (ipv6start != -1) {
+		
+		dprint("Found ipv6 header at %u\n", ipv6start);
+
+		struct ip6_hdr *dv6hdr = (struct ip6_hdr *) (buffer + blen), *sv6hdr = (struct ip6_hdr *) (frame + ipv6start);
+		memcpy(dv6hdr->ip6_src.s6_addr, sv6hdr->ip6_dst.s6_addr, sizeof(dv6hdr->ip6_src));
+		memcpy(dv6hdr->ip6_dst.s6_addr, sv6hdr->ip6_src.s6_addr, sizeof(dv6hdr->ip6_dst));
+		buffer[blen] = 0x6 << 4;
+		dv6hdr->ip6_nxt = IPPROTO_TCP;
+		dv6hdr->ip6_plen = htons(sizeof(struct tcphdr));
+		dv6hdr->ip6_hlim = 255;
+
+		tcpsum = cksum((__u16 *)&dv6hdr->ip6_src, 32);
+		blen += sizeof(struct ip6_hdr);
+
+	} 
+
+	// Add the tcp header
 	struct tcphdr *dhdr = (struct tcphdr*) (buffer + blen);
 	dhdr->source = shdr->dest;
 	dhdr->dest = shdr->source;
@@ -325,9 +325,9 @@ int target_process_tcpkill(struct target *t, struct rule_node *node, void *frame
 
 	tcpsum += ntohs(IPPROTO_TCP + sizeof(struct tcphdr));
 
-	int i;
 	for (i = 0; i < priv->severity; i++) {
 
+		dhdr->check = 0;
 		int mysum = tcpsum + cksum((__u16*)(dhdr), sizeof(struct tcphdr));
 	
 	    	while (mysum >> 16)
@@ -335,6 +335,8 @@ int target_process_tcpkill(struct target *t, struct rule_node *node, void *frame
 
 		dhdr->check = ~mysum;
 
+
+		// Inject the packets
 		if(sendto(priv->socket, buffer, blen, 0, (struct sockaddr *) &addr, addrlen) <= 0) {
 			dprint("Error while inject TCP RST : %s\n", strerror(errno));
 			return 0;
