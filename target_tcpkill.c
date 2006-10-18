@@ -265,11 +265,16 @@ int target_process_tcpkill(struct target *t, struct rule_node *node, void *frame
 			struct iphdr *dv4hdr = (struct iphdr*) (buffer + blen), *sv4hdr = (struct iphdr *) (frame + ipv4start);
 			dv4hdr->saddr = sv4hdr->daddr;
 			dv4hdr->daddr = sv4hdr->saddr;
-			dv4hdr->protocol = IPPROTO_TCP;
+			if (ipv6start != -1) { // IPv6 in IPv4
+				dv4hdr->protocol = IPPROTO_IPV6;
+				dv4hdr->tot_len = htons(sizeof(struct iphdr) + sizeof(struct ip6_hdr) + sizeof(struct tcphdr));
+			} else {
+				dv4hdr->protocol = IPPROTO_TCP;
+				dv4hdr->tot_len = htons(sizeof(struct iphdr) + sizeof(struct tcphdr));
+			}
 			dv4hdr->ttl = 255;
 			dv4hdr->ihl = 5;
 			dv4hdr->version = 4;
-			dv4hdr->tot_len = htons(sizeof(struct iphdr) + sizeof(struct tcphdr));
 			int ipsum;
 			ipsum = cksum((__u16 *)dv4hdr, dv4hdr->ihl * 4);
 
@@ -281,7 +286,9 @@ int target_process_tcpkill(struct target *t, struct rule_node *node, void *frame
 			blen += sizeof(struct tcphdr);
 
 
-		} else if (ipv6start != -1) {
+		} 
+		
+		if (ipv6start != -1) {
 			
 			struct ip6_hdr *dv6hdr = (struct ip6_hdr *) (buffer + blen), *sv6hdr = (struct ip6_hdr *) (frame + ipv6start);
 			memcpy(dv6hdr->ip6_src.s6_addr, sv6hdr->ip6_dst.s6_addr, sizeof(dv6hdr->ip6_src));
