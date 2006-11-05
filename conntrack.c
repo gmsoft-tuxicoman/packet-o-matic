@@ -24,7 +24,7 @@
 
 #include "conntrack.h"
 
-#define MAX_CONNTRACK 16
+#define MAX_CONNTRACK MAX_MATCH
 
 #define CONNTRACK_SIZE 65535
 

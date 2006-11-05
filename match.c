@@ -22,9 +22,6 @@
 
 #include "match.h"
 
-#undef MAX_MATCH
-#define MAX_MATCH 16
-
 
 struct match_reg *matchs[MAX_MATCH];
 

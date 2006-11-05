@@ -1,4 +1,9 @@
 
+* 2006/11/05 Guy Martin <gmsoft@tuxicoman.be>
+Make target tcpkill have ACK set into RST packet to kill new connections.
+Fix sequence handling in target tcpkill.
+Make the max conntrack be the same as the max matchs.
+
 * 2006/10/18 Guy Martin <gmsoft@tuxicoman.be>
 Make target tcpkill works as well for IPv6 tunneled in IPv4 connections in
 normal and routed mode.

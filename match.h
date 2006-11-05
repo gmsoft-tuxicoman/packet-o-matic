@@ -25,6 +25,9 @@
 
 #include "common.h"
 
+#undef MAX_MATCH
+#define MAX_MATCH 16
+
 
 struct match {
 	unsigned int match_type; // Type of match

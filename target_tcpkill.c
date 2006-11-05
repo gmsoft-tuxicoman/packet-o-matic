@@ -315,7 +315,8 @@ int target_process_tcpkill(struct target *t, struct rule_node *node, void *frame
 	dhdr->dest = shdr->source;
 	dhdr->seq = shdr->ack_seq;
 	dhdr->rst = 1;
-	dhdr->ack_seq = shdr->seq;
+	dhdr->ack = 1;
+	dhdr->ack_seq = htonl(ntohl(shdr->seq) + 1);
 	dhdr->window = shdr->window;
 	dhdr->doff = sizeof(struct tcphdr) / 4;
 
@@ -341,7 +342,8 @@ int target_process_tcpkill(struct target *t, struct rule_node *node, void *frame
 		}
 
 
-		dhdr->seq += shdr->window;
+		dhdr->seq += htonl(ntohl(dhdr->seq) + ntohs(shdr->window));
+
 
 	}
 
