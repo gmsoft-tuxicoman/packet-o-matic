@@ -31,7 +31,7 @@ struct conntrack_priv_udp {
 
 	__u16 sport;
 	__u16 dport;
-	struct conntrack_timer *timer;
+	struct timer *timer;
 
 };
 

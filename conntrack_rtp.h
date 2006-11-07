@@ -30,7 +30,7 @@ struct conntrack_priv_rtp {
 
 	__u32 ssrc;
 	__u8 payload_type;
-	struct conntrack_timer *timer;
+	struct timer *timer;
 
 };
 

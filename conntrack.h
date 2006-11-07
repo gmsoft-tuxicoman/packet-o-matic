@@ -23,27 +23,9 @@
 #define __CONNTRACK_H__
 
 #include "common.h"
+#include "timers.h"
 
 #include <linux/jhash.h>
-
-struct conntrack_timer {
-
-	time_t expires;
-	struct conntrack_entry *ce;
-	struct conntrack_timer *next;
-	struct conntrack_timer *prev;
-
-};
-
-struct conntrack_timer_queue {
-
-	unsigned int expiry;
-	struct conntrack_timer_queue *next;
-	struct conntrack_timer_queue *prev;
-	struct conntrack_timer *head;
-	struct conntrack_timer *tail;
-
-};
 
 struct conntrack_entry {
 
@@ -67,11 +49,11 @@ struct conntrack_reg {
 };
 
 struct conntrack_functions {
-	struct conntrack_timer* (*alloc_timer) (struct conntrack_entry *);
-	int (*cleanup_timer) (struct conntrack_timer *t);
-	int (*queue_timer) (struct conntrack_timer *t, unsigned int expiry);
-	int (*dequeue_timer) (struct conntrack_timer *t);
-	int (*close_connection) (struct conntrack_entry *ce);
+	struct timer* (*alloc_timer) (struct conntrack_entry *);
+	int (*cleanup_timer) (struct timer *t);
+	int (*queue_timer) (struct timer *t, unsigned int expiry);
+	int (*dequeue_timer) (struct timer *t);
+//	int (*close_connection) (struct conntrack_entry *ce);
 
 
 };
@@ -90,13 +72,10 @@ int conntrack_add_target_priv(struct target*, void *priv, struct rule_node *n, v
 void *conntrack_get_target_priv(struct target*, struct rule_node *n, void *frame);
 __u32 conntrack_hash(struct rule_node *n, void *frame);
 struct conntrack_entry *conntrack_get_entry(__u32 hash, struct rule_node *n, void *frame);
+int conntrack_do_timer(void * ce);
+struct timer *conntrack_timer_alloc(struct conntrack_entry *ce);
 int conntrack_cleanup();
 int conntrack_unregister_all();
-int conntrack_do_timers();
-struct conntrack_timer *conntrack_timer_alloc(struct conntrack_entry *ce);
-int conntrack_timer_cleanup(struct conntrack_timer *t);
-int conntrack_timer_queue(struct conntrack_timer *t, unsigned int expiry);
-int conntrack_timer_dequeue(struct conntrack_timer *t);
 
 
 #endif

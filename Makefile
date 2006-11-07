@@ -4,7 +4,7 @@ CFLAGS += -g -ggdb3
 CFLAGS += -DDEBUG
 #CFLAGS += -DNDEBUG
 
-CORE_OBJS = input.o match.o conntrack.o target.o
+CORE_OBJS = input.o match.o conntrack.o target.o timers.o
 CONNTRACK_OBJS = conntrack_ipv4.so conntrack_ipv6.so conntrack_udp.so conntrack_tcp.so conntrack_rtp.so
 TARGET_OBJS = target_null.so target_inject.so target_pcap.so  target_tap.so target_dump_payload.so target_wave.so target_tcpkill.so
 INPUT_OBJS = input_docsis.so input_pcap.so

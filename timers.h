@@ -19,31 +19,41 @@
  */
 
 
-#ifndef __CONNTRACK_TCP_H__
-#define __CONNTRACK_TCP_H__
+#ifndef __TIMERS_H__
+#define __TIMERS_H__
+
+#include "common.h"
 
 
-#include "modules_common.h"
-#include "conntrack.h"
+struct timer {
 
-
-struct conntrack_priv_tcp {
-
-	__u16 sport;
-	__u16 dport;
-	struct timer *timer;
-	int state;
+	time_t expires;
+	void *priv;
+	int (*handler) (void *);
+	struct timer *next;
+	struct timer *prev;
 
 };
 
-int conntrack_register_tcp(struct conntrack_reg *r, struct conntrack_functions *ct_funcs);
-__u32 conntrack_get_hash_tcp(void *frame, unsigned int start);
-int conntrack_doublecheck_tcp(void *frame, unsigned int start, void *priv, struct conntrack_entry *ce);
-void *conntrack_alloc_match_priv_tcp(void *frame, unsigned int start, struct conntrack_entry *ce);
-int conntrack_cleanup_match_priv_tcp(void *priv);
+struct timer_queue {
+
+	unsigned int expiry;
+	struct timer_queue *next;
+	struct timer_queue *prev;
+	struct timer *head;
+	struct timer *tail;
+
+};
 
 
-int conntrack_tcp_update_timer(struct conntrack_priv_tcp *priv, struct tcphdr *hdr);
+
+void timers_handler(int signal);
+int timers_init();
+int timers_cleanup();
+struct timer *timer_alloc();
+int timer_cleanup(struct timer *t);
+int timer_queue(struct timer *t, unsigned int expiry);
+int timer_dequeue(struct timer *t);
+
 
 #endif
-

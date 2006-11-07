@@ -100,7 +100,7 @@ void *conntrack_alloc_match_priv_rtp(void *frame, unsigned int start, struct con
 
 
 	// Allocate the timeout and set it up
-	struct conntrack_timer *t;
+	struct timer *t;
 	t = (*ct_functions->alloc_timer) (ce);
 
 	priv->timer = t;

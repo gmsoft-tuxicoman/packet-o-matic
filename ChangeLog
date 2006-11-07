@@ -1,4 +1,7 @@
 
+* 2006/11/07 Guy Martin <gmsoft@tuxicoman.be>
+Move the timer code out of conntrack for future helper use.
+
 * 2006/11/05 Guy Martin <gmsoft@tuxicoman.be>
 Make target tcpkill have ACK set into RST packet to kill new connections.
 Fix sequence handling in target tcpkill.
@@ -42,7 +45,6 @@ Added example config.
 Removed unused config.c and config.h files.
 Added options -c to specify the config file.
 Added option -h to see inputs, targets and matchs parameters.
-
 
 * 2006/10/01 Guy Martin <gmsoft@tuxicoman.be>
 Do not abort but drop the packet if the buffer is too small in input_docsis.

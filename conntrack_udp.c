@@ -98,7 +98,7 @@ void *conntrack_alloc_match_priv_udp(void *frame, unsigned int start, struct con
 
 
 	// Allocate the timer and set it up
-	struct conntrack_timer *t;
+	struct timer *t;
 	t = (*ct_functions->alloc_timer) (ce);
 
 	priv->timer = t;
