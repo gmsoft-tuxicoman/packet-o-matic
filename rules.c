@@ -25,6 +25,13 @@
 int match_undefined_id;
 
 
+int rules_init() {
+
+	match_undefined_id = match_register("undefined");
+
+	return 1;
+
+}
 
 int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list *rules, int first_layer) {
 
@@ -32,9 +39,7 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 	struct rule_list *r = rules;
 
 	frame += start;
-	
-	// OPTIMIZE THIS
-	match_undefined_id = match_get_type("undefined");
+	len -= start;
 	
 	if (r == NULL) {
 		dprint("No rules given !\n");
@@ -88,6 +93,7 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 
 	if (!node->b) {
 		node->a->match->prev = m;
+
 		if (m->next_layer == match_undefined_id)
 			m->next_layer = node->a->match->match_type;
 		if (node->a->match && node->a->match->match_type == m->next_layer && node_match(frame, m->next_start, len, node->a)) {
@@ -118,11 +124,13 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 			return 0;
 	} else { // OR = 0
 		int aresult, bresult;
+		node->a->match->prev = m;
+		node->b->match->prev = m;
+
 		if (node->a->match && ((m->next_layer == match_undefined_id) || (node->a->match->match_type == m->next_layer))) {
 			aresult = node_match(frame, m->next_start, len, node->a);
 			m->next = node->a->match;
 			m->next_layer = node->a->match->match_type;
-			node->a->match->prev = m;
 		} else
 			aresult = 0;
 	
@@ -130,7 +138,6 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 			bresult = node_match(frame, m->next_start, len, node->b);
 			m->next = node->b->match;
 			m->next_layer = node->b->match->match_type;
-			node->b->match->prev = m;
 		} else
 			bresult = 0;
 

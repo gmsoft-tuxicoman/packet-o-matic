@@ -121,8 +121,6 @@ int helper_need_help_ipv4(void *frame, struct match *m) {
 	
 	struct helper_priv_ipv4 *tmp = frags_head;
 
-	ndprint("Helper ipv4 : Looking for frags with id %u\n", ntohs(hdr->id));
-
 	while (tmp) {
 		if (hdr->saddr == tmp->hdr->saddr
 			&& hdr->daddr == tmp->hdr->daddr
@@ -132,6 +130,15 @@ int helper_need_help_ipv4(void *frame, struct match *m) {
 		tmp = tmp->next;
 	}
 
+	unsigned int frag_start = start + (hdr->ihl * 4); // Make it the start of the payload
+	size_t frag_size = ntohs(hdr->tot_len) - (hdr->ihl * 4);
+
+	if (frag_start + frag_size > m->prev->next_size + m->prev->next_start) {
+		dprint("Error, packet len missmatch dropping this frag\n");
+		dprint("Frag_start %u, frag_size %u, next_size %u\n", frag_start, frag_size, m->prev->next_size);
+		dprint("ID = %u\n", ntohs(hdr->id));
+		return 1;
+	}
 
 	if (!tmp) {
 		// Looks like the buffer wasn't found. Let's create it
@@ -144,28 +151,7 @@ int helper_need_help_ipv4(void *frame, struct match *m) {
 			tmp->next->prev = tmp;
 		frags_head = tmp;
 
-		ndprint("Helper ipv4 : allocated buffer for new packet id %u\n", ntohs(hdr->id));
-		tmp->t = (*hlp_functions->alloc_timer) (tmp, helper_cleanup_ipv4_frag);
-
-
-	} else { // Remove this from the timer queue 
-		//ndprint("Helper ipv4 : frags with id %u found in memory\n", tmp->id);
-		(*hlp_functions->dequeue_timer) (tmp->t);
-	}
-
-	// Reschedule the timer
-	(*hlp_functions->queue_timer) (tmp->t, IP_FRAG_TIMEOUT);
-
-	unsigned int frag_start = start + (hdr->ihl * 4); // Make it the start of the payload
-	size_t frag_size = ntohs(hdr->tot_len) - (hdr->ihl * 4);
-
-	if (start + frag_size > m->prev->next_size) {
-		dprint("Error, packet len missmatch dropping this frag\n");
-		return 1;
-	}
-
-	// Buffer the sublayer (ethernet or else) if this is the first packet of the segment with the IP header
-	if (!tmp->sublayer_buff && offset == 0) {
+		// Save the sublayer (ethernet or else) up to the start of the IPv4 payload
 		tmp->sublayer_buff = malloc(frag_start);
 		memcpy(tmp->sublayer_buff, frame, frag_start);
 		tmp->buffsize = frag_start;
@@ -175,7 +161,19 @@ int helper_need_help_ipv4(void *frame, struct match *m) {
 		while (m->prev)
 			m = m->prev;
 		tmp->first_layer = m->match_type;
-	}
+
+
+		ndprint("Helper ipv4 : allocated buffer for new packet id %u\n", ntohs(hdr->id));
+		tmp->t = (*hlp_functions->alloc_timer) (tmp, helper_cleanup_ipv4_frag);
+
+
+	} else  // Remove this from the timer queue 
+		(*hlp_functions->dequeue_timer) (tmp->t);
+
+	// Reschedule the timer
+	(*hlp_functions->queue_timer) (tmp->t, IP_FRAG_TIMEOUT);
+
+
 
 	// Now let's find if we already have this fragment in memory
 
