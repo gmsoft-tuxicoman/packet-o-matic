@@ -26,6 +26,7 @@
 #include "target.h"
 #include "match.h"
 #include "conntrack.h"
+#include "helper.h"
 
 struct conf *config_alloc() {
 
@@ -194,8 +195,9 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 				pcur = pcur->next;
 			}
 
-			// Try to register corresponding conntrack
+			// Try to register corresponding conntrack and helper
 			conntrack_register(match_type);
+			helper_register(match_type);
 
 			xmlFree(match_type);
 

@@ -54,7 +54,7 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 
 unsigned int node_find_header_start(struct rule_node *node, int header_type);
 
-int node_match(void *frame, unsigned int start, unsigned int len, struct rule_node *node);
+inline int node_match(void *frame, unsigned int start, unsigned int len, struct rule_node *node);
 
 int node_destroy(struct rule_node *node);
 

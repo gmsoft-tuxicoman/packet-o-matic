@@ -34,6 +34,7 @@
 #include "input_docsis.h"
 #include "input_pcap.h"
 #include "conntrack.h"
+#include "helper.h"
 
 
 
@@ -144,6 +145,9 @@ int main(int argc, char *argv[]) {
 	// Conntrack must be initialized before registering any conntrack
 	conntrack_init();
 
+	// Init the helpers
+	helper_init();
+
 	struct conf *c = config_alloc();
 
 	if (!config_parse(c, cfgfile)) {
@@ -156,6 +160,9 @@ int main(int argc, char *argv[]) {
 		dprint("Error while opening input\n");
 		return 1;
 	}
+
+	// Set which rule list we want to use for helped packets
+	helper_set_feedback_rules(c->rules);
 	
 	
 	// Install the signal handler
@@ -181,12 +188,15 @@ int main(int argc, char *argv[]) {
 	input_close(c->input);
 
 	conntrack_cleanup();
+	helper_cleanup();
+	timers_cleanup();
 	config_cleanup(c);
 
 
 	target_unregister_all();
 	match_unregister_all();
 	conntrack_unregister_all();
+	helper_unregister_all();
 	input_unregister_all();
 
 

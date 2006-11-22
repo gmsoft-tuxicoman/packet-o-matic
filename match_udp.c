@@ -80,6 +80,8 @@ int match_reconfig_udp(struct match *m) {
 			return 0;
 	}
 
+	ndprint("Match UDP : sport %u:%u, dport %u:%u\n", p->sport_min ,p->sport_max, p->dport_min , p->dport_max);
+
 	return 1;
 }
 
@@ -101,10 +103,10 @@ int match_eval_udp(struct match* match, void *frame, unsigned int start, unsigne
 	
 	struct match_priv_udp *mp = match->match_priv;
 	
-	if (sport <= mp->sport_min || sport >= mp->sport_max)
+	if (sport < mp->sport_min || sport > mp->sport_max)
 		return 0;
 	
-	if (dport <= mp->dport_min || dport >= mp->dport_max)
+	if (dport < mp->dport_min || dport > mp->dport_max)
 		return 0;
 	
 	return 1;

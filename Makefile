@@ -4,7 +4,8 @@ CFLAGS += -g -ggdb3
 CFLAGS += -DDEBUG
 #CFLAGS += -DNDEBUG
 
-CORE_OBJS = input.o match.o conntrack.o target.o timers.o
+CORE_OBJS = input.o match.o conntrack.o target.o timers.o helper.o
+HELPER_OBJS = helper_ipv4.so
 CONNTRACK_OBJS = conntrack_ipv4.so conntrack_ipv6.so conntrack_udp.so conntrack_tcp.so conntrack_rtp.so
 TARGET_OBJS = target_null.so target_inject.so target_pcap.so  target_tap.so target_dump_payload.so target_wave.so target_tcpkill.so
 INPUT_OBJS = input_docsis.so input_pcap.so
@@ -20,7 +21,7 @@ all: packet-o-matic
 %.so: %.c %.h
 	gcc -shared -fPIC ${CFLAGS} $< -o $@
 
-packet-o-matic: ${MAIN_OBJS} ${CORE_OBJS} ${MATCH_OBJS} ${INPUT_OBJS} ${TARGET_OBJS} ${RULES_OBJS} ${CONNTRACK_OBJS}
+packet-o-matic: ${MAIN_OBJS} ${CORE_OBJS} ${MATCH_OBJS} ${INPUT_OBJS} ${TARGET_OBJS} ${RULES_OBJS} ${CONNTRACK_OBJS} ${HELPER_OBJS}
 	gcc -o packet-o-matic ${LIBS} ${CORE_OBJS} ${MAIN_OBJS} ${RULES_OBJS}
 
 input.o: input.h

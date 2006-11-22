@@ -1,4 +1,8 @@
 
+* 2006/11/25 Guy Martin <gmsoft@tuxicoman.be>
+Make match_udp inclusive when looking for ports.
+Initial helper implementation and helper IPv4.
+
 * 2006/11/07 Guy Martin <gmsoft@tuxicoman.be>
 Move the timer code out of conntrack for future helper use.
 

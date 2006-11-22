@@ -20,7 +20,7 @@
 
 
 #include "rules.h"
-
+#include "helper.h"
 
 int match_undefined_id;
 
@@ -30,6 +30,8 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 
 	
 	struct rule_list *r = rules;
+
+	frame += start;
 	
 	// OPTIMIZE THIS
 	match_undefined_id = match_get_type("undefined");
@@ -41,7 +43,7 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 
 	do {
 		if (r->node && r->node->match && r->node->match->match_type == first_layer)
-			if (node_match(frame, start, len, r->node))
+			if (node_match(frame, 0, len, r->node))
 				if (r->target)
 					target_process(r->target, r->node, frame, len);
 
@@ -52,7 +54,7 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 	return 1;
 }
 
-int node_match(void *frame, unsigned int start, unsigned int len, struct rule_node *node) {
+inline int node_match(void *frame, unsigned int start, unsigned int len, struct rule_node *node) {
 
 	struct match *m = node->match;
 
@@ -62,7 +64,7 @@ int node_match(void *frame, unsigned int start, unsigned int len, struct rule_no
 	}
 
 	int result;
-	
+
 	result = match_eval(m, frame, start, len);
 	
 	unsigned int new_len;
@@ -74,24 +76,29 @@ int node_match(void *frame, unsigned int start, unsigned int len, struct rule_no
 
 	len = new_len;
 
+	// Does this layer needs a little help ?
+	if (helper_need_help(frame, m))
+		return 0;
+	
 	if (result == 0)
 		return 0;
 
 	if (!node->a)
 		return 1;
 
-
 	if (!node->b) {
+		node->a->match->prev = m;
 		if (m->next_layer == match_undefined_id)
 			m->next_layer = node->a->match->match_type;
 		if (node->a->match && node->a->match->match_type == m->next_layer && node_match(frame, m->next_start, len, node->a)) {
 			m->next = node->a->match;
-			node->a->match->prev = m;
 			return 1;
 		}
 		return 0;
 	} else if (node->andor) { // AND = 1
 
+		node->a->match->prev = m;
+		node->b->match->prev = m;
 
 		if (node->b->match && ((m->next_layer == match_undefined_id) || (node->a->match->match_type == m->next_layer)) && node->b->match->match_type == m->next_layer) {
 			int aresult, bresult;
@@ -101,8 +108,6 @@ int node_match(void *frame, unsigned int start, unsigned int len, struct rule_no
 			bresult = node_match(frame, m->next_start, len, node->b);
 			if (bresult == 0)
 				return 0;
-			node->a->match->prev = m;
-			node->b->match->prev = m;
 			// If both match, it means both have the same next_layer and thus next_start
 			// We can thus choose only the first one
 			m->next = node->a->match;
