@@ -41,8 +41,6 @@ int helper_init() {
 
 	dprint("Helper initialized\n");
 
-	timers_init();
-	
 	return 1;
 
 }

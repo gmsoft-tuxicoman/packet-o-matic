@@ -28,7 +28,9 @@ char *target_pcap_params[PARAMS_NUM][3] = {
 
 int match_ethernet_id;
 
-int target_register_pcap(struct target_reg *r) {
+struct target_functions *tg_functions;
+
+int target_register_pcap(struct target_reg *r, struct target_functions *tg_funcs) {
 
 	copy_params(r->params_name, target_pcap_params, 0, PARAMS_NUM);
 	copy_params(r->params_help, target_pcap_params, 2, PARAMS_NUM);
@@ -39,6 +41,7 @@ int target_register_pcap(struct target_reg *r) {
 	r->close = target_close_pcap;
 	r->cleanup = target_cleanup_pcap;
 
+	tg_functions = tg_funcs;
 
 	return 1;
 
@@ -58,7 +61,7 @@ int target_init_pcap(struct target *t) {
 
 	copy_params(t->params_value, target_pcap_params, 1, PARAMS_NUM);
 
-	match_ethernet_id = (*t->match_register) ("ethernet");
+	match_ethernet_id = (*tg_functions->match_register) ("ethernet");
 	if (match_ethernet_id == -1)
 		return 0;
 	struct target_priv_pcap *priv = malloc(sizeof(struct target_priv_pcap));

@@ -61,7 +61,9 @@ char *target_tcpkill_params[PARAMS_NUM][3] = {
 
 int match_ipv4_id, match_ipv6_id, match_tcp_id, match_ethernet_id;
 
-int target_register_tcpkill(struct target_reg *r) {
+struct target_functions *tg_functions;
+
+int target_register_tcpkill(struct target_reg *r, struct target_functions *tg_funcs) {
 
 	copy_params(r->params_name, target_tcpkill_params, 0, PARAMS_NUM);
 	copy_params(r->params_help, target_tcpkill_params, 2, PARAMS_NUM);
@@ -72,6 +74,8 @@ int target_register_tcpkill(struct target_reg *r) {
 	r->process = target_process_tcpkill;
 	r->close = target_close_tcpkill;
 	r->cleanup = target_cleanup_tcpkill;
+
+	tg_functions = tg_funcs;
 
 
 	return 1;
@@ -94,10 +98,10 @@ int target_init_tcpkill(struct target *t) {
 	copy_params(t->params_value, target_tcpkill_params, 1, PARAMS_NUM);
 
 
-	match_ipv4_id = (*t->match_register) ("ipv4");
-	match_ipv6_id = (*t->match_register) ("ipv6");
-	match_tcp_id = (*t->match_register) ("tcp");
-	match_ethernet_id = (*t->match_register) ("ethernet");
+	match_ipv4_id = (*tg_functions->match_register) ("ipv4");
+	match_ipv6_id = (*tg_functions->match_register) ("ipv6");
+	match_tcp_id = (*tg_functions->match_register) ("tcp");
+	match_ethernet_id = (*tg_functions->match_register) ("ethernet");
 	if (match_tcp_id == -1)
 		return 0;
 

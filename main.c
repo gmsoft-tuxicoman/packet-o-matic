@@ -142,11 +142,11 @@ int main(int argc, char *argv[]) {
 	}
 
 
-	// Conntrack must be initialized before registering any conntrack
+	// Init the stuff
 	conntrack_init();
-
-	// Init the helpers
 	helper_init();
+	timers_init();
+	target_init();
 
 	struct conf *c = config_alloc();
 
@@ -190,6 +190,7 @@ int main(int argc, char *argv[]) {
 	conntrack_cleanup();
 	helper_cleanup();
 	timers_cleanup();
+	target_cleanup();
 	config_cleanup(c);
 
 

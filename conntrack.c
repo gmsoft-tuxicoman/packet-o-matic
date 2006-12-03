@@ -47,8 +47,6 @@ int conntrack_init() {
 	ct_funcs->dequeue_timer = timer_dequeue;
 
 	dprint("Conntrack initialized\n");
-
-	timers_init();
 	
 	return 1;
 

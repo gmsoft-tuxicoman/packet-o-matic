@@ -40,7 +40,7 @@ struct target_priv_tap {
 
 };
 
-int target_register_tap();
+int target_register_tap(struct target_reg *r, struct target_functions *tg_funcs);
 
 int target_init_tap(struct target *t);
 int target_open_tap(struct target *t);

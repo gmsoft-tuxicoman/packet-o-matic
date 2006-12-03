@@ -34,7 +34,9 @@ char *target_dump_payload_params[PARAMS_NUM][3] = {
 	{"prefix", "dump", "prefix of dumped files including directory"},
 };
 
-int target_register_dump_payload(struct target_reg *r) {
+struct target_functions *tg_functions;
+
+int target_register_dump_payload(struct target_reg *r, struct target_functions *tg_funcs) {
 
 	copy_params(r->params_name, target_dump_payload_params, 0, PARAMS_NUM);
 	copy_params(r->params_help, target_dump_payload_params, 2, PARAMS_NUM);
@@ -44,6 +46,7 @@ int target_register_dump_payload(struct target_reg *r) {
 	r->close_connection = target_close_connection_dump_payload;
 	r->cleanup = target_cleanup_dump_payload;
 
+	tg_functions = tg_funcs;
 
 	return 1;
 
@@ -69,7 +72,7 @@ int target_process_dump_payload(struct target *t, struct rule_node *node, void *
 
 	struct target_conntrack_priv_dump_payload *cp;
 
-	cp = (*t->conntrack_get_priv) (t, node, frame);
+	cp = (*tg_functions->conntrack_get_priv) (t, node, frame);
 
 	unsigned int start = node_find_payload_start(node);
 	unsigned int size = node_find_payload_size(node);
@@ -110,7 +113,7 @@ int target_process_dump_payload(struct target *t, struct rule_node *node, void *
 
 		ndprint("%s opened\n", filename);
 
-		(*t->conntrack_add_priv) (t, cp, node, frame);
+		(*tg_functions->conntrack_add_priv) (t, cp, node, frame);
 	}
 	
 	write(cp->fd, frame + start, size);

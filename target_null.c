@@ -28,7 +28,7 @@
 
 int match_ethernet_id;
 
-int target_register_null(struct target_reg *r) {
+int target_register_null(struct target_reg *r, struct target_functions *tg_funcs) {
 
 	r->process = target_process_null;
 

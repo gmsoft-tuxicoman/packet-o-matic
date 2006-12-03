@@ -70,11 +70,16 @@ int match_reconfig_ipv6(struct match *m) {
 	}
 	struct match_priv_ipv6 *p = m->match_priv;
 
-	int res = 1;
+	int res = 1, i;
+	unsigned char mask;
 	res &= inet_pton(AF_INET6, m->params_value[0], &p->saddr) > 0;
-	res &= sscanf(m->params_value[1], "%c", &p->snetmask) > 0;
+	res &= sscanf(m->params_value[1], "%c", &mask) > 0;
+	for (i = 0; i < mask; i++)
+		p->snetmask[i / 8] += (1 << (i % 8));
 	res &= inet_pton(AF_INET6, m->params_value[0], &p->daddr) > 0;
-	res &= sscanf(m->params_value[3], "%c", &p->dnetmask) > 0;
+	res &= sscanf(m->params_value[3], "%c", &mask) > 0;
+	for (i = 0; i < mask; i++)
+		p->dnetmask[i / 8] += (1 << (i % 8));
 
 
 	return res;
@@ -154,30 +159,10 @@ int match_eval_ipv6(struct match* match, void* frame, unsigned int start, unsign
 	struct match_priv_ipv6 *mp;
 	mp = match->match_priv;
 
-	char mask[16];
-	int i;
-
-	bzero(mask, 16);
-	for (i = 0; i < mp->snetmask; i++)
-		mask[i / 8] += (1 << (i % 8));
-
-	for (i = 0; i < 16; i++)
-		dprint("%X", mask[i]);
-	dprint("\n");
-
-
-	if (!mask_compare(mp->saddr.s6_addr, hdr->ip6_src.s6_addr, mask, 16))
+	if (!mask_compare(mp->saddr.s6_addr, hdr->ip6_src.s6_addr, mp->snetmask, 16))
 		return 0;
 
-	bzero(mask, 16);
-	for (i = 0; i < mp->dnetmask; i++)
-		mask[i / 8] += (1 << (i % 8));
-
-	for (i = 0; i < 16; i++)
-		dprint("%X", mask[i]);
-	dprint("\n");
-	
-	if (!mask_compare(mp->daddr.s6_addr, hdr->ip6_dst.s6_addr, mask, 16))
+	if (!mask_compare(mp->daddr.s6_addr, hdr->ip6_dst.s6_addr, mp->dnetmask, 16))
 		return 0;
 	return 1;
 }

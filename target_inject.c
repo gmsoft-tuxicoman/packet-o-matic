@@ -34,8 +34,9 @@ char *target_inject_params[PARAMS_NUM][3] = {
 };
 
 int match_ethernet_id;
+struct target_functions *tg_functions;
 
-int target_register_inject(struct target_reg *r) {
+int target_register_inject(struct target_reg *r, struct target_functions *tg_funcs) {
 
 	copy_params(r->params_name, target_inject_params, 0, PARAMS_NUM);
 	copy_params(r->params_help, target_inject_params, 2, PARAMS_NUM);
@@ -46,6 +47,8 @@ int target_register_inject(struct target_reg *r) {
 	r->process = target_process_inject;
 	r->close = target_close_inject;
 	r->cleanup = target_cleanup_inject;
+
+	tg_functions = tg_funcs;
 
 
 	return 1;
@@ -68,7 +71,7 @@ int target_init_inject(struct target *t) {
 	copy_params(t->params_value, target_inject_params, 1, PARAMS_NUM);
 
 
-	match_ethernet_id = (*t->match_register) ("ethernet");
+	match_ethernet_id = (*tg_functions->match_register) ("ethernet");
 	if (match_ethernet_id == -1)
 		return 0;
 

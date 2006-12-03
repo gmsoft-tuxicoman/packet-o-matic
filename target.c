@@ -26,6 +26,20 @@
 
 
 struct target_reg *targets[MAX_TARGET];
+struct target_functions *tg_funcs;
+
+int target_init() {
+
+	tg_funcs = malloc(sizeof(struct target_functions));
+	tg_funcs->match_register = match_register;
+	tg_funcs->conntrack_add_priv = conntrack_add_target_priv;
+	tg_funcs->conntrack_get_priv = conntrack_get_target_priv;
+
+	dprint("Targets initialized\n");
+
+	return 1;
+
+}
 
 int target_register(const char *target_name) {
 
@@ -57,7 +71,7 @@ int target_register(const char *target_name) {
 			strcpy(name, "target_register_");
 			strcat(name, target_name);
 
-			int (*register_my_target) (struct target_reg *);
+			int (*register_my_target) (struct target_reg *, struct target_functions *);
 
 			
 			register_my_target = dlsym(handle, name);
@@ -70,7 +84,7 @@ int target_register(const char *target_name) {
 			bzero(my_target, sizeof(struct target_reg));
 
 			
-			if (!(*register_my_target) (my_target)) {
+			if (!(*register_my_target) (my_target, tg_funcs)) {
 				dprint("error while loading target %s. could not load target !\n", target_name);
 				return -1;
 			}
@@ -101,9 +115,6 @@ struct target *target_alloc(int target_type) {
 	}
 	struct target *t = malloc(sizeof(struct target));
 	t->target_type = target_type;
-	t->match_register = match_register;
-	t->conntrack_add_priv = conntrack_add_target_priv;
-	t->conntrack_get_priv = conntrack_get_target_priv;
 	
 	if (targets[target_type]->init)
 		if (!(*targets[target_type]->init) (t)) {
@@ -172,7 +183,7 @@ int target_close(struct target *t) {
 
 }
 
-int target_cleanup(struct target *t) {
+int target_cleanup_t(struct target *t) {
 
 	if (!t)
 		return 1;
@@ -181,7 +192,6 @@ int target_cleanup(struct target *t) {
 		(*targets[t->target_type]->cleanup) (t);
 	
 	free (t);
-	
 
 	return 1;
 
@@ -211,6 +221,15 @@ int target_unregister_all() {
 	return 1;
 
 }
+
+int target_cleanup() {
+
+	free(tg_funcs);
+
+	return 1;
+
+}
+
 
 void target_print_help() {
 

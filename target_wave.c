@@ -37,7 +37,9 @@ char *target_wave_params[PARAMS_NUM][3] = {
 
 unsigned int match_rtp_id;
 
-int target_register_wave(struct target_reg *r) {
+struct target_functions *tg_functions;
+
+int target_register_wave(struct target_reg *r, struct target_functions *tg_funcs) {
 
 	copy_params(r->params_name, target_wave_params, 0, PARAMS_NUM);
 	copy_params(r->params_help, target_wave_params, 2, PARAMS_NUM);
@@ -47,6 +49,7 @@ int target_register_wave(struct target_reg *r) {
 	r->close_connection = target_close_connection_wave;
 	r->cleanup = target_cleanup_wave;
 
+	tg_functions = tg_funcs;
 
 	return 1;
 
@@ -64,7 +67,7 @@ int target_init_wave(struct target *t) {
 
 	copy_params(t->params_value, target_wave_params, 1, PARAMS_NUM);
 
-	match_rtp_id = (*t->match_register) ("rtp");
+	match_rtp_id = (*tg_functions->match_register) ("rtp");
 
 	return 1;
 }
@@ -75,7 +78,7 @@ int target_process_wave(struct target *t, struct rule_node *node, void *frame, u
 
 	struct target_conntrack_priv_wave *cp;
 
-	cp = (*t->conntrack_get_priv) (t, node, frame);
+	cp = (*tg_functions->conntrack_get_priv) (t, node, frame);
 
 	unsigned int start = node_find_payload_start(node);
 	unsigned int size = node_find_payload_size(node);
@@ -147,7 +150,7 @@ int target_process_wave(struct target *t, struct rule_node *node, void *frame, u
 
 		ndprint("%s opened\n", filename);
 
-		(*t->conntrack_add_priv) (t, cp, node, frame);
+		(*tg_functions->conntrack_add_priv) (t, cp, node, frame);
 
 
 

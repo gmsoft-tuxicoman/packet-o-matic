@@ -29,7 +29,9 @@ char *target_tap_params[PARAMS_NUM][3] = {
 
 int match_ethernet_id;
 
-int target_register_tap(struct target_reg *r) {
+struct target_functions *tg_functions;
+
+int target_register_tap(struct target_reg *r, struct target_functions *tg_funcs) {
 
 	copy_params(r->params_name, target_tap_params, 0, PARAMS_NUM);
 	copy_params(r->params_help, target_tap_params, 2, PARAMS_NUM);
@@ -40,6 +42,7 @@ int target_register_tap(struct target_reg *r) {
 	r->close = target_close_tap;
 	r->cleanup = target_cleanup_tap;
 
+	tg_functions = tg_funcs;
 
 	return 1;
 
@@ -60,7 +63,7 @@ int target_init_tap(struct target *t) {
 
 	copy_params(t->params_value, target_tap_params, 1, PARAMS_NUM);
 
-	match_ethernet_id = (*t->match_register) ("ethernet");
+	match_ethernet_id = (*tg_functions->match_register) ("ethernet");
 	if (match_ethernet_id == -1)
 		return 0;
 

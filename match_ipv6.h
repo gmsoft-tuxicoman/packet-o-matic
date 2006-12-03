@@ -30,9 +30,9 @@
 struct match_priv_ipv6 {
 
 	struct in6_addr saddr;
-	unsigned char snetmask;
+	unsigned char snetmask[16];
 	struct in6_addr daddr;
-	unsigned char dnetmask;
+	unsigned char dnetmask[16];
 };
 
 
