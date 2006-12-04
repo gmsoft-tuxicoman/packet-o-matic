@@ -33,6 +33,8 @@ struct match_priv_ipv6 {
 	unsigned char snetmask[16];
 	struct in6_addr daddr;
 	unsigned char dnetmask[16];
+	unsigned int flabel;
+	unsigned int flabelmask;
 };
 
 

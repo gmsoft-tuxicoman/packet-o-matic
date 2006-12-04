@@ -23,14 +23,15 @@
 
 #include "match_ipv6.h"
 
-#define PARAMS_NUM 4
+#define PARAMS_NUM 5
 
 char *match_ipv6_params[PARAMS_NUM][3] = {
 
 	{ "saddr", "::", "source ip address" },
-	{ "snetmask", "::", "netmask of the source" },
+	{ "snetmask", "0", "netmask of the source" },
 	{ "daddr", "::", "destination ip address" },
-	{ "dnetmask", "::", "netmask of the netmask" },
+	{ "dnetmask", "0", "netmask of the netmask" },
+	{ "flabel", "0/0", "Flow label"}, 
 
 };
 
@@ -63,27 +64,39 @@ int match_init_ipv6(struct match *m) {
 
 int match_reconfig_ipv6(struct match *m) {
 
-
 	if (!m->match_priv) {
 		m->match_priv = malloc(sizeof(struct match_priv_ipv6));
 		bzero(m->match_priv, sizeof(struct match_priv_ipv6));
 	}
 	struct match_priv_ipv6 *p = m->match_priv;
 
-	int res = 1, i;
-	unsigned char mask;
-	res &= inet_pton(AF_INET6, m->params_value[0], &p->saddr) > 0;
-	res &= sscanf(m->params_value[1], "%c", &mask) > 0;
-	for (i = 0; i < mask; i++)
-		p->snetmask[i / 8] += (1 << (i % 8));
-	res &= inet_pton(AF_INET6, m->params_value[0], &p->daddr) > 0;
-	res &= sscanf(m->params_value[3], "%c", &mask) > 0;
-	for (i = 0; i < mask; i++)
-		p->dnetmask[i / 8] += (1 << (i % 8));
+	int res=1, i;
+	unsigned char mask = 0;
 
+	res &= inet_pton(AF_INET6, m->params_value[0], &p->saddr) > 0;
+	res &= sscanf(m->params_value[1], "%hhu", &mask) > 0;
+	bzero(p->snetmask, 16);
+	for (i = 0; i < (mask / 8); i++)
+		p->snetmask[i] = 255;
+	if (mask % 8)
+		p->snetmask[i] = 2 << ((8 - (mask % 8)) - 1);
+	
+	res &= inet_pton(AF_INET6, m->params_value[2], &p->daddr) > 0;
+	res &= sscanf(m->params_value[3], "%hhu", &mask) > 0;
+	bzero(p->dnetmask, 16);
+	for (i = 0; i < (mask / 8); i++)
+		p->dnetmask[i] = 255;
+	if (mask % 8)
+		p->dnetmask[i] = 2 << ((8 - (mask % 8)) - 1);
+
+	// flowlabel
+	if (sscanf(m->params_value[4], "%5X/%5X", &p->flabel, &p->flabelmask) == 1)
+			p->flabelmask= 0xfffff;
+	else
+			res &= 0;
 
 	return res;
-
+	
 }
 
 int match_eval_ipv6(struct match* match, void* frame, unsigned int start, unsigned int len) {
@@ -161,9 +174,17 @@ int match_eval_ipv6(struct match* match, void* frame, unsigned int start, unsign
 
 	if (!mask_compare(mp->saddr.s6_addr, hdr->ip6_src.s6_addr, mp->snetmask, 16))
 		return 0;
-
+	ndprint("source OK\n");
+	
 	if (!mask_compare(mp->daddr.s6_addr, hdr->ip6_dst.s6_addr, mp->dnetmask, 16))
 		return 0;
+	ndprint("dest OK\n");
+	
+	// flow label
+	if ((mp->flabel & mp->flabelmask) != (ntohl(hdr->ip6_flow) & mp->flabelmask))
+		return 0;
+	ndprint("label OK\n");
+	
 	return 1;
 }
 
