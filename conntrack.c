@@ -115,43 +115,47 @@ int conntrack_register(const char *conntrack_name) {
 
 }
 
-int conntrack_add_target_priv(struct target *t, void *priv, struct rule_node *n, void* frame) {
-
-	__u32 hash;
-	hash = conntrack_hash(n, frame);
+struct conntrack_entry *conntrack_create_entry(struct rule_node *n, void* frame, __u32 hash) {
 
 	struct conntrack_entry *ce;
-	ce = conntrack_get_entry(hash, n, frame);
 
-	struct conntrack_privs *cp;
+	ce = malloc(sizeof(struct conntrack_entry));
+	bzero(ce, sizeof(struct conntrack_entry));
+	ce->next = ct_table[hash];
+	ct_table[hash] = ce;
+	ce->hash = hash;
 
-	if (!ce) {
-		ce = malloc(sizeof(struct conntrack_entry));
-		bzero(ce, sizeof(struct conntrack_entry));
-		ce->next = ct_table[hash];
-		ct_table[hash] = ce;
-		ce->hash = hash;
-
-		struct match *m = n->match;
-		// TODO : add matches in the opposite direction for speed
-		while (m) {
-			if (conntracks[m->match_type] && conntracks[m->match_type]->alloc_match_priv) {
-				int start = 0;
-				if (m->prev)
-					start = m->prev->next_start;
-				void *priv = (*conntracks[m->match_type]->alloc_match_priv) (frame, start, ce);
-				cp = malloc(sizeof(struct conntrack_privs));
-				cp->priv_type = m->match_type;
-				cp->priv = priv;
-				cp->next = ce->match_privs;
-				ce->match_privs = cp;
-			}
-			m = m->next;
+	struct match *m = n->match;
+	// TODO : add matches in the opposite direction for speed
+	while (m) {
+		if (conntracks[m->match_type] && conntracks[m->match_type]->alloc_match_priv) {
+			int start = 0;
+			if (m->prev)
+				start = m->prev->next_start;
+			void *priv = (*conntracks[m->match_type]->alloc_match_priv) (frame, start, ce);
+			struct conntrack_privs *cp;
+			cp = malloc(sizeof(struct conntrack_privs));
+			cp->priv_type = m->match_type;
+			cp->priv = priv;
+			cp->next = ce->match_privs;
+			ce->match_privs = cp;
 		}
+		m = m->next;
 	}
+
+	ndprint("Conntrack entry 0x%x created\n", (unsigned) ce);
+
+	return ce;
+}
+
+int conntrack_add_target_priv(struct target *t, void *priv, struct conntrack_entry *ce) {
+
+	if (!ce)
+		return 0;
 
 	// Let's see if that priv_type is already present
 
+	struct conntrack_privs *cp;
 	cp = ce->target_privs;
 
 	while (cp) {
@@ -173,19 +177,15 @@ int conntrack_add_target_priv(struct target *t, void *priv, struct rule_node *n,
 	cp->priv_type = t->target_type;
 	cp->priv = priv;
 
+	ndprint("Target priv 0x%x added to conntrack 0x%x\n", (unsigned) priv, (unsigned) ce);
+
 	
 	return 1;
 }
 
 
-void *conntrack_get_target_priv(struct target *t, struct rule_node *n, void *frame) {
+void *conntrack_get_target_priv(struct target *t, struct conntrack_entry *ce) {
 
-
-	__u32 hash;
-	hash = conntrack_hash(n, frame);
-
-	struct conntrack_entry *ce;
-	ce = conntrack_get_entry(hash, n, frame);
 
 	if (!ce)
 		return NULL;
@@ -228,15 +228,18 @@ __u32 conntrack_hash(struct rule_node *n, void *frame) {
 	return hash;
 }
 
-struct conntrack_entry *conntrack_get_entry(__u32 hash, struct rule_node *n, void *frame) {
+struct conntrack_entry *conntrack_get_entry(struct rule_node *n, void *frame) {
 	
 	// Doublecheck that we are talking about the right thing
+
+	__u32 hash;
+	hash = conntrack_hash(n, frame);
 
 	struct conntrack_entry *ce;
 	ce = ct_table[hash];
 
 	if (!ce)
-		return NULL;
+		return conntrack_create_entry(n, frame, hash);
 		
 	struct conntrack_privs *cp;
 	cp = ce->match_privs;
@@ -253,6 +256,8 @@ struct conntrack_entry *conntrack_get_entry(__u32 hash, struct rule_node *n, voi
 
 		cp = cp->next;
 	}
+
+	ndprint("Found conntrack 0x%x\n", (unsigned) ce);
 
 	return ce;
 

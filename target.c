@@ -32,6 +32,7 @@ int target_init() {
 
 	tg_funcs = malloc(sizeof(struct target_functions));
 	tg_funcs->match_register = match_register;
+	tg_funcs->conntrack_get_entry = conntrack_get_entry;
 	tg_funcs->conntrack_add_priv = conntrack_add_target_priv;
 	tg_funcs->conntrack_get_priv = conntrack_get_target_priv;
 

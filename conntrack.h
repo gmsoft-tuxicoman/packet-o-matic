@@ -68,10 +68,11 @@ struct conntrack_privs {
 
 int conntrack_init();
 int conntrack_register(const char *name);
-int conntrack_add_target_priv(struct target*, void *priv, struct rule_node *n, void* frame);
-void *conntrack_get_target_priv(struct target*, struct rule_node *n, void *frame);
+int conntrack_add_target_priv(struct target*, void* priv, struct conntrack_entry *ce);
+void *conntrack_get_target_priv(struct target*, struct conntrack_entry *ce);
 __u32 conntrack_hash(struct rule_node *n, void *frame);
-struct conntrack_entry *conntrack_get_entry(__u32 hash, struct rule_node *n, void *frame);
+struct conntrack_entry *conntrack_get_entry(struct rule_node *n, void *frame);
+struct conntrack_entry *conntrack_create_entry(struct rule_node *n, void *frame, __u32 hash);
 int conntrack_do_timer(void * ce);
 struct timer *conntrack_timer_alloc(struct conntrack_entry *ce);
 int conntrack_cleanup();

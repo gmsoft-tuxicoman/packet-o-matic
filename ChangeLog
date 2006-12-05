@@ -1,3 +1,7 @@
+* 2006/12/05 Guy Martin <gmsoft@tuxicoman.be>
+Make conntrack use a conntrack_entry to reference a connection.
+Fix target_wave for duplicate rtp packets.
+
 * 2006/12/03 Arnaud Ligot <spyroux@spyroux.be>
 Fixed ipv6 netmask support
 Added Flow label support

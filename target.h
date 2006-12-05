@@ -49,8 +49,9 @@ struct target_reg {
 struct target_functions {
 
 	int (*match_register) (const char *);
-	int (*conntrack_add_priv) (struct target* t, void *priv, struct rule_node *n, void* frame);
-	void* (*conntrack_get_priv) (struct target *t, struct rule_node *n, void *frame);
+	struct conntrack_entry* (*conntrack_get_entry) (struct rule_node *n, void* frame);
+	int (*conntrack_add_priv) (struct target* t, void *priv, struct conntrack_entry *ce);
+	void* (*conntrack_get_priv) (struct target *t, struct conntrack_entry *ce);
 
 };
 

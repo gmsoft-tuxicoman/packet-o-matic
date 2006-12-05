@@ -70,19 +70,22 @@ int target_init_dump_payload(struct target *t) {
 
 int target_process_dump_payload(struct target *t, struct rule_node *node, void *frame, unsigned int len) {
 
-	struct target_conntrack_priv_dump_payload *cp;
-
-	cp = (*tg_functions->conntrack_get_priv) (t, node, frame);
 
 	unsigned int start = node_find_payload_start(node);
 	unsigned int size = node_find_payload_size(node);
 
+	// Do process if there is nothing to save
+	if (size == 0)
+		return 1;
+
+	struct conntrack_entry *ce = (*tg_functions->conntrack_get_entry) (node, frame);
+
+	struct target_conntrack_priv_dump_payload *cp;
+
+	cp = (*tg_functions->conntrack_get_priv) (t, ce);
 
 	if (!cp) {
 
-		// Do not create a file is there is nothing to save
-		if (size == 0)
-			return 1;
 
 		// New connection
 		cp = malloc(sizeof(struct target_conntrack_priv_dump_payload));
@@ -113,7 +116,7 @@ int target_process_dump_payload(struct target *t, struct rule_node *node, void *
 
 		ndprint("%s opened\n", filename);
 
-		(*tg_functions->conntrack_add_priv) (t, cp, node, frame);
+		(*tg_functions->conntrack_add_priv) (t, cp, ce);
 	}
 	
 	write(cp->fd, frame + start, size);

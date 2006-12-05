@@ -76,12 +76,20 @@ int target_init_wave(struct target *t) {
 
 int target_process_wave(struct target *t, struct rule_node *node, void *frame, unsigned int len) {
 
-	struct target_conntrack_priv_wave *cp;
-
-	cp = (*tg_functions->conntrack_get_priv) (t, node, frame);
-
 	unsigned int start = node_find_payload_start(node);
 	unsigned int size = node_find_payload_size(node);
+
+	// Do not create a file is there is nothing to save
+	if (start >= len)
+		return 1;
+
+	struct conntrack_entry *ce;
+
+	ce = (*tg_functions->conntrack_get_entry) (node, frame);
+
+	struct target_conntrack_priv_wave *cp;
+
+	cp = (*tg_functions->conntrack_get_priv) (t, ce);
 
 	int rtp_start = node_find_header_start(node, match_rtp_id);
 	struct rtphdr *rtphdr;
@@ -89,9 +97,6 @@ int target_process_wave(struct target *t, struct rule_node *node, void *frame, u
 
 	if (!cp) {
 
-		// Do not create a file is there is nothing to save
-		if (start >= len)
-			return 1;
 
 		// Allocate the audio header
 		struct au_hdr *auhdr;
@@ -150,11 +155,13 @@ int target_process_wave(struct target *t, struct rule_node *node, void *frame, u
 
 		ndprint("%s opened\n", filename);
 
-		(*tg_functions->conntrack_add_priv) (t, cp, node, frame);
+		(*tg_functions->conntrack_add_priv) (t, cp, ce);
 
 
 
 		cp->last_seq = ntohs(rtphdr->seq_num) - 1;
+
+		ndprint("Last seq 1 for fd %u is %u\n", cp->fd, cp->last_seq);
 
 		write(cp->fd, auhdr, sizeof(struct au_hdr));
 
@@ -168,7 +175,9 @@ int target_process_wave(struct target *t, struct rule_node *node, void *frame, u
 	
 	cp->last_seq++;
 
-	if (cp->last_seq != cur_seq) {
+	ndprint("Last seq for fd %u is %u\n", cp->fd, cp->last_seq);
+
+	if (cp->last_seq < cur_seq) {
 		char *buffer = malloc(size);
 		switch (rtphdr->payload_type) {
 			case 1: // G.711U
@@ -180,6 +189,7 @@ int target_process_wave(struct target *t, struct rule_node *node, void *frame, u
 		}
 
 		while (cp->last_seq != cur_seq) { // Fill with 0
+			ndprint("RTP Packet missed, last seq %u, cur seq %u\n", cp->last_seq, cur_seq);
 			write(cp->fd, buffer, size);
 			cp->last_seq++;
 		}
