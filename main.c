@@ -147,6 +147,7 @@ int main(int argc, char *argv[]) {
 	helper_init();
 	timers_init();
 	target_init();
+	rules_init();
 
 	struct conf *c = config_alloc();
 

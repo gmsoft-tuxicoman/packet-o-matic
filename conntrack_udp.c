@@ -44,7 +44,7 @@ int conntrack_register_udp(struct conntrack_reg *r, struct conntrack_functions *
 }
 
 
-__u32 conntrack_get_hash_udp(void *frame, unsigned int start) {
+__u32 conntrack_get_hash_udp(void *frame, unsigned int start, unsigned int flags) {
 
 	struct udphdr* hdr;
 	
@@ -52,14 +52,27 @@ __u32 conntrack_get_hash_udp(void *frame, unsigned int start) {
 
 	// Compute the hash
 
-	__u32 udp_hash = jhash_1word((hdr->source << 16) |  hdr->dest, INITVAL);
+	__u32 udp_hash;
+	switch (flags) {
+		case CT_DIR_NONE:
+		case CT_DIR_FWD:
+			udp_hash = jhash_1word((hdr->source << 16) |  hdr->dest, INITVAL);
+			break;
 
+		case CT_DIR_REV:
+			udp_hash = jhash_1word((hdr->dest << 16) |  hdr->source, INITVAL);
+			break;
+
+		default:
+			ndprint("Error, unknown direction for conntrack\n");
+			return 0;
+	}
 
 	return udp_hash;
 
 }
 
-int conntrack_doublecheck_udp(void *frame, unsigned int start, void *priv, struct conntrack_entry *ce) {
+int conntrack_doublecheck_udp(void *frame, unsigned int start, void *priv, unsigned int flags) {
 
 	struct udphdr* hdr;
 	hdr = frame + start;
@@ -69,8 +82,23 @@ int conntrack_doublecheck_udp(void *frame, unsigned int start, void *priv, struc
 	struct conntrack_priv_udp *p;
 	p = priv;
 	
-	if (p->sport != hdr->source || p->dport != hdr->dest)
-		return 0;
+	switch (flags) {
+		case CT_DIR_NONE:
+		case CT_DIR_FWD:
+			if (p->sport != hdr->source || p->dport != hdr->dest)
+				return 0;
+			break;
+
+		case CT_DIR_REV:
+			if (p->sport != hdr->dest || p->dport != hdr->source)
+				return 0;
+			break;
+		
+		default:
+			ndprint("Error, unknown direction for conntrack\n");
+			return 0;
+	}
+
 
 
 	// Remove the timer from the queue

@@ -49,6 +49,7 @@ struct rule_list {
 	struct target *target; // what to do if we match
 };
 
+int rules_init();
 
 int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list *rules, int first_layer);
 

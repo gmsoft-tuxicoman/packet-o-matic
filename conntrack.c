@@ -29,7 +29,8 @@
 #define INITVAL 0xdf92b6eb
 
 struct conntrack_reg *conntracks[MAX_CONNTRACK];
-struct conntrack_entry *ct_table[CONNTRACK_SIZE];
+struct conntrack_list *ct_table[CONNTRACK_SIZE];
+struct conntrack_list *ct_table_rev[CONNTRACK_SIZE];
 struct conntrack_functions *ct_funcs;
 
 
@@ -37,8 +38,10 @@ int conntrack_init() {
 
 	int i;
 	
-	for (i = 0; i < CONNTRACK_SIZE; i ++)
+	for (i = 0; i < CONNTRACK_SIZE; i ++) {
 		ct_table[i] = NULL;
+		ct_table_rev[i] = NULL;
+	}
 
 	ct_funcs = malloc(sizeof(struct conntrack_functions));
 	ct_funcs->alloc_timer = conntrack_timer_alloc;
@@ -115,15 +118,38 @@ int conntrack_register(const char *conntrack_name) {
 
 }
 
-struct conntrack_entry *conntrack_create_entry(struct rule_node *n, void* frame, __u32 hash) {
+struct conntrack_entry *conntrack_create_entry(struct rule_node *n, void* frame, __u32 hash, __u32 hash_rev) {
 
+	
+	struct conntrack_list *cl, *cl_rev;
+
+	cl = malloc(sizeof(struct conntrack_list));
+	bzero(cl, sizeof(struct conntrack_list));
+
+	cl_rev = malloc(sizeof(struct conntrack_list));
+	bzero(cl_rev, sizeof(struct conntrack_list));
+
+	// Make those two conntrack_list linked
+	cl->rev = cl_rev;
+	cl_rev->rev = cl;
+	
 	struct conntrack_entry *ce;
 
 	ce = malloc(sizeof(struct conntrack_entry));
 	bzero(ce, sizeof(struct conntrack_entry));
-	ce->next = ct_table[hash];
-	ct_table[hash] = ce;
-	ce->hash = hash;
+
+	ce->full_hash = hash;
+
+	cl->ce = ce;
+	cl->hash = hash;
+	cl->next = ct_table[hash];
+	ct_table[hash] = cl;
+
+	cl_rev->ce = ce;
+	cl_rev->hash = hash_rev;
+	cl_rev->next = ct_table_rev[hash_rev];
+	ct_table_rev[hash_rev] = cl_rev;
+
 
 	struct match *m = n->match;
 	// TODO : add matches in the opposite direction for speed
@@ -148,7 +174,7 @@ struct conntrack_entry *conntrack_create_entry(struct rule_node *n, void* frame,
 	return ce;
 }
 
-int conntrack_add_target_priv(struct target *t, void *priv, struct conntrack_entry *ce) {
+int conntrack_add_target_priv(struct target *t, void *priv, struct conntrack_entry *ce, unsigned int flags) {
 
 	if (!ce)
 		return 0;
@@ -203,7 +229,7 @@ void *conntrack_get_target_priv(struct target *t, struct conntrack_entry *ce) {
 }
 
 
-__u32 conntrack_hash(struct rule_node *n, void *frame) {
+__u32 conntrack_hash(struct rule_node *n, void *frame, unsigned int flags) {
 
 
 	struct match *m;
@@ -215,9 +241,11 @@ __u32 conntrack_hash(struct rule_node *n, void *frame) {
 	while (m) {
 
 		if (conntracks[m->match_type]) {
-			int start = node_find_header_start(n, m->match_type);
-			res = (*conntracks[m->match_type]->get_hash) (frame, start);
-			hash = jhash_2words(hash, res, INITVAL);
+			if (!flags || (flags & conntracks[m->match_type]->flags)) {
+				int start = node_find_header_start(n, m->match_type);
+				res = (*conntracks[m->match_type]->get_hash) (frame, start, flags);
+				hash = jhash_2words(hash, res, INITVAL);
+			}
 
 		}
 		m = m->next;
@@ -230,38 +258,74 @@ __u32 conntrack_hash(struct rule_node *n, void *frame) {
 
 struct conntrack_entry *conntrack_get_entry(struct rule_node *n, void *frame) {
 	
-	// Doublecheck that we are talking about the right thing
 
 	__u32 hash;
-	hash = conntrack_hash(n, frame);
+
+	// Let's start by calculating the full hash
+
+	hash = conntrack_hash(n, frame, CT_DIR_NONE);
+
+	struct conntrack_list *cl;
+	cl = ct_table[hash];
 
 	struct conntrack_entry *ce;
-	ce = ct_table[hash];
+	ce = conntrack_find(cl, n, frame, CT_DIR_NONE);
 
-	if (!ce)
-		return conntrack_create_entry(n, frame, hash);
-		
+
+	if (!ce) { // Conntrack not found. Let's try the opposite direction
+		// We need the match the forward hash in the reverse table
+		__u32 hash_fwd = conntrack_hash(n, frame, CT_DIR_FWD);	
+		cl = ct_table_rev[hash_fwd];
+		ce = conntrack_find(cl, n, frame, CT_DIR_REV);
+	}
+
+	if (!ce) { // Ok conntrack not found. Let's create a new one
+		__u32 hash_rev;
+		hash_rev = conntrack_hash(n, frame, CT_DIR_REV);
+		ce = conntrack_create_entry(n, frame, hash, hash_rev);
+	}
+
+
+	return ce;
+
+}
+
+struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct rule_node *n, void *frame, unsigned int flags) {
+
+	if (!cl)
+		return NULL;
+
+	struct conntrack_entry *ce;
+	ce = cl->ce;
+
 	struct conntrack_privs *cp;
 	cp = ce->match_privs;
 
 	while (cp) {
+
 		int start = node_find_header_start(n, cp->priv_type);
-		if (!(*conntracks[cp->priv_type]->doublecheck) (frame, start, cp->priv, ce)) {
-			ce = ce->next; // If it's not the right conntrack entry, go to next one
-			if (!ce)
-				return NULL; // No entry matched
-			cp = ce->match_privs;
-			continue;
+
+		if (!flags || (flags & conntracks[cp->priv_type]->flags)) { 
+
+			if (!(*conntracks[cp->priv_type]->doublecheck) (frame, start, cp->priv, flags)) {
+
+				cl = cl->next; // If it's not the right conntrack entry, go to next one
+				if (!cl)
+					return NULL; // No entry matched
+				ce = cl->ce;
+				cp = ce->match_privs;
+				continue;
+			}
 		}
 
 		cp = cp->next;
 	}
 
-	ndprint("Found conntrack 0x%x\n", (unsigned) ce);
+	ndprint("Found conntrack 0x%x, hash 0x%x\n", (unsigned) ce, ce->full_hash);
 
 	return ce;
-
 }
+
 int conntrack_close_connnection (struct conntrack_entry *ce) {
 
 
@@ -289,23 +353,66 @@ int conntrack_close_connnection (struct conntrack_entry *ce) {
 		free(tmp);
 	}
 
-	// Free the conntrack_entry itself
-	
+	// Free the conntrack lists
 
-	if (ct_table[ce->hash] == ce) {
-		ct_table[ce->hash] = ce->next;
-	} else {
-		struct conntrack_entry *tmpce;
-		tmpce = ct_table[ce->hash];
-		while (tmpce->next) {
-			if (tmpce->next == ce) {
-				tmpce->next = ce->next;
-				break;
-			}
-			tmpce = tmpce->next;
-		}
-	}
+	struct conntrack_list *cl;
 	
+	cl = ct_table[ce->full_hash];
+
+	// Find out the right conntrack_list
+	while (cl) {
+		if (cl->ce == ce)
+			break;
+		cl = cl->next;
+	}
+
+	// Dequeue the list if found
+	if (cl) {
+
+		struct conntrack_list *cltmp;
+	
+		// Remove in the forward table
+		if (ct_table[cl->hash] == cl)
+			ct_table[cl->hash] = cl->next;
+		else  {
+			cltmp = ct_table[cl->hash];
+			while (cltmp->next) {
+				if (cltmp->next == cl) {
+					cltmp->next = cl->next;
+					break;
+				}
+				cltmp = cltmp->next;
+			}
+		}
+
+		cltmp = cl;
+		free(cltmp);	
+		
+
+		// Remove in the reverse table
+		cl = cl->rev;
+
+		if (ct_table_rev[cl->hash] == cl)
+			ct_table_rev[cl->hash] = cl->next;
+		else  {
+			cltmp = ct_table_rev[cl->hash];
+			while (cltmp->next) {
+				if (cltmp->next == cl) {
+					cltmp->next = cl->next;
+					break;
+				}
+				cltmp = cltmp->next;
+			}
+
+		}
+
+		free(cl);
+	
+	} else
+		dprint("Warning, conntrack_list not found for conntrack 0x%u\n", (unsigned) ce);
+
+	// Free the conntrack_entry itself
+
 	free (ce);
 
 
@@ -320,7 +427,7 @@ int conntrack_cleanup() {
 
 	for (i = 0; i < CONNTRACK_SIZE; i ++) {
 		while (ct_table[i]) {
-			conntrack_close_connnection(ct_table[i]);
+			conntrack_close_connnection(ct_table[i]->ce);
 		}
 	}
 

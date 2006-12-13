@@ -31,28 +31,44 @@ int conntrack_register_ipv4(struct conntrack_reg *r, struct conntrack_functions 
 	r->doublecheck = conntrack_doublecheck_ipv4;
 	r->alloc_match_priv = conntrack_alloc_match_priv_ipv4;
 	r->cleanup_match_priv = conntrack_cleanup_match_priv_ipv4;
+	r->flags = CT_DIR_BOTH;
 	
 	
 	return 1;
 }
 
 
-__u32 conntrack_get_hash_ipv4(void *frame, unsigned int start) {
+__u32 conntrack_get_hash_ipv4(void *frame, unsigned int start, unsigned int flags) {
 
 	struct iphdr* hdr;
 	
 	hdr = frame + start;	
 
 	// Compute the hash
+	
+	__u32 ipv4_hash;
+	
+	switch (flags) {
+		case CT_DIR_NONE:
+		case CT_DIR_FWD:
+			ipv4_hash = jhash_2words(hdr->saddr, hdr->daddr, INITVAL);
+			break;
 
-	__u32 ipv4_hash = jhash_2words(hdr->saddr, hdr->daddr, INITVAL);
+		case CT_DIR_REV:
+			ipv4_hash = jhash_2words(hdr->daddr, hdr->saddr, INITVAL);
+			break;
+
+		default:
+			ndprint("Error, unknown direction for conntrack\n");
+			return 0;
+	}
 
 
 	return ipv4_hash;
 
 }
 
-int conntrack_doublecheck_ipv4(void *frame, unsigned int start, void *priv, struct conntrack_entry *ce) {
+int conntrack_doublecheck_ipv4(void *frame, unsigned int start, void *priv, unsigned int flags) {
 
 	
 
@@ -64,8 +80,22 @@ int conntrack_doublecheck_ipv4(void *frame, unsigned int start, void *priv, stru
 	struct conntrack_priv_ipv4 *p;
 	p = priv;
 	
-	if (p->saddr != hdr->saddr || p->daddr != hdr->daddr)
-		return 0;
+	switch (flags) {
+		case CT_DIR_NONE:
+		case CT_DIR_FWD:
+			if (p->saddr != hdr->saddr || p->daddr != hdr->daddr)
+				return 0;
+			break;
+
+		case CT_DIR_REV:
+			if (p->saddr != hdr->daddr || p->daddr != hdr->saddr)
+				return 0;
+			break;
+
+		default:
+			ndprint("Error, unknown direction for conntrack\n");
+			return 0;
+	}
 
 	return 1;
 }

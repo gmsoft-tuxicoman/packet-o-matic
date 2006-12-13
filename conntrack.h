@@ -27,20 +27,34 @@
 
 #include <linux/jhash.h>
 
+#define CT_DIR_NONE 0
+#define CT_DIR_FWD 1
+#define CT_DIR_REV 2
+#define CT_DIR_BOTH 3
+
 struct conntrack_entry {
 
-	__u32 hash;
-	struct conntrack_entry *next;
+	__u32 full_hash;
 	struct conntrack_privs *match_privs;
 	struct conntrack_privs *target_privs;
+
+};
+
+struct conntrack_list {
+
+	__u32 hash;
+	struct conntrack_entry *ce;
+	struct conntrack_list *next;
+	struct conntrack_list *rev;
 
 };
 
 struct conntrack_reg {
 
 	void *dl_handle;
-	__u32 (*get_hash) (void* frame, unsigned int);
-	int (*doublecheck) (void *frame, unsigned int start, void *priv, struct conntrack_entry *ce);
+	unsigned int flags;
+	__u32 (*get_hash) (void* frame, unsigned int start, unsigned int flags);
+	int (*doublecheck) (void *frame, unsigned int start, void *priv, unsigned int flags);
 	void* (*alloc_match_priv) (void *frame, unsigned int start, struct conntrack_entry *ce);
 	int (*cleanup_match_priv) (void *priv);
 	int (*conntrack_do_timeouts) (int (*conntrack_close_connection)(struct conntrack_entry *ce));
@@ -63,16 +77,18 @@ struct conntrack_privs {
 	struct conntrack_privs *next;
 	int priv_type;
 	void *priv;
+	unsigned int flags; // To store direction info
 
 };
 
 int conntrack_init();
 int conntrack_register(const char *name);
-int conntrack_add_target_priv(struct target*, void* priv, struct conntrack_entry *ce);
+int conntrack_add_target_priv(struct target*, void* priv, struct conntrack_entry *ce, unsigned int flags);
 void *conntrack_get_target_priv(struct target*, struct conntrack_entry *ce);
-__u32 conntrack_hash(struct rule_node *n, void *frame);
+__u32 conntrack_hash(struct rule_node *n, void *frame, unsigned int flags);
+struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct rule_node *n, void *frame, unsigned int flags);
 struct conntrack_entry *conntrack_get_entry(struct rule_node *n, void *frame);
-struct conntrack_entry *conntrack_create_entry(struct rule_node *n, void *frame, __u32 hash);
+struct conntrack_entry *conntrack_create_entry(struct rule_node *n, void *frame, __u32 hash, __u32 hash_rev);
 int conntrack_do_timer(void * ce);
 struct timer *conntrack_timer_alloc(struct conntrack_entry *ce);
 int conntrack_cleanup();

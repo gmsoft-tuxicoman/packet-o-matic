@@ -31,13 +31,14 @@ int conntrack_register_ipv6(struct conntrack_reg *r, struct conntrack_functions 
 	r->doublecheck = conntrack_doublecheck_ipv6;
 	r->alloc_match_priv = conntrack_alloc_match_priv_ipv6;
 	r->cleanup_match_priv = conntrack_cleanup_match_priv_ipv6;
+	r->flags = CT_DIR_BOTH;
 	
 	
 	return 1;
 }
 
 
-__u32 conntrack_get_hash_ipv6(void *frame, unsigned int start) {
+__u32 conntrack_get_hash_ipv6(void *frame, unsigned int start, unsigned int flags) {
 
 	struct ip6_hdr* hdr;
 	
@@ -45,14 +46,34 @@ __u32 conntrack_get_hash_ipv6(void *frame, unsigned int start) {
 
 	// Compute the hash
 
-	__u32 ipv6_hash = jhash(hdr->ip6_src.s6_addr32, 8, INITVAL);
 
+	char addrs[32];
+	
+	switch (flags) {
+		case CT_DIR_NONE:
+		case CT_DIR_FWD:
+			memcpy(hdr->ip6_src.s6_addr, addrs, 16);
+			memcpy(hdr->ip6_dst.s6_addr, addrs + 16, 16);
+			break;
+
+		case CT_DIR_REV:
+			memcpy(hdr->ip6_dst.s6_addr, addrs, 16);
+			memcpy(hdr->ip6_src.s6_addr, addrs + 16, 16);
+			break;
+
+		default:
+			ndprint("Error, unknown direction for conntrack\n");
+			return 0;
+	}
+
+
+	__u32 ipv6_hash = jhash(addrs, 8, INITVAL);
 
 	return ipv6_hash;
 
 }
 
-int conntrack_doublecheck_ipv6(void *frame, unsigned int start, void *priv, struct conntrack_entry *ce) {
+int conntrack_doublecheck_ipv6(void *frame, unsigned int start, void *priv, unsigned int flags) {
 
 	
 
@@ -65,9 +86,26 @@ int conntrack_doublecheck_ipv6(void *frame, unsigned int start, void *priv, stru
 	p = priv;
 	
 	int i;
-	for (i = 0; i < 16; i++)
-		if (hdr->ip6_src.s6_addr[i] != p->saddr.s6_addr[i] || hdr->ip6_dst.s6_addr[i] != p->daddr.s6_addr[i])
+
+	switch (flags) {
+
+		case CT_DIR_NONE:
+		case CT_DIR_FWD:
+			for (i = 0; i < 16; i++)
+				if (hdr->ip6_src.s6_addr[i] != p->saddr.s6_addr[i] || hdr->ip6_dst.s6_addr[i] != p->daddr.s6_addr[i])
+					return 0;
+			break;
+
+		case CT_DIR_REV:
+			for (i = 0; i < 16; i++)
+				if (hdr->ip6_src.s6_addr[i] != p->daddr.s6_addr[i] || hdr->ip6_dst.s6_addr[i] != p->saddr.s6_addr[i])
+					return 0;
+			break;
+		default:
+			ndprint("Error, unknown direction for conntrack\n");
 			return 0;
+
+	}
 
 	return 1;
 }

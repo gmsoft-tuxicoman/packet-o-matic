@@ -35,6 +35,7 @@ int conntrack_register_rtp(struct conntrack_reg *r, struct conntrack_functions *
 	r->doublecheck = conntrack_doublecheck_rtp;
 	r->alloc_match_priv = conntrack_alloc_match_priv_rtp;
 	r->cleanup_match_priv = conntrack_cleanup_match_priv_rtp;
+	r->flags = CT_DIR_NONE;
 
 	ct_functions = ct_funcs;
 	
@@ -42,7 +43,7 @@ int conntrack_register_rtp(struct conntrack_reg *r, struct conntrack_functions *
 }
 
 
-__u32 conntrack_get_hash_rtp(void *frame, unsigned int start) {
+__u32 conntrack_get_hash_rtp(void *frame, unsigned int start, unsigned int flags) {
 
 	struct rtphdr* hdr;
 	
@@ -58,7 +59,7 @@ __u32 conntrack_get_hash_rtp(void *frame, unsigned int start) {
 
 }
 
-int conntrack_doublecheck_rtp(void *frame, unsigned int start, void *priv, struct conntrack_entry *ce) {
+int conntrack_doublecheck_rtp(void *frame, unsigned int start, void *priv, unsigned int flags) {
 
 	
 
