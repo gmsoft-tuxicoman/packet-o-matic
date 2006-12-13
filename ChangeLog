@@ -1,10 +1,14 @@
+* 2006/12/13 Guy Martin <gmsoft@tuxicoman.be>
+Some more work to support bidir conntrack.
+Don't forget to init the rules in main.c.
+
 * 2006/12/05 Guy Martin <gmsoft@tuxicoman.be>
 Make conntrack use a conntrack_entry to reference a connection.
 Fix target_wave for duplicate rtp packets.
 
 * 2006/12/03 Arnaud Ligot <spyroux@spyroux.be>
-Fixed ipv6 netmask support
-Added Flow label support
+Fixed ipv6 netmask support.
+Added Flow label support.
 
 * 2006/12/03 Guy Martin <gmsoft@tuxicoman.be>
 Compute the ipv6 netmasks when parsing param.
