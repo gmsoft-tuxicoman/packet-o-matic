@@ -50,7 +50,7 @@ struct target_functions {
 
 	int (*match_register) (const char *);
 	struct conntrack_entry* (*conntrack_get_entry) (struct rule_node *n, void* frame);
-	int (*conntrack_add_priv) (struct target* t, void *priv, struct conntrack_entry *ce);
+	int (*conntrack_add_priv) (struct target*, void* priv, struct conntrack_entry *ce);
 	void* (*conntrack_get_priv) (struct target *t, struct conntrack_entry *ce);
 
 };

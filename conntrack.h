@@ -83,7 +83,7 @@ struct conntrack_privs {
 
 int conntrack_init();
 int conntrack_register(const char *name);
-int conntrack_add_target_priv(struct target*, void* priv, struct conntrack_entry *ce, unsigned int flags);
+int conntrack_add_target_priv(struct target*, void* priv, struct conntrack_entry *ce);
 void *conntrack_get_target_priv(struct target*, struct conntrack_entry *ce);
 __u32 conntrack_hash(struct rule_node *n, void *frame, unsigned int flags);
 struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct rule_node *n, void *frame, unsigned int flags);

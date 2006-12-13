@@ -1,6 +1,7 @@
 * 2006/12/13 Guy Martin <gmsoft@tuxicoman.be>
 Some more work to support bidir conntrack.
 Don't forget to init the rules in main.c.
+Fix bug when receiving IPv4 packets of invalid size.
 
 * 2006/12/05 Guy Martin <gmsoft@tuxicoman.be>
 Make conntrack use a conntrack_entry to reference a connection.

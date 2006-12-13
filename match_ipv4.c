@@ -90,16 +90,18 @@ int match_eval_ipv4(struct match* match, void* frame, unsigned int start, unsign
 	saddr.s_addr = hdr->saddr;
 	daddr.s_addr = hdr->daddr;
 
+	unsigned int hdr_len = hdr->ihl * 4;
+
 	ndprint("Processing IPv4 packet -> SRC : %s", inet_ntoa(saddr));
 	ndprint(" | DST : %s | proto : %u" , inet_ntoa(daddr), hdr->protocol);
 
-	if (hdr->ihl < 5)
+	if (hdr->ihl < 5 || ntohs(hdr->tot_len) < hdr_len)
 		return 0;
 
-	ndprint(" | IHL : %u", hdr->ihl * 4);
-	match->next_start = start + (hdr->ihl * 4);
-	match->next_size = ntohs(hdr->tot_len) - (hdr->ihl * 4);
-	ndprint(" | SIZE : %u\n", match->next_size);
+	ndprint(" | IHL : %u", hdr_len);
+	match->next_start = start + hdr_len;
+	match->next_size = ntohs(hdr->tot_len) - hdr_len;
+	ndprint(" | SIZE : %u", match->next_size);
 
 	switch (hdr->protocol) {
 		case IPPROTO_ICMP: // 1
@@ -122,6 +124,7 @@ int match_eval_ipv4(struct match* match, void* frame, unsigned int start, unsign
 			ndprint(" | Unhandled protocol\n");
 			match->next_layer = -1;
 	}
+
 	
 	if (!match->match_priv)
 		return 1;

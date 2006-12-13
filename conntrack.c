@@ -174,7 +174,7 @@ struct conntrack_entry *conntrack_create_entry(struct rule_node *n, void* frame,
 	return ce;
 }
 
-int conntrack_add_target_priv(struct target *t, void *priv, struct conntrack_entry *ce, unsigned int flags) {
+int conntrack_add_target_priv(struct target *t, void *priv, struct conntrack_entry *ce) {
 
 	if (!ce)
 		return 0;

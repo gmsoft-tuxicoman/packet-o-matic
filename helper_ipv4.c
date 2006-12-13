@@ -129,9 +129,13 @@ int helper_need_help_ipv4(void *frame, struct match *m) {
 			break;
 		tmp = tmp->next;
 	}
-
+	
 	unsigned int frag_start = start + (hdr->ihl * 4); // Make it the start of the payload
 	size_t frag_size = ntohs(hdr->tot_len) - (hdr->ihl * 4);
+
+	// Ignore invalid fragments
+	if (! (frag_size & 0xFFFF))
+		return 1;
 
 	if (frag_start + frag_size > m->prev->next_size + m->prev->next_start) {
 		dprint("Error, packet len missmatch dropping this frag\n");
