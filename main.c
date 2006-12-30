@@ -183,6 +183,7 @@ int main(int argc, char *argv[]) {
 			dprint("Error while reading. Abording\n");
 			break;
 		}
+		timers_process(); // This is not real-time timers but we don't really need it
 		if (len > 0)
 			do_rules(packet, 0, len, c->rules, first_layer);
 	}

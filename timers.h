@@ -48,6 +48,7 @@ struct timer_queue {
 
 
 void timers_handler(int signal);
+int timers_process();
 int timers_init();
 int timers_cleanup();
 struct timer *timer_alloc();

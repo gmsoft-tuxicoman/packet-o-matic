@@ -135,7 +135,7 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 
 
 		if (helper_need_help(frame, l)) // If it needs help, we don't process it
-			return 1;
+			goto err;
 	
 		// check the calculated size and adjust the max len of the packet
 		// the initial size may be too long as some padding could have been introduced by the input

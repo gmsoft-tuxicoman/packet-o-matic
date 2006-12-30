@@ -1,3 +1,7 @@
+* 2006/12/30 Guy Martin <gmsoft@tuxicoman.be>
+Fix memory leak in rules.c.
+Avoid deadlock with timer handling.
+
 * 2006/12/29 Guy Martin <gmsoft@tuxicoman.be>
 Changed main algo to first identify all the layers and then match.
 Conntrack are now bidirectional. Support will improve soon.

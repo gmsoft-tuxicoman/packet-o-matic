@@ -77,7 +77,19 @@ void check_queues (struct timer_queue *tq) {
 struct timer_queue *timer_queues;
 struct itimerval itimer;
 
+static int do_timers = 0;
+
 void timers_handler(int signal) {
+	do_timers = 1;	
+}
+
+
+int timers_process() {
+
+	if (!do_timers)
+		return 0;
+
+	do_timers = 0;
 
 	ndprint("Looking at timers ...\n");
 
@@ -96,6 +108,8 @@ void timers_handler(int signal) {
 		tq = tq->next;
 
 	}
+
+	return 1;
 }
 
 int timers_init() {
