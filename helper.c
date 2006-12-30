@@ -108,12 +108,12 @@ int helper_register(const char *helper_name) {
 
 }
 
-int helper_need_help(void *frame, struct match *m) {
+int helper_need_help(void *frame, struct layer *l) {
 
-	if (!helpers[m->match_type] || !helpers[m->match_type]->need_help)
+	if (!helpers[l->type] || !helpers[l->type]->need_help)
 		return 0;
 
-	return helpers[m->match_type]->need_help(frame, m);
+	return helpers[l->type]->need_help(frame, l);
 
 }
 

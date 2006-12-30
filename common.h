@@ -37,9 +37,11 @@
 #undef __KERNEL__
 
 
-#include "rules.h"
 
-unsigned int node_find_header_start(struct rule_node *node, int header_type);
+
+#include "match.h"
+
+unsigned int layer_find_start(struct layer *l, int header_type);
 
 #ifdef DEBUG
 #define dprint(x, y...) printf(x, ##y)

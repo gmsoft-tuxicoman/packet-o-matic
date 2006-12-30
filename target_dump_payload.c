@@ -68,17 +68,18 @@ int target_init_dump_payload(struct target *t) {
 }
 
 
-int target_process_dump_payload(struct target *t, struct rule_node *node, void *frame, unsigned int len) {
+int target_process_dump_payload(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce) {
 
 
-	unsigned int start = node_find_payload_start(node);
-	unsigned int size = node_find_payload_size(node);
+	struct layer *lastl = l;
+	while (lastl->next) {
+		if (lastl->next && lastl->next->payload_size == 0)
+			break;
+		lastl = lastl->next;
+	}
 
-	// Do process if there is nothing to save
-	if (size == 0)
+	if (lastl->payload_size == 0)
 		return 1;
-
-	struct conntrack_entry *ce = (*tg_functions->conntrack_get_entry) (node, frame);
 
 	struct target_conntrack_priv_dump_payload *cp;
 
@@ -116,10 +117,10 @@ int target_process_dump_payload(struct target *t, struct rule_node *node, void *
 
 		ndprint("%s opened\n", filename);
 
-		(*tg_functions->conntrack_add_priv) (t, cp, ce);
+		(*tg_functions->conntrack_add_priv) (t, cp, l, frame);
 	}
 	
-	write(cp->fd, frame + start, size);
+	write(cp->fd, frame + lastl->payload_start, lastl->payload_size);
 
 	return 1;
 };

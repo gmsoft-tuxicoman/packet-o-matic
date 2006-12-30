@@ -20,6 +20,7 @@
 
 
 #include "conntrack.h"
+#include "target.h"
 #include "timers.h"
 
 #define MAX_CONNTRACK MAX_MATCH
@@ -118,7 +119,7 @@ int conntrack_register(const char *conntrack_name) {
 
 }
 
-struct conntrack_entry *conntrack_create_entry(struct rule_node *n, void* frame, __u32 hash, __u32 hash_rev) {
+struct conntrack_entry *conntrack_create_entry(struct layer *l, void* frame) {
 
 	
 	struct conntrack_list *cl, *cl_rev;
@@ -132,6 +133,10 @@ struct conntrack_entry *conntrack_create_entry(struct rule_node *n, void* frame,
 	// Make those two conntrack_list linked
 	cl->rev = cl_rev;
 	cl_rev->rev = cl;
+
+
+	__u32 hash = conntrack_hash(l, frame, CT_DIR_NONE);	
+	__u32 hash_rev = conntrack_hash(l, frame, CT_DIR_REV);
 	
 	struct conntrack_entry *ce;
 
@@ -151,22 +156,21 @@ struct conntrack_entry *conntrack_create_entry(struct rule_node *n, void* frame,
 	ct_table_rev[hash_rev] = cl_rev;
 
 
-	struct match *m = n->match;
 	// TODO : add matches in the opposite direction for speed
-	while (m) {
-		if (conntracks[m->match_type] && conntracks[m->match_type]->alloc_match_priv) {
+	while (l) {
+		if (conntracks[l->type] && conntracks[l->type]->alloc_match_priv) {
 			int start = 0;
-			if (m->prev)
-				start = m->prev->next_start;
-			void *priv = (*conntracks[m->match_type]->alloc_match_priv) (frame, start, ce);
+			if (l->prev)
+				start = l->prev->payload_start;
+			void *priv = (*conntracks[l->type]->alloc_match_priv) (frame, start, ce);
 			struct conntrack_privs *cp;
 			cp = malloc(sizeof(struct conntrack_privs));
-			cp->priv_type = m->match_type;
+			cp->priv_type = l->type;
 			cp->priv = priv;
 			cp->next = ce->match_privs;
 			ce->match_privs = cp;
 		}
-		m = m->next;
+		l = l->next;
 	}
 
 	ndprint("Conntrack entry 0x%x created\n", (unsigned) ce);
@@ -174,18 +178,17 @@ struct conntrack_entry *conntrack_create_entry(struct rule_node *n, void* frame,
 	return ce;
 }
 
-int conntrack_add_target_priv(struct target *t, void *priv, struct conntrack_entry *ce) {
+int conntrack_add_priv(void *obj, void *priv, struct layer *l, void *frame) {
 
-	if (!ce)
-		return 0;
+	struct conntrack_entry *ce = conntrack_create_entry(l, frame);
 
 	// Let's see if that priv_type is already present
 
 	struct conntrack_privs *cp;
-	cp = ce->target_privs;
+	cp = ce->privs;
 
 	while (cp) {
-		if (cp->priv_type == t->target_type) {
+		if (cp->priv_obj == obj) {
 			dprint("Warning. Target priv already added\n");
 			return 0;
 		}
@@ -197,10 +200,10 @@ int conntrack_add_target_priv(struct target *t, void *priv, struct conntrack_ent
 	cp = malloc(sizeof(struct conntrack_privs));
 	bzero(cp, sizeof(struct conntrack_privs));
 
-	cp->next = ce->target_privs;
-	ce->target_privs = cp;
+	cp->next = ce->privs;
+	ce->privs = cp;
 
-	cp->priv_type = t->target_type;
+	cp->priv_obj = obj;
 	cp->priv = priv;
 
 	ndprint("Target priv 0x%x added to conntrack 0x%x\n", (unsigned) priv, (unsigned) ce);
@@ -210,16 +213,16 @@ int conntrack_add_target_priv(struct target *t, void *priv, struct conntrack_ent
 }
 
 
-void *conntrack_get_target_priv(struct target *t, struct conntrack_entry *ce) {
+void *conntrack_get_priv(void *obj, struct conntrack_entry *ce) {
 
 
 	if (!ce)
 		return NULL;
 
 	struct conntrack_privs *cp;
-	cp = ce->target_privs;
+	cp = ce->privs;
 	while (cp) {
-		if (cp->priv_type == t->target_type) {
+		if (cp->priv_obj == obj) {
 			return cp->priv;
 		}
 		cp = cp->next;
@@ -229,26 +232,23 @@ void *conntrack_get_target_priv(struct target *t, struct conntrack_entry *ce) {
 }
 
 
-__u32 conntrack_hash(struct rule_node *n, void *frame, unsigned int flags) {
+__u32 conntrack_hash(struct layer *l, void *frame, unsigned int flags) {
 
-
-	struct match *m;
-	m = n->match;
 
 	// Compute our hash for each layer
 	__u32 hash, res;
 	hash = INITVAL;
-	while (m) {
+	while (l) {
 
-		if (conntracks[m->match_type]) {
-			if (!flags || (flags & conntracks[m->match_type]->flags)) {
-				int start = node_find_header_start(n, m->match_type);
-				res = (*conntracks[m->match_type]->get_hash) (frame, start, flags);
+		if (conntracks[l->type]) {
+			if (!flags || (flags & conntracks[l->type]->flags)) {
+				int start = layer_find_start(l, l->type);
+				res = (*conntracks[l->type]->get_hash) (frame, start, flags);
 				hash = jhash_2words(hash, res, INITVAL);
 			}
 
 		}
-		m = m->next;
+		l = l->next;
 	}
 
 	hash %= CONNTRACK_SIZE;
@@ -256,41 +256,34 @@ __u32 conntrack_hash(struct rule_node *n, void *frame, unsigned int flags) {
 	return hash;
 }
 
-struct conntrack_entry *conntrack_get_entry(struct rule_node *n, void *frame) {
+struct conntrack_entry *conntrack_get_entry(struct layer *l, void *frame) {
 	
 
 	__u32 hash;
 
 	// Let's start by calculating the full hash
 
-	hash = conntrack_hash(n, frame, CT_DIR_NONE);
+	hash = conntrack_hash(l, frame, CT_DIR_NONE);
 
 	struct conntrack_list *cl;
 	cl = ct_table[hash];
 
 	struct conntrack_entry *ce;
-	ce = conntrack_find(cl, n, frame, CT_DIR_NONE);
+	ce = conntrack_find(cl, l, frame, CT_DIR_NONE);
 
 
 	if (!ce) { // Conntrack not found. Let's try the opposite direction
 		// We need the match the forward hash in the reverse table
-		__u32 hash_fwd = conntrack_hash(n, frame, CT_DIR_FWD);	
+		__u32 hash_fwd = conntrack_hash(l, frame, CT_DIR_FWD);	
 		cl = ct_table_rev[hash_fwd];
-		ce = conntrack_find(cl, n, frame, CT_DIR_REV);
+		ce = conntrack_find(cl, l, frame, CT_DIR_REV);
 	}
-
-	if (!ce) { // Ok conntrack not found. Let's create a new one
-		__u32 hash_rev;
-		hash_rev = conntrack_hash(n, frame, CT_DIR_REV);
-		ce = conntrack_create_entry(n, frame, hash, hash_rev);
-	}
-
 
 	return ce;
 
 }
 
-struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct rule_node *n, void *frame, unsigned int flags) {
+struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct layer *l, void *frame, unsigned int flags) {
 
 	if (!cl)
 		return NULL;
@@ -303,7 +296,7 @@ struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct rule_no
 
 	while (cp) {
 
-		int start = node_find_header_start(n, cp->priv_type);
+		int start = layer_find_start(l, cp->priv_type);
 
 		if (!flags || (flags & conntracks[cp->priv_type]->flags)) { 
 
@@ -330,7 +323,7 @@ int conntrack_close_connnection (struct conntrack_entry *ce) {
 
 
 	struct conntrack_privs *p, *tmp;
-	p = ce->target_privs;
+	p = ce->privs;
 	while (p) {
 		if (p->priv)
 			target_close_connection(p->priv_type, p->priv);

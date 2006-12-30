@@ -144,6 +144,7 @@ int main(int argc, char *argv[]) {
 
 	// Init the stuff
 	conntrack_init();
+	match_init();
 	helper_init();
 	timers_init();
 	target_init();

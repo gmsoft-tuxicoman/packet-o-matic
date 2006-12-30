@@ -23,11 +23,12 @@
 #define __HELPER_H__
 
 #include "common.h"
+#include "rules.h"
 
 struct helper_reg {
 
 	void *dl_handle;
-	int (*need_help) (void *frame, struct match *m);
+	int (*need_help) (void *frame, struct layer *l);
 	int (*cleanup) (void);
 
 
@@ -45,7 +46,7 @@ struct helper_functions {
 
 int helper_init();
 int helper_register(const char *name);
-int helper_need_help(void *frame, struct match *m);
+int helper_need_help(void *frame, struct layer *l);
 int helper_process_packet(void *frame, unsigned int len, int first_layer);
 int helper_set_feedback_rules(struct rule_list *rules);
 int helper_unregister_all();

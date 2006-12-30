@@ -42,6 +42,7 @@ int match_register_ethernet(struct match_reg *r) {
 
 	r->init = match_init_ethernet;
 	r->reconfig = match_reconfig_ethernet;
+	r->identify = match_identify_ethernet;
 	r->eval = match_eval_ethernet;
 	r->cleanup = match_cleanup_ethernet;
 	
@@ -78,12 +79,12 @@ int match_reconfig_ethernet(struct match *m) {
 
 }
 
-int match_eval_ethernet(struct match* match, void* frame, unsigned int start, unsigned int len) {
-	
+int match_identify_ethernet(struct layer* match, void* frame, unsigned int start, unsigned int len) {
+
 	struct ethhdr *ehdr = frame + start;
 
-	match->next_start = start + sizeof(struct ethhdr);
-	match->next_size = len - sizeof(struct ethhdr);
+	match->payload_start = start + sizeof(struct ethhdr);
+	match->payload_size = len - sizeof(struct ethhdr);
 
 	ndprint("Processing ethernet frame -> SMAC : ");
 	ndprint_hex(ehdr->h_source, 6);
@@ -95,23 +96,26 @@ int match_eval_ethernet(struct match* match, void* frame, unsigned int start, un
 	switch (ntohs(ehdr->h_proto)) {
 		case 0x0800:
 			ndprint("| IPv4 packet\n");
-			match->next_layer = match_ipv4_id;
+			return  match_ipv4_id;
 			break;
 		case 0x0806:
 			ndprint("| ARP packet\n");
-			match->next_layer = match_arp_id;
+			return match_arp_id;
 			break;
 		case 0x86dd:
 			ndprint("| IPv6 packet\n");
-			match->next_layer = match_ipv6_id;
+			return match_ipv6_id;
 			break;
 		default:
 			ndprint("| Unhandled packet\n");
-			match->next_layer = -1;
 	}
 
-	if (!match->match_priv)
-		return 1;
+	return -1;
+}
+
+int match_eval_ethernet(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l) {
+	
+	struct ethhdr *ehdr = frame + start;
 
 	struct match_priv_ethernet *mp = match->match_priv;
 	

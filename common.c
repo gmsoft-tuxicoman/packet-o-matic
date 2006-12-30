@@ -36,27 +36,20 @@ void dprint_hex(unsigned char *str, unsigned int len) {
 #endif
 
 
-unsigned int node_find_header_start(struct rule_node *node, int header_type) {
+unsigned int layer_find_start(struct layer *l, int header_type) {
 	
-	if (!node) 
-		return -1;
-	
-
-	struct match *m = node->match;
-
-	if (!m)
+	if (!l)
 		return -1;
 
-	if(m->match_type == header_type) {
-		// Matched the start of the packet
-		return 0;
-	}
-	
 	do {
-		if(m->next_layer == header_type)
-			return m->next_start;
-		m = m->next;
-	} while(m);
+		if(l->type == header_type) {
+			if (l->prev)
+				return l->prev->payload_start;
+			else
+				return 0;
+		}
+		l = l->next;
+	} while(l);
 
 	return -1;
 }

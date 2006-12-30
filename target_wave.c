@@ -74,24 +74,29 @@ int target_init_wave(struct target *t) {
 
 
 
-int target_process_wave(struct target *t, struct rule_node *node, void *frame, unsigned int len) {
+int target_process_wave(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce) {
 
-	unsigned int start = node_find_payload_start(node);
-	unsigned int size = node_find_payload_size(node);
+	struct layer *rtpl = l;
+	while (rtpl) {
+		if (rtpl->type == match_rtp_id)
+			break;
+		rtpl = rtpl->next;
+	}
+
+	if (!rtpl) {
+		dprint("No RTP header found in this packet\n");
+		return 0;
+	}
 
 	// Do not create a file is there is nothing to save
-	if (start >= len)
+	if (rtpl->payload_size == 0)
 		return 1;
-
-	struct conntrack_entry *ce;
-
-	ce = (*tg_functions->conntrack_get_entry) (node, frame);
 
 	struct target_conntrack_priv_wave *cp;
 
 	cp = (*tg_functions->conntrack_get_priv) (t, ce);
 
-	int rtp_start = node_find_header_start(node, match_rtp_id);
+	int rtp_start = rtpl->prev->payload_start;
 	struct rtphdr *rtphdr;
 	rtphdr = frame + rtp_start;
 
@@ -155,7 +160,7 @@ int target_process_wave(struct target *t, struct rule_node *node, void *frame, u
 
 		ndprint("%s opened\n", filename);
 
-		(*tg_functions->conntrack_add_priv) (t, cp, ce);
+		(*tg_functions->conntrack_add_priv) (t, cp, l, frame);
 
 
 
@@ -178,28 +183,28 @@ int target_process_wave(struct target *t, struct rule_node *node, void *frame, u
 	ndprint("Last seq for fd %u is %u\n", cp->fd, cp->last_seq);
 
 	if (cp->last_seq < cur_seq) {
-		char *buffer = malloc(size);
+		char *buffer = malloc(rtpl->payload_size);
 		switch (rtphdr->payload_type) {
 			case 1: // G.711U
 			case 8: // G.711A
-				memset(buffer, 0x55, size);
+				memset(buffer, 0x55, rtpl->payload_size);
 				break;
 			default: 
-				memset(buffer, 0x0, size);
+				memset(buffer, 0x0, rtpl->payload_size);
 		}
 
 		while (cp->last_seq != cur_seq) { // Fill with 0
 			ndprint("RTP Packet missed, last seq %u, cur seq %u\n", cp->last_seq, cur_seq);
-			write(cp->fd, buffer, size);
+			write(cp->fd, buffer, rtpl->payload_size);
 			cp->last_seq++;
 		}
 
 		free(buffer);
 	}
 
-	cp->total_size += size;
+	cp->total_size += rtpl->payload_size;
 
-	write(cp->fd, frame + start, size);
+	write(cp->fd, frame + rtpl->payload_start, rtpl->payload_size);
 
 	return 1;
 };

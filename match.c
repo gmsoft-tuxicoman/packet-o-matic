@@ -19,11 +19,13 @@
  */
 
 
-
+#include "common.h"
 #include "match.h"
 
 
 struct match_reg *matchs[MAX_MATCH];
+
+int match_undefined_id;
 
 int match_register(const char *match_name) {
 
@@ -78,7 +80,7 @@ int match_register(const char *match_name) {
 			strcpy(matchs[i]->match_name, match_name);
 			matchs[i]->dl_handle = handle;
 
-			dprint("Match %s registered\n", match_name);
+			dprint("Match %s registered with id %u\n", match_name, i);
 
 
 			return i;
@@ -89,6 +91,13 @@ int match_register(const char *match_name) {
 
 	return -1;
 
+}
+
+int match_init() {
+
+	match_undefined_id = match_register("undefined");
+
+	return 1;
 }
 
 int match_get_type(const char *match_name) {
@@ -145,10 +154,18 @@ int match_set_param(struct match *m, char *name, char *value) {
 
 }
 
-
-inline int match_eval(struct match *m, void* frame, unsigned int start, unsigned int len) {
+inline int match_identify(struct layer *l, void* frame, unsigned int start, unsigned int len) {
 	
-	return (*matchs[m->match_type]->eval) (m, frame, start, len);
+	if (matchs[l->type]->identify)
+		return (*matchs[l->type]->identify) (l, frame, start, len);
+
+	return match_undefined_id;
+
+}
+
+inline int match_eval(struct match *m, void* frame, unsigned int start, unsigned int len, struct layer *l) {
+	
+	return (*matchs[m->match_type]->eval) (m, frame, start, len, l);
 
 }
 

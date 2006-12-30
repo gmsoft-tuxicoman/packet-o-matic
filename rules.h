@@ -47,15 +47,12 @@ struct rule_list {
 	struct rule_list *next; // next rule to process in the list
 	struct rule_node *node; // rule node to see if we can match the packet
 	struct target *target; // what to do if we match
+	unsigned int result; // true if the packet has to be processed
 };
 
 int rules_init();
 
 int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list *rules, int first_layer);
-
-unsigned int node_find_header_start(struct rule_node *node, int header_type);
-
-inline int node_match(void *frame, unsigned int start, unsigned int len, struct rule_node *node);
 
 int node_destroy(struct rule_node *node);
 

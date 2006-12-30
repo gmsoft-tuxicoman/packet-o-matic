@@ -45,7 +45,7 @@ struct target_priv_tcpkill {
 
 int target_init_tcpkill(struct target *t);
 int target_open_tcpkill(struct target *t);
-int target_process_tcpkill(struct target *t, struct rule_node *node, void *frame, unsigned int len);
+int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce);
 int target_close_tcpkill(struct target *t);
 int target_cleanup_tcpkill(struct target *t);
 

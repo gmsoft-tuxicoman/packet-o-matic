@@ -36,7 +36,7 @@ struct conntrack_entry {
 
 	__u32 full_hash;
 	struct conntrack_privs *match_privs;
-	struct conntrack_privs *target_privs;
+	struct conntrack_privs *privs;
 
 };
 
@@ -75,7 +75,8 @@ struct conntrack_functions {
 struct conntrack_privs {
 
 	struct conntrack_privs *next;
-	int priv_type;
+	unsigned int priv_type;
+	void *priv_obj;
 	void *priv;
 	unsigned int flags; // To store direction info
 
@@ -83,12 +84,12 @@ struct conntrack_privs {
 
 int conntrack_init();
 int conntrack_register(const char *name);
-int conntrack_add_target_priv(struct target*, void* priv, struct conntrack_entry *ce);
-void *conntrack_get_target_priv(struct target*, struct conntrack_entry *ce);
-__u32 conntrack_hash(struct rule_node *n, void *frame, unsigned int flags);
-struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct rule_node *n, void *frame, unsigned int flags);
-struct conntrack_entry *conntrack_get_entry(struct rule_node *n, void *frame);
-struct conntrack_entry *conntrack_create_entry(struct rule_node *n, void *frame, __u32 hash, __u32 hash_rev);
+int conntrack_add_priv(void*, void* priv, struct layer *l, void *frame);
+void *conntrack_get_priv(void*, struct conntrack_entry *ce);
+__u32 conntrack_hash(struct layer *l, void *frame, unsigned int flags);
+struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct layer *l, void *frame, unsigned int flags);
+struct conntrack_entry *conntrack_get_entry(struct layer *l, void *frame);
+struct conntrack_entry *conntrack_create_entry(struct layer *l, void *frame);
 int conntrack_do_timer(void * ce);
 struct timer *conntrack_timer_alloc(struct conntrack_entry *ce);
 int conntrack_cleanup();

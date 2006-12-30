@@ -42,6 +42,7 @@ int match_register_udp(struct match_reg *r) {
 
 	r->init = match_init_udp;
 	r->reconfig = match_reconfig_udp;
+	r->identify = match_identify_udp;
 	r->eval = match_eval_udp;
 	r->cleanup = match_cleanup_udp;
 
@@ -85,30 +86,35 @@ int match_reconfig_udp(struct match *m) {
 	return 1;
 }
 
-int match_eval_udp(struct match* match, void *frame, unsigned int start, unsigned int len) {
+int match_identify_udp(struct layer* match, void *frame, unsigned int start, unsigned int len) {
 	struct udphdr *hdr = frame + start;
+
+	ndprint("Processing UDP packet -> SPORT : %u | DPORT %u", ntohs(hdr->source), ntohs(hdr->dest));
+
+	match->payload_start = start + sizeof(struct udphdr);
+	match->payload_size = ntohs(hdr->len) - sizeof(struct udphdr);
+	ndprint(" | SIZE : %u\n", match->payload_size);
+
+	return match_undefined_id;
+
+}
+
+int match_eval_udp(struct match* match, void *frame, unsigned int start, unsigned int len, struct layer *l) {
+
+	struct udphdr *hdr = frame + start;
+
+	struct match_priv_udp *mp = match->match_priv;
 
 	unsigned short sport = ntohs(hdr->source);
 	unsigned short dport = ntohs(hdr->dest);
 	
-	ndprint("Processing UDP packet -> SPORT : %u | DPORT %u", sport, dport);
-
-	match->next_layer = match_undefined_id;
-	match->next_start = start + sizeof(struct udphdr);
-	match->next_size = len - sizeof(struct udphdr) - start;
-	ndprint(" | SIZE : %u\n", match->next_size);
-
-	if (!match->match_priv)
-		return 1;
-	
-	struct match_priv_udp *mp = match->match_priv;
 	
 	if (sport < mp->sport_min || sport > mp->sport_max)
 		return 0;
 	
 	if (dport < mp->dport_min || dport > mp->dport_max)
 		return 0;
-	
+
 	return 1;
 
 

@@ -33,123 +33,177 @@ int rules_init() {
 
 }
 
+inline int node_match(void *frame, unsigned int start, unsigned int len, struct rule_node *n, struct layer *l) {
+
+	if (!l)
+		return 0;
+
+	struct match *m = n->match;
+
+	int result = 1;
+
+	// The current layer is not identified. Let's see if we can match with the current match type
+	if (l->type == match_undefined_id) {
+		unsigned int next_layer;
+		l->type = m->match_type;
+		next_layer = match_identify(l, frame, l->prev->payload_start, l->prev->payload_size);
+		if (next_layer < 0) {
+			// restore the original value
+			l->type == match_undefined_id;
+			return 0;
+		} else {
+			l->next = malloc(sizeof(struct layer)); // This is fred in do_rules
+			bzero(l->next, sizeof(struct layer));
+			l->next->type = next_layer;
+		}
+
+	}
+
+
+
+	// Check if the rule correspond to what we identified
+	if (l->type != m->match_type)
+		return 0;
+
+	if (m->match_priv)
+		result = match_eval(m, frame, start, len, l);
+
+	if (result == 0)
+		return 0; // It doesn't match
+
+	if (!n->a)
+		return 1; // There is nothing else to match
+
+
+	if (!n->b) // There is only one next node
+		return node_match(frame, l->payload_start, l->payload_size, n->a, l->next);
+
+
+	if (n->andor) { // and
+		return node_match(frame, l->payload_start, l->payload_size, n->a, l->next) && node_match(frame, l->payload_start, l->payload_size, n->b, l->next);
+
+	} else { // or
+		return node_match(frame, l->payload_start, l->payload_size, n->a, l->next) || node_match(frame, l->payload_start, l->payload_size, n->b, l->next);
+
+	}
+	
+	// Never reached
+	
+	return 0;
+	
+
+}
+
 int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list *rules, int first_layer) {
 
 	
-	struct rule_list *r = rules;
 
 	frame += start;
 	len -= start;
 	
+	struct rule_list *r = rules;
 	if (r == NULL) {
 		dprint("No rules given !\n");
 		return 1;
 	}
 
-	do {
-		if (r->node && r->node->match && r->node->match->match_type == first_layer)
-			if (node_match(frame, 0, len, r->node))
-				if (r->target)
-					target_process(r->target, r->node, frame, len);
+	// Let's identify the layers as far as we can go
+	struct layer *layers, *l;
 
+	layers = malloc(sizeof(struct layer));
+	bzero(layers, sizeof(struct layer));
+	l = layers;
+	l->type = first_layer;
+	while (l && l->type != match_undefined_id) { // If it's undefined, it means we can't assume anything about the rest of the packet
+		l->next = malloc(sizeof(struct layer));
+		bzero(l->next, sizeof(struct layer));
+		l->next->prev = l;
+
+		// identify must populate payload_start and payload_size
+		if (l->prev)
+			l->next->type = match_identify(l, frame, l->prev->payload_start, l->prev->payload_size);
+		else
+			l->next->type = match_identify(l, frame, 0, len);
+
+		ndprint("next layer : %d\n", l->next->type);
+	
+		if (l->next->type == -1) {
+			free(l->next);
+			l->next = NULL;
+		}
+
+
+
+		if (helper_need_help(frame, l)) // If it needs help, we don't process it
+			return 1;
+	
+		// check the calculated size and adjust the max len of the packet
+		// the initial size may be too long as some padding could have been introduced by the input
+
+		unsigned int new_len = l->payload_start + l->payload_size;
+		if (new_len > len) {
+			ndprint("Error, new len greater than the computed maximum len or buffer (maximum %u, new %u). Not considering packet\n", len, new_len);
+			goto err;
+		}
+
+		len = new_len;
+
+
+		l = l->next;
+	}
+
+
+	// Now, check each rule and see if it matches
+
+	while (r) {
+
+		// If there is a conntrack_entry, it means one of the target added it's priv, so the packet needs to be processed
+		r->result = node_match(frame, 0, len, r->node, layers); // Get the result to fully populate layers
 		r = r->next;
-	}  while (r != NULL);
+
+	}
+
+	struct conntrack_entry *ce = conntrack_get_entry(layers, frame);
+
+	if (ce) { // We got a conntrack_entry, process the corresponding target
+		struct conntrack_privs *cp = ce->privs;
+		while (cp) {
+			r = rules;
+			while (r) {
+				if (r->target == cp->priv_obj) {
+					target_process(r->target, layers, frame, len, ce);
+					r->result = 0; // Do no process this rule if it matches
+				}
+				r = r->next;
+			}
+			cp = cp->next;
+		}
+	}
+
+	// Process the matched rules
+	r = rules;
+	while (r) {
+		if (r->result && r->target)
+				target_process(r->target, layers, frame, len, ce);
+		r = r->next;
+	}
+err:
+	l = layers;
+	ndprint("layer : ");
+	while (l) {
+		ndprint("%u, ", l->type);
+		layers = l->next;
+		free(l);
+		l = layers;
+	}
+
+	ndprint("\n");
 
 	
 	return 1;
 }
 
-inline int node_match(void *frame, unsigned int start, unsigned int len, struct rule_node *node) {
 
-	struct match *m = node->match;
-
-	if (!m) {
-		dprint("no match defined in rule\n");
-		return 1;
-	}
-
-	int result;
-
-	result = match_eval(m, frame, start, len);
-	
-	unsigned int new_len;
-	new_len = m->next_start + m->next_size;
-	if (new_len > len) {
-		ndprint("Error, new len greater than the computed maximum len or buffer (maximum %u, new %u)\n", len, new_len);
-		return 0;
-	}
-
-	len = new_len;
-
-	// Does this layer needs a little help ?
-	if (helper_need_help(frame, m))
-		return 0;
-	
-	if (result == 0)
-		return 0;
-
-	if (!node->a)
-		return 1;
-
-	if (!node->b) {
-		node->a->match->prev = m;
-
-		if (m->next_layer == match_undefined_id)
-			m->next_layer = node->a->match->match_type;
-		if (node->a->match && node->a->match->match_type == m->next_layer && node_match(frame, m->next_start, len, node->a)) {
-			m->next = node->a->match;
-			return 1;
-		}
-		return 0;
-	} else if (node->andor) { // AND = 1
-
-		node->a->match->prev = m;
-		node->b->match->prev = m;
-
-		if (node->b->match && ((m->next_layer == match_undefined_id) || (node->a->match->match_type == m->next_layer)) && node->b->match->match_type == m->next_layer) {
-			int aresult, bresult;
-			aresult = node_match(frame, m->next_start, len, node->a);
-			if (aresult == 0)
-				return 0;
-			bresult = node_match(frame, m->next_start, len, node->b);
-			if (bresult == 0)
-				return 0;
-			// If both match, it means both have the same next_layer and thus next_start
-			// We can thus choose only the first one
-			m->next = node->a->match;
-			if (m->next_layer == match_undefined_id)
-				m->next_layer = node->a->match->match_type;
-			return 1;
-		} else
-			return 0;
-	} else { // OR = 0
-		int aresult, bresult;
-		node->a->match->prev = m;
-		node->b->match->prev = m;
-
-		if (node->a->match && ((m->next_layer == match_undefined_id) || (node->a->match->match_type == m->next_layer))) {
-			aresult = node_match(frame, m->next_start, len, node->a);
-			m->next = node->a->match;
-			m->next_layer = node->a->match->match_type;
-		} else
-			aresult = 0;
-	
-		if (node->b->match && ((m->next_layer == match_undefined_id) || (node->b->match->match_type == m->next_layer))) {
-			bresult = node_match(frame, m->next_start, len, node->b);
-			m->next = node->b->match;
-			m->next_layer = node->b->match->match_type;
-		} else
-			bresult = 0;
-
-		return (aresult || bresult);
-			
-	}
-
-	// Never reached
-	return 0;
-	
-
-}
 
 int node_destroy(struct rule_node *node) {
 

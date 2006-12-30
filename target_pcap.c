@@ -101,7 +101,7 @@ int target_open_pcap(struct target *t) {
 }
 
 
-int target_process_pcap(struct target *t, struct rule_node *node, void *frame, unsigned int len) {
+int target_process_pcap(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce) {
 
 	struct target_priv_pcap *priv = t->target_priv;
 	
@@ -110,7 +110,7 @@ int target_process_pcap(struct target *t, struct rule_node *node, void *frame, u
 		return 0;
 	}
 	
-	int start = node_find_header_start(node, match_ethernet_id);
+	int start = layer_find_start(l, match_ethernet_id);
 
 	if (start == -1) {
 		dprint("Unable to find the start of the packet\n");

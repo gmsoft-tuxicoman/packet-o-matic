@@ -40,7 +40,8 @@ struct match_priv_tcp {
 int match_register_tcp();
 int match_init_tcp(struct match *m);
 int match_reconfig_tcp(struct match *m);
-int match_eval_tcp(struct match* match, void* frame, unsigned int start, unsigned int len);
+int match_identify_tcp(struct layer* match, void* frame, unsigned int start, unsigned int len);
+int match_eval_tcp(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l);
 int match_cleanup_tcp(struct match *m);
 
 #endif

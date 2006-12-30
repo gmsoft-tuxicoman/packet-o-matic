@@ -44,6 +44,7 @@ int match_register_ipv6(struct match_reg *r) {
 	
 	r->init = match_init_ipv6;
 	r->reconfig = match_reconfig_ipv6;
+	r->identify = match_identify_ipv6;
 	r->eval = match_eval_ipv6;
 	r->cleanup = match_cleanup_ipv6;
 
@@ -99,8 +100,8 @@ int match_reconfig_ipv6(struct match *m) {
 	
 }
 
-int match_eval_ipv6(struct match* match, void* frame, unsigned int start, unsigned int len) {
-	
+int match_identify_ipv6(struct layer* match, void* frame, unsigned int start, unsigned int len) {
+
 	struct ip6_hdr* hdr = frame + start;
 
 #ifdef NDEBUG	
@@ -112,15 +113,15 @@ int match_eval_ipv6(struct match* match, void* frame, unsigned int start, unsign
 	bzero(addrbuff, INET6_ADDRSTRLEN + 1);
 	inet_ntop(AF_INET6, &hdr->ip6_dst.s6_addr, addrbuff, INET6_ADDRSTRLEN);
 	ndprint(" | DST : %s" , addrbuff);
-
+	ndprint(" | SIZE : %u\n", match->payload_size);
 
 #endif
 
 	unsigned int nhdr = hdr->ip6_nxt;
-	match->next_size = ntohs(hdr->ip6_plen);
+	match->payload_size = ntohs(hdr->ip6_plen);
 
-	match->next_start = start +  sizeof(struct ip6_hdr);
-	while (match->next_start + 1 < len) {
+	match->payload_start = start +  sizeof(struct ip6_hdr);
+	while (match->payload_start + 1 < len) {
 
 		struct ip6_ext *ehdr;
 		ndprint(" | NHDR : %u", nhdr);
@@ -129,46 +130,44 @@ int match_eval_ipv6(struct match* match, void* frame, unsigned int start, unsign
 			case IPPROTO_ROUTING: // 43
 			case IPPROTO_FRAGMENT: // 44
 			case IPPROTO_DSTOPTS: // 60
-				ehdr = frame + match->next_start;
+				ehdr = frame + match->payload_start;
 				int hlen = (ehdr->ip6e_len + 1) * 8;
-				match->next_start += hlen;
-				match->next_size -= hlen;
+				match->payload_start += hlen;
+				match->payload_size -= hlen;
 				nhdr = ehdr->ip6e_nxt;
 				break;
 		
 			case IPPROTO_TCP: // 6
 				ndprint(" | TCP packet");
-				match->next_layer = match_tcp_id;
-				break;
+				return match_tcp_id;
+
 			case IPPROTO_UDP: // 17
 				ndprint(" | UDP packet");
-				match->next_layer = match_udp_id;
-				break;
+				return match_udp_id;
 
 			case IPPROTO_ICMPV6: // 58
 				ndprint(" | ICMPv6 packet");
-				match->next_layer = match_icmpv6_id;
-				break;
+				return match_icmpv6_id;
 
 			case IPPROTO_NONE: // 59
 				ndprint(" | Unknown packet");
-				match->next_layer = -1;
+				return -1;
 
 			default:
 				ndprint(" | Unhandled protocol");
-				match->next_layer = -1;
-				break;
+				return -1;
 
 		}
-		if (match->next_layer)
-			break;
 	}
 
-	ndprint(" | SIZE : %u\n", match->next_size);
 
-	if (!match->match_priv)
-		return 1;
+	return -1;
 
+}
+
+int match_eval_ipv6(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l) {
+	
+	struct ip6_hdr* hdr = frame + start;
 	struct match_priv_ipv6 *mp;
 	mp = match->match_priv;
 

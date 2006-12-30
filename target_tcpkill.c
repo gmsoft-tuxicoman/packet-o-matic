@@ -174,7 +174,7 @@ int target_open_tcpkill(struct target *t) {
 	return 1;
 }
 
-int target_process_tcpkill(struct target *t, struct rule_node *node, void *frame, unsigned int len) {
+int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce) {
 
 
 	struct target_priv_tcpkill *priv = t->target_priv;
@@ -182,7 +182,7 @@ int target_process_tcpkill(struct target *t, struct rule_node *node, void *frame
 
 	int ipv4start, ipv6start, tcpstart, i;
 
-	tcpstart = node_find_header_start(node, match_tcp_id);
+	tcpstart = layer_find_start(l, match_tcp_id);
 	if (tcpstart == -1) {
 		dprint("No TCP header found in this packet\n");
 		return 0;
@@ -190,8 +190,8 @@ int target_process_tcpkill(struct target *t, struct rule_node *node, void *frame
 
 	struct tcphdr *shdr = (struct tcphdr*) (frame + tcpstart);
 
-	ipv4start = node_find_header_start(node, match_ipv4_id);
-	ipv6start = node_find_header_start(node, match_ipv6_id);
+	ipv4start = layer_find_start(l, match_ipv4_id);
+	ipv6start = layer_find_start(l, match_ipv6_id);
 
 	// init sockaddr
 	struct sockaddr_storage addr;
@@ -229,13 +229,13 @@ int target_process_tcpkill(struct target *t, struct rule_node *node, void *frame
 	// In normal mode, we have to include the ethernet header
 	if (!priv->routed) {
 		int ethernetstart;
-		ethernetstart = node_find_header_start(node, match_ethernet_id);
+		ethernetstart = layer_find_start(l, match_ethernet_id);
 		if (ethernetstart == -1) {
 			dprint("No ethernet header found in this packet\n");
 			return 0;
 		}
 		
-		ipv6start = node_find_header_start(node, match_ipv6_id);
+		ipv6start = layer_find_start(l, match_ipv6_id);
 
 		if (ipv4start == -1 && ipv6start == -1) {
 			dprint("Neither IPv4 or IPv6 header found in this packet\n");

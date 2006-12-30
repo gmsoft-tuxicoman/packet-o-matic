@@ -30,6 +30,8 @@ char *match_rtp_params[PARAMS_NUM][3] = {
 
 };
 
+int match_undefined_id;
+
 int match_register_rtp(struct match_reg *r) {
 
 	copy_params(r->params_name, match_rtp_params, 0, PARAMS_NUM);
@@ -37,6 +39,7 @@ int match_register_rtp(struct match_reg *r) {
 
 	r->init = match_init_rtp;
 	r->reconfig = match_reconfig_rtp;
+	r->identify = match_identify_rtp;
 	r->eval = match_eval_rtp;
 	r->cleanup = match_cleanup_rtp;
 
@@ -47,6 +50,8 @@ int match_register_rtp(struct match_reg *r) {
 int match_init_rtp(struct match *m) {
 
 	copy_params(m->params_value, match_rtp_params, 1, PARAMS_NUM);
+
+	match_undefined_id = (*m->match_register) ("undefined");
 
 	return 1;
 
@@ -65,24 +70,24 @@ int match_reconfig_rtp(struct match *m) {
 	return sscanf(m->params_value[0], "%hhu", &(p->payload_type));
 }
 
-int match_eval_rtp(struct match* match, void *frame, unsigned int start, unsigned int len) {
+int match_identify_rtp(struct layer* match, void *frame, unsigned int start, unsigned int len) {
+
 	struct rtphdr *hdr = frame + start;
 
 	if ((len - start) < 12) {
 		ndprint("Invalid size for RTP packet\n");
-		return 0;
+		return -1;
 	}
 
 	
 
-	match->next_layer = -1; // Nothing else besides payload in RTP
 	int hdr_len;
 	hdr_len = 12; // Len up to ssrc included
 	hdr_len += hdr->csrc_count * 4;
 
 	if (len < (hdr_len + start)) {
 		ndprint("Invalid size for RTP packet\n");
-		return 0;
+		return -1;
 	}
 
 	ndprint("Processing RTP packet -> SSRC : %x | Payload type %u | SEQ : %04x", hdr->ssrc, hdr->payload_type, ntohs(hdr->seq_num));
@@ -99,22 +104,26 @@ int match_eval_rtp(struct match* match, void *frame, unsigned int start, unsigne
 		ndprint(" | Extension header %u bytes", ntohs(ext->length));
 		if (len < (hdr_len + start)) {
 			ndprint(" Invalid size for RTP packet\n");
-			return 0;
+			return -1;
 		}
 	}
-	match->next_start = start + hdr_len;
-	match->next_size = len - match->next_start;
+	match->payload_start = start + hdr_len;
+	match->payload_size = len - match->payload_start;
 
 	if (hdr->padding) {
-		match->next_size = *(((unsigned char*) (frame)) + len - 1);
+		match->payload_size = *(((unsigned char*) (frame)) + len - 1);
 		ndprint(" | Padding %u bytes", *(((unsigned char*) (frame)) + len - 1));
 	}
 
-	ndprint(" | SIZE %u\n", match->next_size);
+	ndprint(" | SIZE %u\n", match->payload_size);
 
-	if (!match->match_priv)
-		return 1;
+	return match_undefined_id;
+
+}
 	
+int match_eval_rtp(struct match* match, void *frame, unsigned int start, unsigned int len, struct layer *l) {
+
+	struct rtphdr *hdr = frame + start;
 	struct match_priv_rtp *mp = match->match_priv;
 
 	if (hdr->payload_type != mp->payload_type)

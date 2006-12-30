@@ -56,7 +56,7 @@ struct target_conntrack_priv_wave {
 int target_register_wave(struct target_reg *r, struct target_functions *tg_funcs);
 
 int target_init_wave(struct target *t);
-int target_process_wave(struct target *t, struct rule_node *node, void *frame, unsigned int len);
+int target_process_wave(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce);
 int target_close_connection_wave(void *conntrack_priv);
 int target_cleanup_wave(struct target *t);
 

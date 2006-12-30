@@ -15,13 +15,17 @@ RULES_OBJS = rules.o
 
 LIBS = -lpcap -ldl $(shell xml2-config --libs)
 
-all: packet-o-matic
+all: packet-o-matic modules
 
 
 %.so: %.c %.h
 	gcc -shared -fPIC ${CFLAGS} $< -o $@
 
-packet-o-matic: ${MAIN_OBJS} ${CORE_OBJS} ${MATCH_OBJS} ${INPUT_OBJS} ${TARGET_OBJS} ${RULES_OBJS} ${CONNTRACK_OBJS} ${HELPER_OBJS}
+
+modules: ${MATCH_OBJS} ${INPUT_OBJS} ${TARGET_OBJS} ${CONNTRACK_OBJS} ${HELPER_OBJS}
+
+
+packet-o-matic: ${MAIN_OBJS} ${CORE_OBJS} ${RULES_OBJS}
 	gcc -o packet-o-matic ${LIBS} ${CORE_OBJS} ${MAIN_OBJS} ${RULES_OBJS}
 
 input.o: input.h
@@ -31,6 +35,8 @@ target.o: target.h
 rules.o: rules.h
 conf.o: conf.h
 
+clean_modules:
+	rm ${MATCH_OBJS} ${INPUT_OBJS} ${TARGET_OBJS} ${CONNTRACK_OBJS} ${HELPER_OBJS}
 
-clean:
-	rm *.o *.so packet-o-matic
+clean: clean_modules
+	rm *.o packet-o-matic

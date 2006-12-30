@@ -91,16 +91,14 @@ int helper_ipv4_process_frags(struct helper_priv_ipv4 *p) {
 
 }
 
-int helper_need_help_ipv4(void *frame, struct match *m) {
+int helper_need_help_ipv4(void *frame, struct layer *l) {
 
 
 	struct iphdr* hdr;
-	unsigned int start = m->prev->next_start;
-
-	if (!m->prev) {
-		dprint("Helper ipv4 doesn't support raw ipv4\n");
+	unsigned int start = l->prev->payload_start;
+	if (!l->prev)
 		return 0;
-	}
+
 
 	hdr = frame + start;
 
@@ -137,9 +135,9 @@ int helper_need_help_ipv4(void *frame, struct match *m) {
 	if (! (frag_size & 0xFFFF))
 		return 1;
 
-	if (frag_start + frag_size > m->prev->next_size + m->prev->next_start) {
+	if (frag_start + frag_size > l->prev->payload_size + l->prev->payload_start) {
 		dprint("Error, packet len missmatch dropping this frag\n");
-		dprint("Frag_start %u, frag_size %u, next_size %u\n", frag_start, frag_size, m->prev->next_size);
+		dprint("Frag_start %u, frag_size %u, size %u\n", frag_start, frag_size, l->prev->payload_size);
 		dprint("ID = %u\n", ntohs(hdr->id));
 		return 1;
 	}
@@ -162,9 +160,9 @@ int helper_need_help_ipv4(void *frame, struct match *m) {
 		tmp->hdr = (struct iphdr *) (tmp->sublayer_buff + start);
 
 		// Save the first layer type
-		while (m->prev)
-			m = m->prev;
-		tmp->first_layer = m->match_type;
+		while (l->prev)
+			l = l->prev;
+		tmp->first_layer = l->type;
 
 
 		ndprint("Helper ipv4 : allocated buffer for new packet id %u\n", ntohs(hdr->id));

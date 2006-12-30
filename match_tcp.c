@@ -42,6 +42,7 @@ int match_register_tcp(struct match_reg *r) {
 
 	r->init = match_init_tcp;
 	r->reconfig = match_reconfig_tcp;
+	r->identify = match_identify_tcp;
 	r->eval = match_eval_tcp;
 	r->cleanup = match_cleanup_tcp;
 
@@ -86,30 +87,35 @@ int match_reconfig_tcp(struct match *m) {
 	return 1;
 }
 
-int match_eval_tcp(struct match* match, void* frame, unsigned int start, unsigned int len) {
+int match_identify_tcp(struct layer* match, void* frame, unsigned int start, unsigned int len) {
 
+	struct tcphdr* hdr = frame + start;
+	
+	ndprint("Processing TCP packet -> SPORT : %u | DPORT : %u", ntohs(hdr->source), ntohs(hdr->dest));
+
+	match->payload_start = start + (hdr->doff << 2);
+	match->payload_size = len - match->payload_start;
+
+	ndprint(" | SIZE : %u\n", match->payload_size);
+
+	return match_undefined_id;
+
+}
+
+int match_eval_tcp(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l) {
+	
 	struct tcphdr* hdr = frame + start;
 	
 	unsigned short sport = ntohs(hdr->source);
 	unsigned short dport = ntohs(hdr->dest);
 
-	ndprint("Processing TCP packet -> SPORT : %u | DPORT : %u", sport, dport);
-
-	match->next_layer = match_undefined_id;
-	match->next_start = start + (hdr->doff << 2);
-	match->next_size = len - match->next_start;
-
-	ndprint(" | SIZE : %u\n", match->next_size);
-
-	if (!match->match_priv)
-		return 1;
-	
 	struct match_priv_tcp *mp = match->match_priv;
 
-
+	ndprint("sport : min-max, value : %u-%u, %u\n", mp->sport_min, mp->sport_max, sport);
 	if (sport < mp->sport_min || sport > mp->sport_max)
 		return 0;
 
+	ndprint("dport : min-max, value : %u-%u, %u\n", mp->dport_min, mp->dport_max, dport);
 	if (dport < mp->dport_min || dport > mp->dport_max)
 		return 0;
 

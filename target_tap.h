@@ -44,7 +44,7 @@ int target_register_tap(struct target_reg *r, struct target_functions *tg_funcs)
 
 int target_init_tap(struct target *t);
 int target_open_tap(struct target *t);
-int target_process_tap(struct target *t, struct rule_node *node, void *frame, unsigned int len);
+int target_process_tap(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce);
 int target_close_tap(struct target *t);
 int target_cleanup_tap(struct target *t);
 

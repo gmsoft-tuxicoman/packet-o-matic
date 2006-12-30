@@ -119,7 +119,7 @@ int target_open_inject(struct target *t) {
 	return 1;
 }
 
-int target_process_inject(struct target *t, struct rule_node *node, void *frame, unsigned int len) {
+int target_process_inject(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce) {
 	
 	struct target_priv_inject *priv = t->target_priv;
 
@@ -127,7 +127,7 @@ int target_process_inject(struct target *t, struct rule_node *node, void *frame,
 		dprint("Error, inject target not opened !\n");
 		return 0;
 	}
-	int start = node_find_header_start(node, match_ethernet_id);
+	int start = layer_find_start(l, match_ethernet_id);
 	if (start == -1) {
 		dprint("Unable to find the start of the packet\n");
 		return 0;
