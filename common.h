@@ -32,13 +32,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#define __KERNEL__ // we need u32 definition for <linux/jhash.h>
-#include <asm/types.h>
-#undef __KERNEL__
-
-
-
-
 #include "match.h"
 
 unsigned int layer_find_start(struct layer *l, int header_type);

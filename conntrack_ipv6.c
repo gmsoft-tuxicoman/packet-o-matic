@@ -38,7 +38,7 @@ int conntrack_register_ipv6(struct conntrack_reg *r, struct conntrack_functions 
 }
 
 
-__u32 conntrack_get_hash_ipv6(void *frame, unsigned int start, unsigned int flags) {
+uint32_t conntrack_get_hash_ipv6(void *frame, unsigned int start, unsigned int flags) {
 
 	struct ip6_hdr* hdr;
 	
@@ -67,7 +67,7 @@ __u32 conntrack_get_hash_ipv6(void *frame, unsigned int start, unsigned int flag
 	}
 
 
-	__u32 ipv6_hash = jhash(addrs, 8, INITVAL);
+	uint32_t ipv6_hash = jhash(addrs, 8, INITVAL);
 
 	return ipv6_hash;
 

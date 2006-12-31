@@ -48,16 +48,16 @@ struct rtphdr {
 #else
 # error "Please fix <endian.h>"
 #endif
-	__u16 seq_num;
-	__u32 timestamp;
-	__u32 ssrc;
-	__u32 csrc[16];
+	uint16_t seq_num;
+	uint32_t timestamp;
+	uint32_t ssrc;
+	uint32_t csrc[16];
 
 };
 
 struct rtphdrext {
-	__u16 profile_defined;
-	__u16 length;
+	uint16_t profile_defined;
+	uint16_t length;
 	char *header_extension;
 };
 

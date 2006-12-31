@@ -29,11 +29,11 @@
 struct au_hdr {
 
 	char magic[4];
-	__u32 hdr_size;
-	__u32 data_size;
-	__u32 encoding;
-	__u32 sample_rate;
-	__u32 channels;
+	uint32_t hdr_size;
+	uint32_t data_size;
+	uint32_t encoding;
+	uint32_t sample_rate;
+	uint32_t channels;
 
 
 };
@@ -47,7 +47,7 @@ struct target_priv_wave {
 struct target_conntrack_priv_wave {
 
 	int fd;
-	__u16 last_seq;
+	uint16_t last_seq;
 	unsigned int total_size;
 	unsigned int payload_type;
 

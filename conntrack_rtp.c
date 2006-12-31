@@ -43,7 +43,7 @@ int conntrack_register_rtp(struct conntrack_reg *r, struct conntrack_functions *
 }
 
 
-__u32 conntrack_get_hash_rtp(void *frame, unsigned int start, unsigned int flags) {
+uint32_t conntrack_get_hash_rtp(void *frame, unsigned int start, unsigned int flags) {
 
 	struct rtphdr* hdr;
 	
@@ -51,7 +51,7 @@ __u32 conntrack_get_hash_rtp(void *frame, unsigned int start, unsigned int flags
 
 	// Compute the hash
 
-	__u32 rtp_hash = jhash_1word(hdr->ssrc, INITVAL);
+	uint32_t rtp_hash = jhash_1word(hdr->ssrc, INITVAL);
 	ndprint("SSRC = 0x%x, start %u\n", hdr->ssrc, start);
 
 

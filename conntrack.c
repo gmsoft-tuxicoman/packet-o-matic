@@ -135,8 +135,8 @@ struct conntrack_entry *conntrack_create_entry(struct layer *l, void* frame) {
 	cl_rev->rev = cl;
 
 
-	__u32 hash = conntrack_hash(l, frame, CT_DIR_NONE);	
-	__u32 hash_rev = conntrack_hash(l, frame, CT_DIR_REV);
+	uint32_t hash = conntrack_hash(l, frame, CT_DIR_NONE);	
+	uint32_t hash_rev = conntrack_hash(l, frame, CT_DIR_REV);
 	
 	struct conntrack_entry *ce;
 
@@ -232,11 +232,11 @@ void *conntrack_get_priv(void *obj, struct conntrack_entry *ce) {
 }
 
 
-__u32 conntrack_hash(struct layer *l, void *frame, unsigned int flags) {
+uint32_t conntrack_hash(struct layer *l, void *frame, unsigned int flags) {
 
 
 	// Compute our hash for each layer
-	__u32 hash, res;
+	uint32_t hash, res;
 	hash = INITVAL;
 	while (l) {
 
@@ -259,7 +259,7 @@ __u32 conntrack_hash(struct layer *l, void *frame, unsigned int flags) {
 struct conntrack_entry *conntrack_get_entry(struct layer *l, void *frame) {
 	
 
-	__u32 hash;
+	uint32_t hash;
 
 	// Let's start by calculating the full hash
 
@@ -274,7 +274,7 @@ struct conntrack_entry *conntrack_get_entry(struct layer *l, void *frame) {
 
 	if (!ce) { // Conntrack not found. Let's try the opposite direction
 		// We need the match the forward hash in the reverse table
-		__u32 hash_fwd = conntrack_hash(l, frame, CT_DIR_FWD);	
+		uint32_t hash_fwd = conntrack_hash(l, frame, CT_DIR_FWD);	
 		cl = ct_table_rev[hash_fwd];
 		ce = conntrack_find(cl, l, frame, CT_DIR_REV);
 	}

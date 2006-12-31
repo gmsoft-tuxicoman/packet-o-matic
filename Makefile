@@ -2,7 +2,7 @@ CFLAGS = -Wall -pipe $(shell xml2-config --cflags)
 #CFLAGS += -O3
 CFLAGS += -g -ggdb3
 CFLAGS += -DDEBUG
-CFLAGS += -DNDEBUG
+#CFLAGS += -DNDEBUG
 
 CORE_OBJS = input.o match.o conntrack.o target.o timers.o helper.o
 HELPER_OBJS = helper_ipv4.so

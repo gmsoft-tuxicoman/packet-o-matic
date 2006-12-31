@@ -44,7 +44,7 @@ int conntrack_register_udp(struct conntrack_reg *r, struct conntrack_functions *
 }
 
 
-__u32 conntrack_get_hash_udp(void *frame, unsigned int start, unsigned int flags) {
+uint32_t conntrack_get_hash_udp(void *frame, unsigned int start, unsigned int flags) {
 
 	struct udphdr* hdr;
 	
@@ -52,7 +52,7 @@ __u32 conntrack_get_hash_udp(void *frame, unsigned int start, unsigned int flags
 
 	// Compute the hash
 
-	__u32 udp_hash;
+	uint32_t udp_hash;
 	switch (flags) {
 		case CT_DIR_NONE:
 		case CT_DIR_FWD:

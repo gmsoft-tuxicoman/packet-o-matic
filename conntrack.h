@@ -25,7 +25,7 @@
 #include "common.h"
 #include "timers.h"
 
-#include <linux/jhash.h>
+#include "jhash.h"
 
 #define CT_DIR_NONE 0
 #define CT_DIR_FWD 1
@@ -34,7 +34,7 @@
 
 struct conntrack_entry {
 
-	__u32 full_hash;
+	uint32_t full_hash;
 	struct conntrack_privs *match_privs;
 	struct conntrack_privs *privs;
 
@@ -42,7 +42,7 @@ struct conntrack_entry {
 
 struct conntrack_list {
 
-	__u32 hash;
+	uint32_t hash;
 	struct conntrack_entry *ce;
 	struct conntrack_list *next;
 	struct conntrack_list *rev;
@@ -53,7 +53,7 @@ struct conntrack_reg {
 
 	void *dl_handle;
 	unsigned int flags;
-	__u32 (*get_hash) (void* frame, unsigned int start, unsigned int flags);
+	uint32_t (*get_hash) (void* frame, unsigned int start, unsigned int flags);
 	int (*doublecheck) (void *frame, unsigned int start, void *priv, unsigned int flags);
 	void* (*alloc_match_priv) (void *frame, unsigned int start, struct conntrack_entry *ce);
 	int (*cleanup_match_priv) (void *priv);
@@ -86,7 +86,7 @@ int conntrack_init();
 int conntrack_register(const char *name);
 int conntrack_add_priv(void*, void* priv, struct layer *l, void *frame);
 void *conntrack_get_priv(void*, struct conntrack_entry *ce);
-__u32 conntrack_hash(struct layer *l, void *frame, unsigned int flags);
+uint32_t conntrack_hash(struct layer *l, void *frame, unsigned int flags);
 struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct layer *l, void *frame, unsigned int flags);
 struct conntrack_entry *conntrack_get_entry(struct layer *l, void *frame);
 struct conntrack_entry *conntrack_create_entry(struct layer *l, void *frame);

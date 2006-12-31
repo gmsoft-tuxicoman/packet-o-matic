@@ -30,10 +30,10 @@
 
 #define PARAMS_NUM 3
 
-int cksum(__u16 *addr, int len)
+int cksum(uint16_t *addr, int len)
 {
     int sum;
-    __u16 last_byte;
+    uint16_t last_byte;
 
     sum = 0;
     last_byte = 0;
@@ -285,13 +285,13 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 		dv4hdr->ihl = 5;
 		dv4hdr->version = 4;
 		int ipsum;
-		ipsum = cksum((__u16 *)dv4hdr, dv4hdr->ihl * 4);
+		ipsum = cksum((uint16_t *)dv4hdr, dv4hdr->ihl * 4);
 
 		while (ipsum >> 16)
 			ipsum = (ipsum & 0xFFFF)+(ipsum >> 16);
 		dv4hdr->check = ~ipsum;
 
-		tcpsum = cksum((__u16 *)&dv4hdr->saddr, 8);
+		tcpsum = cksum((uint16_t *)&dv4hdr->saddr, 8);
 		blen += sizeof(struct tcphdr);
 
 
@@ -308,7 +308,7 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 		dv6hdr->ip6_plen = htons(sizeof(struct tcphdr));
 		dv6hdr->ip6_hlim = 255;
 
-		tcpsum = cksum((__u16 *)&dv6hdr->ip6_src, 32);
+		tcpsum = cksum((uint16_t *)&dv6hdr->ip6_src, 32);
 		blen += sizeof(struct ip6_hdr);
 
 	} 
@@ -331,7 +331,7 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 	for (i = 0; i < priv->severity; i++) {
 
 		dhdr->check = 0;
-		int mysum = tcpsum + cksum((__u16*)(dhdr), sizeof(struct tcphdr));
+		int mysum = tcpsum + cksum((uint16_t*)(dhdr), sizeof(struct tcphdr));
 	
 	    	while (mysum >> 16)
 			mysum = (mysum & 0xFFFF)+(mysum >> 16);

@@ -28,14 +28,14 @@
 
 struct conntrack_priv_rtp {
 
-	__u32 ssrc;
-	__u8 payload_type;
+	uint32_t ssrc;
+	uint8_t payload_type;
 	struct timer *timer;
 
 };
 
 int conntrack_register_rtp(struct conntrack_reg *r, struct conntrack_functions *ct_funcs);
-__u32 conntrack_get_hash_rtp(void *frame, unsigned int start, unsigned int flags);
+uint32_t conntrack_get_hash_rtp(void *frame, unsigned int start, unsigned int flags);
 int conntrack_doublecheck_rtp(void *frame, unsigned int start, void *priv, unsigned int flags);
 void *conntrack_alloc_match_priv_rtp(void *frame, unsigned int start, struct conntrack_entry *ce);
 int conntrack_cleanup_match_priv_rtp(void *priv);

@@ -176,7 +176,7 @@ int target_process_wave(struct target *t, struct layer *l, void *frame, unsigned
 
 
 
-	__u16 cur_seq = ntohs(rtphdr->seq_num);
+	uint16_t cur_seq = ntohs(rtphdr->seq_num);
 	
 	cp->last_seq++;
 
@@ -217,7 +217,7 @@ int target_close_connection_wave(void *conntrack_priv) {
 	cp = conntrack_priv;
 
 	lseek(cp->fd, 8, SEEK_SET);
-	__u32 size = htonl(cp->total_size);
+	uint32_t size = htonl(cp->total_size);
 	write(cp->fd, &size , 4);
 
 

@@ -34,7 +34,7 @@ struct conntrack_priv_ipv6 {
 };
 
 int conntrack_register_ipv6(struct conntrack_reg *r, struct conntrack_functions *ct_funcs);
-__u32 conntrack_get_hash_ipv6(void *frame, unsigned int start, unsigned int flags);
+uint32_t conntrack_get_hash_ipv6(void *frame, unsigned int start, unsigned int flags);
 int conntrack_doublecheck_ipv6(void *frame, unsigned int start, void *priv, unsigned int flags);
 void *conntrack_alloc_match_priv_ipv6(void *frame, unsigned int start, struct conntrack_entry *ce);
 int conntrack_cleanup_match_priv_ipv6(void *priv);

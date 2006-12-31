@@ -38,7 +38,7 @@ int conntrack_register_ipv4(struct conntrack_reg *r, struct conntrack_functions 
 }
 
 
-__u32 conntrack_get_hash_ipv4(void *frame, unsigned int start, unsigned int flags) {
+uint32_t conntrack_get_hash_ipv4(void *frame, unsigned int start, unsigned int flags) {
 
 	struct iphdr* hdr;
 	
@@ -46,7 +46,7 @@ __u32 conntrack_get_hash_ipv4(void *frame, unsigned int start, unsigned int flag
 
 	// Compute the hash
 	
-	__u32 ipv4_hash;
+	uint32_t ipv4_hash;
 	
 	switch (flags) {
 		case CT_DIR_NONE:
