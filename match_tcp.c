@@ -93,8 +93,9 @@ int match_identify_tcp(struct layer* match, void* frame, unsigned int start, uns
 	
 	ndprint("Processing TCP packet -> SPORT : %u | DPORT : %u", ntohs(hdr->source), ntohs(hdr->dest));
 
-	match->payload_start = start + (hdr->doff << 2);
-	match->payload_size = len - match->payload_start;
+	unsigned int hdrlen = (hdr->doff << 2);
+	match->payload_start = start + hdrlen;
+	match->payload_size = len - hdrlen;
 
 	ndprint(" | SIZE : %u\n", match->payload_size);
 

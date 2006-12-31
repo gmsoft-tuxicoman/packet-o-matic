@@ -49,7 +49,7 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 		next_layer = match_identify(l, frame, l->prev->payload_start, l->prev->payload_size);
 		if (next_layer < 0) {
 			// restore the original value
-			l->type == match_undefined_id;
+			l->type = match_undefined_id;
 			return 0;
 		} else {
 			l->next = malloc(sizeof(struct layer)); // This is fred in do_rules
