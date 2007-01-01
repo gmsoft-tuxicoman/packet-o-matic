@@ -272,11 +272,17 @@ struct conntrack_entry *conntrack_get_entry(struct layer *l, void *frame) {
 	ce = conntrack_find(cl, l, frame, CT_DIR_NONE);
 
 
-	if (!ce) { // Conntrack not found. Let's try the opposite direction
+	if (ce) {
+
+		ce->direction = CT_DIR_FWD;
+
+	} else {// Conntrack not found. Let's try the opposite direction
 		// We need the match the forward hash in the reverse table
 		uint32_t hash_fwd = conntrack_hash(l, frame, CT_DIR_FWD);	
 		cl = ct_table_rev[hash_fwd];
 		ce = conntrack_find(cl, l, frame, CT_DIR_REV);
+		if (ce)
+			ce->direction = CT_DIR_REV;
 	}
 
 	return ce;

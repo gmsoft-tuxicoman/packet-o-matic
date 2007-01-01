@@ -1,3 +1,8 @@
+* 2007/01/01 Guy Martin <gmsoft@tuxicoman.be>
+Added a direction field to conntrack to reflect the direction of the packet.
+Fixed length comparison in match_rtp.c.
+Added a markdir param to target_dump_payload to show packet direction.
+
 * 2006/12/31 Guy Martin <gmsoft@tuxicoman.be>
 Fix payload size calculation in match_tcp, match_rtp and target_dump_payload.
 Fix typo in rules.c.

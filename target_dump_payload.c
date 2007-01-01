@@ -29,9 +29,10 @@
 
 #include "target_dump_payload.h"
 
-#define PARAMS_NUM 1
+#define PARAMS_NUM 2
 char *target_dump_payload_params[PARAMS_NUM][3] = {
 	{"prefix", "dump", "prefix of dumped files including directory"},
+	{"markdir", "0", "mark the direction of the packet in the dumped file"},
 };
 
 struct target_functions *tg_functions;
@@ -119,6 +120,16 @@ int target_process_dump_payload(struct target *t, struct layer *l, void *frame, 
 		ndprint("%s opened\n", filename);
 
 		(*tg_functions->conntrack_add_priv) (t, cp, l, frame);
+	}
+
+	if (*t->params_value[1] == '1') {
+		unsigned int direction = CT_DIR_FWD;
+		if (ce)
+			direction = ce->direction;
+		if (direction == CT_DIR_FWD)
+			write(cp->fd, "> ", 2);
+		else
+			write(cp->fd, "< ", 2);
 	}
 
 	write(cp->fd, frame + lastl->payload_start, lastl->payload_size);

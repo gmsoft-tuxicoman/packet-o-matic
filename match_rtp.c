@@ -78,7 +78,7 @@ int match_identify_rtp(struct layer* match, void *frame, unsigned int start, uns
 	hdr_len = 12; // Len up to ssrc included
 	hdr_len += hdr->csrc_count * 4;
 
-	if (len - hdr_len >= 0) {
+	if (len - hdr_len <= 0) {
 		ndprint("Invalid size for RTP packet\n");
 		return -1;
 	}

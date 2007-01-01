@@ -37,6 +37,7 @@ struct conntrack_entry {
 	uint32_t full_hash;
 	struct conntrack_privs *match_privs;
 	struct conntrack_privs *privs;
+	unsigned int direction;
 
 };
 
