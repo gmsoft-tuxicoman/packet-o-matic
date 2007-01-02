@@ -1,3 +1,6 @@
+* 2007/01/02 Guy Martin <gmsoft@tuxicoman.be>
+Added README file.
+
 * 2007/01/01 Guy Martin <gmsoft@tuxicoman.be>
 Added a direction field to conntrack to reflect the direction of the packet.
 Fixed length comparison in match_rtp.c.

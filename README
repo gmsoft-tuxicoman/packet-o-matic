@@ -1,0 +1,51 @@
+
+What it is :
+------------
+Packet-o-matic is a modular network sniffer and processor. The modules consists of input, match, conntrack, helper and target.
+It is designed to be as protocol independant as possible. Each protocol has it's own module of match, conntrack and helper if is makes sens or if it is implemented.
+
+
+The config :
+------------
+The config is written in XML.
+Everything is enclosed in the <config> tags. Then it consists of one <input> section and one or multiple <rule> section.
+The input section defines from where you want to read the packets. You certainly want the pcap input to read from an ethernet interface.
+
+Each rule contains one <target> section and one or multiple <match> section.
+See pom.xml.conf.example for an example. See `packet-o-matic --help` for parameter lists for each module.
+
+
+How it works :
+--------------
+Packets are read from the input.
+We check against each match of each rule if we should make that packet processed by that target.
+At the same time we check if a helper is needed and for example put all the ipv4 fragments into a single packet.
+We check if the packet has some conntrack information attached to it.
+If the packet has conntrack info, it is processed by the coresponding target which saved the conntrack info.
+It the match result is positive, we process the packet with the target.
+
+
+Bug :
+-----
+Please report bugs to <gmsoft@tuxicoman.be> with a backtrace or a corefile and version info.
+
+
+License :
+--------
+packet-o-matic : modular network traffic processor
+Copyright (C) 2006 Guy Martin <gmsoft@tuxicoman.be>
+
+This program is free software; you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation; either version 2 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program; if not, write to the Free Software
+Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+

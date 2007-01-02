@@ -1,6 +1,6 @@
 CFLAGS = -Wall -pipe $(shell xml2-config --cflags)
-#CFLAGS += -O3
-CFLAGS += -g -ggdb3
+CFLAGS += -O2
+#CFLAGS += -g -ggdb3
 CFLAGS += -DDEBUG
 #CFLAGS += -DNDEBUG
 
