@@ -1,5 +1,7 @@
 * 2007/01/02 Guy Martin <gmsoft@tuxicoman.be>
 Added README file.
+Added #ifdef DLT_DOCSIS in input_pcap tu support older version of pcap.
+Fixed compilation warning of target_tcpkill.
 
 * 2007/01/01 Guy Martin <gmsoft@tuxicoman.be>
 Added a direction field to conntrack to reflect the direction of the packet.

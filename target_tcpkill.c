@@ -195,7 +195,7 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 
 	// init sockaddr
 	struct sockaddr_storage addr;
-	socklen_t addrlen;
+	socklen_t addrlen = 0;
 	bzero(&addr, sizeof(struct sockaddr_storage));
 
 	
@@ -204,7 +204,7 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 	bzero(buffer, 1024);
 
 
-	int tcpsum;
+	int tcpsum = 0;
 	int blen = 0; // Buffer len
 
 	// In routed mode, we can only send ipv4 packets. linux API doesn't allow random souce addr for ipv6

@@ -113,11 +113,12 @@ int input_open_pcap(struct input *i) {
 			dprint("PCAP output type is ethernet\n");
 			p->output_layer = (*i->match_register) ("ethernet");
 			break;
+#ifdef DLT_DOCSIS
 		case DLT_DOCSIS:
 			dprint("PCAP output type is docsis\n");
 			p->output_layer = (*i->match_register) ("docsis");
 			break;
-
+#endif
 		default:
 			dprint("PCAP output type is undefined\n");
 			p->output_layer = (*i->match_register) ("undefined");
