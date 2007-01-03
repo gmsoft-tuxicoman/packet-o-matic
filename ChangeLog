@@ -1,3 +1,6 @@
+* 2007/01/03 Guy Martin <gmsoft@tuxicoman.be>
+Some more in the README.
+
 * 2007/01/02 Guy Martin <gmsoft@tuxicoman.be>
 Added README file.
 Added #ifdef DLT_DOCSIS in input_pcap tu support older version of pcap.

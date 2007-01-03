@@ -5,16 +5,6 @@ Packet-o-matic is a modular network sniffer and processor. The modules consists 
 It is designed to be as protocol independant as possible. Each protocol has it's own module of match, conntrack and helper if is makes sens or if it is implemented.
 
 
-The config :
-------------
-The config is written in XML.
-Everything is enclosed in the <config> tags. Then it consists of one <input> section and one or multiple <rule> section.
-The input section defines from where you want to read the packets. You certainly want the pcap input to read from an ethernet interface.
-
-Each rule contains one <target> section and one or multiple <match> section.
-See pom.xml.conf.example for an example. See `packet-o-matic --help` for parameter lists for each module.
-
-
 How it works :
 --------------
 Packets are read from the input.
@@ -25,15 +15,73 @@ If the packet has conntrack info, it is processed by the coresponding target whi
 It the match result is positive, we process the packet with the target.
 
 
+The config :
+------------
+The config is written in XML. The default config file is named pom.xml.conf.
+Everything is enclosed in the <config> tags. Then it consists of one <input> section and one or multiple <rule> section.
+The input section defines from where you want to read the packets. You certainly want the pcap input to read from an ethernet interface.
+
+Each rule contains one <target> section and one or multiple <match> section.
+See pom.xml.conf.example for an example. See `packet-o-matic --help` for parameter lists for each module.
+
+
+The inputs :
+------------
+The input modules read packet from a certain source and give the packets to the rule processor.
+
+- pcap : allow you to read from one or all ethernet device or from a pcap file saved by tcpdump or ethereal for example
+- docsis : allow you to read fron a docsis stream using a dvb-c card
+
+
+The matchs :
+------------
+The match modules are used to specify the network traffic that you want to match.
+You'll have to specify the full header chain to match a packet. For example to match tcp traffic (on IPv4), you have to match in order ethernet, ipv4, tcp.
+
+- ethernet : match the ethernet protocol
+- ipv4 : match the IPv4 protocol commonly known as ip
+- ipv6 : match the IPv6 protocol
+- tcp : match the TCP protocol
+- udp : match the UDP protocol
+- rtp : match the RTP protocol used to carry real time voice and video
+- undefined : used internaly
+
+
+The targets :
+-------------
+The target modules process the packet and most of the time, saves it or resend it.
+
+- dump_payload : saves the payload of the last matching protocol into a file
+- inject : reinject the matched packets on an specific interface
+- pcap : save the packets in a pcap file
+- tap : open a tap interface and send the packets trough it
+- tcpkill : works only with tcp packets. Send a TCP RST packet to any matched tcp packet
+- wave : save RTP payload into .au files. Supported payload types are G.711U, G711A and G.722
+- null : does nothing, used for debugging
+
+
+The conntracks :
+----------------
+The conntrack modules make the application able to recognize different connections among all the packet that it process.
+It makes it easy to follow a connection and do something specific with that connection or save some information related to that connection.
+The conntrack modules are automatically loaded if found, when the corresponding match is loaded.
+
+
+The helpers :
+-------------
+The helper modules are used to recompose part of network packets which were splitted or modified by the network.
+The only helper module currently implemented is ipv4. TODO : ipv6, tcp.
+
+
 Bug :
 -----
-Please report bugs to <gmsoft@tuxicoman.be> with a backtrace or a corefile and version info.
+Please report bugs to <gmsoft@tuxicoman.be> with a backtrace or a corefile, version info and os + architercture.
 
 
 License :
 --------
 packet-o-matic : modular network traffic processor
-Copyright (C) 2006 Guy Martin <gmsoft@tuxicoman.be>
+Copyright (C) 2007 Guy Martin <gmsoft@tuxicoman.be>
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
