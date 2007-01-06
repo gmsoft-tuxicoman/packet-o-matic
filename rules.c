@@ -42,10 +42,16 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 
 	int result = 1;
 
+	struct layer *next_layer = l->next;
+
 	if (m) {
 
 		// The current layer is not identified. Let's see if we can match with the current match type
 		if (l->type == match_undefined_id) {
+			if (!l->prev) {
+				ndprint("Error, first layer is undefined !\n");
+				return 0;
+			}
 			unsigned int next_layer;
 			l->type = m->match_type;
 			next_layer = match_identify(l, frame, l->prev->payload_start, l->prev->payload_size);
@@ -69,7 +75,8 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 
 		if (m->match_priv)
 			result = match_eval(m, frame, start, len, l);
-	}
+	} else
+		next_layer = l;
 
 	if (result == 0)
 		return 0; // It doesn't match
@@ -78,15 +85,19 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 		return 1; // There is nothing else to match
 
 
+	if (next_layer->prev)
+		start = next_layer->prev->payload_start;
+
+
 	if (!n->b) // There is only one next node
-		return node_match(frame, l->payload_start, l->payload_size, n->a, l->next);
+		return node_match(frame, start, len, n->a, next_layer);
 
 
-	if (n->andor) { // and
-		return node_match(frame, l->payload_start, l->payload_size, n->a, l->next) && node_match(frame, l->payload_start, l->payload_size, n->b, l->next);
+	if (n->andor == RULE_OP_AND) { // and
+		return node_match(frame, start, len, n->a, next_layer) && node_match(frame, start, len, n->b, next_layer);
 
 	} else { // or
-		return node_match(frame, l->payload_start, l->payload_size, n->a, l->next) || node_match(frame, l->payload_start, l->payload_size, n->b, l->next);
+		return node_match(frame, start, len, n->a, next_layer) || node_match(frame, start, len, n->b, next_layer);
 
 	}
 	

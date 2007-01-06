@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -127,9 +127,9 @@ int target_process_dump_payload(struct target *t, struct layer *l, void *frame, 
 		if (ce)
 			direction = ce->direction;
 		if (direction == CT_DIR_FWD)
-			write(cp->fd, "> ", 2);
+			write(cp->fd, "\n> ", 3);
 		else
-			write(cp->fd, "< ", 2);
+			write(cp->fd, "\n< ", 3);
 	}
 
 	write(cp->fd, frame + lastl->payload_start, lastl->payload_size);

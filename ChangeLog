@@ -2,6 +2,8 @@
 Changed name of struct layer* in all match_identify() to l.
 Improved conf.c and rules.c to support multiple <node> in anyways.
 Fixed conntrack_ipv6.
+Fixed matching of conditional matches.
+Added a \n for in the direction marks of target_dump_payload.
 
 * 2007/01/03 Guy Martin <gmsoft@tuxicoman.be>
 Some more in the README.
