@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -75,7 +75,7 @@ int match_register_rtp();
 int match_register_rtp();
 int match_init_rtp(struct match *m);
 int match_reconfig_rtp(struct match *m);
-int match_identify_rtp(struct layer* match, void* frame, unsigned int start, unsigned int len);
+int match_identify_rtp(struct layer* l, void* frame, unsigned int start, unsigned int len);
 int match_eval_rtp(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l);
 int match_cleanup_rtp(struct match *m);
 

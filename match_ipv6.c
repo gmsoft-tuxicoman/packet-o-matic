@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -100,7 +100,7 @@ int match_reconfig_ipv6(struct match *m) {
 	
 }
 
-int match_identify_ipv6(struct layer* match, void* frame, unsigned int start, unsigned int len) {
+int match_identify_ipv6(struct layer* l, void* frame, unsigned int start, unsigned int len) {
 
 	struct ip6_hdr* hdr = frame + start;
 
@@ -113,15 +113,15 @@ int match_identify_ipv6(struct layer* match, void* frame, unsigned int start, un
 	bzero(addrbuff, INET6_ADDRSTRLEN + 1);
 	inet_ntop(AF_INET6, &hdr->ip6_dst.s6_addr, addrbuff, INET6_ADDRSTRLEN);
 	ndprint(" | DST : %s" , addrbuff);
-	ndprint(" | SIZE : %u\n", match->payload_size);
+	ndprint(" | SIZE : %u", l->payload_size);
 
 #endif
 
 	unsigned int nhdr = hdr->ip6_nxt;
-	match->payload_size = ntohs(hdr->ip6_plen);
+	l->payload_size = ntohs(hdr->ip6_plen);
 
-	match->payload_start = start +  sizeof(struct ip6_hdr);
-	while (match->payload_start + 1 < len) {
+	l->payload_start = start +  sizeof(struct ip6_hdr);
+	while (l->payload_start + 1 < len) {
 
 		struct ip6_ext *ehdr;
 		ndprint(" | NHDR : %u", nhdr);
@@ -130,31 +130,31 @@ int match_identify_ipv6(struct layer* match, void* frame, unsigned int start, un
 			case IPPROTO_ROUTING: // 43
 			case IPPROTO_FRAGMENT: // 44
 			case IPPROTO_DSTOPTS: // 60
-				ehdr = frame + match->payload_start;
+				ehdr = frame + l->payload_start;
 				int hlen = (ehdr->ip6e_len + 1) * 8;
-				match->payload_start += hlen;
-				match->payload_size -= hlen;
+				l->payload_start += hlen;
+				l->payload_size -= hlen;
 				nhdr = ehdr->ip6e_nxt;
 				break;
 		
 			case IPPROTO_TCP: // 6
-				ndprint(" | TCP packet");
+				ndprint(" | TCP packet\n");
 				return match_tcp_id;
 
 			case IPPROTO_UDP: // 17
-				ndprint(" | UDP packet");
+				ndprint(" | UDP packet\n");
 				return match_udp_id;
 
 			case IPPROTO_ICMPV6: // 58
-				ndprint(" | ICMPv6 packet");
+				ndprint(" | ICMPv6 packet\n");
 				return match_icmpv6_id;
 
 			case IPPROTO_NONE: // 59
-				ndprint(" | Unknown packet");
+				ndprint(" | Unknown packet\n");
 				return -1;
 
 			default:
-				ndprint(" | Unhandled protocol");
+				ndprint(" | Unhandled protocol\n");
 				return -1;
 
 		}

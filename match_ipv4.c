@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -84,7 +84,7 @@ int match_reconfig_ipv4(struct match *m) {
 
 }
 
-int match_identify_ipv4(struct layer* match, void* frame, unsigned int start, unsigned int len) {
+int match_identify_ipv4(struct layer* l, void* frame, unsigned int start, unsigned int len) {
 
 	struct iphdr* hdr = frame + start;
 	struct in_addr saddr, daddr;
@@ -101,9 +101,9 @@ int match_identify_ipv4(struct layer* match, void* frame, unsigned int start, un
 		return -1;
 
 	ndprint(" | IHL : %u", hdr_len);
-	match->payload_start = start + hdr_len;
-	match->payload_size = ntohs(hdr->tot_len) - hdr_len;
-	ndprint(" | SIZE : %u", match->payload_size);
+	l->payload_start = start + hdr_len;
+	l->payload_size = ntohs(hdr->tot_len) - hdr_len;
+	ndprint(" | SIZE : %u", l->payload_size);
 
 	switch (hdr->protocol) {
 		case IPPROTO_ICMP: // 1

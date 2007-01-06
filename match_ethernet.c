@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -79,12 +79,12 @@ int match_reconfig_ethernet(struct match *m) {
 
 }
 
-int match_identify_ethernet(struct layer* match, void* frame, unsigned int start, unsigned int len) {
+int match_identify_ethernet(struct layer* l, void* frame, unsigned int start, unsigned int len) {
 
 	struct ethhdr *ehdr = frame + start;
 
-	match->payload_start = start + sizeof(struct ethhdr);
-	match->payload_size = len - sizeof(struct ethhdr);
+	l->payload_start = start + sizeof(struct ethhdr);
+	l->payload_size = len - sizeof(struct ethhdr);
 
 	ndprint("Processing ethernet frame -> SMAC : ");
 	ndprint_hex(ehdr->h_source, 6);

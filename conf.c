@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -142,14 +142,12 @@ struct target *parse_target(xmlDocPtr doc, xmlNodePtr cur) {
 
 struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 
-
-	if (!cur)
-		return NULL;
-
-
-
+	struct rule_node *head = NULL, *tail = NULL;
 
 	while (cur) {
+
+		struct rule_node *n = NULL;
+
 		if (!xmlStrcmp(cur->name, (const xmlChar *) "match")) {
 			
 			
@@ -167,7 +165,6 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 			}
 			struct match *mp = match_alloc(mt);
 
-			struct rule_node *n;
 			n = malloc(sizeof(struct rule_node));
 			bzero(n, sizeof(struct rule_node));
 			ndprint("Creating new rule_node\n");
@@ -200,17 +197,27 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 			helper_register(match_type);
 
 			xmlFree(match_type);
+			// Add the new node at the right place
+			if (!head)
+				head = n;
+			if (!tail)
+				tail = n;
+			else {
+				tail->a = n;
+				tail = n;
+			}
 
-			n->a = parse_match(doc, cur->next);
-			return n;
+
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "node")) {
+			// This match the following
+			// <node><a>some match</a><b>some match</b></node>
+
 			xmlChar* op = xmlGetProp(cur, (const xmlChar*) "op");
 			if (!op) {
 				dprint("No op specified in node tag\n");
 				return NULL;
 			}
 
-			struct rule_node *n;
 			n = malloc(sizeof(struct rule_node));
 			bzero(n, sizeof(struct rule_node));
 			ndprint("Creating new rule_node\n");
@@ -231,28 +238,62 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 
 			xmlNodePtr pcur = cur->xmlChildrenNode;
 
-			while (!pcur) {
-				if (!xmlStrcmp(cur->name, (const xmlChar *) "node") || !xmlStrcmp(cur->name, (const xmlChar *) "match")) {
-					if (!n->a)
-						n->a = parse_match(doc, pcur);
-					else if (!n->b)
-						n->b = parse_match(doc, pcur);
-					else {
-						dprint ("Too many sub nodes in node\n");
-						return NULL;
-					}
-				}
+			while (pcur) {
+				if (!xmlStrcmp(pcur->name, (const xmlChar *) "a")  && !n->a)
+					n->a = parse_match(doc, pcur->xmlChildrenNode);
+				else if (!xmlStrcmp(pcur->name, (const xmlChar *) "b")  && !n->b)
+					n->b = parse_match(doc, pcur->xmlChildrenNode);
+				else 
+					dprint ("Error in config, duplicate or unknown tag\n");
 				pcur = pcur->next;
 						
 			}
+			
+
+			// Attach the last node of each part to one single now
+			struct rule_node *tmpn, *nextn;
+			nextn = malloc(sizeof(struct rule_node));
+			bzero(nextn, sizeof(struct rule_node));
+
+			if (n->a && n->b) {  // both matched
+				tmpn = n->a;
+				while (tmpn->a)
+					tmpn = tmpn->a;
+				tmpn->a = nextn;
+				tmpn = n->b;
+				while (tmpn->a)
+					tmpn = tmpn->a;
+				tmpn->a = nextn;
+			} else if (!n->a || !n->b) { // one node was empty
+				if (n->a)
+					nextn = n->a;
+				else if (n->b)
+					nextn = n->b;
+				else
+					nextn = NULL;
+				free(n);
+				free(nextn);
+				n = nextn;
+			} 
+
+			if (n) { // Add the new nodes at the right place
+				if (!head && !tail) {
+					head = n;
+					tail = nextn;
+				} else {
+					tail->a = n;
+					tail = nextn;
+				}
+			}
 		
-			return n;
+		} else {
+			dprint("Warning, unrecognized tag <%s> inside <matches> tags\n", cur->name);
 		}
+
 		cur = cur->next;
 
 	}
-
-	return NULL;
+	return head;
 
 }
 

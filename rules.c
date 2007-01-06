@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -42,31 +42,34 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 
 	int result = 1;
 
-	// The current layer is not identified. Let's see if we can match with the current match type
-	if (l->type == match_undefined_id) {
-		unsigned int next_layer;
-		l->type = m->match_type;
-		next_layer = match_identify(l, frame, l->prev->payload_start, l->prev->payload_size);
-		if (next_layer < 0) {
-			// restore the original value
-			l->type = match_undefined_id;
-			return 0;
-		} else {
-			l->next = malloc(sizeof(struct layer)); // This is fred in do_rules
-			bzero(l->next, sizeof(struct layer));
-			l->next->type = next_layer;
+	if (m) {
+
+		// The current layer is not identified. Let's see if we can match with the current match type
+		if (l->type == match_undefined_id) {
+			unsigned int next_layer;
+			l->type = m->match_type;
+			next_layer = match_identify(l, frame, l->prev->payload_start, l->prev->payload_size);
+			if (next_layer < 0) {
+				// restore the original value
+				l->type = match_undefined_id;
+				return 0;
+			} else {
+				l->next = malloc(sizeof(struct layer)); // This is fred in do_rules
+				bzero(l->next, sizeof(struct layer));
+				l->next->type = next_layer;
+			}
+
 		}
 
+
+
+		// Check if the rule correspond to what we identified
+		if (l->type != m->match_type)
+			return 0;
+
+		if (m->match_priv)
+			result = match_eval(m, frame, start, len, l);
 	}
-
-
-
-	// Check if the rule correspond to what we identified
-	if (l->type != m->match_type)
-		return 0;
-
-	if (m->match_priv)
-		result = match_eval(m, frame, start, len, l);
 
 	if (result == 0)
 		return 0; // It doesn't match
@@ -125,8 +128,6 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 		else
 			l->next->type = match_identify(l, frame, 0, len);
 
-		ndprint("next layer : %d\n", l->next->type);
-	
 		if (l->next->type == -1) {
 			free(l->next);
 			l->next = NULL;
@@ -159,6 +160,8 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 
 		// If there is a conntrack_entry, it means one of the target added it's priv, so the packet needs to be processed
 		r->result = node_match(frame, 0, len, r->node, layers); // Get the result to fully populate layers
+		if (r->result)
+			ndprint("Rule matched\n");
 		r = r->next;
 
 	}
@@ -189,15 +192,15 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 	}
 err:
 	l = layers;
-	ndprint("layer : ");
+	ndprint("layers : ");
 	while (l) {
-		ndprint("%u, ", l->type);
+		ndprint("%u ", l->type);
 		layers = l->next;
 		free(l);
 		l = layers;
 	}
-
 	ndprint("\n");
+
 
 	
 	return 1;
@@ -205,23 +208,51 @@ err:
 
 
 
-int node_destroy(struct rule_node *node) {
+int node_destroy(struct rule_node *node, int sub) {
+
+	static int done = 0;
+	static struct rule_node **done_stack;
 
 	if (!node)
 		return 1;
 
-	if (node->a)
-		node_destroy(node->a);
-	
-	if (node->b)
-		node_destroy(node->b);
+	// We have to check for both nodes
 
+	if (node->a && !node->a->match && !node->a->b) {
+		int i = 0;
+		for (i = 0; i < done; i++)
+			if (done_stack[i] == node->a)
+				node->a = NULL;
+
+	}
+
+	if (node->b && !node->b->match && !node->b->b) {
+		int i = 0;
+		for (i = 0; i < done; i++)
+			if (done_stack[i] == node->b)
+				node->b = NULL;
+
+	}
 
 	if (node->match)
 		match_cleanup(node->match);
+	else {
+		done_stack = realloc(done_stack, sizeof(struct rule_node*) * (done + 1));
+		done_stack[done] = node;
+		done++;
+	}
+	
 
+	if (node->a)
+		node_destroy(node->a, 1);
+
+	if (node->b)
+		node_destroy(node->b, 1);
+	
 	free(node);
 
+	if (!sub)
+		free(done_stack);
 	
 	return 1;
 
@@ -238,7 +269,7 @@ int list_destroy(struct rule_list *list) {
 		tmp = list;
 		list = list->next;
 		if (tmp->node)
-			node_destroy(tmp->node);
+			node_destroy(tmp->node, 0);
 		if (tmp->target) {
 			target_close(tmp->target);
 			target_cleanup_t(tmp->target);

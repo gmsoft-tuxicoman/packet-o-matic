@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -52,13 +52,13 @@ uint32_t conntrack_get_hash_ipv6(void *frame, unsigned int start, unsigned int f
 	switch (flags) {
 		case CT_DIR_NONE:
 		case CT_DIR_FWD:
-			memcpy(hdr->ip6_src.s6_addr, addrs, 16);
-			memcpy(hdr->ip6_dst.s6_addr, addrs + 16, 16);
+			memcpy(addrs, hdr->ip6_src.s6_addr, 16);
+			memcpy(addrs + 16, hdr->ip6_dst.s6_addr, 16);
 			break;
 
 		case CT_DIR_REV:
-			memcpy(hdr->ip6_dst.s6_addr, addrs, 16);
-			memcpy(hdr->ip6_src.s6_addr, addrs + 16, 16);
+			memcpy(addrs, hdr->ip6_dst.s6_addr, 16);
+			memcpy(addrs + 16, hdr->ip6_src.s6_addr, 16);
 			break;
 
 		default:
@@ -67,7 +67,7 @@ uint32_t conntrack_get_hash_ipv6(void *frame, unsigned int start, unsigned int f
 	}
 
 
-	uint32_t ipv6_hash = jhash(addrs, 8, INITVAL);
+	uint32_t ipv6_hash = jhash(addrs, 32, INITVAL);
 
 	return ipv6_hash;
 

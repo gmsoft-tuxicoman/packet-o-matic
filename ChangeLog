@@ -1,3 +1,8 @@
+* 2007/01/06 Guy Martin <gmsoft@tuxicoman.be>
+Changed name of struct layer* in all match_identify() to l.
+Improved conf.c and rules.c to support multiple <node> in anyways.
+Fixed conntrack_ipv6.
+
 * 2007/01/03 Guy Martin <gmsoft@tuxicoman.be>
 Some more in the README.
 

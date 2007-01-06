@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -70,7 +70,7 @@ int match_reconfig_rtp(struct match *m) {
 	return sscanf(m->params_value[0], "%hhu", &(p->payload_type));
 }
 
-int match_identify_rtp(struct layer* match, void *frame, unsigned int start, unsigned int len) {
+int match_identify_rtp(struct layer* l, void *frame, unsigned int start, unsigned int len) {
 
 	struct rtphdr *hdr = frame + start;
 
@@ -100,15 +100,15 @@ int match_identify_rtp(struct layer* match, void *frame, unsigned int start, uns
 			return -1;
 		}
 	}
-	match->payload_start = start + hdr_len;
-	match->payload_size = len - match->payload_start;
+	l->payload_start = start + hdr_len;
+	l->payload_size = len - l->payload_start;
 
 	if (hdr->padding) {
-		match->payload_size = *(((unsigned char*) (frame)) + len - 1);
+		l->payload_size = *(((unsigned char*) (frame)) + len - 1);
 		ndprint(" | Padding %u bytes", *(((unsigned char*) (frame)) + len - 1));
 	}
 
-	ndprint(" | SIZE %u\n", match->payload_size);
+	ndprint(" | SIZE %u\n", l->payload_size);
 
 	return match_undefined_id;
 

@@ -54,7 +54,7 @@ int rules_init();
 
 int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list *rules, int first_layer);
 
-int node_destroy(struct rule_node *node);
+int node_destroy(struct rule_node *node, int sub);
 
 int list_destroy(struct rule_list *list);
 

@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -86,14 +86,14 @@ int match_reconfig_udp(struct match *m) {
 	return 1;
 }
 
-int match_identify_udp(struct layer* match, void *frame, unsigned int start, unsigned int len) {
+int match_identify_udp(struct layer* l, void *frame, unsigned int start, unsigned int len) {
 	struct udphdr *hdr = frame + start;
 
 	ndprint("Processing UDP packet -> SPORT : %u | DPORT %u", ntohs(hdr->source), ntohs(hdr->dest));
 
-	match->payload_start = start + sizeof(struct udphdr);
-	match->payload_size = ntohs(hdr->len) - sizeof(struct udphdr);
-	ndprint(" | SIZE : %u\n", match->payload_size);
+	l->payload_start = start + sizeof(struct udphdr);
+	l->payload_size = ntohs(hdr->len) - sizeof(struct udphdr);
+	ndprint(" | SIZE : %u\n", l->payload_size);
 
 	return match_undefined_id;
 

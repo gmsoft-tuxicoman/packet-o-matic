@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -41,7 +41,7 @@ struct match_priv_ipv6 {
 int match_register_ipv6();
 int match_init_ipv6(struct match *m);
 int match_reconfig_ipv6(struct match *m);
-int match_identify_ipv6(struct layer* match, void* frame, unsigned int start, unsigned int len);
+int match_identify_ipv6(struct layer* l, void* frame, unsigned int start, unsigned int len);
 int match_eval_ipv6(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l);
 int match_cleanup_ipv6(struct match *m);
 

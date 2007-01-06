@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@ struct match_priv_ethernet {
 int match_register_ethernet(struct match_reg *r);
 int match_init_ethernet(struct match *m);
 int match_reconfig_ethernet(struct match *m);
-int match_identify_ethernet(struct layer* match, void* frame, unsigned int start, unsigned int len);
+int match_identify_ethernet(struct layer* l, void* frame, unsigned int start, unsigned int len);
 int match_eval_ethernet(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l);
 int match_cleanup_ethernet(struct match *m);
 
