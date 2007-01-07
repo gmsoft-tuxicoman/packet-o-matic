@@ -75,8 +75,14 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 
 		if (m->match_priv)
 			result = match_eval(m, frame, start, len, l);
-	} else
+
+
+		start = l->payload_start;
+	} else {
 		next_layer = l;
+		if (l->prev)
+			start = l->prev->payload_start;
+	}
 
 	if (result == 0)
 		return 0; // It doesn't match
@@ -85,8 +91,6 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 		return 1; // There is nothing else to match
 
 
-	if (next_layer->prev)
-		start = next_layer->prev->payload_start;
 
 
 	if (!n->b) // There is only one next node
