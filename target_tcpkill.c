@@ -214,7 +214,7 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 	}
 
 	// In normal mode we need at least an ipv6 or ipv4 header
-	if (!priv->routed && ipv4start == -11 && ipv6start == -1) {
+	if (!priv->routed && ipv4start == -1 && ipv6start == -1) {
 		dprint("No IPv4 or IPv6 header found in this packet\n");
 		return 0;
 	}

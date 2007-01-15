@@ -5,6 +5,14 @@ Packet-o-matic is a modular network sniffer and processor. The modules consists 
 It is designed to be as protocol independant as possible. Each protocol has it's own module of match, conntrack and helper if is makes sens or if it is implemented.
 
 
+Building from sources :
+-----------------------
+Just type make and it will build the program for you.
+This program depends on a few libs :
+ - libpcap
+ - libxml2
+
+
 How it works :
 --------------
 Packets are read from the input.

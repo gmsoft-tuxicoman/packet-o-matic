@@ -1,3 +1,7 @@
+* 2007/01/15 Guy Martin <gmsoft@tuxicoman.be>
+Fix typo in tcp_kill.c.
+Add dependencies in the README.
+
 * 2007/01/07 Guy Martin <gmsoft@tuxicoman.be>
 Fix segfault in rules.c.
 
