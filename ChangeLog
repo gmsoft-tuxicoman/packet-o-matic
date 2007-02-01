@@ -1,3 +1,26 @@
+* 2007/02/01 Guy Martin <gmsoft@tuxicoman.be>
+Check for pselect in configure.ac.
+Fix syntax errors in helper_ipv4.c and main.c when debug is enabled.
+Enable debug by default in Makefile.
+Fix building of input_docsis.so.
+Updated README file.
+Merged autotools branch to trunk.
+
+* 2007/01/28 Guy Martin <gmsoft@tuxicoman.be>
+Changed static value of 255 to NAME_MAX for modules names.
+Removed heading ./ for modules name to be able to use LD_LIBRARY_PATH.
+
+* 2007/01/27 Guy Martin <gmsoft@tuxicoman.be>
+Fixed includes for match_ethernet and timers on FreeBSD.
+Fixed other remaining include problems on FreeBSD.
+Various other build fix for FreeBSD.
+Made target_{tcpkill,inject,tap} conditionnaly built.
+
+* 2007/01/26 Guy Martin <gmsoft@tuxicoman.be>
+Created new branch to include autotools support.
+Made source code more portable thanks to Thomas Gouverneur <wildcat@espix.org>
+for initial patch.
+
 * 2007/01/15 Guy Martin <gmsoft@tuxicoman.be>
 Fix typo in tcp_kill.c.
 Add dependencies in the README.
