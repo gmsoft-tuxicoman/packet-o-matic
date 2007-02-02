@@ -321,23 +321,18 @@ int input_docsis_check_downstream(struct input *i) {
 	time_t sync_start = time(NULL);
 
 	fd_set set;
-	struct timespec tv = { 3 , 0 };
-
-	sigset_t sgs;
-	sigemptyset(&sgs);
-	sigaddset(&sgs, SIGALRM);
-		
+	struct timeval tv;
 
 	while (time(NULL) - sync_start <= 2) {
 		
 		FD_ZERO(&set);
 		FD_SET(p->dvr_fd, &set);
 		
-		res = pselect(p->dvr_fd + 1, &set, NULL, NULL, &tv, &sgs);
-		
 		tv.tv_sec = 1;
-		tv.tv_nsec = 0;
+		tv.tv_usec = 0;
 
+		res = select(p->dvr_fd + 1, &set, NULL, NULL, &tv);
+		
 		if (res == -1) {
 			dprint("Error select() : %s\n", strerror(errno));
 			break;

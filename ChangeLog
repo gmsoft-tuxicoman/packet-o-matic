@@ -2,6 +2,7 @@
 Fixed bug in target_tcpkill which was zeroing dest ipv4 addr in routed mode.
 Improved input_docsis scanning and added parameters.
 Make timers being initialized after input is open.
+Get rid of pselect since SIGALARM will occure after input_open.
 
 * 2007/02/01 Guy Martin <gmsoft@tuxicoman.be>
 Check for pselect in configure.ac.

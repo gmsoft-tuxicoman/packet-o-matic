@@ -48,7 +48,7 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_TYPE_SIGNAL
 AC_FUNC_STRFTIME
-AC_CHECK_FUNCS([bzero gettimeofday inet_ntoa memmove memset socket strerror pselect])
+AC_CHECK_FUNCS([bzero gettimeofday inet_ntoa memmove memset socket strerror])
 
 
 LIB_DL=''
