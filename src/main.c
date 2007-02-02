@@ -145,7 +145,6 @@ int main(int argc, char *argv[]) {
 	conntrack_init();
 	match_init();
 	helper_init();
-	timers_init();
 	target_init();
 	rules_init();
 
@@ -164,7 +163,10 @@ int main(int argc, char *argv[]) {
 
 	// Set which rule list we want to use for helped packets
 	helper_set_feedback_rules(c->rules);
-	
+
+
+	// Init the timer only now to avoid bothering with SIGALARM
+	timers_init();
 	
 	// Install the signal handler
 	signal(SIGHUP, signal_handler);

@@ -266,7 +266,7 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 			struct sockaddr_in *sin = (struct sockaddr_in *) &addr;
 			addrlen = sizeof(struct sockaddr_in);
 			sin->sin_family = AF_INET;
-			memcpy(&sv4hdr->ip_src, &sin->sin_addr, sizeof(struct in_addr));
+			memcpy(&sin->sin_addr, &sv4hdr->ip_src, sizeof(struct in_addr));
 			sin->sin_port = shdr->source;
 		}
 

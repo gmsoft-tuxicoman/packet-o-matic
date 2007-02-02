@@ -1,3 +1,8 @@
+* 2007/02/02 Guy Martin <gmsoft@tuxicoman.be>
+Fixed bug in target_tcpkill which was zeroing dest ipv4 addr in routed mode.
+Improved input_docsis scanning and added parameters.
+Make timers being initialized after input is open.
+
 * 2007/02/01 Guy Martin <gmsoft@tuxicoman.be>
 Check for pselect in configure.ac.
 Fix syntax errors in helper_ipv4.c and main.c when debug is enabled.

@@ -38,15 +38,18 @@
 
 #define DEMUX_BUFFER_SIZE 2097152 // 2Megs
 
-#define PARAMS_NUM 6
+#define PARAMS_NUM 9
 
 char *input_docsis_params[PARAMS_NUM][3] = {
 	{ "eurodocsis", "1", "DOCSIS specification to use. 1 for eurodocsis else 0" },
-	{ "frequency", "0", "frequency to scan to. if 0, a scan will be performed" },
+	{ "frequency", "0", "frequency to scan to in Hz. if 0, a scan will be performed" },
 	{ "modulation", "QAM256", "the modulation to use. either QAM64 or QAM256" },
 	{ "adapter", "0", "DVB adapter to use" },
 	{ "frontend", "0", "DVB frontend to use" },
 	{ "outlayer", "ethernet", "choose output layer : ethernet or docsis" },
+	{ "scanstart", "0", "start docsis scan at this frequency (in Hz)" },
+	{ "frontend_reinit", "0", "set to 1 if frontend needs to be closed and reopened between each scan" },
+	{ "tuning_timeout", "10", "seconds we'll wait for a lock" },
 };
 
 int  match_ethernet_id, match_docsis_id;
@@ -101,6 +104,7 @@ int input_open_docsis(struct input *i) {
 
 	struct input_priv_docsis *p = i->input_priv;
 
+	// Select the output type
 	if (!strcmp(i->params_value[5], "ethernet")) {
 		p->output_layer = match_ethernet_id;
 	} else if (!strcmp(i->params_value[5], "docsis")) {
@@ -110,6 +114,8 @@ int input_open_docsis(struct input *i) {
 		return 0;
 	}
 
+
+	// Parse eurodocsis and frequency
 	int eurodocsis, frequency;
 	sscanf(i->params_value[0], "%u", &eurodocsis);
 	sscanf(i->params_value[1], "%u", &frequency);
@@ -124,6 +130,7 @@ int input_open_docsis(struct input *i) {
 		return 0;
 	}	
 	
+	// Open the frontend
 	char adapter[NAME_MAX];
 	bzero(adapter, NAME_MAX);
 	strcpy(adapter, "/dev/dvb/adapter");
@@ -140,6 +147,20 @@ int input_open_docsis(struct input *i) {
 		return 0;
 	}
 
+	// Check if we are really using a DVB-C device
+	
+	struct dvb_frontend_info info;
+	if (ioctl(p->frontend_fd, FE_GET_INFO, &info) != 0) {
+		dprint("Unable to get frontend type\n");
+		return 0;
+	}
+
+	if (info.type != FE_QAM) {
+		dprint("Error, device %s is not a DVB-C device\n", frontend);
+		return 0;
+	}
+
+	// Open the demux
 	char demux[NAME_MAX];
 	strcpy(demux, adapter);
 	strcat(demux, "/demux0");
@@ -150,15 +171,12 @@ int input_open_docsis(struct input *i) {
 		return 0;
 	}
 
-
 	// Let's use a larger buffer
-
 	if (ioctl(p->demux_fd, DMX_SET_BUFFER_SIZE, (unsigned long) DEMUX_BUFFER_SIZE) != 0) {
 		dprint("Unable to set the buffer size on the demux : %s\n", strerror(errno));
 	}
 
-
-	// Yeah we got a lock. Let's filter on the DOCSIS PID
+	// Let's filter on the DOCSIS PID
 	
 	filter.pid = DOCSIS_PID;
 	filter.input = DMX_IN_FRONTEND;
@@ -185,18 +203,23 @@ int input_open_docsis(struct input *i) {
 		return 0;
 	}
 
+
+	// Choose right symbolRate depending on modulation
+	unsigned int symbolRate;
+	if (eurodocsis)
+		symbolRate = 6952000;
+	else if (modulation == QAM_64)
+		symbolRate = 5056941;
+	else // QAM_256
+		symbolRate = 5360537;
+
+	int tuned = 0;
+
 	// Frequency and modulation supplied. Tuning to that
-	if (frequency != -1) {
-		unsigned int symboleRate;
-		if (eurodocsis)
-			symboleRate = 6952000;
-		else if (modulation == QAM_64)
-			symboleRate = 5056941;
-		else // QAM_256
-			symboleRate = 5360537;
-		int try, tuned;
+	if (frequency != 0) {
+		int try;
 		for (try = 0; try < 3; try++) {
-			tuned = input_docsis_tune(i, frequency, symboleRate, modulation);
+			tuned = input_docsis_tune(i, frequency, symbolRate, modulation);
 			if (tuned == 1)
 				break;
 		}
@@ -213,45 +236,61 @@ int input_open_docsis(struct input *i) {
 	} else  { // No frequency supplied. Scanning for downstream
 
 
-		unsigned int start, end, step, symboleRate;
+		unsigned int start, end, step;
 		int j;
-		fe_modulation_t modulation;
 		if (eurodocsis) {
 			start = 112000000;
 			end = 858000000;
 			step = 1000000;
-			// modulation = QAM_64;
-			// symboleRate = 6952000;
-			modulation = QAM_256;
-			symboleRate = 6952000;
 
 		} else {
 			start = 91000000;
 			end = 857000000;
 			step = 1000000;
-			modulation = QAM_64;
-			symboleRate = 5056941;
-			// modulation = QAM_256;
-			// symboleRate = 5360537;
 		}
 
+		unsigned int scanstart;
+
+		sscanf(i->params_value[6], "%u", &scanstart);
+		if (scanstart > start && scanstart < end)
+			start = scanstart;
+
+		unsigned int need_reinit;
+		sscanf(i->params_value[7], "%u", &need_reinit);
+
+
+		dprint("No frequency specified. starting a scan from %uMhz to %uMhz\n", start / 1000000, end / 1000000);
 		for (j = start; j <= end; j += step) {
 
 			dprint("Tuning to %u Mz ...\n", j / 1000000);
 
-			int res = input_docsis_tune(i, j, symboleRate, modulation);
+			int res = input_docsis_tune(i, j, symbolRate, modulation);
 			if (res == -1)
 				return 0;
-			else if (res == 0)
+			else if (res == 0) {
+				if (need_reinit) {
+					// Let's close and reopen the frontend to reinit it
+					dprint("Reinitializing frontend ...\n");
+					close(p->frontend_fd);
+					sleep(10); // Yes, stupid frontends need to be closed to lock again or result is arbitrary
+					p->frontend_fd = open(frontend, O_RDWR);
+					if (p->frontend_fd == -1) {
+						dprint("Error while reopening frontend\n");
+						return -1;
+					}
+				}
 				continue;
+			}
+
+			tuned = 1;
 
 			dprint("Frequency tunned. Looking up for SYNC messages ...\n");
 
 			if (!input_docsis_check_downstream(i))
 				continue;
 
-			dprint("Downstream Aquired !\n");
-			dprint("Frequency : %f Mhz, Symbole rate : %u Sym/s, QAM : ", (double) j / 1000000.0, symboleRate);
+			dprint("Downstream acquired !\n");
+			dprint("Frequency : %f Mhz, Symbol rate : %u Sym/s, QAM : ", (double) j / 1000000.0, symbolRate);
 			if (modulation == QAM_64)
 				dprint("QAM64");
 			else if(modulation == QAM_256)
@@ -260,6 +299,11 @@ int input_open_docsis(struct input *i) {
 			break;
 
 		}
+	}
+
+	if (!tuned) {
+		dprint("Failed to open docsis input\n");
+		return 0;
 	}
 
 	dprint("Docsis stream opened successfullly\n");
@@ -391,12 +435,12 @@ int input_docsis_check_downstream(struct input *i) {
 		
 	} 
 
-	dprint("Did not received SYNC message within timeout\n");
+	dprint("Did not receive SYNC message within timeout\n");
 	return 0;
 }
 
 
-int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symboleRate, fe_modulation_t modulation) {
+int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symbolRate, fe_modulation_t modulation) {
 	
 	fe_status_t status;
 	struct dvb_frontend_parameters frp;
@@ -407,9 +451,11 @@ int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symboleRate,
 
 	struct input_priv_docsis *p = i->input_priv;
 
+
+	bzero(&frp, sizeof(struct dvb_frontend_parameters));
 	frp.frequency = frequency;
-	frp.inversion = INVERSION_OFF; // DOCSIS explicitly prohibit inversion
-	frp.u.qam.symbol_rate = symboleRate;
+	frp.inversion = INVERSION_AUTO; // DOCSIS explicitly prohibit inversion but we keep AUTO to play it safe
+	frp.u.qam.symbol_rate = symbolRate;
 	frp.u.qam.fec_inner = FEC_AUTO;
 	frp.u.qam.modulation = modulation;
 
@@ -424,8 +470,13 @@ int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symboleRate,
 	pfd[0].fd = p->frontend_fd;
 	pfd[0].events = POLLIN;
 
-	do {
-		if (poll(pfd, 1, 3000)){
+	int try = 0;
+
+	int tune_timeout;
+	sscanf(i->params_value[8], "%u", &tune_timeout);
+
+	while (try < tune_timeout) {
+		if (poll(pfd, 1, 1000)){
 			if (pfd[0].revents & POLLIN) {
 				if (ioctl(p->frontend_fd, FE_GET_EVENT, &event)) {
 					dprint("IOCTL failed\n");
@@ -467,11 +518,12 @@ int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symboleRate,
 				if (status)
 					dprint("\n");
 
-			}
-		} else {
-			break;
-		}
-	} while(1);
+
+			} else
+				try++;
+		} else
+			try++;
+	};
 
 	dprint("Lock not aquired\n");
 
