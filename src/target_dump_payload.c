@@ -78,8 +78,6 @@ int target_process_dump_payload(struct target *t, struct layer *l, void *frame, 
 	while (lastl->next && lastl->next->type != match_undefined_id)
 		lastl = lastl->next;
 
-	if (lastl->payload_size == 0)
-		return 1;
 
 	struct target_conntrack_priv_dump_payload *cp;
 
@@ -120,6 +118,9 @@ int target_process_dump_payload(struct target *t, struct layer *l, void *frame, 
 
 		(*tg_functions->conntrack_add_priv) (t, cp, l, frame);
 	}
+
+	if (lastl->payload_size == 0)
+		return 1;
 
 	if (*t->params_value[1] == '1') {
 		unsigned int direction = CT_DIR_FWD;

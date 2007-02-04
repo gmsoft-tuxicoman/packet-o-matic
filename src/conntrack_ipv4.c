@@ -95,7 +95,7 @@ int conntrack_doublecheck_ipv4(void *frame, unsigned int start, void *priv, unsi
 			break;
 
 		case CT_DIR_REV:
-			if (p->saddr != hdr->ip_dst.s_addr || p->daddr != hdr->ip_dst.s_addr)
+			if (p->saddr != hdr->ip_dst.s_addr || p->daddr != hdr->ip_src.s_addr)
 				return 0;
 			break;
 
@@ -116,7 +116,7 @@ void *conntrack_alloc_match_priv_ipv4(void *frame, unsigned int start, struct co
 	struct conntrack_priv_ipv4 *priv;
 	priv = malloc(sizeof(struct conntrack_priv_ipv4));
 	priv->saddr = hdr->ip_src.s_addr;
-	priv->daddr = hdr->ip_src.s_addr;
+	priv->daddr = hdr->ip_dst.s_addr;
 
 	return priv;
 

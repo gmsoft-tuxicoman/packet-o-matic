@@ -38,6 +38,7 @@ int conntrack_register_tcp(struct conntrack_reg *r, struct conntrack_functions *
 	r->doublecheck = conntrack_doublecheck_tcp;
 	r->alloc_match_priv = conntrack_alloc_match_priv_tcp;
 	r->cleanup_match_priv = conntrack_cleanup_match_priv_tcp;
+	r->flags = CT_DIR_BOTH;
 
 	ct_functions = ct_funcs;
 	
@@ -113,7 +114,7 @@ int conntrack_doublecheck_tcp(void *frame, unsigned int start, void *priv, unsig
 			break;
 
 		case CT_DIR_REV:
-			if (p->sport != hdr->th_sport || p->dport != hdr->th_dport)
+			if (p->sport != hdr->th_dport || p->dport != hdr->th_sport)
 				return 0;
 			break;
 
@@ -136,8 +137,8 @@ void *conntrack_alloc_match_priv_tcp(void *frame, unsigned int start, struct con
 	
 	struct conntrack_priv_tcp *priv;
 	priv = malloc(sizeof(struct conntrack_priv_tcp));
-	priv->sport = hdr->th_dport;
-	priv->dport = hdr->th_sport;
+	priv->sport = hdr->th_sport;
+	priv->dport = hdr->th_dport;
 
 	// Allocate the timer and set it up
 	struct timer *t;

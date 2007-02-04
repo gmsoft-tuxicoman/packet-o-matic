@@ -36,6 +36,7 @@ int conntrack_register_udp(struct conntrack_reg *r, struct conntrack_functions *
 	r->doublecheck = conntrack_doublecheck_udp;
 	r->alloc_match_priv = conntrack_alloc_match_priv_udp;
 	r->cleanup_match_priv = conntrack_cleanup_match_priv_udp;
+	r->flags = CT_DIR_BOTH;
 	
 	ct_functions = ct_funcs;
 	
