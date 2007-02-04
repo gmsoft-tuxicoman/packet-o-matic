@@ -68,6 +68,10 @@ AC_SUBST(libxml2_LIBS)
 AC_CONFIG_FILES([Makefile
                  src/Makefile])
 
+# #define LIB_DIR
+LIB_DIR='${libdir}'
+AC_SUBST(LIB_DIR)
+
 #
 # Select build targets
 #

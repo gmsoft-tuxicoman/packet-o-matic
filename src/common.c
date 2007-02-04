@@ -54,3 +54,46 @@ unsigned int layer_find_start(struct layer *l, int header_type) {
 	return -1;
 }
 
+void *lib_get_register_func(const char *type, const char *name, void **handle) {
+
+	char libname[NAME_MAX];
+	bzero(libname, NAME_MAX);
+
+	strcat(libname, type);
+	strcat(libname, "_");
+	strcat(libname, name);
+	strcat(libname, ".so");
+
+	// First try to open with automatic resolving for LD_LIBRARY_PATH
+	*handle = dlopen(libname, RTLD_NOW);
+
+	char buff[NAME_MAX];
+
+	// Fallback on hardcoded LIBDIR
+	if (!*handle) {
+		
+		dlerror();
+
+		bzero(buff, NAME_MAX);
+		strcat(buff, LIBDIR);
+		strcat(buff, "/");
+		strcat(buff, libname);
+		*handle = dlopen(buff, RTLD_NOW);
+	}
+
+	if (!*handle) {
+/*		dprint("Unable to load %s %s : ", type, name);
+		dprint(dlerror());
+		dprint("\n");*/
+		return NULL;
+	}
+	dlerror();
+
+	bzero(buff, NAME_MAX);
+	strcat(buff, type);
+	strcat(buff, "_register_");
+	strcat(buff, name);
+	
+	return dlsym(*handle, buff);
+
+}

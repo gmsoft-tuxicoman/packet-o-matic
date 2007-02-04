@@ -3,6 +3,7 @@ Added missing r->flags to conntrack_udp and conntrack_tcp.
 Fixed various copy/paste errors introduced while porting on BSD.
 Make target_dump_payload allocate conntrack even if there is no payload to
 catch reverse data.
+Improved search of libraries.
 
 * 2007/02/02 Guy Martin <gmsoft@tuxicoman.be>
 Fixed bug in target_tcpkill which was zeroing dest ipv4 addr in routed mode.

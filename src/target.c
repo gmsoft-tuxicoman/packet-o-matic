@@ -54,31 +54,13 @@ int target_register(const char *target_name) {
 				return i;
 			}
 		} else {
-			void *handle;
-			char name[NAME_MAX];
-			strcpy(name, "target_");
-			strcat(name, target_name);
-			strcat(name, ".so");
-
-			handle = dlopen(name, RTLD_NOW);
-
-			if (!handle) {
-				dprint("unable to load target %s : ", target_name);
-				dprint(dlerror());
-				dprint("\n");
-				return -1;
-			}
-			dlerror();
-
-			strcpy(name, "target_register_");
-			strcat(name, target_name);
-
 			int (*register_my_target) (struct target_reg *, struct target_functions *);
 
-			
-			register_my_target = dlsym(handle, name);
+			void *handle = NULL;
+			register_my_target = lib_get_register_func("target", target_name, &handle);
+
 			if (!register_my_target) {
-				dprint("error when finding symbol %s. could not load target !\n", target_name);
+				dprint("Could not load target %s!\n", target_name);
 				return -1;
 			}
 
@@ -87,7 +69,7 @@ int target_register(const char *target_name) {
 
 			
 			if (!(*register_my_target) (my_target, tg_funcs)) {
-				dprint("error while loading target %s. could not load target !\n", target_name);
+				dprint("Error while loading target %s. could not register target !\n", target_name);
 				return -1;
 			}
 

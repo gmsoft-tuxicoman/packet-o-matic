@@ -54,6 +54,8 @@
 #include "match.h"
 
 unsigned int layer_find_start(struct layer *l, int header_type);
+void *lib_get_register_func(const char *type, const char *name, void **handle);
+
 
 #ifdef DEBUG
 #define dprint(x, y...) printf(x, ##y)

@@ -287,7 +287,8 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 			}
 		
 		} else {
-			dprint("Warning, unrecognized tag <%s> inside <matches> tags\n", cur->name);
+			if (strcmp(cur->name, "text"))
+				dprint("Warning, unrecognized tag <%s> inside <matches> tags\n", cur->name);
 		}
 
 		cur = cur->next;

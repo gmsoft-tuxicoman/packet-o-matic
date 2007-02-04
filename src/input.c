@@ -36,31 +36,15 @@ int input_register(const char *input_name) {
 				return i;
 			}
 		} else {
-			void *handle;
-			char name[NAME_MAX];
-			strcpy(name, "input_");
-			strcat(name, input_name);
-			strcat(name, ".so");
-
-			handle = dlopen(name, RTLD_NOW);
-
-			if (!handle) {
-				dprint("Unable to load input %s : ", input_name);
-				dprint(dlerror());
-				dprint("\n");
-				return -1;
-			}
-			dlerror();
-
-			strcpy(name, "input_register_");
-			strcat(name, input_name);
 
 			int (*register_my_input) (struct input_reg *);
 
-			
-			register_my_input = dlsym(handle, name);
+			void *handle = NULL;
+			register_my_input = lib_get_register_func("input", input_name, &handle);
+
+
 			if (!register_my_input) {
-				dprint("Error when finding symbol %s. Could not load input !\n", input_name);
+				dprint("Could not load input %s !\n", input_name);
 				return -1;
 			}
 
@@ -69,7 +53,7 @@ int input_register(const char *input_name) {
 
 			
 			if (!(*register_my_input) (my_input)) {
-				dprint("Error while loading input %s. Could not load input !\n", input_name);
+				dprint("Error while loading input %s. Could not register input !\n", input_name);
 				return -1;
 			}
 

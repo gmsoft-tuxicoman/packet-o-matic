@@ -59,31 +59,14 @@ int helper_register(const char *helper_name) {
 		return id;
 
 
-	void *handle;
-	char name[NAME_MAX];
-	strcpy(name, "helper_");
-	strcat(name, helper_name);
-	strcat(name, ".so");
-
-	handle = dlopen(name, RTLD_NOW);
-
-	if (!handle) {
-		dprint("Unable to load helper %s : ", helper_name);
-		dprint(dlerror());
-		dprint("\n");
-		return -1;
-	}
-	dlerror();
-
-	strcpy(name, "helper_register_");
-	strcat(name, helper_name);
 
 	int (*register_my_helper) (struct helper_reg *, struct helper_functions *);
 
+	void *handle = NULL;
+	register_my_helper = lib_get_register_func("helper", helper_name, &handle);
 	
-	register_my_helper = dlsym(handle, name);
 	if (!register_my_helper) {
-		dprint("Error when finding symbol %s. Could not load helper !\n", helper_name);
+		dprint("Could not load helper %s !\n", helper_name);
 		return -1;
 	}
 
@@ -92,7 +75,7 @@ int helper_register(const char *helper_name) {
 
 
 	if (!(*register_my_helper) (my_helper, hlp_funcs)) {
-		dprint("Error while loading helper %s. Could not load helper !\n", helper_name);
+		dprint("Error while loading helper %s. Could not register helper !\n", helper_name);
 		free(my_helper);
 		return -1;
 	}

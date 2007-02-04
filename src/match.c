@@ -37,31 +37,13 @@ int match_register(const char *match_name) {
 				return i;
 			}
 		} else {
-			void *handle;
-			char name[NAME_MAX];
-			strcpy(name, "match_");
-			strcat(name, match_name);
-			strcat(name, ".so");
-
-			handle = dlopen(name, RTLD_NOW);
-
-			if (!handle) {
-				dprint("Unable to load match %s : ", match_name);
-				dprint(dlerror());
-				dprint("\n");
-				return -1;
-			}
-			dlerror();
-
-			strcpy(name, "match_register_");
-			strcat(name, match_name);
-
 			int (*register_my_match) (struct match_reg *);
 
+			void *handle = NULL;
+			register_my_match = lib_get_register_func("match", match_name, &handle);
 			
-			register_my_match = dlsym(handle, name);
 			if (!register_my_match) {
-				dprint("Error when finding symbol %s. Could not load match !\n", match_name);
+				dprint("Could not load match %s !\n", match_name);
 				return -1;
 			}
 
@@ -70,7 +52,7 @@ int match_register(const char *match_name) {
 
 			
 			if (!(*register_my_match) (my_match)) {
-				dprint("Error while loading match %s. Could not load match !\n", match_name);
+				dprint("Error while loading match %s. Could not register match !\n", match_name);
 				free(my_match);
 				return -1;
 			}
@@ -144,11 +126,17 @@ int match_set_param(struct match *m, char *name, char *value) {
 			free(m->params_value[i]);
 			m->params_value[i] = malloc(strlen(value) + 1);
 			strcpy(m->params_value[i], value);
-			if(matchs[m->match_type]->reconfig)
-				return (*matchs[m->match_type]->reconfig) (m);
+			if(matchs[m->match_type]->reconfig) {
+				if (!(*matchs[m->match_type]->reconfig) (m)) {
+					dprint("Unable to parse parameter %s (%s) for match %s\n", matchs[m->match_type]->params_name[i], m->params_value[i], matchs[m->match_type]->match_name);
+					return 0;
+				}	
+			}
 			return 1;
 		}
 	}
+
+	dprint("No parameter %s for match %s\n", matchs[m->match_type]->params_name[i], matchs[m->match_type]->match_name);
 
 	return 0;
 

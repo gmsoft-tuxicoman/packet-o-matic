@@ -69,32 +69,13 @@ int conntrack_register(const char *conntrack_name) {
 	if (conntracks[id])
 		return id;
 
-
-	void *handle;
-	char name[NAME_MAX];
-	strcpy(name, "conntrack_");
-	strcat(name, conntrack_name);
-	strcat(name, ".so");
-
-	handle = dlopen(name, RTLD_NOW);
-
-	if (!handle) {
-		dprint("Unable to load conntrack %s : ", conntrack_name);
-		dprint(dlerror());
-		dprint("\n");
-		return -1;
-	}
-	dlerror();
-
-	strcpy(name, "conntrack_register_");
-	strcat(name, conntrack_name);
-
 	int (*register_my_conntrack) (struct conntrack_reg *, struct conntrack_functions *);
 
+	void *handle = NULL;
+	register_my_conntrack = lib_get_register_func("conntrack", conntrack_name, &handle);
 	
-	register_my_conntrack = dlsym(handle, name);
 	if (!register_my_conntrack) {
-		dprint("Error when finding symbol %s. Could not load conntrack !\n", conntrack_name);
+		dprint("Could not load conntrack %s !\n", conntrack_name);
 		return -1;
 	}
 
@@ -103,7 +84,7 @@ int conntrack_register(const char *conntrack_name) {
 
 
 	if (!(*register_my_conntrack) (my_conntrack, ct_funcs)) {
-		dprint("Error while loading conntrack %s. Could not load conntrack !\n", conntrack_name);
+		dprint("Error while loading conntrack %s. Could not register conntrack !\n", conntrack_name);
 		free(my_conntrack);
 		return -1;
 	}

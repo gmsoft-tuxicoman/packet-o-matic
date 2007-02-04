@@ -54,8 +54,14 @@ void print_help() {
 	
 	printf("Usage : packet-o-matic [-c config_file] [-h]\n");
 
+	char * path = getenv("LD_LIBRARY_PATH");
+
+	if (!path)
+		path = LIBDIR;
+
+
 	DIR *d;
-	d = opendir("./");
+	d = opendir(path);
 	if (!d) {
 		printf("No module found.\n");
 		return;
