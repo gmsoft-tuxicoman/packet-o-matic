@@ -75,7 +75,6 @@ int conntrack_register(const char *conntrack_name) {
 	register_my_conntrack = lib_get_register_func("conntrack", conntrack_name, &handle);
 	
 	if (!register_my_conntrack) {
-		dprint("Could not load conntrack %s !\n", conntrack_name);
 		return -1;
 	}
 

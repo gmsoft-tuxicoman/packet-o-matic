@@ -53,10 +53,10 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 		dprint("No type given in the input tag\n");
 		return NULL;
 	}
-	dprint("Parsing input of type %s\n", input_type);
+	ndprint("Parsing input of type %s\n", input_type);
 	int it = input_register(input_type);
 	if (it == -1) {
-		dprint("Input %s not supported\n", input_type);
+		dprint("Could not load input %s !\n", input_type);
 		xmlFree(input_type);
 		return NULL;
 	}
@@ -95,10 +95,10 @@ struct target *parse_target(xmlDocPtr doc, xmlNodePtr cur) {
 		dprint("No type given in the target tag\n");
 		return NULL;
 	}
-	dprint("Parsing target of type %s\n", target_type);
+	ndprint("Parsing target of type %s\n", target_type);
 	int tt = target_register(target_type);
 	if (tt == -1) {
-		dprint("Target %s not supported\n", target_type);
+		dprint("Could not load target %s !\n", target_type);
 		xmlFree(target_type);
 		return NULL;
 	}
@@ -156,10 +156,10 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 				dprint("No type given in the match tag\n");
 				return NULL;
 			}
-			dprint("Parsing match of type %s\n", match_type);
+			ndprint("Parsing match of type %s\n", match_type);
 			int mt = match_register(match_type);
 			if (mt == -1) {
-				dprint("Match %s not supported\n", match_type);
+				dprint("Could not load match %s !\n", match_type);
 				xmlFree(match_type);
 				return NULL;
 			}

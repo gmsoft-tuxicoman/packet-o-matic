@@ -66,7 +66,6 @@ int helper_register(const char *helper_name) {
 	register_my_helper = lib_get_register_func("helper", helper_name, &handle);
 	
 	if (!register_my_helper) {
-		dprint("Could not load helper %s !\n", helper_name);
 		return -1;
 	}
 

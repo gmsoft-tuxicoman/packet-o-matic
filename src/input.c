@@ -44,7 +44,6 @@ int input_register(const char *input_name) {
 
 
 			if (!register_my_input) {
-				dprint("Could not load input %s !\n", input_name);
 				return -1;
 			}
 

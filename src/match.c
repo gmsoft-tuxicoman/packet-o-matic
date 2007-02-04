@@ -43,7 +43,6 @@ int match_register(const char *match_name) {
 			register_my_match = lib_get_register_func("match", match_name, &handle);
 			
 			if (!register_my_match) {
-				dprint("Could not load match %s !\n", match_name);
 				return -1;
 			}
 
@@ -62,7 +61,7 @@ int match_register(const char *match_name) {
 			strcpy(matchs[i]->match_name, match_name);
 			matchs[i]->dl_handle = handle;
 
-			dprint("Match %s registered with id %u\n", match_name, i);
+			dprint("Match %s registered\n", match_name);
 
 
 			return i;

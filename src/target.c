@@ -60,7 +60,6 @@ int target_register(const char *target_name) {
 			register_my_target = lib_get_register_func("target", target_name, &handle);
 
 			if (!register_my_target) {
-				dprint("Could not load target %s!\n", target_name);
 				return -1;
 			}
 
