@@ -208,33 +208,14 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 			}
 
 
-		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "node")) {
+		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "or")) {
 			// This match the following
-			// <node><a>some match</a><b>some match</b></node>
+			// <or><a>some match</a><b>some match</b></or>
 
-			xmlChar* op = xmlGetProp(cur, (const xmlChar*) "op");
-			if (!op) {
-				dprint("No op specified in node tag\n");
-				return NULL;
-			}
 
 			n = malloc(sizeof(struct rule_node));
 			bzero(n, sizeof(struct rule_node));
 			ndprint("Creating new rule_node\n");
-
-			if (!xmlStrcmp(op, (const xmlChar*) "or"))
-				n->andor = RULE_OP_OR;
-			else if (!xmlStrcmp(op, (const xmlChar*) "and" ))
-				n->andor = RULE_OP_AND;
-			else {
-				dprint("Invalid operation %s for node\n", op);
-				xmlFree(op);
-				free(n);
-				return NULL;
-			}
-
-			xmlFree(op);
-
 
 			xmlNodePtr pcur = cur->xmlChildrenNode;
 
@@ -243,8 +224,8 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 					n->a = parse_match(doc, pcur->xmlChildrenNode);
 				else if (!xmlStrcmp(pcur->name, (const xmlChar *) "b")  && !n->b)
 					n->b = parse_match(doc, pcur->xmlChildrenNode);
-				else 
-					dprint ("Error in config, duplicate or unknown tag\n");
+				else if (xmlStrcmp(pcur->name,(const xmlChar *) "text") && xmlStrcmp(pcur->name,(const xmlChar *) "comment"))
+					dprint ("Error in config, duplicate or unknown tag %s\n", pcur->name);
 				pcur = pcur->next;
 						
 			}
@@ -287,7 +268,7 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 			}
 		
 		} else {
-			if (xmlStrcmp(cur->name,(const xmlChar *) "text"))
+			if (xmlStrcmp(cur->name,(const xmlChar *) "text") && xmlStrcmp(cur->name,(const xmlChar *) "comment"))
 				dprint("Warning, unrecognized tag <%s> inside <matches> tags\n", cur->name);
 		}
 

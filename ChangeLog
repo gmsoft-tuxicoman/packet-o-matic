@@ -2,6 +2,8 @@
 Fixed compilation warnings on amd64.
 Updated README with info on running the code.
 Removed obsolete code in conntrack_udp.c and timers.c.
+Removed and operation since it was useless and made a <or> tag.
+Updated and documented example config.
 
 * 2007/02/04 Guy Martin <gmsoft@tuxicoman.be>
 Added missing r->flags to conntrack_udp and conntrack_tcp.

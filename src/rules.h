@@ -24,15 +24,10 @@
 #define __RULES_H__
 
 
-#define RULE_OP_AND	0
-#define RULE_OP_OR	1
-
-
 
 struct rule_node {
 	struct rule_node *a; // next rule to match
 	struct rule_node *b; // possible other rule to match
-	int andor; // and = 1; or = 0; // operator to apply if b exists
 	struct match *match; // How to match the current rule
 
 };

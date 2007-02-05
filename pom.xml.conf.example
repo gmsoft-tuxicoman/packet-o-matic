@@ -1,73 +1,77 @@
 <?xml version="1.0"?>
 <config>
 
-<input type="docsis">
-	<param name="eurodocsis">1</param>
-	<param name="frequency">462000000</param>
-	<param name="modulation">QAM64</param>
+<!-- use the input_pcap module and tell it to sniff to eth0 (you need root privileges for this) -->
+<input type="pcap">
+	<param name="interface">eth0</param>
 </input>
 
+<!-- each rule consist of a target and matches wich define what to do with the packet and which packet to match respectively -->
 <rule>
-	<target type="tap"><param name="ifname">docsis0</param></target>
+	<!-- target_pcap save the sniffed packets into a file -->
+	<target type="pcap">
+		<!-- this target takes only one parameter : filename -->
+		<param name="filename">/tmp/dump.cap</param>
+	</target>
+
+	<!-- we want to capture only ipv6 traffic -->
 	<matches>
+		<!-- we first layer we'll have to match is ethernet -->
 		<match type="ethernet"/>
+		<!-- above ethernet we look for ipv6 packets -->
+		<match type="ipv6"/>
 	</matches>
 </rule>
 
+<!-- this second rule sends a tcp kill to either ipv4 or ipv6 in ipv4 tunnels for tcp port 1234 -->
 <rule>
-	<target type="inject"><param name="interface">eth0.4</param></target>
+	<!-- target_tcpkill will fit our purpose -->
+	<target type="tcpkill">
+		<!-- use normal mode and not routed mode -->
+		<param name="mode">normal</param>
+		<!-- send the rst packets on eth0 -->
+		<param name="interface">eth0</param>
+	</target>
+
 	<matches>
-		<match type="ethernet">
-			<param name="dmac">00:ab:cd:ef:12:34</param>
-			<param name="dmac_mask">ff:ff:ff:ff:ff:ff</param>
-		</match>
-		<match type="ipv4">
-			<param name="daddr">1.2.3.4</param>
-			<param name="dnetmask">255.255.255.255</param>
-		</match>
-		<match type="tcp">
-			<param name="dport">25</param>
-		</match>
-	</matches>
-</rule>
-<!--
-<rule>
-	<target type="wave"><param name="prefix">/mnt/mem/rtp</param></target>
-	<matches>
+		<!-- first layer will be ethernet -->
 		<match type="ethernet"/>
-		<match type="ipv4">
-			<param name="saddr">10.0.0.0</param>
-			<param name="snetmask">255.0.0.0</param>
+		<!-- we match either <a> or <b> -->
+		<or>
+			<a>
+				<!-- either ipv4 -->
+				<match type="ipv4"/>
+			</a>
+			<b>
+				<!-- or ipv6 in ipv4 aka ipv6 tunnels -->
+				<match type="ipv4"/>
+				<match type="ipv6"/>
+			</b>
+		</or>
+		<!-- after the network layer, we add the connection layer -->
+		<match type="tcp">
+			<!-- match only tcp packets which destination port 1234 -->
+			<param name="dport">1234</param>
 		</match>
-		<match type="udp">
-			<param name="sport">3000:65535</param>
-			<param name="dport">3000:65535</param>
-		</match>
-		<match type="rtp"/>
 	</matches>
 </rule>
+
+<!-- this rule will dump each ipv4 connections on tcp port 123 into a single file -->
 <rule>
-	<target type="dump_payload"><param name="prefix">/mnt/mem/pop3</param></target>
+	<!-- target_dump_payload is the one -->
+	<target type="dump_payload">
+		<!-- the files will be stored in /tmp/ and will be named tcp-12345-[timestamp] -->
+		<param name="prefix">/tmp/tcp-12345</param>
+	</target>
+
 	<matches>
 		<match type="ethernet"/>
 		<match type="ipv4"/>
 		<match type="tcp">
-			<param name="sport">110</param>
+			<!-- match all the traffic to port 12345 -->
+			<param name="sport">12345</param>
 		</match>
 	</matches>
 </rule>
--->
-<rule>
-	<target type="tcpkill"><param name="severity">3</param></target>
-	<matches>
-		<match type="ethernet"/>
-		<match type="ipv4">
-			<param name="daddr">1.2.3.4</param>
-			<param name="dnetmask">255.255.255.255</param>
-		</match>
-		<match type="tcp">
-			<param name="dport">80</param>
-		</match>
-	</matches>
-</rule>
+
 </config>

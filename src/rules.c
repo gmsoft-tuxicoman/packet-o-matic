@@ -97,18 +97,8 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 		return node_match(frame, start, len, n->a, next_layer);
 
 
-	if (n->andor == RULE_OP_AND) { // and
-		return node_match(frame, start, len, n->a, next_layer) && node_match(frame, start, len, n->b, next_layer);
-
-	} else { // or
-		return node_match(frame, start, len, n->a, next_layer) || node_match(frame, start, len, n->b, next_layer);
-
-	}
-	
-	// Never reached
-	
-	return 0;
-	
+	// there is two node, let's see if we match one of them
+	return node_match(frame, start, len, n->a, next_layer) && node_match(frame, start, len, n->b, next_layer);
 
 }
 
