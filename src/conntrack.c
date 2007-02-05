@@ -153,7 +153,7 @@ struct conntrack_entry *conntrack_create_entry(struct layer *l, void* frame) {
 		l = l->next;
 	}
 
-	ndprint("Conntrack entry 0x%x created\n", (unsigned) ce);
+	ndprint("Conntrack entry 0x%lx created\n", (unsigned long) ce);
 
 	return ce;
 }
@@ -186,7 +186,7 @@ int conntrack_add_priv(void *obj, void *priv, struct layer *l, void *frame) {
 	cp->priv_obj = obj;
 	cp->priv = priv;
 
-	ndprint("Target priv 0x%x added to conntrack 0x%x\n", (unsigned) priv, (unsigned) ce);
+	ndprint("Target priv 0x%lx added to conntrack 0x%lx\n", (unsigned long) priv, (unsigned long) ce);
 
 	
 	return 1;
@@ -300,7 +300,7 @@ struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct layer *
 		cp = cp->next;
 	}
 
-	ndprint("Found conntrack 0x%x, hash 0x%x\n", (unsigned) ce, ce->full_hash);
+	ndprint("Found conntrack 0x%lx, hash 0x%lx\n", (unsigned long) ce, ce->full_hash);
 
 	return ce;
 }
@@ -388,7 +388,7 @@ int conntrack_close_connnection (struct conntrack_entry *ce) {
 		free(cl);
 	
 	} else
-		dprint("Warning, conntrack_list not found for conntrack 0x%u\n", (unsigned) ce);
+		dprint("Warning, conntrack_list not found for conntrack 0x%lu\n", (unsigned long) ce);
 
 	// Free the conntrack_entry itself
 

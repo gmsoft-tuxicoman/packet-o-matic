@@ -22,57 +22,8 @@
 #include <signal.h>
 
 #include "timers.h"
-/*
-void check_list (struct timer_queue *tq) {
 
 
-	struct timer *t;
-
-	t = tq->head;
-
-	if (t->prev != NULL)
-		dprint("t->prev != NULL\n");
-
-
-	while (t) {
-		dprint("t\t0x%x (expires %u, conn 0x%u)\n", (unsigned) t, (unsigned) t->expires, (unsigned) t->ce);	
-		if (!t->next) {
-			if (t != tq->tail)
-				dprint("Tail not set correctly\n");
-		} else {
-			if (t->next->prev != t)
-				dprint("Prev not set correctly for 0x%x (0x%x)\n", (unsigned) t->next, (unsigned) t->next->prev);
-		}
-		t = t->next;
-
-	}
-	
-} 
-
-void check_queues (struct timer_queue *tq) {
-
-
-	dprint("checking queues\n");
-	
-	if (tq->prev != NULL)
-		dprint("tq->prev != NULL\n");
-
-
-	while (tq) {
-		dprint("q 0x%x (expiry %u, head 0x%x, tail 0x%x)\n", (unsigned)tq, tq->expiry, (unsigned) tq->head, (unsigned) tq->tail);
-		
-		if (tq->next) {
-			if (tq->next->prev != tq)
-				dprint("Prev queue not set correctly for 0x%x (0x%x)\n", (unsigned) tq->next, (unsigned) tq->next->prev);
-		}
-		check_list(tq);
-
-		tq = tq->next;
-
-	}
-	
-} 
-*/
 struct timer_queue *timer_queues;
 struct itimerval itimer;
 
@@ -101,7 +52,7 @@ int timers_process() {
 
 	while (tq) {
 		while (tq->head && tq->head->expires <= tv.tv_sec) {
-				ndprint("Timer 0x%x reached. Starting handler ...\n", (unsigned) tq->head);
+				ndprint("Timer 0x%lx reached. Starting handler ...\n", (unsigned long) tq->head);
 				(*tq->head->handler) (tq->head->priv);
 		}
 		tq = tq->next;
@@ -301,7 +252,6 @@ int timer_dequeue(struct timer *t) {
 		struct timer_queue *tq;
 		tq = timer_queues;
 		while (tq) {
-			//dprint("tq->head = 0x%x, t = 0x%x\n", (unsigned) tq->head, (unsigned) t);
 			if (tq->head == t) {
 				tq->head = t->next;
 
@@ -309,7 +259,7 @@ int timer_dequeue(struct timer *t) {
 			
 				/* WE SHOULD NOT TRY TO REMOVE QUEUES FROM THE QUEUE LIST
 				if (!tq->head) { // If it is, remove that queue from the queue list
-					dprint("Removing queue 0x%x from the queue list\n", (unsigned) tq);
+					dprint("Removing queue 0x%lx from the queue list\n", (unsigned long) tq);
 					if (tq->prev)
 						tq->prev->next = tq->next;
 					else
@@ -328,7 +278,7 @@ int timer_dequeue(struct timer *t) {
 		}
 #ifdef DEBUG
 		if (!tq)
-			dprint("Warning, timer 0x%x not found in timers queues heads\n", (unsigned) t);
+			dprint("Warning, timer 0x%lx not found in timers queues heads\n", (unsigned long) t);
 #endif
 	}
 
@@ -351,7 +301,7 @@ int timer_dequeue(struct timer *t) {
 		}
 #ifdef DEBUG
 		if (!tq) {
-			dprint("Warning, timer 0x%x not found in timers queues tails\n", (unsigned) t);
+			dprint("Warning, timer 0x%lx not found in timers queues tails\n", (unsigned long) t);
 		}
 #endif
 	}

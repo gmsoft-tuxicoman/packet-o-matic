@@ -141,7 +141,7 @@ int target_process_dump_payload(struct target *t, struct layer *l, void *frame, 
 
 int target_close_connection_dump_payload(void *conntrack_priv) {
 
-	ndprint("Closing connection 0x%x\n", (unsigned) conntrack_priv);
+	ndprint("Closing connection 0x%lx\n", (unsigned long) conntrack_priv);
 
 	struct target_conntrack_priv_dump_payload *cp;
 	cp = conntrack_priv;

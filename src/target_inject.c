@@ -139,7 +139,7 @@ int target_process_inject(struct target *t, struct layer *l, void *frame, unsign
 	//memcpy(&priv->sal.sll_addr, frame + 6, 6);
 	if(sendto(priv->socket, frame + start, len - start, 0, (struct sockaddr *)&priv->sal, sizeof(priv->sal)) == len) {
 		priv->size += len;
-		dprint("0x%x; Packet injected (%u bytes (+%u bytes))!\n", (unsigned int) priv, priv->size, len);
+		dprint("0x%lx; Packet injected (%u bytes (+%u bytes))!\n", (unsigned long) priv, priv->size, len);
 		return 1;
 	}
 	
@@ -155,7 +155,7 @@ int target_close_inject(struct target *t) {
 
 	struct target_priv_inject *priv = t->target_priv;
 
-	dprint("0x%x; INJECT : %u bytes injected\n", (unsigned int) priv, priv->size);
+	dprint("0x%lx; INJECT : %u bytes injected\n", (unsigned long) priv, priv->size);
 
 	close(priv->socket);
 	free(priv);

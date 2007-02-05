@@ -18,6 +18,14 @@ make
 make install
 
 
+Running it :
+------------
+If you make install, you are fine. The program will be able to find the libraries using automatic resolving or hardcoded library path.
+If you did not run make install, you have to export LD_LIBRARY_PATH=path/to/libdir. By default, libtool creates the libs into the src/.libs directory.
+
+Some plugins such as input_pcap requires root privileges in order to perform their operation.
+
+
 Dependencies :
 --------------
  - libpcap : optional to build input_pcap and target_pcap
@@ -41,7 +49,7 @@ Everything is enclosed in the <config> tags. Then it consists of one <input> sec
 The input section defines from where you want to read the packets. You certainly want the pcap input to read from an ethernet interface.
 
 Each rule contains one <target> section and one or multiple <match> section.
-See pom.xml.conf.example for an example. See `packet-o-matic --help` for parameter lists for each module.
+See pom.xml.conf.example for an example. See `packet-o-matic -h` for parameter lists for each module.
 
 
 The inputs :

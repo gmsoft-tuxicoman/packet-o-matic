@@ -352,7 +352,7 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 
 	}
 
-	dprint("0x%x; TCP killed !\n", (unsigned) priv);
+	dprint("0x%lx; TCP killed !\n", (unsigned long) priv);
 
 	return 1;
 	

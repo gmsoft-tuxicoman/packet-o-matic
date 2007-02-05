@@ -703,8 +703,8 @@ int input_close_docsis(struct input *i) {
 	close(p->demux_fd);
 	close(p->dvr_fd);
 
-	dprint("0x%02x; DOCSIS : Total packet read %lu, missed %lu (%.1f%%), dropped %lu (%.1f%%), erroneous %lu (%.1f%%), invalid %lu (%.1f%%), total dropped %lu (%.1f%%)\n", \
-		(unsigned int) i->input_priv, \
+	dprint("0x%02lx; DOCSIS : Total packet read %lu, missed %lu (%.1f%%), dropped %lu (%.1f%%), erroneous %lu (%.1f%%), invalid %lu (%.1f%%), total dropped %lu (%.1f%%)\n", \
+		(unsigned long) i->input_priv, \
 		p->total_packets, \
 		p->missed_packets, \
 		100.0 / (double) p->total_packets * (double) p->missed_packets, \

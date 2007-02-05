@@ -151,23 +151,5 @@ int conntrack_cleanup_match_priv_udp(void *priv) {
 	free(priv);
 	return 1;
 }
-/*
-int conntrack_do_timeouts_udp(int (*conntrack_close_connection) (struct conntrack_entry *ce)) {
 
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
 
-	while (timeouts && tv.tv_sec >= timeouts->expires) {
-
-		struct conntrack_entry *ce;
-		ce = timeouts->ce;
-		ndprint("Connection 0x%x expired\n", (unsigned) ce);
-
-		(*conntrack_close_connection) (ce);
-
-	}
-
-	return 1;
-}
-
-*/

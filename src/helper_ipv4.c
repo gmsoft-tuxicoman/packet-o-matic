@@ -140,7 +140,7 @@ int helper_need_help_ipv4(void *frame, struct layer *l) {
 
 	if (frag_start + frag_size > l->prev->payload_size + l->prev->payload_start) {
 		dprint("Error, packet len missmatch dropping this frag\n");
-		dprint("Frag_start %u, frag_size %u, size %u\n", frag_start, frag_size, l->prev->payload_size);
+		dprint("Frag_start %u, frag_size %u, size %u\n", frag_start, (unsigned int) frag_size, l->prev->payload_size);
 		dprint("ID = %u\n", ntohs(hdr->ip_id));
 		return 1;
 	}
@@ -200,7 +200,7 @@ int helper_need_help_ipv4(void *frame, struct layer *l) {
 
 	// At this point we don't have the fragment in memory yet. Let's add it
 	
-	ndprint("Helper ipv4 : adding fragment %u for id %u in memory (start %u, len %u)\n", offset, ntohs(tmp->hdr->ip_id), frag_start, frag_size);
+	ndprint("Helper ipv4 : adding fragment %u for id %u in memory (start %u, len %u)\n", offset, ntohs(tmp->hdr->ip_id), frag_start, (unsigned int) frag_size);
 
 	struct helper_priv_ipv4_frag *ftmp = malloc(sizeof(struct helper_priv_ipv4_frag));
 	bzero(ftmp, sizeof(struct helper_priv_ipv4_frag));

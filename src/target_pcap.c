@@ -137,7 +137,7 @@ int target_process_pcap(struct target *t, struct layer *l, void *frame, unsigned
 
 	priv->size += len;
 
-	ndprint("0x%x; Packet saved (%u bytes (+%u bytes))!\n", (unsigned int) priv, priv->size, len);
+	ndprint("0x%lx; Packet saved (%u bytes (+%u bytes))!\n", (unsigned long) priv, priv->size, len);
 
 	return 1;
 };
@@ -149,7 +149,7 @@ int target_close_pcap(struct target *t) {
 	if (!t->target_priv)
 		return 0;
 
-	dprint("0x%x; PCAP : saved %u bytes\n", (unsigned int)priv, priv->size);
+	dprint("0x%lx; PCAP : saved %u bytes\n", (unsigned long) priv, priv->size);
 	
 	pcap_dump_close(priv->pdump);
 	pcap_close(priv->p);
