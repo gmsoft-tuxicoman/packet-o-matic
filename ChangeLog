@@ -1,3 +1,6 @@
+* 2007/02/07 Guy Martin <gmsoft@tuxicoman.be>
+Made example file and README be copied into docdir when doing make install.
+
 * 2007/02/05 Guy Martin <gmsoft@tuxicoman.be>
 Fixed compilation warnings on amd64.
 Updated README with info on running the code.
