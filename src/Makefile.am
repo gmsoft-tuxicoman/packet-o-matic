@@ -7,7 +7,7 @@ packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"'
 packet_o_matic_LDFLAGS = @LIBS@ @libxml2_LIBS@
 
 INPUT_OBJS = @INPUT_OBJS@
-MATCH_OBJS = match_ethernet.la match_ipv4.la match_ipv6.la match_tcp.la match_udp.la match_rtp.la match_undefined.la
+MATCH_OBJS = match_ethernet.la match_ipv4.la match_ipv6.la match_tcp.la match_udp.la match_rtp.la match_undefined.la match_linux_cooked.la
 CONNTRACK_OBJS = conntrack_ipv4.la conntrack_ipv6.la conntrack_rtp.la conntrack_tcp.la conntrack_udp.la
 HELPER_OBJS = helper_ipv4.la
 TARGET_OBJS = target_dump_payload.la target_wave.la target_null.la @TARGET_OBJS@
@@ -36,6 +36,8 @@ match_rtp_la_SOURCES = match_rtp.c match_rtp.h modules_common.h
 match_rtp_la_LDFLAGS = -module -avoid-version
 match_undefined_la_SOURCES = match_undefined.c match_undefined.h modules_common.h
 match_undefined_la_LDFLAGS = -module -avoid-version
+match_linux_cooked_la_SOURCES = match_linux_cooked.c match_linux_cooked.h modules_common.h
+match_linux_cooked_la_LDFLAGS = -module -avoid-version
 
 conntrack_ipv4_la_SOURCES = conntrack_ipv4.c conntrack_ipv4.h modules_common.h jhash.h
 conntrack_ipv4_la_LDFLAGS = -module -avoid-version

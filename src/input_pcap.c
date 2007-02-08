@@ -119,6 +119,11 @@ int input_open_pcap(struct input *i) {
 			p->output_layer = (*i->match_register) ("docsis");
 			break;
 #endif
+		case DLT_LINUX_SLL:
+			dprint("PCAP output type is linux_cooked\n");
+			p->output_layer = (*i->match_register) ("linux_cooked");
+			break;
+
 		default:
 			dprint("PCAP output type is undefined\n");
 			p->output_layer = (*i->match_register) ("undefined");

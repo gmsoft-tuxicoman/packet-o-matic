@@ -151,8 +151,11 @@ inline int match_identify(struct layer *l, void* frame, unsigned int start, unsi
 }
 
 inline int match_eval(struct match *m, void* frame, unsigned int start, unsigned int len, struct layer *l) {
-	
-	return (*matchs[m->match_type]->eval) (m, frame, start, len, l);
+
+	if (matchs[m->match_type]->eval)
+		return (*matchs[m->match_type]->eval) (m, frame, start, len, l);
+	else
+		return 1;
 
 }
 

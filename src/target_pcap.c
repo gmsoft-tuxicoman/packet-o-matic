@@ -21,12 +21,13 @@
 
 #include "target_pcap.h"
 
-#define PARAMS_NUM 1
+#define PARAMS_NUM 2
 char *target_pcap_params[PARAMS_NUM][3] = {
-	{ "filename", "dump.cap", "filename to save packets to"},
+	{ "filename", "dump.cap", "filename to save packets to" },
+	{ "first_layer", "ethernet", "first layer of the dump (ethernet or linux_cooked)" },
 };
 
-int match_ethernet_id;
+int match_first_layer_id;
 
 struct target_functions *tg_functions;
 
@@ -61,18 +62,8 @@ int target_init_pcap(struct target *t) {
 
 	copy_params(t->params_value, target_pcap_params, 1, PARAMS_NUM);
 
-	match_ethernet_id = (*tg_functions->match_register) ("ethernet");
-	if (match_ethernet_id == -1)
-		return 0;
 	struct target_priv_pcap *priv = malloc(sizeof(struct target_priv_pcap));
 	bzero(priv, sizeof(struct target_priv_pcap));
-
-	// FIXME: for now we only handle ethernet packets
-	priv->p = pcap_open_dead(DLT_EN10MB, SNAPLEN);
-	if (!priv->p) {
-		dprint("Unable to open pcap !\n");
-		return 0;
-	}
 
 	t->target_priv = priv;
 	
@@ -85,11 +76,21 @@ int target_open_pcap(struct target *t) {
 
 	struct target_priv_pcap *priv = t->target_priv;
 
+	if (!strcmp(t->params_value[1], "ethernet"))
+		priv->p = pcap_open_dead(DLT_EN10MB, SNAPLEN);
+	else if (!strcmp(t->params_value[1], "linux_cooked"))
+		priv->p = pcap_open_dead(DLT_LINUX_SLL, SNAPLEN);
+	
+	
+	match_first_layer_id = (*tg_functions->match_register) (t->params_value[1]);
+	if (match_first_layer_id == -1)
+		return 0;
+
 	if (!priv->p) {
-		dprint("Target pcap not initialized !\n");
+		dprint("Unable to open pcap !\n");
 		return 0;
 	}
-	
+
 	priv->pdump = pcap_dump_open(priv->p, t->params_value[0]);
 	if (!priv->pdump) {
 		dprint("Unable to open pcap dumper !\n");
@@ -110,7 +111,7 @@ int target_process_pcap(struct target *t, struct layer *l, void *frame, unsigned
 		return 0;
 	}
 	
-	int start = layer_find_start(l, match_ethernet_id);
+	int start = layer_find_start(l, match_first_layer_id);
 
 	if (start == -1) {
 		dprint("Unable to find the start of the packet\n");
