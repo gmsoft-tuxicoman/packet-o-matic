@@ -37,8 +37,9 @@ char *match_ipv6_params[PARAMS_NUM][3] = {
 };
 
 int match_icmpv6_id, match_tcp_id, match_udp_id;
+struct match_functions *m_functions;
 
-int match_register_ipv6(struct match_reg *r) {
+int match_register_ipv6(struct match_reg *r, struct match_functions *m_funcs) {
 
 	copy_params(r->params_name, match_ipv6_params, 0, PARAMS_NUM);
 	copy_params(r->params_help, match_ipv6_params, 2, PARAMS_NUM);
@@ -49,6 +50,8 @@ int match_register_ipv6(struct match_reg *r) {
 	r->eval = match_eval_ipv6;
 	r->cleanup = match_cleanup_ipv6;
 
+	m_functions = m_funcs;
+
 	return 1;
 }
 
@@ -56,9 +59,9 @@ int match_init_ipv6(struct match *m) {
 
 	copy_params(m->params_value, match_ipv6_params, 1, PARAMS_NUM);
 
-	match_icmpv6_id = (*m->match_register) ("icmpv6");
-	match_tcp_id = (*m->match_register) ("tcp");
-	match_udp_id = (*m->match_register) ("udp");
+	match_icmpv6_id = (*m_functions->match_register) ("icmpv6");
+	match_tcp_id = (*m_functions->match_register) ("tcp");
+	match_udp_id = (*m_functions->match_register) ("udp");
 
 	return 1;
 
@@ -110,11 +113,11 @@ int match_identify_ipv6(struct layer* l, void* frame, unsigned int start, unsign
 	char addrbuff[INET6_ADDRSTRLEN + 1];
 	bzero(addrbuff, INET6_ADDRSTRLEN + 1);
 	inet_ntop(AF_INET6, &hdr->ip6_src.s6_addr, addrbuff, INET6_ADDRSTRLEN);
-	ndprint("Processing IPv6 packet -> SRC : %s", addrbuff);
+	(*m_functions->layer_set_txt_info) (l, "src", addrbuff);
+
 	bzero(addrbuff, INET6_ADDRSTRLEN + 1);
 	inet_ntop(AF_INET6, &hdr->ip6_dst.s6_addr, addrbuff, INET6_ADDRSTRLEN);
-	ndprint(" | DST : %s" , addrbuff);
-	ndprint(" | SIZE : %u", l->payload_size);
+	(*m_functions->layer_set_txt_info) (l, "dst", addrbuff);
 
 #endif
 
@@ -125,7 +128,6 @@ int match_identify_ipv6(struct layer* l, void* frame, unsigned int start, unsign
 	while (l->payload_start + 1 < len) {
 
 		struct ip6_ext *ehdr;
-		ndprint(" | NHDR : %u", nhdr);
 		switch (nhdr) {
 			case IPPROTO_HOPOPTS: // 0
 			case IPPROTO_ROUTING: // 43
@@ -139,23 +141,18 @@ int match_identify_ipv6(struct layer* l, void* frame, unsigned int start, unsign
 				break;
 		
 			case IPPROTO_TCP: // 6
-				ndprint(" | TCP packet\n");
 				return match_tcp_id;
 
 			case IPPROTO_UDP: // 17
-				ndprint(" | UDP packet\n");
 				return match_udp_id;
 
 			case IPPROTO_ICMPV6: // 58
-				ndprint(" | ICMPv6 packet\n");
 				return match_icmpv6_id;
 
 			case IPPROTO_NONE: // 59
-				ndprint(" | Unknown packet\n");
 				return -1;
 
 			default:
-				ndprint(" | Unhandled protocol\n");
 				return -1;
 
 		}
@@ -174,16 +171,13 @@ int match_eval_ipv6(struct match* match, void* frame, unsigned int start, unsign
 
 	if (!mask_compare(mp->saddr.s6_addr, hdr->ip6_src.s6_addr, mp->snetmask, 16))
 		return 0;
-	ndprint("source OK\n");
 	
 	if (!mask_compare(mp->daddr.s6_addr, hdr->ip6_dst.s6_addr, mp->dnetmask, 16))
 		return 0;
-	ndprint("dest OK\n");
 	
 	// flow label
 	if ((mp->flabel & mp->flabelmask) != (ntohl(hdr->ip6_flow) & mp->flabelmask))
 		return 0;
-	ndprint("label OK\n");
 	
 	return 1;
 }

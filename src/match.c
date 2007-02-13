@@ -24,8 +24,10 @@
 
 
 struct match_reg *matchs[MAX_MATCH];
+static struct match_functions *m_funcs;
 
 int match_undefined_id;
+
 
 int match_register(const char *match_name) {
 
@@ -37,7 +39,7 @@ int match_register(const char *match_name) {
 				return i;
 			}
 		} else {
-			int (*register_my_match) (struct match_reg *);
+			int (*register_my_match) (struct match_reg *, struct match_functions *);
 
 			void *handle = NULL;
 			register_my_match = lib_get_register_func("match", match_name, &handle);
@@ -50,7 +52,7 @@ int match_register(const char *match_name) {
 			bzero(my_match, sizeof(struct match_reg));
 
 			
-			if (!(*register_my_match) (my_match)) {
+			if (!(*register_my_match) (my_match, m_funcs)) {
 				dprint("Error while loading match %s. Could not register match !\n", match_name);
 				free(my_match);
 				return -1;
@@ -78,8 +80,25 @@ int match_init() {
 
 	match_undefined_id = match_register("undefined");
 
+	m_funcs = malloc(sizeof(struct match_functions));
+	m_funcs->match_register = match_register;
+	m_funcs->layer_set_txt_info = layer_info_set_txt;
+	m_funcs->layer_set_num_info = layer_info_set_num;
+	m_funcs->layer_set_float_info = layer_info_set_float;
+	m_funcs->layer_set_hex_info = layer_info_set_hex;
+
 	return 1;
 }
+
+char *match_get_name(int match_type) {
+
+	if (matchs[match_type])
+		return matchs[match_type]->match_name;
+	
+	return NULL;
+
+}
+
 
 int match_get_type(const char *match_name) {
 
@@ -104,7 +123,6 @@ struct match *match_alloc(int match_type) {
 	bzero(m, sizeof(struct match));
 
 	m->match_type = match_type;
-	m->match_register = match_register;
 	
 	if (matchs[match_type]->init)
 		if (!(*matchs[match_type]->init) (m)) {
@@ -160,7 +178,7 @@ inline int match_eval(struct match *m, void* frame, unsigned int start, unsigned
 }
 
 
-int match_cleanup(struct match *m) {
+int match_cleanup_module(struct match *m) {
 
 	if (!m)
 		return 0;
@@ -171,9 +189,20 @@ int match_cleanup(struct match *m) {
 
 	free(m);
 
+
 	return 1;
 
 }
+
+int match_cleanup() {
+
+	if (m_funcs)
+		free(m_funcs);
+	m_funcs = NULL;
+
+	return 1;
+}
+
 
 int match_unregister_all() {
 

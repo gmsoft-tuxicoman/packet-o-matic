@@ -148,8 +148,9 @@ int main(int argc, char *argv[]) {
 
 
 	// Init the stuff
-	conntrack_init();
+	layer_init();
 	match_init();
+	conntrack_init();
 	helper_init();
 	target_init();
 	rules_init();
@@ -196,12 +197,14 @@ int main(int argc, char *argv[]) {
 	}
 
 	input_close(c->input);
+	config_cleanup(c);
 
 	conntrack_cleanup();
 	helper_cleanup();
 	timers_cleanup();
 	target_cleanup();
-	config_cleanup(c);
+	match_cleanup();
+	layer_cleanup();
 
 
 	target_unregister_all();

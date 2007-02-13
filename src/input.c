@@ -19,8 +19,9 @@
  */
 
 
-
+#include "common.h"
 #include "input.h"
+#include "match.h"
 
 struct input_reg *inputs[MAX_INPUT];
 

@@ -36,8 +36,9 @@ char *match_ipv4_params[PARAMS_NUM][3] = {
 };
 
 int match_icmp_id, match_tcp_id, match_udp_id, match_ipv6_id;
+struct match_functions *m_functions;
 
-int match_register_ipv4(struct match_reg *r) {
+int match_register_ipv4(struct match_reg *r, struct match_functions *m_funcs) {
 	
 	copy_params(r->params_name, match_ipv4_params, 0, PARAMS_NUM);
 	copy_params(r->params_help, match_ipv4_params, 2, PARAMS_NUM);
@@ -48,6 +49,8 @@ int match_register_ipv4(struct match_reg *r) {
 	r->eval = match_eval_ipv4;
 	r->cleanup = match_cleanup_ipv4;
 
+	m_functions = m_funcs;
+
 	return 1;
 }
 
@@ -55,10 +58,10 @@ int match_init_ipv4(struct match *m) {
 
 	copy_params(m->params_value, match_ipv4_params, 1, PARAMS_NUM);
 
-	match_icmp_id = (*m->match_register) ("icmp");
-	match_tcp_id = (*m->match_register) ("tcp");
-	match_udp_id = (*m->match_register) ("udp");
-	match_ipv6_id = (*m->match_register) ("ipv6");
+	match_icmp_id = (*m_functions->match_register) ("icmp");
+	match_tcp_id = (*m_functions->match_register) ("tcp");
+	match_udp_id = (*m_functions->match_register) ("udp");
+	match_ipv6_id = (*m_functions->match_register) ("ipv6");
 
 	return 1;
 
@@ -91,39 +94,30 @@ int match_identify_ipv4(struct layer* l, void* frame, unsigned int start, unsign
 	struct ip* hdr = frame + start;
 	saddr.s_addr = hdr->ip_src.s_addr;
 	daddr.s_addr = hdr->ip_dst.s_addr;
-	ndprint("Processing IPv4 packet -> SRC : %s", inet_ntoa(saddr));
-	ndprint(" | DST : %s | proto : %u" , inet_ntoa(daddr), hdr->ip_p);
 
 	unsigned int hdr_len = hdr->ip_hl * 4;
 
 	if (hdr->ip_hl < 5 || ntohs(hdr->ip_len) < hdr_len)
 	        return -1;
 
-	ndprint(" | IHL : %u", hdr_len);
+	(*m_functions->layer_set_txt_info) (l, "src", inet_ntoa(saddr));
+	(*m_functions->layer_set_txt_info) (l, "dst", inet_ntoa(daddr));
+	(*m_functions->layer_set_num_info) (l, "ttl", hdr->ip_ttl);
+	(*m_functions->layer_set_hex_info) (l, "tos", hdr->ip_tos);
+
 	l->payload_start = start + hdr_len;
 	l->payload_size = ntohs(hdr->ip_len) - hdr_len;
-	ndprint(" | SIZE : %u", l->payload_size);
 
 	switch (hdr->ip_p) {
 
 		case IPPROTO_ICMP: // 1
-			ndprint(" | ICMP packet\n");
 			return match_icmp_id;
-			break;
 		case IPPROTO_TCP: // 6
-			ndprint(" | TCP packet\n");
 			return match_tcp_id;
-			break;
 		case IPPROTO_UDP: // 17
-			ndprint(" | UDP packet\n");
 			return match_udp_id;
-			break;
 		case IPPROTO_IPV6: //41
-			ndprint(" | IPv6 packet\n");
 			return match_ipv6_id;
-			break;
-		default:
-			ndprint(" | Unhandled protocol\n");
 	}
 
 	return -1;

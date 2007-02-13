@@ -31,8 +31,9 @@ char *match_rtp_params[PARAMS_NUM][3] = {
 };
 
 int match_undefined_id;
+struct match_functions *m_functions;
 
-int match_register_rtp(struct match_reg *r) {
+int match_register_rtp(struct match_reg *r, struct match_functions *m_funcs) {
 
 	copy_params(r->params_name, match_rtp_params, 0, PARAMS_NUM);
 	copy_params(r->params_help, match_rtp_params, 2, PARAMS_NUM);
@@ -43,6 +44,8 @@ int match_register_rtp(struct match_reg *r) {
 	r->eval = match_eval_rtp;
 	r->cleanup = match_cleanup_rtp;
 
+	m_functions = m_funcs;
+
 	return 1;
 
 }
@@ -51,7 +54,7 @@ int match_init_rtp(struct match *m) {
 
 	copy_params(m->params_value, match_rtp_params, 1, PARAMS_NUM);
 
-	match_undefined_id = (*m->match_register) ("undefined");
+	match_undefined_id = (*m_functions->match_register) ("undefined");
 
 	return 1;
 

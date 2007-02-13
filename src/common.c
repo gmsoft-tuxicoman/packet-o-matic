@@ -36,24 +36,6 @@ void dprint_hex(unsigned char *str, unsigned int len) {
 #endif
 
 
-unsigned int layer_find_start(struct layer *l, int header_type) {
-	
-	if (!l)
-		return -1;
-
-	do {
-		if(l->type == header_type) {
-			if (l->prev)
-				return l->prev->payload_start;
-			else
-				return 0;
-		}
-		l = l->next;
-	} while(l);
-
-	return -1;
-}
-
 void *lib_get_register_func(const char *type, const char *name, void **handle) {
 
 	char libname[NAME_MAX];

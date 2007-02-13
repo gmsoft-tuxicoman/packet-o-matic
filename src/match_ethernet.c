@@ -41,8 +41,9 @@ char *match_ethernet_params[PARAMS_NUM][3] = {
 };
 
 int match_ipv4_id, match_ipv6_id, match_arp_id;
+struct match_functions *m_functions;
 
-int match_register_ethernet(struct match_reg *r) {
+int match_register_ethernet(struct match_reg *r, struct match_functions *m_funcs) {
 
 	copy_params(r->params_name, match_ethernet_params, 0, PARAMS_NUM);
 	copy_params(r->params_help, match_ethernet_params, 2, PARAMS_NUM);
@@ -54,6 +55,8 @@ int match_register_ethernet(struct match_reg *r) {
 	r->eval = match_eval_ethernet;
 	r->cleanup = match_cleanup_ethernet;
 	
+	m_functions = m_funcs;
+
 	return 1;
 }
 
@@ -61,9 +64,9 @@ int match_init_ethernet(struct match *m) {
 
 	copy_params(m->params_value, match_ethernet_params, 1, PARAMS_NUM);
 
-	match_ipv4_id = (*m->match_register) ("ipv4");
-	match_ipv6_id = (*m->match_register) ("ipv6");
-	match_arp_id = (*m->match_register) ("arp");
+	match_ipv4_id = (*m_functions->match_register) ("ipv4");
+	match_ipv6_id = (*m_functions->match_register) ("ipv6");
+	match_arp_id = (*m_functions->match_register) ("arp");
 	return 1;
 
 }
@@ -94,28 +97,21 @@ int match_identify_ethernet(struct layer* l, void* frame, unsigned int start, un
 	l->payload_start = start + sizeof(struct ether_header);
 	l->payload_size = len - sizeof(struct ether_header);
 
-	ndprint("Processing ethernet frame -> SMAC : ");
-	ndprint_hex(ehdr->ether_shost, 6);
-	ndprint("| DMAC : ");
-	ndprint_hex(ehdr->ether_dhost, 6);
-	ndprint("| proto : ");
-	ndprint_hex((char*)&ehdr->ether_type, 2);
+	
+	char addrbuff[18];
+	bzero(addrbuff, 18);
+	sprintf(addrbuff, "%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX", ehdr->ether_shost[0], ehdr->ether_shost[1], ehdr->ether_shost[2], ehdr->ether_shost[3], ehdr->ether_shost[4], ehdr->ether_shost[5]);
+	(*m_functions->layer_set_txt_info) (l, "src", addrbuff);
+	sprintf(addrbuff, "%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX", ehdr->ether_dhost[0], ehdr->ether_dhost[1], ehdr->ether_dhost[2], ehdr->ether_dhost[3], ehdr->ether_dhost[4], ehdr->ether_dhost[5]);
+	(*m_functions->layer_set_txt_info) (l, "dst", addrbuff);
 
 	switch (ntohs(ehdr->ether_type)) {
 		case 0x0800:
-			ndprint("| IPv4 packet\n");
 			return  match_ipv4_id;
-			break;
 		case 0x0806:
-			ndprint("| ARP packet\n");
 			return match_arp_id;
-			break;
 		case 0x86dd:
-			ndprint("| IPv6 packet\n");
 			return match_ipv6_id;
-			break;
-		default:
-			ndprint("| Unhandled packet\n");
 	}
 
 	return -1;

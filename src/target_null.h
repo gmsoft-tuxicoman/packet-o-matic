@@ -19,7 +19,7 @@
  */
 
 
-#ifndef __TARGET_NUUL_H__
+#ifndef __TARGET_NULL_H__
 #define __TARGET_NULL_H__
 
 #include "modules_common.h"

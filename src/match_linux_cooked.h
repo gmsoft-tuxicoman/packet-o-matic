@@ -36,8 +36,7 @@ struct cooked_hdr {
 
 };
 
-
-int match_register_linux_cooked(struct match_reg *r);
+int match_register_linux_cooked(struct match_reg *r, struct match_functions *m_funcs);
 int match_init_linux_cooked(struct match *m);
 int match_identify_linux_cooked(struct layer* l, void* frame, unsigned int start, unsigned int len);
 int match_cleanup_linux_cooked(struct match *m);

@@ -36,6 +36,8 @@ int target_init() {
 	tg_funcs->conntrack_get_entry = conntrack_get_entry;
 	tg_funcs->conntrack_add_priv = conntrack_add_priv;
 	tg_funcs->conntrack_get_priv = conntrack_get_priv;
+	tg_funcs->layer_info_snprintf = layer_info_snprintf;
+	tg_funcs->match_get_name = match_get_name;
 
 	dprint("Targets initialized\n");
 

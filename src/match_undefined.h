@@ -22,8 +22,8 @@
 #ifndef __MATCH_UNDEFINED_H__
 #define __MATCH_UNDEFINED_H__
 
-#include "common.h"
+#include "match.h"
 
-int match_register_undefined();
+int match_register_undefined(struct match_reg *r, struct match_functions *m_funcs);
 
 #endif

@@ -23,20 +23,23 @@
 #include <sys/socket.h>
 
 int match_ipv4_id, match_ipv6_id;
+struct match_functions *m_functions;
 
-int match_register_linux_cooked(struct match_reg *r) {
+int match_register_linux_cooked(struct match_reg *r, struct match_functions *m_funcs) {
 
 	r->init = match_init_linux_cooked;
 	r->identify = match_identify_linux_cooked;
 	r->cleanup = match_cleanup_linux_cooked;
+
+	m_functions = m_funcs;
 	
 	return 1;
 }
 
 int match_init_linux_cooked(struct match *m) {
 
-	match_ipv4_id = (*m->match_register) ("ipv4");
-	match_ipv6_id = (*m->match_register) ("ipv6");
+	match_ipv4_id = (*m_functions->match_register) ("ipv4");
+	match_ipv6_id = (*m_functions->match_register) ("ipv6");
 	return 1;
 
 }

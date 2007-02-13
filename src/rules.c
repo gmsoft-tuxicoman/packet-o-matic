@@ -60,8 +60,7 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 				l->type = match_undefined_id;
 				return 0;
 			} else {
-				l->next = malloc(sizeof(struct layer)); // This is fred in do_rules
-				bzero(l->next, sizeof(struct layer));
+				l->next = layer_poll_get();
 				l->next->type = next_layer;
 			}
 
@@ -115,16 +114,18 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 		return 1;
 	}
 
+
+	// We need to discard the previous poll of layer before doing anything else
+	layer_poll_discard();
+
 	// Let's identify the layers as far as we can go
 	struct layer *layers, *l;
 
-	layers = malloc(sizeof(struct layer));
-	bzero(layers, sizeof(struct layer));
+	layers = layer_poll_get();
 	l = layers;
 	l->type = first_layer;
 	while (l && l->type != match_undefined_id) { // If it's undefined, it means we can't assume anything about the rest of the packet
-		l->next = malloc(sizeof(struct layer));
-		bzero(l->next, sizeof(struct layer));
+		l->next = layer_poll_get();
 		l->next->prev = l;
 
 		// identify must populate payload_start and payload_size
@@ -134,14 +135,13 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 			l->next->type = match_identify(l, frame, 0, len);
 
 		if (l->next->type == -1) {
-			free(l->next);
 			l->next = NULL;
 		}
 
 
 
 		if (helper_need_help(frame, l)) // If it needs help, we don't process it
-			goto err;
+			return 1;
 	
 		// check the calculated size and adjust the max len of the packet
 		// the initial size may be too long as some padding could have been introduced by the input
@@ -149,7 +149,7 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 		unsigned int new_len = l->payload_start + l->payload_size;
 		if (new_len > len) {
 			ndprint("Error, new len greater than the computed maximum len or buffer (maximum %u, new %u). Not considering packet\n", len, new_len);
-			goto err;
+			return 1;
 		}
 
 		len = new_len;
@@ -195,17 +195,6 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 				target_process(r->target, layers, frame, len, ce);
 		r = r->next;
 	}
-err:
-	l = layers;
-	ndprint("layers : ");
-	while (l) {
-		ndprint("%u ", l->type);
-		layers = l->next;
-		free(l);
-		l = layers;
-	}
-	ndprint("\n");
-
 
 	
 	return 1;
@@ -240,7 +229,7 @@ int node_destroy(struct rule_node *node, int sub) {
 	}
 
 	if (node->match)
-		match_cleanup(node->match);
+		match_cleanup_module(node->match);
 	else {
 		done_stack = realloc(done_stack, sizeof(struct rule_node*) * (done + 1));
 		done_stack[done] = node;

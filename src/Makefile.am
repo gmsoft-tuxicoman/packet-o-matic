@@ -1,7 +1,7 @@
 CFLAGS += -Wall -Werror -DDEBUG
 
 bin_PROGRAMS = packet-o-matic
-packet_o_matic_SOURCES = main.c rules.c rules.h input.c input.h match.c match.h conntrack.c conntrack.h jhash.h target.c target.h timers.c timers.h helper.c helper.h conf.c conf.h common.c common.h
+packet_o_matic_SOURCES = main.c rules.c rules.h input.c input.h match.c match.h conntrack.c conntrack.h jhash.h target.c target.h timers.c timers.h helper.c helper.h conf.c conf.h common.c common.h layer.c layer.h
 
 packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"'
 packet_o_matic_LDFLAGS = @LIBS@ @libxml2_LIBS@
@@ -10,7 +10,7 @@ INPUT_OBJS = @INPUT_OBJS@
 MATCH_OBJS = match_ethernet.la match_ipv4.la match_ipv6.la match_tcp.la match_udp.la match_rtp.la match_undefined.la match_linux_cooked.la
 CONNTRACK_OBJS = conntrack_ipv4.la conntrack_ipv6.la conntrack_rtp.la conntrack_tcp.la conntrack_udp.la
 HELPER_OBJS = helper_ipv4.la
-TARGET_OBJS = target_dump_payload.la target_wave.la target_null.la @TARGET_OBJS@
+TARGET_OBJS = target_display.la target_dump_payload.la target_wave.la target_null.la @TARGET_OBJS@
 
 
 lib_LTLIBRARIES = $(INPUT_OBJS) $(MATCH_OBJS) $(CONNTRACK_OBJS) $(HELPER_OBJS) $(TARGET_OBJS)
@@ -54,6 +54,8 @@ helper_ipv4_la_SOURCES = helper_ipv4.c helper_ipv4.h modules_common.h
 helper_ipv4_la_LDFLAGS = -module -avoid-version
 
 
+target_display_la_SOURCES = target_display.c target_display.h modules_common.h
+target_display_la_LDFLAGS = -module -avoid-version
 target_dump_payload_la_SOURCES = target_dump_payload.c target_dump_payload.h modules_common.h
 target_dump_payload_la_LDFLAGS = -module -avoid-version
 target_inject_la_SOURCES = target_inject.c target_inject.h modules_common.h

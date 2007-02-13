@@ -68,7 +68,6 @@ struct conntrack_functions {
 	int (*cleanup_timer) (struct timer *t);
 	int (*queue_timer) (struct timer *t, unsigned int expiry);
 	int (*dequeue_timer) (struct timer *t);
-//	int (*close_connection) (struct conntrack_entry *ce);
 
 
 };

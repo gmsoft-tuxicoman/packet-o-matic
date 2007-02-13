@@ -1,3 +1,12 @@
+* 2007/02/12 Guy Martin <gmsoft@tuxicoman.be>
+Changed matches to to use struct match_functions.
+Moved layer stuff out of match stuff.
+Layers are now taken from a poll.
+Added layer_info functions to allow match to parse the packet in a comprehensive way.
+Cleanup of match_*.h files.
+Fix typo in target_null.h.
+Renamed match_cleanup in match_cleanup_module and add the first to clean the match general stuff.
+
 * 2007/02/08 Guy Martin <gmsoft@tuxicoman.be>
 Added match_linux_cooked and subsequent support in input_pcap.
 Added first_layer parameter to target_pcap and added linux_cooked support.

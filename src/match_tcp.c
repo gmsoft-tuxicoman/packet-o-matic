@@ -34,8 +34,9 @@ char *match_tcp_params[PARAMS_NUM][3] = {
 
 
 int match_undefined_id;
+struct match_functions *m_functions;
 
-int match_register_tcp(struct match_reg *r) {
+int match_register_tcp(struct match_reg *r, struct match_functions *m_funcs) {
 
 	copy_params(r->params_name, match_tcp_params, 0, PARAMS_NUM);
 	copy_params(r->params_help, match_tcp_params, 2, PARAMS_NUM);
@@ -46,6 +47,8 @@ int match_register_tcp(struct match_reg *r) {
 	r->eval = match_eval_tcp;
 	r->cleanup = match_cleanup_tcp;
 
+	m_functions = m_funcs;
+
 	return 1;
 
 }
@@ -54,7 +57,7 @@ int match_init_tcp(struct match *m) {
 
 	copy_params(m->params_value, match_tcp_params, 1, PARAMS_NUM);
 
-	match_undefined_id = (*m->match_register) ("undefined");
+	match_undefined_id = (*m_functions->match_register) ("undefined");
 
 	return 1;
 
@@ -91,12 +94,12 @@ int match_identify_tcp(struct layer* l, void* frame, unsigned int start, unsigne
 
 	struct tcphdr* hdr = frame + start;
 	
-	ndprint("Processing TCP packet -> SPORT : %u | DPORT : %u", ntohs(hdr->th_sport), ntohs(hdr->th_dport));
 	unsigned int hdrlen = (hdr->th_off << 2);
 	l->payload_start = start + hdrlen;
 	l->payload_size = len - hdrlen;
 
-	ndprint(" | SIZE : %u\n", l->payload_size);
+	(*m_functions->layer_set_num_info) (l, "sport", ntohs(hdr->th_sport));
+	(*m_functions->layer_set_num_info) (l, "dport", ntohs(hdr->th_dport));
 
 	return match_undefined_id;
 

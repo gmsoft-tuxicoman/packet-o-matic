@@ -40,7 +40,7 @@ struct match_priv_ipv6 {
 };
 
 
-int match_register_ipv6();
+int match_register_ipv6(struct match_reg *r, struct match_functions *m_funcs);
 int match_init_ipv6(struct match *m);
 int match_reconfig_ipv6(struct match *m);
 int match_identify_ipv6(struct layer* l, void* frame, unsigned int start, unsigned int len);
