@@ -27,12 +27,14 @@
 #include "modules_common.h"
 #include "rules.h"
 
-#define SNAPLEN 2000
+#define SNAPLEN 1522
 
 struct target_priv_pcap {
 
 	pcap_dumper_t *pdump;
 	pcap_t *p;
+	int last_layer_type;
+	unsigned int snaplen;
 	unsigned int size;
 
 };

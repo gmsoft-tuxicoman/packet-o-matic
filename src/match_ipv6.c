@@ -108,8 +108,6 @@ int match_identify_ipv6(struct layer* l, void* frame, unsigned int start, unsign
 
 	struct ip6_hdr* hdr = frame + start;
 
-#ifdef NDEBUG	
-
 	char addrbuff[INET6_ADDRSTRLEN + 1];
 	bzero(addrbuff, INET6_ADDRSTRLEN + 1);
 	inet_ntop(AF_INET6, &hdr->ip6_src.s6_addr, addrbuff, INET6_ADDRSTRLEN);
@@ -118,8 +116,6 @@ int match_identify_ipv6(struct layer* l, void* frame, unsigned int start, unsign
 	bzero(addrbuff, INET6_ADDRSTRLEN + 1);
 	inet_ntop(AF_INET6, &hdr->ip6_dst.s6_addr, addrbuff, INET6_ADDRSTRLEN);
 	(*m_functions->layer_set_txt_info) (l, "dst", addrbuff);
-
-#endif
 
 	unsigned int nhdr = hdr->ip6_nxt;
 	l->payload_size = ntohs(hdr->ip6_plen);

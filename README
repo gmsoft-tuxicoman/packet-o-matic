@@ -66,25 +66,27 @@ The match modules are used to specify the network traffic that you want to match
 You'll have to specify the full header chain to match a packet. For example to match tcp traffic (on IPv4), you have to match in order ethernet, ipv4, tcp.
 
 - ethernet : match the ethernet protocol
+- linux_cooked : match linux cooked protocol used by pcap
 - ipv4 : match the IPv4 protocol commonly known as ip
 - ipv6 : match the IPv6 protocol
 - tcp : match the TCP protocol
 - udp : match the UDP protocol
 - rtp : match the RTP protocol used to carry real time voice and video
-- undefined : used internaly
+- undefined : used internaly. do not use in your config !
 
 
 The targets :
 -------------
 The target modules process the packet and most of the time, saves it or resend it.
 
+- display : display usefull information about the packets being matched
 - dump_payload : saves the payload of the last matching protocol into a file
 - inject : reinject the matched packets on an specific interface
 - pcap : save the packets in a pcap file
 - tap : open a tap interface and send the packets trough it
 - tcpkill : works only with tcp packets. Send a TCP RST packet to any matched tcp packet
 - wave : save RTP payload into .au files. Supported payload types are G.711U, G711A and G.722
-- null : does nothing, used for debugging
+- null : does nothing, used for debugging or as a template
 
 
 The conntracks :
