@@ -178,9 +178,13 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 		while (cp) {
 			r = rules;
 			while (r) {
-				if (r->target == cp->priv_obj) {
-					target_process(r->target, layers, frame, len, ce);
-					r->result = 0; // Do no process this rule if it matches
+				struct target *t = r->target;
+				while (t) {
+					if (t == cp->priv_obj) {
+						target_process(r->target, layers, frame, len, ce);
+						t->matched_conntrack = 1; // Do no process this target again if it matched here
+					}
+					t = t->next;
 				}
 				r = r->next;
 			}
@@ -191,10 +195,24 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 	// Process the matched rules
 	r = rules;
 	while (r) {
-		if (r->result && r->target)
-				target_process(r->target, layers, frame, len, ce);
+		struct target *t = r->target;
+		if (r->result) {
+			while (t) {
+				if (!t->matched_conntrack)
+					target_process(t, layers, frame, len, ce);
+				t = t->next;
+			}
+		}
+
+		t = r->target;
+		while (t) {
+			t->matched_conntrack = 0;
+			t = t->next;
+		}
 		r = r->next;
 	}
+
+	// reset matched_conntrack value
 
 	
 	return 1;
@@ -264,9 +282,12 @@ int list_destroy(struct rule_list *list) {
 		list = list->next;
 		if (tmp->node)
 			node_destroy(tmp->node, 0);
-		if (tmp->target) {
-			target_close(tmp->target);
-			target_cleanup_t(tmp->target);
+
+		struct target* t = tmp->target;
+		while (t) {
+			target_close(t);
+			target_cleanup_t(t);
+			t = t->next;
 		}
 			
 		free(tmp);

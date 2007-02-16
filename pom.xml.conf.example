@@ -14,6 +14,9 @@
 		<param name="filename">/tmp/dump.cap</param>
 	</target>
 
+	<!-- target_display display usefull information about the current packet on the screen -->
+	<target type="display"/>
+
 	<!-- we want to capture only ipv6 traffic -->
 	<matches>
 		<!-- we first layer we'll have to match is ethernet -->

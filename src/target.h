@@ -31,6 +31,9 @@ struct target {
 	void *target_priv;
 	char **params_value;
 
+	int matched_conntrack;
+	struct target *next;
+
 };
 
 struct target_reg {

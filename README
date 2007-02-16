@@ -35,11 +35,11 @@ Dependencies :
 How it works :
 --------------
 Packets are read from the input.
-We check against each match of each rule if we should make that packet processed by that target.
+We check against each match of each rule if we should make that packet processed by the targets of the rule.
 At the same time we check if a helper is needed and for example put all the ipv4 fragments into a single packet.
 We check if the packet has some conntrack information attached to it.
-If the packet has conntrack info, it is processed by the coresponding target which saved the conntrack info.
-It the match result is positive, we process the packet with the target.
+If the packet has conntrack info, it is processed by the coresponding targets which saved the conntrack info.
+It the match result is positive, we process the packet with the targets defined for this rule.
 
 
 The config :
@@ -48,7 +48,7 @@ The config is written in XML. The default config file is named pom.xml.conf.
 Everything is enclosed in the <config> tags. Then it consists of one <input> section and one or multiple <rule> section.
 The input section defines from where you want to read the packets. You certainly want the pcap input to read from an ethernet interface.
 
-Each rule contains one <target> section and one or multiple <match> section.
+Each rule contains one or more <target> section and one or more <match> section.
 See pom.xml.conf.example for an example. See `packet-o-matic -h` for parameter lists for each module.
 
 

@@ -290,10 +290,11 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 
 	while (cur) {
 		if (!xmlStrcmp(cur->name, (const xmlChar *) "target")) {
-			if (r->target)
-				dprint("Only one target supported. Skipping extra target defined\n");
-			else
-				r->target = parse_target(doc, cur);
+			struct target *t = parse_target(doc, cur);
+			if (t) {
+				t->next = r->target;
+				r->target = t;
+			}
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "matches")) {
 			if (r->node)
 				dprint("Only one instance of matches supported. Skipping extra instances\n");
