@@ -1,8 +1,8 @@
 
 What it is :
 ------------
-Packet-o-matic is a modular network sniffer and processor. The modules consists of input, match, conntrack, helper and target.
-It is designed to be as protocol independant as possible. Each protocol has it's own module of match, conntrack and helper if is makes sens or if it is implemented.
+Packet-o-matic is a modular network sniffer and packet processor. The modules consists of input, match, conntrack, helper and target.
+It is designed to be as protocol independant as possible. Each protocol has it's own module for match, conntrack and helper (if applicable).
 
 
 Building from svn :
@@ -23,7 +23,7 @@ Running it :
 If you make install, you are fine. The program will be able to find the libraries using automatic resolving or hardcoded library path.
 If you did not run make install, you have to export LD_LIBRARY_PATH=path/to/libdir. By default, libtool creates the libs into the src/.libs directory.
 
-Some plugins such as input_pcap requires root privileges in order to perform their operation.
+Some modules such as input_pcap requires root privileges in order to perform their operation.
 
 
 Dependencies :
@@ -56,14 +56,15 @@ The inputs :
 ------------
 The input modules read packet from a certain source and give the packets to the rule processor.
 
-- pcap : allow you to read from one or all ethernet device or from a pcap file saved by tcpdump or ethereal for example
-- docsis : allow you to read fron a docsis stream using a dvb-c card
+- pcap : allow you to read from one or all network device or from a pcap file saved by tcpdump or ethereal for example
+- docsis : allow you to read fron a docsis stream using a dvb-c card and the linux-dvb api
 
 
 The matchs :
 ------------
-The match modules are used to specify the network traffic that you want to match.
-You'll have to specify the full header chain to match a packet. For example to match tcp traffic (on IPv4), you have to match in order ethernet, ipv4, tcp.
+The match modules are used to specify the network traffic that you want to match and pass to the targets.
+
+IMPORTANT : You'll have to specify the full header chain to match a packet. For example to match tcp traffic (on IPv4), you have to match in order ethernet, ipv4, tcp.
 
 - ethernet : match the ethernet protocol
 - linux_cooked : match linux cooked protocol used by pcap
@@ -91,7 +92,7 @@ The target modules process the packet and most of the time, saves it or resend i
 
 The conntracks :
 ----------------
-The conntrack modules make the application able to recognize different connections among all the packet that it process.
+The conntrack modules make the application able to recognize different connections among all the packets that it process.
 It makes it easy to follow a connection and do something specific with that connection or save some information related to that connection.
 The conntrack modules are automatically loaded if found, when the corresponding match is loaded.
 
@@ -104,7 +105,8 @@ The only helper module currently implemented is ipv4. TODO : ipv6, tcp.
 
 Bug :
 -----
-Please report bugs to <gmsoft@tuxicoman.be> with a backtrace or a corefile, version info and os + architercture.
+Please report bugs to <gmsoft@tuxicoman.be> with version info and os + architercture.
+If it's a crash, please provide a backtrace or a corefile.
 
 
 License :
