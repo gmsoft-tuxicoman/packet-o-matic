@@ -35,6 +35,7 @@ char *match_tcp_params[PARAMS_NUM][3] = {
 
 int match_undefined_id;
 struct match_functions *m_functions;
+struct layer_info *match_sport_info, *match_dport_info, *match_seq_info, *match_ack_info;
 
 int match_register_tcp(struct match_reg *r, struct match_functions *m_funcs) {
 
@@ -49,6 +50,13 @@ int match_register_tcp(struct match_reg *r, struct match_functions *m_funcs) {
 
 	m_functions = m_funcs;
 
+	match_undefined_id = (*m_functions->match_register) ("undefined");
+
+	match_sport_info = (*m_funcs->layer_info_register) (r->match_type, "sport", LAYER_INFO_INT);
+	match_dport_info = (*m_funcs->layer_info_register) (r->match_type, "dport", LAYER_INFO_INT);
+	match_seq_info = (*m_funcs->layer_info_register) (r->match_type, "seq", LAYER_INFO_INT);
+	match_ack_info = (*m_funcs->layer_info_register) (r->match_type, "ack", LAYER_INFO_INT);
+
 	return 1;
 
 }
@@ -56,9 +64,6 @@ int match_register_tcp(struct match_reg *r, struct match_functions *m_funcs) {
 int match_init_tcp(struct match *m) {
 
 	copy_params(m->params_value, match_tcp_params, 1, PARAMS_NUM);
-
-	match_undefined_id = (*m_functions->match_register) ("undefined");
-
 	return 1;
 
 }
@@ -84,8 +89,6 @@ int match_reconfig_tcp(struct match *m) {
 			return 0;
 	}
 
-	ndprint("Match TCP : sport %u:%u, dport %u:%u\n", p->sport_min ,p->sport_max, p->dport_min , p->dport_max);
-
 
 	return 1;
 }
@@ -98,8 +101,10 @@ int match_identify_tcp(struct layer* l, void* frame, unsigned int start, unsigne
 	l->payload_start = start + hdrlen;
 	l->payload_size = len - hdrlen;
 
-	(*m_functions->layer_set_num_info) (l, "sport", ntohs(hdr->th_sport));
-	(*m_functions->layer_set_num_info) (l, "dport", ntohs(hdr->th_dport));
+	(*m_functions->layer_set_num_info) (match_sport_info, ntohs(hdr->th_sport));
+	(*m_functions->layer_set_num_info) (match_dport_info, ntohs(hdr->th_dport));
+	(*m_functions->layer_set_num_info) (match_seq_info, ntohs(hdr->th_seq));
+	(*m_functions->layer_set_num_info) (match_ack_info, ntohs(hdr->th_ack));
 
 	return match_undefined_id;
 

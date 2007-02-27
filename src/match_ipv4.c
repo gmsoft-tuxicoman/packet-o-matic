@@ -32,11 +32,12 @@ char *match_ipv4_params[PARAMS_NUM][3] = {
 	{ "snetmask", "0.0.0.0", "netmask of the source" },
 	{ "daddr", "0.0.0.0", "destination ip address" },
 	{ "dnetmask", "0.0.0.0", "netmask of the netmask" },
-
+	
 };
 
 int match_icmp_id, match_tcp_id, match_udp_id, match_ipv6_id;
 struct match_functions *m_functions;
+struct layer_info *match_src_info, *match_dst_info, *match_tos_info, *match_ttl_info;
 
 int match_register_ipv4(struct match_reg *r, struct match_functions *m_funcs) {
 	
@@ -51,18 +52,23 @@ int match_register_ipv4(struct match_reg *r, struct match_functions *m_funcs) {
 
 	m_functions = m_funcs;
 
+	match_icmp_id = (*m_funcs->match_register) ("icmp");
+	match_tcp_id = (*m_funcs->match_register) ("tcp");
+	match_udp_id = (*m_funcs->match_register) ("udp");
+	match_ipv6_id = (*m_funcs->match_register) ("ipv6");
+
+
+	match_src_info = (*m_funcs->layer_info_register) (r->match_type, "src", LAYER_INFO_TXT);
+	match_dst_info = (*m_funcs->layer_info_register) (r->match_type, "dst", LAYER_INFO_TXT);
+	match_tos_info = (*m_funcs->layer_info_register) (r->match_type, "tos", LAYER_INFO_HEX);
+	match_ttl_info = (*m_funcs->layer_info_register) (r->match_type, "ttl", LAYER_INFO_INT);
+
 	return 1;
 }
 
 int match_init_ipv4(struct match *m) {
 
 	copy_params(m->params_value, match_ipv4_params, 1, PARAMS_NUM);
-
-	match_icmp_id = (*m_functions->match_register) ("icmp");
-	match_tcp_id = (*m_functions->match_register) ("tcp");
-	match_udp_id = (*m_functions->match_register) ("udp");
-	match_ipv6_id = (*m_functions->match_register) ("ipv6");
-
 	return 1;
 
 }
@@ -100,10 +106,10 @@ int match_identify_ipv4(struct layer* l, void* frame, unsigned int start, unsign
 	if (hdr->ip_hl < 5 || ntohs(hdr->ip_len) < hdr_len)
 	        return -1;
 
-	(*m_functions->layer_set_txt_info) (l, "src", inet_ntoa(saddr));
-	(*m_functions->layer_set_txt_info) (l, "dst", inet_ntoa(daddr));
-	(*m_functions->layer_set_num_info) (l, "ttl", hdr->ip_ttl);
-	(*m_functions->layer_set_hex_info) (l, "tos", hdr->ip_tos);
+	(*m_functions->layer_set_txt_info) (match_src_info, inet_ntoa(saddr));
+	(*m_functions->layer_set_txt_info) (match_dst_info, inet_ntoa(daddr));
+	(*m_functions->layer_set_num_info) (match_ttl_info, hdr->ip_ttl);
+	(*m_functions->layer_set_hex_info) (match_tos_info, hdr->ip_tos);
 
 	l->payload_start = start + hdr_len;
 	l->payload_size = ntohs(hdr->ip_len) - hdr_len;

@@ -60,7 +60,7 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 				l->type = match_undefined_id;
 				return 0;
 			} else {
-				l->next = layer_poll_get();
+				l->next = layer_pool_get();
 				l->next->type = next_layer;
 			}
 
@@ -115,17 +115,17 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 	}
 
 
-	// We need to discard the previous poll of layer before doing anything else
-	layer_poll_discard();
+	// We need to discard the previous pool of layer before doing anything else
+	layer_pool_discard();
 
 	// Let's identify the layers as far as we can go
 	struct layer *layers, *l;
 
-	layers = layer_poll_get();
+	layers = layer_pool_get();
 	l = layers;
 	l->type = first_layer;
 	while (l && l->type != match_undefined_id) { // If it's undefined, it means we can't assume anything about the rest of the packet
-		l->next = layer_poll_get();
+		l->next = layer_pool_get();
 		l->next->prev = l;
 
 		// identify must populate payload_start and payload_size
@@ -170,6 +170,9 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 		r = r->next;
 
 	}
+
+	// We need to attach the layer_info from the pool to the layers after they are matched and populated
+	layer_info_attach(layers);
 
 	struct conntrack_entry *ce = conntrack_get_entry(layers, frame);
 

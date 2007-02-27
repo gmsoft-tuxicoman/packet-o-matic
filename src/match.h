@@ -38,6 +38,7 @@ struct match {
 struct match_reg {
 
 	char *match_name;
+	unsigned int match_type;
 	void *dl_handle;
 	char **params_name;
 	char **params_help;
@@ -51,10 +52,11 @@ struct match_reg {
 
 struct match_functions {
 	int (*match_register) (const char *);
-	int (*layer_set_txt_info) (struct layer *l, char *name, char *value);
-	int (*layer_set_num_info) (struct layer *l, char *name, long value);
-	int (*layer_set_hex_info) (struct layer *l, char *name, unsigned long value);
-	int (*layer_set_float_info) (struct layer *l, char *name, double value);
+	struct layer_info* (*layer_info_register) (unsigned int match_type, char *name, unsigned int value_type);
+	int (*layer_set_txt_info) (struct layer_info *inf, char *value);
+	int (*layer_set_num_info) (struct layer_info *inf, long value);
+	int (*layer_set_hex_info) (struct layer_info *inf, unsigned long value);
+	int (*layer_set_float_info) (struct layer_info *inf, double value);
 };
 
 int match_init();

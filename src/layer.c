@@ -20,68 +20,49 @@
 
 #include "common.h"
 #include "layer.h"
+#include "match.h"
 
-static struct layer** poll;
-static int pollsize, pollused;
+static struct layer** pool;
+static int poolsize, poolused;
 
+
+static struct layer_info* info_pool[MAX_MATCH];
 
 int layer_init() {
 
-	poll = NULL;
-	pollused = 0;
-	pollsize = 0;
+	pool = NULL;
+	poolused = 0;
+	poolsize = 0;
 
 	return 1;
 
 }
 
-struct layer* layer_poll_get() {
+struct layer* layer_pool_get() {
 
 	struct layer *l;
-	if (pollused >= pollsize) {
-		poll = realloc(poll, sizeof(struct layer*) * (pollsize + 1));
-		poll[pollsize] = malloc(sizeof(struct layer));
-		// We create at least one info entry
-		struct layer_info *inf = malloc(sizeof(struct layer_info));
-		bzero(inf, sizeof(struct layer_info));
-		poll[pollsize]->infos = inf;
-		pollsize++;
+	if (poolused >= poolsize) {
+		pool = realloc(pool, sizeof(struct layer*) * (poolsize + 1));
+		pool[poolsize] = malloc(sizeof(struct layer));
+		poolsize++;
 	
 	}
 
-	l = poll[pollused];
-	pollused++;
-	struct layer_info *inf = l->infos;
+	l = pool[poolused];
+	poolused++;
 	bzero(l, sizeof(struct layer));
-	l->infos = inf;
 
 	return l;
 
 }
 
-int layer_poll_discard() {
+int layer_pool_discard() {
 	
-	int i;
-
-	for (i = 0; i < pollused; i++) {
-		struct layer *l = poll[i];
-		struct layer_info *inf = l->infos;
-		while (inf) {
-			if (inf->val.txt && inf->type == LAYER_INFO_TXT)
-				free(inf->val.txt);
-			inf->name = NULL;
-			inf->type = 0;
-			inf = inf->next;
-		}
-
-	}
-
-	pollused = 0;
+	poolused = 0;
 	return 1;
 
 }
 
-// layer_type == match_type
 int layer_info_snprintf(char *buff, int maxlen, struct layer_info *inf) {
 	
 
@@ -96,7 +77,7 @@ int layer_info_snprintf(char *buff, int maxlen, struct layer_info *inf) {
 			strncpy(buff, inf->val.txt, maxlen - 1);
 			return strlen(buff);
 
-		case LAYER_INFO_LONG:
+		case LAYER_INFO_INT:
 			return snprintf(buff, maxlen - 1, "%ld", inf->val.num);
 			
 		case LAYER_INFO_HEX:
@@ -113,84 +94,86 @@ int layer_info_snprintf(char *buff, int maxlen, struct layer_info *inf) {
 	
 }
 
-int layer_info_set_txt(struct layer *l, char *name, char *value) {
+struct layer_info* layer_info_register(unsigned int match_type, char *name, unsigned int value_type) {
 
-	struct layer_info *inf = layer_info_poll_get(l, name);
-	
-	inf->type = LAYER_INFO_TXT;
-	inf->val.txt = malloc(strlen(value) + 1);
+	struct layer_info* li;
+	li = malloc(sizeof(struct layer_info));
+	bzero(li, sizeof(struct layer_info));
+
+	li->name = malloc(strlen(name) + 1);
+	strcpy(li->name, name);
+
+	li->type = value_type;
+
+	// Register the infos in the order we are given
+	struct layer_info *tmp = info_pool[match_type];
+
+	if (!tmp)
+		info_pool[match_type] = li;
+	else {
+		while (tmp->next)
+			tmp = tmp->next;
+		tmp->next = li;
+	}
+
+
+	return li;
+
+
+}
+
+
+int layer_info_set_txt(struct layer_info *inf, char *value) {
+
+	inf->val.txt = realloc(inf->val.txt, strlen(value) + 1);
 	strcpy(inf->val.txt, value);
 	
 	return 1;
 
 }
 
-int layer_info_set_num(struct layer *l, char *name, long value) {
+int layer_info_set_num(struct layer_info *inf, long value) {
 
-	struct layer_info *inf = layer_info_poll_get(l, name);
-	
-	inf->type = LAYER_INFO_LONG;
 	inf->val.num = value;
 	
 	return 1;
 }
 
-int layer_info_set_hex(struct layer *l, char *name, unsigned long value) {
+int layer_info_set_hex(struct layer_info *inf, unsigned long value) {
 
-	struct layer_info *inf = layer_info_poll_get(l, name);
-	
-	inf->type = LAYER_INFO_HEX;
 	inf->val.hex = value;
 	
 	return 1;
 }
 
-int layer_info_set_float(struct layer *l, char *name, double value) {
+int layer_info_set_float(struct layer_info *inf, double value) {
 
-	struct layer_info *inf = layer_info_poll_get(l, name);
-	
-	inf->type = LAYER_INFO_FLOAT;
 	inf->val.flt = value;
 	
 	return 1;
 }
 
 
-inline struct layer_info *layer_info_poll_get(struct layer *l, char *name) {
-	
-	struct layer_info *inf = l->infos;
-
-	while (inf->name) {
-		if (!inf->next) {
-			inf->next = malloc(sizeof(struct layer_info));
-			bzero(inf->next, sizeof(struct layer_info));
-		}
-		inf = inf->next;
-	}
-	
-	inf->name = name;
-
-	return inf;
-
-}
-
 int layer_cleanup() {
 
 	int i;
-	for (i = 0; i < pollsize; i++) {
+	for (i = 0; i < poolsize; i++) {
+		free(pool[i]);
+	}
+	free(pool);
+
+	for (i = 0; i < MAX_MATCH; i++) {
 		struct layer_info *inf;
-		while (poll[i]->infos) {
-			inf = poll[i]->infos;
-			poll[i]->infos = poll[i]->infos->next;
+		while (info_pool[i]) {
+			inf = info_pool[i];
+			info_pool[i] = info_pool[i]->next;
 			
 			if (inf->type == LAYER_INFO_TXT)
 				free(inf->val.txt);
 
 			free(inf);
 		}
-		free(poll[i]);
 	}
-	free(poll);
 	return 1;
 
 }
@@ -213,4 +196,15 @@ unsigned int layer_find_start(struct layer *l, int header_type) {
 
 	return -1;
 }
+
+void layer_info_attach(struct layer* l) {
+
+	while (l) {
+		l->infos = info_pool[l->type];
+		l = l->next;
+
+	}
+
+}
+
 

@@ -32,6 +32,7 @@ char *match_rtp_params[PARAMS_NUM][3] = {
 
 int match_undefined_id;
 struct match_functions *m_functions;
+struct layer_info *match_payload_info, *match_seq_info, *match_timestamp_info, *match_ssrc_info;
 
 int match_register_rtp(struct match_reg *r, struct match_functions *m_funcs) {
 
@@ -46,6 +47,13 @@ int match_register_rtp(struct match_reg *r, struct match_functions *m_funcs) {
 
 	m_functions = m_funcs;
 
+	match_undefined_id = (*m_functions->match_register) ("undefined");
+
+	match_payload_info = (*m_funcs->layer_info_register) (r->match_type, "payload_type", LAYER_INFO_HEX);
+	match_seq_info = (*m_funcs->layer_info_register) (r->match_type, "seq", LAYER_INFO_INT);
+	match_timestamp_info = (*m_funcs->layer_info_register) (r->match_type, "timestamp", LAYER_INFO_INT);
+	match_ssrc_info = (*m_funcs->layer_info_register) (r->match_type, "ssrc", LAYER_INFO_HEX);
+
 	return 1;
 
 }
@@ -53,9 +61,6 @@ int match_register_rtp(struct match_reg *r, struct match_functions *m_funcs) {
 int match_init_rtp(struct match *m) {
 
 	copy_params(m->params_value, match_rtp_params, 1, PARAMS_NUM);
-
-	match_undefined_id = (*m_functions->match_register) ("undefined");
-
 	return 1;
 
 }
@@ -86,18 +91,15 @@ int match_identify_rtp(struct layer* l, void *frame, unsigned int start, unsigne
 		return -1;
 	}
 
-	ndprint("Processing RTP packet -> SSRC : %x | Payload type %u | SEQ : %04x", hdr->ssrc, hdr->payload_type, ntohs(hdr->seq_num));
-#ifdef NDEBUG
-	int i;
-	for (i = 0; i < hdr->csrc_count && ((unsigned)hdr->csrc[i] + 4) < ((unsigned)frame + len); i++) {
-		ndprint(" | CSRC : %x", hdr->csrc[i]);
-	}
-#endif
+	(*m_functions->layer_set_hex_info) (match_payload_info, hdr->payload_type);
+	(*m_functions->layer_set_num_info) (match_seq_info, ntohs(hdr->seq_num));
+	(*m_functions->layer_set_num_info) (match_timestamp_info, ntohl(hdr->timestamp));
+	(*m_functions->layer_set_hex_info) (match_ssrc_info, hdr->ssrc);
+
 	if (hdr->extension) {
 		struct rtphdrext *ext;
 		ext = frame + start + hdr_len;
 		hdr_len += ntohs(ext->length);
-		ndprint(" | Extension header %u bytes", ntohs(ext->length));
 		if (len < (hdr_len + start)) {
 			ndprint(" Invalid size for RTP packet\n");
 			return -1;
@@ -108,10 +110,8 @@ int match_identify_rtp(struct layer* l, void *frame, unsigned int start, unsigne
 
 	if (hdr->padding) {
 		l->payload_size = *(((unsigned char*) (frame)) + len - 1);
-		ndprint(" | Padding %u bytes", *(((unsigned char*) (frame)) + len - 1));
 	}
 
-	ndprint(" | SIZE %u\n", l->payload_size);
 
 	return match_undefined_id;
 

@@ -1,3 +1,8 @@
+* 2007/02/27 Guy Martin <gmsoft@tuxicoman.be>
+Layer info are now registered at the same time than each match.
+Added info to match_rtp, linux_cooked and some others.
+Added match_type to the match_reg struct so match can have their number when registering.	
+
 * 2007/02/17 Guy Martin <gmsoft@tuxicoman.be>
 Updated README.
 Updated copyright information.

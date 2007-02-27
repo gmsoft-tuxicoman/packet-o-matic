@@ -35,7 +35,7 @@ int match_register(const char *match_name) {
 
 	for (i = 0; i < MAX_MATCH; i++) {
 		if (matchs[i] != NULL) {
-			if (strcmp(matchs[i]->match_name, match_name) == 0) {
+			if (matchs[i]->match_name && strcmp(matchs[i]->match_name, match_name) == 0) {
 				return i;
 			}
 		} else {
@@ -52,13 +52,16 @@ int match_register(const char *match_name) {
 			bzero(my_match, sizeof(struct match_reg));
 
 			
+			matchs[i] = my_match;
+			my_match->match_type = i; // Allow the match to know it's number at registration time
+
 			if (!(*register_my_match) (my_match, m_funcs)) {
 				dprint("Error while loading match %s. Could not register match !\n", match_name);
 				free(my_match);
+				matchs[i] = NULL;
 				return -1;
 			}
 
-			matchs[i] = my_match;
 			matchs[i]->match_name = malloc(strlen(match_name) + 1);
 			strcpy(matchs[i]->match_name, match_name);
 			matchs[i]->dl_handle = handle;
@@ -82,6 +85,7 @@ int match_init() {
 
 	m_funcs = malloc(sizeof(struct match_functions));
 	m_funcs->match_register = match_register;
+	m_funcs->layer_info_register = layer_info_register;
 	m_funcs->layer_set_txt_info = layer_info_set_txt;
 	m_funcs->layer_set_num_info = layer_info_set_num;
 	m_funcs->layer_set_float_info = layer_info_set_float;

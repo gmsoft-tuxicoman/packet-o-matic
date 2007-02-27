@@ -38,6 +38,7 @@ char *match_ipv6_params[PARAMS_NUM][3] = {
 
 int match_icmpv6_id, match_tcp_id, match_udp_id;
 struct match_functions *m_functions;
+struct layer_info *match_src_info, *match_dst_info, *match_fl_info, *match_hl_info;
 
 int match_register_ipv6(struct match_reg *r, struct match_functions *m_funcs) {
 
@@ -52,6 +53,16 @@ int match_register_ipv6(struct match_reg *r, struct match_functions *m_funcs) {
 
 	m_functions = m_funcs;
 
+	match_icmpv6_id = (*m_funcs->match_register) ("icmpv6");
+	match_tcp_id = (*m_funcs->match_register) ("tcp");
+	match_udp_id = (*m_funcs->match_register) ("udp");
+
+	match_src_info = (*m_funcs->layer_info_register) (r->match_type, "src", LAYER_INFO_TXT);
+	match_dst_info = (*m_funcs->layer_info_register) (r->match_type, "dst", LAYER_INFO_TXT);
+	match_fl_info = (*m_funcs->layer_info_register) (r->match_type, "flow_label", LAYER_INFO_HEX);
+	match_hl_info = (*m_funcs->layer_info_register) (r->match_type, "hop_limit", LAYER_INFO_HEX);
+
+
 	return 1;
 }
 
@@ -59,9 +70,6 @@ int match_init_ipv6(struct match *m) {
 
 	copy_params(m->params_value, match_ipv6_params, 1, PARAMS_NUM);
 
-	match_icmpv6_id = (*m_functions->match_register) ("icmpv6");
-	match_tcp_id = (*m_functions->match_register) ("tcp");
-	match_udp_id = (*m_functions->match_register) ("udp");
 
 	return 1;
 
@@ -111,11 +119,14 @@ int match_identify_ipv6(struct layer* l, void* frame, unsigned int start, unsign
 	char addrbuff[INET6_ADDRSTRLEN + 1];
 	bzero(addrbuff, INET6_ADDRSTRLEN + 1);
 	inet_ntop(AF_INET6, &hdr->ip6_src.s6_addr, addrbuff, INET6_ADDRSTRLEN);
-	(*m_functions->layer_set_txt_info) (l, "src", addrbuff);
+	(*m_functions->layer_set_txt_info) (match_src_info, addrbuff);
 
 	bzero(addrbuff, INET6_ADDRSTRLEN + 1);
 	inet_ntop(AF_INET6, &hdr->ip6_dst.s6_addr, addrbuff, INET6_ADDRSTRLEN);
-	(*m_functions->layer_set_txt_info) (l, "dst", addrbuff);
+	(*m_functions->layer_set_txt_info) (match_dst_info, addrbuff);
+
+	(*m_functions->layer_set_hex_info) (match_fl_info, ntohl(hdr->ip6_flow));
+	(*m_functions->layer_set_hex_info) (match_fl_info, hdr->ip6_hlim);
 
 	unsigned int nhdr = hdr->ip6_nxt;
 	l->payload_size = ntohs(hdr->ip6_plen);

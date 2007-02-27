@@ -23,7 +23,7 @@
 #define __LAYER_H__
 
 #define LAYER_INFO_TXT		1
-#define LAYER_INFO_LONG		2
+#define LAYER_INFO_INT		2
 #define LAYER_INFO_HEX		4
 #define LAYER_INFO_FLOAT	8
 
@@ -57,16 +57,19 @@ int layer_init();
 
 unsigned int layer_find_start(struct layer *l, int header_type);
 
-struct layer* layer_poll_get();
-int layer_poll_discard();
+struct layer* layer_pool_get();
+int layer_pool_discard();
+
+struct layer_info* layer_info_register(unsigned int match_type, char *name, unsigned int value_type);
 
 int layer_info_snprintf(char *buff, int maxlen, struct layer_info *inf);
 
-int layer_info_set_txt(struct layer *l, char *name, char *value);
-int layer_info_set_hex(struct layer *l, char *name, unsigned long value);
-int layer_info_set_num(struct layer *l, char *name, long value);
-int layer_info_set_float(struct layer *l, char *name, double value);
-inline struct layer_info *layer_info_poll_get(struct layer *l, char *name);
+int layer_info_set_txt(struct layer_info *inf, char *value);
+int layer_info_set_hex(struct layer_info *inf, unsigned long value);
+int layer_info_set_num(struct layer_info *inf, long value);
+int layer_info_set_float(struct layer_info *inf, double value);
+
+void layer_info_attach(struct layer* l);
 
 int layer_cleanup();
 
