@@ -86,10 +86,10 @@ int match_init() {
 	m_funcs = malloc(sizeof(struct match_functions));
 	m_funcs->match_register = match_register;
 	m_funcs->layer_info_register = layer_info_register;
-	m_funcs->layer_set_txt_info = layer_info_set_txt;
-	m_funcs->layer_set_num_info = layer_info_set_num;
-	m_funcs->layer_set_float_info = layer_info_set_float;
-	m_funcs->layer_set_hex_info = layer_info_set_hex;
+	m_funcs->layer_info_set_str = layer_info_set_str;
+	m_funcs->layer_info_set_int64 = layer_info_set_int64;
+	m_funcs->layer_info_set_uint64 = layer_info_set_uint64;
+	m_funcs->layer_info_set_double = layer_info_set_double;
 
 	return 1;
 }

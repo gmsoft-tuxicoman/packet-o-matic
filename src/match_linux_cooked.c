@@ -36,9 +36,9 @@ int match_register_linux_cooked(struct match_reg *r, struct match_functions *m_f
 	match_ipv4_id = (*m_functions->match_register) ("ipv4");
 	match_ipv6_id = (*m_functions->match_register) ("ipv6");
 
-	match_pkt_type_info = (*m_funcs->layer_info_register) (r->match_type, "pkt_type", LAYER_INFO_HEX);
-	match_dev_type_info = (*m_funcs->layer_info_register) (r->match_type, "dev_type", LAYER_INFO_HEX);
-	match_saddr_info = (*m_funcs->layer_info_register) (r->match_type, "saddr", LAYER_INFO_HEX);
+	match_pkt_type_info = (*m_funcs->layer_info_register) (r->match_type, "pkt_type", LAYER_INFO_UINT64);
+	match_dev_type_info = (*m_funcs->layer_info_register) (r->match_type, "dev_type", LAYER_INFO_UINT64);
+	match_saddr_info = (*m_funcs->layer_info_register) (r->match_type, "saddr", LAYER_INFO_UINT64);
 
 	return 1;
 }
@@ -50,9 +50,9 @@ int match_identify_linux_cooked(struct layer* l, void* frame, unsigned int start
 	l->payload_start = start + sizeof(struct cooked_hdr);
 	l->payload_size = len - sizeof(struct cooked_hdr);
 
-	(*m_functions->layer_set_hex_info) (match_pkt_type_info, ntohs(chdr->pkt_type));
-	(*m_functions->layer_set_hex_info) (match_dev_type_info, ntohs(chdr->dev_type));
-	(*m_functions->layer_set_hex_info) (match_saddr_info, ntohs(chdr->ll_saddr));
+	(*m_functions->layer_info_set_uint64) (match_pkt_type_info, ntohs(chdr->pkt_type));
+	(*m_functions->layer_info_set_uint64) (match_dev_type_info, ntohs(chdr->dev_type));
+	(*m_functions->layer_info_set_uint64) (match_saddr_info, ntohs(chdr->ll_saddr));
 
 	switch (ntohs(chdr->ether_type)) {
 		case 0x0800:

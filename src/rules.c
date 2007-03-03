@@ -172,7 +172,11 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 	}
 
 	// We need to attach the layer_info from the pool to the layers after they are matched and populated
-	layer_info_attach(layers);
+	l = layers;
+	while (l) {
+		l->infos = layer_info_pool_get(l);
+		l = l->next;
+	}
 
 	struct conntrack_entry *ce = conntrack_get_entry(layers, frame);
 
@@ -288,9 +292,10 @@ int list_destroy(struct rule_list *list) {
 
 		struct target* t = tmp->target;
 		while (t) {
+			struct target* next = t->next;
 			target_close(t);
 			target_cleanup_t(t);
-			t = t->next;
+			t = next;
 		}
 			
 		free(tmp);

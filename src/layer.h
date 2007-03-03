@@ -22,20 +22,23 @@
 #ifndef __LAYER_H__
 #define __LAYER_H__
 
-#define LAYER_INFO_TXT		1
-#define LAYER_INFO_INT		2
-#define LAYER_INFO_HEX		4
-#define LAYER_INFO_FLOAT	8
+#include <stdint.h>
+
+#define LAYER_INFO_INT64		0x0001
+#define LAYER_INFO_UINT64		0x0002
+#define LAYER_INFO_DOUBLE		0x0004
+#define LAYER_INFO_STRING		0x0008
+
 
 struct layer_info {
 
 	char *name;
 	unsigned int type;
 	union values_t {
-		char *txt;
-		long num;
-		unsigned long hex;
-		double flt;
+		char *c;
+		int64_t i64;
+		uint64_t ui64;
+		double d;
 	} val;
 
 	struct layer_info *next;
@@ -64,12 +67,12 @@ struct layer_info* layer_info_register(unsigned int match_type, char *name, unsi
 
 int layer_info_snprintf(char *buff, int maxlen, struct layer_info *inf);
 
-int layer_info_set_txt(struct layer_info *inf, char *value);
-int layer_info_set_hex(struct layer_info *inf, unsigned long value);
-int layer_info_set_num(struct layer_info *inf, long value);
-int layer_info_set_float(struct layer_info *inf, double value);
+int layer_info_set_int64(struct layer_info *inf, int64_t value);
+int layer_info_set_uint64(struct layer_info *inf, uint64_t value);
+int layer_info_set_double(struct layer_info *inf, double value);
+int layer_info_set_str(struct layer_info *inf, char *value);
 
-void layer_info_attach(struct layer* l);
+struct layer_info* layer_info_pool_get(struct layer* l);
 
 int layer_cleanup();
 

@@ -1,3 +1,8 @@
+* 2007/03/04 Guy Martin <gmsoft@tuxicoman.be>
+Changed layer_info value types.
+Fixed a wrong cleanup algo in rules.c.
+Don't forget to bzero the struct target in target.c.
+
 * 2007/02/27 Guy Martin <gmsoft@tuxicoman.be>
 Layer info are now registered at the same time than each match.
 Added info to match_rtp, linux_cooked and some others.

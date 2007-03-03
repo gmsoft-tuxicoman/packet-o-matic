@@ -58,10 +58,10 @@ int match_register_ipv4(struct match_reg *r, struct match_functions *m_funcs) {
 	match_ipv6_id = (*m_funcs->match_register) ("ipv6");
 
 
-	match_src_info = (*m_funcs->layer_info_register) (r->match_type, "src", LAYER_INFO_TXT);
-	match_dst_info = (*m_funcs->layer_info_register) (r->match_type, "dst", LAYER_INFO_TXT);
-	match_tos_info = (*m_funcs->layer_info_register) (r->match_type, "tos", LAYER_INFO_HEX);
-	match_ttl_info = (*m_funcs->layer_info_register) (r->match_type, "ttl", LAYER_INFO_INT);
+	match_src_info = (*m_funcs->layer_info_register) (r->match_type, "src", LAYER_INFO_STRING);
+	match_dst_info = (*m_funcs->layer_info_register) (r->match_type, "dst", LAYER_INFO_STRING);
+	match_tos_info = (*m_funcs->layer_info_register) (r->match_type, "tos", LAYER_INFO_UINT64);
+	match_ttl_info = (*m_funcs->layer_info_register) (r->match_type, "ttl", LAYER_INFO_UINT64);
 
 	return 1;
 }
@@ -106,10 +106,10 @@ int match_identify_ipv4(struct layer* l, void* frame, unsigned int start, unsign
 	if (hdr->ip_hl < 5 || ntohs(hdr->ip_len) < hdr_len)
 	        return -1;
 
-	(*m_functions->layer_set_txt_info) (match_src_info, inet_ntoa(saddr));
-	(*m_functions->layer_set_txt_info) (match_dst_info, inet_ntoa(daddr));
-	(*m_functions->layer_set_num_info) (match_ttl_info, hdr->ip_ttl);
-	(*m_functions->layer_set_hex_info) (match_tos_info, hdr->ip_tos);
+	(*m_functions->layer_info_set_str) (match_src_info, inet_ntoa(saddr));
+	(*m_functions->layer_info_set_str) (match_dst_info, inet_ntoa(daddr));
+	(*m_functions->layer_info_set_uint64) (match_ttl_info, hdr->ip_ttl);
+	(*m_functions->layer_info_set_uint64) (match_tos_info, hdr->ip_tos);
 
 	l->payload_start = start + hdr_len;
 	l->payload_size = ntohs(hdr->ip_len) - hdr_len;

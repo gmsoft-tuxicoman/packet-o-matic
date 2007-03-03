@@ -99,6 +99,8 @@ struct target *target_alloc(int target_type) {
 		return NULL;
 	}
 	struct target *t = malloc(sizeof(struct target));
+	bzero(t, sizeof(struct target));
+
 	t->target_type = target_type;
 	
 	if (targets[target_type]->init)

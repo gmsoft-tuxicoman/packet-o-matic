@@ -63,8 +63,8 @@ int match_register_ethernet(struct match_reg *r, struct match_functions *m_funcs
 	match_ipv6_id = (*m_functions->match_register) ("ipv6");
 	match_arp_id = (*m_functions->match_register) ("arp");
 
-	match_src_info = (*m_funcs->layer_info_register) (r->match_type, "src", LAYER_INFO_TXT);
-	match_dst_info = (*m_funcs->layer_info_register) (r->match_type, "dst", LAYER_INFO_TXT);
+	match_src_info = (*m_funcs->layer_info_register) (r->match_type, "src", LAYER_INFO_STRING);
+	match_dst_info = (*m_funcs->layer_info_register) (r->match_type, "dst", LAYER_INFO_STRING);
 
 	return 1;
 }
@@ -106,9 +106,9 @@ int match_identify_ethernet(struct layer* l, void* frame, unsigned int start, un
 	char addrbuff[18];
 	bzero(addrbuff, 18);
 	sprintf(addrbuff, "%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX", ehdr->ether_shost[0], ehdr->ether_shost[1], ehdr->ether_shost[2], ehdr->ether_shost[3], ehdr->ether_shost[4], ehdr->ether_shost[5]);
-	(*m_functions->layer_set_txt_info) (match_src_info, addrbuff);
+	(*m_functions->layer_info_set_str) (match_src_info, addrbuff);
 	sprintf(addrbuff, "%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX", ehdr->ether_dhost[0], ehdr->ether_dhost[1], ehdr->ether_dhost[2], ehdr->ether_dhost[3], ehdr->ether_dhost[4], ehdr->ether_dhost[5]);
-	(*m_functions->layer_set_txt_info) (match_dst_info, addrbuff);
+	(*m_functions->layer_info_set_str) (match_dst_info, addrbuff);
 
 	switch (ntohs(ehdr->ether_type)) {
 		case 0x0800:

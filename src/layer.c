@@ -73,18 +73,18 @@ int layer_info_snprintf(char *buff, int maxlen, struct layer_info *inf) {
 
 	switch (inf->type) {
 		
-		case LAYER_INFO_TXT:
-			strncpy(buff, inf->val.txt, maxlen - 1);
+		case LAYER_INFO_STRING:
+			strncpy(buff, inf->val.c, maxlen - 1);
 			return strlen(buff);
 
-		case LAYER_INFO_INT:
-			return snprintf(buff, maxlen - 1, "%ld", inf->val.num);
+		case LAYER_INFO_INT64:
+			return snprintf(buff, maxlen - 1, "%li", (long) inf->val.i64);
 			
-		case LAYER_INFO_HEX:
-			return snprintf(buff, maxlen - 1, "0x%lx", inf->val.hex);
+		case LAYER_INFO_UINT64:
+			return snprintf(buff, maxlen - 1, "%lu", (unsigned long) inf->val.ui64);
 
-		case LAYER_INFO_FLOAT:
-			return snprintf(buff, maxlen - 1, "%f", inf->val.flt);
+		case LAYER_INFO_DOUBLE:
+			return snprintf(buff, maxlen - 1, "%f", inf->val.d);
 
 	}
 
@@ -123,32 +123,32 @@ struct layer_info* layer_info_register(unsigned int match_type, char *name, unsi
 }
 
 
-int layer_info_set_txt(struct layer_info *inf, char *value) {
+int layer_info_set_str(struct layer_info *inf, char *value) {
 
-	inf->val.txt = realloc(inf->val.txt, strlen(value) + 1);
-	strcpy(inf->val.txt, value);
+	inf->val.c = realloc(inf->val.c, strlen(value) + 1);
+	strcpy(inf->val.c, value);
 	
 	return 1;
 
 }
 
-int layer_info_set_num(struct layer_info *inf, long value) {
+int layer_info_set_int64(struct layer_info *inf, int64_t value) {
 
-	inf->val.num = value;
+	inf->val.i64 = value;
 	
 	return 1;
 }
 
-int layer_info_set_hex(struct layer_info *inf, unsigned long value) {
+int layer_info_set_uint64(struct layer_info *inf, uint64_t value) {
 
-	inf->val.hex = value;
+	inf->val.ui64 = value;
 	
 	return 1;
 }
 
-int layer_info_set_float(struct layer_info *inf, double value) {
+int layer_info_set_double(struct layer_info *inf, double value) {
 
-	inf->val.flt = value;
+	inf->val.d = value;
 	
 	return 1;
 }
@@ -168,8 +168,10 @@ int layer_cleanup() {
 			inf = info_pool[i];
 			info_pool[i] = info_pool[i]->next;
 			
-			if (inf->type == LAYER_INFO_TXT)
-				free(inf->val.txt);
+			free(inf->name);
+
+			if (inf->type == LAYER_INFO_STRING)
+				free(inf->val.c);
 
 			free(inf);
 		}
@@ -197,13 +199,9 @@ unsigned int layer_find_start(struct layer *l, int header_type) {
 	return -1;
 }
 
-void layer_info_attach(struct layer* l) {
+struct layer_info* layer_info_pool_get(struct layer* l) {
 
-	while (l) {
-		l->infos = info_pool[l->type];
-		l = l->next;
-
-	}
+	return info_pool[l->type];
 
 }
 

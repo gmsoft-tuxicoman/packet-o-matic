@@ -23,10 +23,10 @@
 #ifndef __MATCH_H__
 #define __MATCH_H__
 
-#include "layer.h"
-
 #undef MAX_MATCH
 #define MAX_MATCH 16
+
+#include "layer.h"
 
 
 struct match {
@@ -53,10 +53,10 @@ struct match_reg {
 struct match_functions {
 	int (*match_register) (const char *);
 	struct layer_info* (*layer_info_register) (unsigned int match_type, char *name, unsigned int value_type);
-	int (*layer_set_txt_info) (struct layer_info *inf, char *value);
-	int (*layer_set_num_info) (struct layer_info *inf, long value);
-	int (*layer_set_hex_info) (struct layer_info *inf, unsigned long value);
-	int (*layer_set_float_info) (struct layer_info *inf, double value);
+	int (*layer_info_set_str) (struct layer_info *inf, char *value);
+	int (*layer_info_set_int64) (struct layer_info *inf, int64_t value);
+	int (*layer_info_set_uint64) (struct layer_info *inf, uint64_t value);
+	int (*layer_info_set_double) (struct layer_info *inf, double value);
 };
 
 int match_init();

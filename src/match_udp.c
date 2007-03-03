@@ -51,8 +51,8 @@ int match_register_udp(struct match_reg *r, struct match_functions *m_funcs) {
 
 	match_undefined_id = (*m_functions->match_register) ("undefined");
 
-	match_sport_info = (*m_funcs->layer_info_register) (r->match_type, "sport", LAYER_INFO_INT);
-	match_dport_info = (*m_funcs->layer_info_register) (r->match_type, "dport", LAYER_INFO_INT);
+	match_sport_info = (*m_funcs->layer_info_register) (r->match_type, "sport", LAYER_INFO_UINT64);
+	match_dport_info = (*m_funcs->layer_info_register) (r->match_type, "dport", LAYER_INFO_UINT64);
 
 	return 1;
 
@@ -97,8 +97,8 @@ int match_identify_udp(struct layer* l, void *frame, unsigned int start, unsigne
 	l->payload_start = start + sizeof(struct udphdr);
 	l->payload_size = ntohs(hdr->uh_ulen) - sizeof(struct udphdr);
 
-	(*m_functions->layer_set_num_info) (match_sport_info, ntohs(hdr->uh_sport));
-	(*m_functions->layer_set_num_info) (match_dport_info, ntohs(hdr->uh_dport));
+	(*m_functions->layer_info_set_uint64) (match_sport_info, ntohs(hdr->uh_sport));
+	(*m_functions->layer_info_set_uint64) (match_dport_info, ntohs(hdr->uh_dport));
 
 	return match_undefined_id;
 
