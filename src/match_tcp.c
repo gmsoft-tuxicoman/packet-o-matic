@@ -52,10 +52,10 @@ int match_register_tcp(struct match_reg *r, struct match_functions *m_funcs) {
 
 	match_undefined_id = (*m_functions->match_register) ("undefined");
 
-	match_sport_info = (*m_funcs->layer_info_register) (r->match_type, "sport", LAYER_INFO_UINT64);
-	match_dport_info = (*m_funcs->layer_info_register) (r->match_type, "dport", LAYER_INFO_UINT64);
-	match_seq_info = (*m_funcs->layer_info_register) (r->match_type, "seq", LAYER_INFO_UINT64);
-	match_ack_info = (*m_funcs->layer_info_register) (r->match_type, "ack", LAYER_INFO_UINT64);
+	match_sport_info = (*m_funcs->layer_info_register) (r->match_type, "sport", LAYER_INFO_TYPE_UINT32);
+	match_dport_info = (*m_funcs->layer_info_register) (r->match_type, "dport", LAYER_INFO_TYPE_UINT32);
+	match_seq_info = (*m_funcs->layer_info_register) (r->match_type, "seq", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
+	match_ack_info = (*m_funcs->layer_info_register) (r->match_type, "ack", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
 
 	return 1;
 
@@ -101,10 +101,10 @@ int match_identify_tcp(struct layer* l, void* frame, unsigned int start, unsigne
 	l->payload_start = start + hdrlen;
 	l->payload_size = len - hdrlen;
 
-	(*m_functions->layer_info_set_uint64) (match_sport_info, ntohs(hdr->th_sport));
-	(*m_functions->layer_info_set_uint64) (match_dport_info, ntohs(hdr->th_dport));
-	(*m_functions->layer_info_set_uint64) (match_seq_info, ntohl(hdr->th_seq));
-	(*m_functions->layer_info_set_uint64) (match_ack_info, ntohl(hdr->th_ack));
+	match_sport_info->val.ui32 = ntohs(hdr->th_sport);
+	match_dport_info->val.ui32 = ntohs(hdr->th_dport);
+	match_seq_info->val.ui32 = ntohl(hdr->th_seq);
+	match_ack_info->val.ui32 = ntohl(hdr->th_ack);
 
 	return match_undefined_id;
 

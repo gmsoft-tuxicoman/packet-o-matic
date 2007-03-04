@@ -63,7 +63,8 @@ int layer_pool_discard() {
 
 }
 
-int layer_info_snprintf(char *buff, int maxlen, struct layer_info *inf) {
+
+int layer_info_snprintf(char *buff, unsigned int maxlen, struct layer_info *inf) {
 	
 
 	if (!inf) // Not found
@@ -71,20 +72,63 @@ int layer_info_snprintf(char *buff, int maxlen, struct layer_info *inf) {
 
 	bzero(buff, maxlen);
 
-	switch (inf->type) {
+	if (inf->snprintf)
+		return (*inf->snprintf) (buff, maxlen, inf);
+
+	return 0;
+}
+
+int layer_info_default_snprintf(char *buff, unsigned int maxlen, struct layer_info *inf) {
+
+	switch (inf->flags & LAYER_INFO_TYPE_MASK) {
 		
-		case LAYER_INFO_STRING:
+		case LAYER_INFO_TYPE_STRING:
 			strncpy(buff, inf->val.c, maxlen - 1);
 			return strlen(buff);
+		
+		case LAYER_INFO_TYPE_CUSTOM:
+			ndprint("Warning custom type declared but no snprintf set\n");
+			return 0;
+		
+	}
 
-		case LAYER_INFO_INT64:
-			return snprintf(buff, maxlen - 1, "%li", (long) inf->val.i64);
+	if (!(inf->flags & LAYER_INFO_PRINT_ZERO) && !inf->val.ui64)
+		return 0;
+
+	switch (inf->flags & LAYER_INFO_TYPE_MASK) {
+
+		case LAYER_INFO_TYPE_INT32:
+			return snprintf(buff, maxlen - 1, "%i", (int) inf->val.i32);
+
+		case LAYER_INFO_TYPE_UINT32:
+			return snprintf(buff, maxlen - 1, "%u", (unsigned int) inf->val.ui32);
+
+		case LAYER_INFO_TYPE_INT64:
+			return snprintf(buff, maxlen - 1, "%li", (long int) inf->val.i64);
 			
-		case LAYER_INFO_UINT64:
-			return snprintf(buff, maxlen - 1, "%lu", (unsigned long) inf->val.ui64);
+		case LAYER_INFO_TYPE_UINT64:
+			return snprintf(buff, maxlen - 1, "%lu", (unsigned long int) inf->val.ui64);
 
-		case LAYER_INFO_DOUBLE:
+		case LAYER_INFO_TYPE_DOUBLE:
 			return snprintf(buff, maxlen - 1, "%f", inf->val.d);
+	}
+
+	return 0;
+	
+}
+
+int layer_info_hex_snprintf(char *buff, unsigned int maxlen, struct layer_info *inf) {
+
+	if (!(inf->flags & LAYER_INFO_PRINT_ZERO) && !inf->val.ui64)
+		return 0;
+
+	switch (inf->flags & LAYER_INFO_TYPE_MASK) {
+		
+		case LAYER_INFO_TYPE_UINT32:
+			return snprintf(buff, maxlen - 1, "0x%x", (unsigned int) inf->val.ui32);
+
+		case LAYER_INFO_TYPE_UINT64:
+			return snprintf(buff, maxlen - 1, "0x%lx", (unsigned long int) inf->val.ui64);
 
 	}
 
@@ -92,9 +136,11 @@ int layer_info_snprintf(char *buff, int maxlen, struct layer_info *inf) {
 	
 	return 0;
 	
+
 }
 
-struct layer_info* layer_info_register(unsigned int match_type, char *name, unsigned int value_type) {
+
+struct layer_info* layer_info_register(unsigned int match_type, char *name, unsigned int flags) {
 
 	struct layer_info* li;
 	li = malloc(sizeof(struct layer_info));
@@ -103,7 +149,15 @@ struct layer_info* layer_info_register(unsigned int match_type, char *name, unsi
 	li->name = malloc(strlen(name) + 1);
 	strcpy(li->name, name);
 
-	li->type = value_type;
+
+	li->flags = flags;
+	
+	if ((li->flags & LAYER_INFO_TYPE_MASK) != LAYER_INFO_TYPE_CUSTOM) {
+		if (flags & LAYER_INFO_PRINT_HEX)
+			li->snprintf = layer_info_hex_snprintf;
+		else
+			li->snprintf = layer_info_default_snprintf;
+	}
 
 	// Register the infos in the order we are given
 	struct layer_info *tmp = info_pool[match_type];
@@ -123,37 +177,6 @@ struct layer_info* layer_info_register(unsigned int match_type, char *name, unsi
 }
 
 
-int layer_info_set_str(struct layer_info *inf, char *value) {
-
-	inf->val.c = realloc(inf->val.c, strlen(value) + 1);
-	strcpy(inf->val.c, value);
-	
-	return 1;
-
-}
-
-int layer_info_set_int64(struct layer_info *inf, int64_t value) {
-
-	inf->val.i64 = value;
-	
-	return 1;
-}
-
-int layer_info_set_uint64(struct layer_info *inf, uint64_t value) {
-
-	inf->val.ui64 = value;
-	
-	return 1;
-}
-
-int layer_info_set_double(struct layer_info *inf, double value) {
-
-	inf->val.d = value;
-	
-	return 1;
-}
-
-
 int layer_cleanup() {
 
 	int i;
@@ -170,7 +193,7 @@ int layer_cleanup() {
 			
 			free(inf->name);
 
-			if (inf->type == LAYER_INFO_STRING)
+			if ((inf->flags & LAYER_INFO_TYPE_MASK) == LAYER_INFO_TYPE_STRING)
 				free(inf->val.c);
 
 			free(inf);

@@ -53,29 +53,35 @@ int target_process_display(struct target *t, struct layer *l, void *frame, unsig
 
 	const int buffsize = 2048;
 	char buff[buffsize];
+	int first = 0;
 
 	while (tmpl && tmpl->type != match_undefined_id) {
 		printf("%s", (*target_funcs->match_get_name) (tmpl->type));
 
 		if (tmpl->infos && tmpl->infos->name) {
 		
-			printf(" [");
+
+			first = 1;
 			
 			struct layer_info *inf = tmpl->infos;
 			while (inf) {
-				if (!(*target_funcs->layer_info_snprintf) (buff, buffsize, inf))
-					break;
+				if ((*target_funcs->layer_info_snprintf) (buff, buffsize, inf)) {
 
-				printf("%s: %s", inf->name, buff);
+					if (!first)
+						printf(", ");
+					else
+						printf(" [");
 
-				if (inf->next)
-					printf(", ");
+					printf("%s: %s", inf->name, buff);
+					first = 0;
+				}
 
 				inf = inf->next;
 
 			}
 
-			printf("]");
+			if (!first)
+				printf("]");
 		}
 		printf("; ");
 

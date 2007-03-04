@@ -24,24 +24,37 @@
 
 #include <stdint.h>
 
-#define LAYER_INFO_INT64		0x0001
-#define LAYER_INFO_UINT64		0x0002
-#define LAYER_INFO_DOUBLE		0x0004
-#define LAYER_INFO_STRING		0x0008
+#define LAYER_INFO_TYPE_MASK	0x00ff
+#define LAYER_INFO_TYPE_INT32	0x0001
+#define LAYER_INFO_TYPE_UINT32	0x0002
+#define LAYER_INFO_TYPE_INT64	0x0003
+#define LAYER_INFO_TYPE_UINT64	0x0004
+#define LAYER_INFO_TYPE_DOUBLE	0x0005
+#define LAYER_INFO_TYPE_STRING	0x0006
+#define LAYER_INFO_TYPE_CUSTOM	0x0007
 
+#define LAYER_INFO_PRINT_DFLT	0x0000
+#define LAYER_INFO_PRINT_HEX	0x0100
+#define LAYER_INFO_PRINT_ZERO	0x1000
+
+
+union layer_info_val_t {
+	char *c;
+	int32_t i32;
+	uint32_t ui32;
+	int64_t i64;
+	uint64_t ui64;
+	double d;
+};
 
 struct layer_info {
 
 	char *name;
-	unsigned int type;
-	union values_t {
-		char *c;
-		int64_t i64;
-		uint64_t ui64;
-		double d;
-	} val;
-
+	unsigned int flags;
+	union layer_info_val_t val;
 	struct layer_info *next;
+
+	int (*snprintf) (char *buff, unsigned int len, struct layer_info *inf);
 
 };
 
@@ -63,14 +76,9 @@ unsigned int layer_find_start(struct layer *l, int header_type);
 struct layer* layer_pool_get();
 int layer_pool_discard();
 
-struct layer_info* layer_info_register(unsigned int match_type, char *name, unsigned int value_type);
+struct layer_info* layer_info_register(unsigned int match_type, char *name, unsigned int flags);
 
-int layer_info_snprintf(char *buff, int maxlen, struct layer_info *inf);
-
-int layer_info_set_int64(struct layer_info *inf, int64_t value);
-int layer_info_set_uint64(struct layer_info *inf, uint64_t value);
-int layer_info_set_double(struct layer_info *inf, double value);
-int layer_info_set_str(struct layer_info *inf, char *value);
+int layer_info_snprintf(char *buff, unsigned int maxlen, struct layer_info *inf);
 
 struct layer_info* layer_info_pool_get(struct layer* l);
 

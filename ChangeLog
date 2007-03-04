@@ -1,4 +1,10 @@
 * 2007/03/04 Guy Martin <gmsoft@tuxicoman.be>
+Changed the types of layer_info values.
+Support custom snprintf functions for layer_info.
+Added support for match_unregister function.
+Make target_display work with non displaying info.
+
+* 2007/03/03 Guy Martin <gmsoft@tuxicoman.be>
 Changed layer_info value types.
 Fixed a wrong cleanup algo in rules.c.
 Don't forget to bzero the struct target in target.c.

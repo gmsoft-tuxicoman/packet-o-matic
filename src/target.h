@@ -56,7 +56,7 @@ struct target_functions {
 	struct conntrack_entry* (*conntrack_get_entry) (struct layer *l, void* frame);
 	int (*conntrack_add_priv) (void *obj, void* priv, struct layer *l, void *frame);
 	void* (*conntrack_get_priv) (void *obj, struct conntrack_entry *ce);
-	int (*layer_info_snprintf) (char *buff, int maxlen, struct layer_info *inf);
+	int (*layer_info_snprintf) (char *buff, unsigned int maxlen, struct layer_info *inf);
 	char *(*match_get_name) (int match_type);
 
 };

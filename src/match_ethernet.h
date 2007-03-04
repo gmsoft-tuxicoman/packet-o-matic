@@ -43,6 +43,8 @@ int match_reconfig_ethernet(struct match *m);
 int match_identify_ethernet(struct layer* l, void* frame, unsigned int start, unsigned int len);
 int match_eval_ethernet(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l);
 int match_cleanup_ethernet(struct match *m);
+int match_unregister_ethernet(struct match_reg *r);
 
+int match_layer_info_snprintf_ethernet(char *buff, unsigned int len, struct layer_info *inf);
 
 #endif

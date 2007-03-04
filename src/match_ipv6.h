@@ -46,6 +46,8 @@ int match_reconfig_ipv6(struct match *m);
 int match_identify_ipv6(struct layer* l, void* frame, unsigned int start, unsigned int len);
 int match_eval_ipv6(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l);
 int match_cleanup_ipv6(struct match *m);
+int match_unregister_ipv6(struct match_reg *r);
 
+int match_layer_info_snprintf_ipv6(char *buff, unsigned int len, struct layer_info *inf);
 
 #endif

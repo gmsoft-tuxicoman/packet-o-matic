@@ -49,10 +49,10 @@ int match_register_rtp(struct match_reg *r, struct match_functions *m_funcs) {
 
 	match_undefined_id = (*m_functions->match_register) ("undefined");
 
-	match_payload_info = (*m_funcs->layer_info_register) (r->match_type, "payload_type", LAYER_INFO_UINT64);
-	match_seq_info = (*m_funcs->layer_info_register) (r->match_type, "seq", LAYER_INFO_UINT64);
-	match_timestamp_info = (*m_funcs->layer_info_register) (r->match_type, "timestamp", LAYER_INFO_UINT64);
-	match_ssrc_info = (*m_funcs->layer_info_register) (r->match_type, "ssrc", LAYER_INFO_UINT64);
+	match_payload_info = (*m_funcs->layer_info_register) (r->match_type, "payload_type", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
+	match_seq_info = (*m_funcs->layer_info_register) (r->match_type, "seq", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
+	match_timestamp_info = (*m_funcs->layer_info_register) (r->match_type, "timestamp", LAYER_INFO_TYPE_UINT32);
+	match_ssrc_info = (*m_funcs->layer_info_register) (r->match_type, "ssrc", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
 
 	return 1;
 
@@ -91,10 +91,10 @@ int match_identify_rtp(struct layer* l, void *frame, unsigned int start, unsigne
 		return -1;
 	}
 
-	(*m_functions->layer_info_set_uint64) (match_payload_info, hdr->payload_type);
-	(*m_functions->layer_info_set_uint64) (match_seq_info, ntohs(hdr->seq_num));
-	(*m_functions->layer_info_set_uint64) (match_timestamp_info, ntohl(hdr->timestamp));
-	(*m_functions->layer_info_set_uint64) (match_ssrc_info, hdr->ssrc);
+	match_payload_info->val.ui32 =  hdr->payload_type;
+	match_seq_info->val.ui32 = ntohs(hdr->seq_num);
+	match_timestamp_info->val.ui32 = ntohl(hdr->timestamp);
+	match_ssrc_info->val.ui32 = hdr->ssrc;
 
 	if (hdr->extension) {
 		struct rtphdrext *ext;

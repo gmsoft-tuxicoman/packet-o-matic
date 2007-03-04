@@ -56,6 +56,7 @@ int match_register_ethernet(struct match_reg *r, struct match_functions *m_funcs
 	r->identify = match_identify_ethernet;
 	r->eval = match_eval_ethernet;
 	r->cleanup = match_cleanup_ethernet;
+	r->unregister = match_unregister_ethernet;
 	
 	m_functions = m_funcs;
 	
@@ -63,9 +64,20 @@ int match_register_ethernet(struct match_reg *r, struct match_functions *m_funcs
 	match_ipv6_id = (*m_functions->match_register) ("ipv6");
 	match_arp_id = (*m_functions->match_register) ("arp");
 
-	match_src_info = (*m_funcs->layer_info_register) (r->match_type, "src", LAYER_INFO_STRING);
-	match_dst_info = (*m_funcs->layer_info_register) (r->match_type, "dst", LAYER_INFO_STRING);
+	match_src_info = (*m_funcs->layer_info_register) (r->match_type, "src", LAYER_INFO_TYPE_CUSTOM);
+	match_src_info->snprintf = match_layer_info_snprintf_ethernet;
+	match_src_info->val.c = malloc(6);
+	match_dst_info = (*m_funcs->layer_info_register) (r->match_type, "dst", LAYER_INFO_TYPE_CUSTOM);
+	match_dst_info->snprintf = match_layer_info_snprintf_ethernet;
+	match_dst_info->val.c = malloc(6);
 
+	return 1;
+}
+
+int match_unregister_ethernet(struct match_reg *r) {
+
+	free(match_src_info->val.c);
+	free(match_dst_info->val.c);
 	return 1;
 }
 
@@ -102,13 +114,10 @@ int match_identify_ethernet(struct layer* l, void* frame, unsigned int start, un
 	l->payload_start = start + sizeof(struct ether_header);
 	l->payload_size = len - sizeof(struct ether_header);
 
+
+	memcpy(match_src_info->val.c, ehdr->ether_shost, 6);
+	memcpy(match_dst_info->val.c, ehdr->ether_dhost, 6);
 	
-	char addrbuff[18];
-	bzero(addrbuff, 18);
-	sprintf(addrbuff, "%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX", ehdr->ether_shost[0], ehdr->ether_shost[1], ehdr->ether_shost[2], ehdr->ether_shost[3], ehdr->ether_shost[4], ehdr->ether_shost[5]);
-	(*m_functions->layer_info_set_str) (match_src_info, addrbuff);
-	sprintf(addrbuff, "%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX", ehdr->ether_dhost[0], ehdr->ether_dhost[1], ehdr->ether_dhost[2], ehdr->ether_dhost[3], ehdr->ether_dhost[4], ehdr->ether_dhost[5]);
-	(*m_functions->layer_info_set_str) (match_dst_info, addrbuff);
 
 	switch (ntohs(ehdr->ether_type)) {
 		case 0x0800:
@@ -152,3 +161,16 @@ int match_cleanup_ethernet(struct match *m) {
 	return 1;
 
 }
+
+int match_layer_info_snprintf_ethernet(char *buff, unsigned int len, struct layer_info *inf) {
+
+	return snprintf(buff, len - 1, "%02hhX:%02hhX:%02hhX:%02hhX:%02hhX:%02hhX",
+		inf->val.c[0],
+		inf->val.c[1],
+		inf->val.c[2],
+		inf->val.c[3],
+		inf->val.c[4],
+		inf->val.c[5]);
+
+}
+

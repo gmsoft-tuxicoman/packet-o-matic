@@ -50,6 +50,7 @@ int match_register_ipv6(struct match_reg *r, struct match_functions *m_funcs) {
 	r->identify = match_identify_ipv6;
 	r->eval = match_eval_ipv6;
 	r->cleanup = match_cleanup_ipv6;
+	r->unregister = match_unregister_ipv6;
 
 	m_functions = m_funcs;
 
@@ -57,11 +58,23 @@ int match_register_ipv6(struct match_reg *r, struct match_functions *m_funcs) {
 	match_tcp_id = (*m_funcs->match_register) ("tcp");
 	match_udp_id = (*m_funcs->match_register) ("udp");
 
-	match_src_info = (*m_funcs->layer_info_register) (r->match_type, "src", LAYER_INFO_STRING);
-	match_dst_info = (*m_funcs->layer_info_register) (r->match_type, "dst", LAYER_INFO_STRING);
-	match_fl_info = (*m_funcs->layer_info_register) (r->match_type, "flow_label", LAYER_INFO_UINT64);
-	match_hl_info = (*m_funcs->layer_info_register) (r->match_type, "hop_limit", LAYER_INFO_UINT64);
+	match_src_info = (*m_funcs->layer_info_register) (r->match_type, "src", LAYER_INFO_TYPE_CUSTOM);
+	match_src_info->val.c = malloc(16);
+	match_src_info->snprintf = match_layer_info_snprintf_ipv6;
+	match_dst_info = (*m_funcs->layer_info_register) (r->match_type, "dst", LAYER_INFO_TYPE_CUSTOM);
+	match_dst_info->val.c = malloc(16);
+	match_dst_info->snprintf = match_layer_info_snprintf_ipv6;
+	match_fl_info = (*m_funcs->layer_info_register) (r->match_type, "flabel", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
+	match_hl_info = (*m_funcs->layer_info_register) (r->match_type, "hlim", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_ZERO);
 
+
+	return 1;
+}
+
+int match_unregister_ipv6(struct match_reg *r) {
+
+	free(match_src_info->val.c);
+	free(match_dst_info->val.c);
 
 	return 1;
 }
@@ -69,7 +82,6 @@ int match_register_ipv6(struct match_reg *r, struct match_functions *m_funcs) {
 int match_init_ipv6(struct match *m) {
 
 	copy_params(m->params_value, match_ipv6_params, 1, PARAMS_NUM);
-
 
 	return 1;
 
@@ -116,17 +128,11 @@ int match_identify_ipv6(struct layer* l, void* frame, unsigned int start, unsign
 
 	struct ip6_hdr* hdr = frame + start;
 
-	char addrbuff[INET6_ADDRSTRLEN + 1];
-	bzero(addrbuff, INET6_ADDRSTRLEN + 1);
-	inet_ntop(AF_INET6, &hdr->ip6_src.s6_addr, addrbuff, INET6_ADDRSTRLEN);
-	(*m_functions->layer_info_set_str) (match_src_info, addrbuff);
+	memcpy(match_src_info->val.c, hdr->ip6_src.s6_addr, 16);
+	memcpy(match_dst_info->val.c, hdr->ip6_dst.s6_addr, 16);
 
-	bzero(addrbuff, INET6_ADDRSTRLEN + 1);
-	inet_ntop(AF_INET6, &hdr->ip6_dst.s6_addr, addrbuff, INET6_ADDRSTRLEN);
-	(*m_functions->layer_info_set_str) (match_dst_info, addrbuff);
-
-	(*m_functions->layer_info_set_uint64) (match_fl_info, ntohl(hdr->ip6_flow));
-	(*m_functions->layer_info_set_uint64) (match_fl_info, hdr->ip6_hlim);
+	match_fl_info->val.ui32 = ntohl(hdr->ip6_flow) & 0xfffff;
+	match_hl_info->val.ui32 = hdr->ip6_hlim;
 
 	unsigned int nhdr = hdr->ip6_nxt;
 	l->payload_size = ntohs(hdr->ip6_plen);
@@ -197,5 +203,17 @@ int match_cleanup_ipv6(struct match *m) {
 		free(m->match_priv);
 
 	return 1;
+
+}
+
+int match_layer_info_snprintf_ipv6(char *buff, unsigned int len, struct layer_info *inf) {
+
+	char addrbuff[INET6_ADDRSTRLEN + 1];
+	bzero(addrbuff, INET6_ADDRSTRLEN + 1);
+
+	inet_ntop(AF_INET6, inf->val.c, addrbuff, INET6_ADDRSTRLEN);
+	strncpy(buff, addrbuff, len);
+
+	return strlen(buff);
 
 }

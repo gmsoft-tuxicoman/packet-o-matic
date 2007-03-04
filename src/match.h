@@ -47,16 +47,13 @@ struct match_reg {
 	int (*identify) (struct layer*, void*, unsigned int, unsigned int);
 	int (*eval) (struct match*, void*, unsigned int, unsigned int, struct layer*);
 	int (*cleanup) (struct match *m);
+	int (*unregister) (struct match_reg *r);
 
 };
 
 struct match_functions {
 	int (*match_register) (const char *);
-	struct layer_info* (*layer_info_register) (unsigned int match_type, char *name, unsigned int value_type);
-	int (*layer_info_set_str) (struct layer_info *inf, char *value);
-	int (*layer_info_set_int64) (struct layer_info *inf, int64_t value);
-	int (*layer_info_set_uint64) (struct layer_info *inf, uint64_t value);
-	int (*layer_info_set_double) (struct layer_info *inf, double value);
+	struct layer_info* (*layer_info_register) (unsigned int match_type, char *name, unsigned int flags);
 };
 
 int match_init();
@@ -69,6 +66,7 @@ int match_identify(struct layer *l, void* frame, unsigned int start, unsigned in
 int match_eval(struct match* m, void* frame, unsigned int start, unsigned int len, struct layer *l);
 int match_cleanup_module(struct match *m);
 int match_cleanup();
+int match_unregister(unsigned int match_type);
 int match_unregister_all();
 void match_print_help();
 

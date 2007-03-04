@@ -204,7 +204,6 @@ int main(int argc, char *argv[]) {
 	timers_cleanup();
 	target_cleanup();
 	match_cleanup();
-	layer_cleanup();
 
 
 	target_unregister_all();
@@ -213,6 +212,8 @@ int main(int argc, char *argv[]) {
 	helper_unregister_all();
 	input_unregister_all();
 
+	// Layers need to be cleaned up after the match
+	layer_cleanup();
 
 	return 0;
 }

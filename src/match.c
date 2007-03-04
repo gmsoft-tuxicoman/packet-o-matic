@@ -86,10 +86,6 @@ int match_init() {
 	m_funcs = malloc(sizeof(struct match_functions));
 	m_funcs->match_register = match_register;
 	m_funcs->layer_info_register = layer_info_register;
-	m_funcs->layer_info_set_str = layer_info_set_str;
-	m_funcs->layer_info_set_int64 = layer_info_set_int64;
-	m_funcs->layer_info_set_uint64 = layer_info_set_uint64;
-	m_funcs->layer_info_set_double = layer_info_set_double;
 
 	return 1;
 }
@@ -208,26 +204,40 @@ int match_cleanup() {
 }
 
 
+int match_unregister(unsigned int match_type) {
+
+	struct match_reg *r = matchs[match_type];
+
+	if (!r)
+		return 0;
+
+	if (r->unregister)
+		(*r->unregister) (r);
+	
+	if (r->params_name) {
+		int i;
+		for (i = 0; r->params_name[i]; i++) {
+			free(r->params_name[i]);
+			free(r->params_help[i]);
+		}
+		free(r->params_name);
+		free(r->params_help);
+	}
+	free(r->match_name);
+	dlclose(r->dl_handle);
+	free(r);
+
+	matchs[match_type] = NULL;
+
+	return 1;
+}
+
 int match_unregister_all() {
 
 	int i = 0;
 
-	for (; i < MAX_MATCH && matchs[i]; i++) {
-		if (matchs[i]->params_name) {
-			int j;
-			for (j = 0; matchs[i]->params_name[j]; j++) {
-				free(matchs[i]->params_name[j]);
-				free(matchs[i]->params_help[j]);
-			}
-			free(matchs[i]->params_name);
-			free(matchs[i]->params_help);
-		}
-		free(matchs[i]->match_name);
-		dlclose(matchs[i]->dl_handle);
-		free(matchs[i]);
-		matchs[i] = NULL;
-
-	}
+	for (; i < MAX_MATCH && matchs[i]; i++)
+		match_unregister(i);
 
 	return 1;
 

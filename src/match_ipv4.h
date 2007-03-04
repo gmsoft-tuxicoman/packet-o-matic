@@ -42,5 +42,6 @@ int match_identify_ipv4(struct layer* l, void* frame, unsigned int start, unsign
 int match_eval_ipv4(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l);
 int match_cleanup_ipv4(struct match *m);
 
+int match_layer_info_snprintf_ipv4(char *buff, unsigned int len, struct layer_info *inf);
 
 #endif
