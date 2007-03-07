@@ -56,6 +56,10 @@ int target_process_display(struct target *t, struct layer *l, void *frame, unsig
 	int first = 0;
 
 	while (tmpl && tmpl->type != match_undefined_id) {
+	
+		if (tmpl->prev)
+			printf(", ");
+		
 		printf("%s", (*target_funcs->match_get_name) (tmpl->type));
 
 		if (tmpl->infos && tmpl->infos->name) {
@@ -68,7 +72,7 @@ int target_process_display(struct target *t, struct layer *l, void *frame, unsig
 				if ((*target_funcs->layer_info_snprintf) (buff, buffsize, inf)) {
 
 					if (!first)
-						printf(", ");
+						printf("; ");
 					else
 						printf(" [");
 
@@ -83,7 +87,6 @@ int target_process_display(struct target *t, struct layer *l, void *frame, unsig
 			if (!first)
 				printf("]");
 		}
-		printf("; ");
 
 		tmpl = tmpl->next;
 	}

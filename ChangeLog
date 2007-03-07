@@ -1,3 +1,7 @@
+* 2007/03/07 Guy Martin <gmsoft@tuxicoman.be>
+Added support for the tcp flags in match_tcp.c.
+Changed a bit the output of target_display to make it a bit clearer.
+
 * 2007/03/04 Guy Martin <gmsoft@tuxicoman.be>
 Changed the types of layer_info values.
 Support custom snprintf functions for layer_info.

@@ -35,7 +35,7 @@ char *match_tcp_params[PARAMS_NUM][3] = {
 
 int match_undefined_id;
 struct match_functions *m_functions;
-struct layer_info *match_sport_info, *match_dport_info, *match_seq_info, *match_ack_info;
+struct layer_info *match_sport_info, *match_dport_info, *match_flags_info, *match_seq_info, *match_ack_info;
 
 int match_register_tcp(struct match_reg *r, struct match_functions *m_funcs) {
 
@@ -54,6 +54,8 @@ int match_register_tcp(struct match_reg *r, struct match_functions *m_funcs) {
 
 	match_sport_info = (*m_funcs->layer_info_register) (r->match_type, "sport", LAYER_INFO_TYPE_UINT32);
 	match_dport_info = (*m_funcs->layer_info_register) (r->match_type, "dport", LAYER_INFO_TYPE_UINT32);
+	match_flags_info = (*m_funcs->layer_info_register) (r->match_type, "flags", LAYER_INFO_TYPE_UINT32);
+	match_flags_info->snprintf = match_layer_info_snprintf_tcp;
 	match_seq_info = (*m_funcs->layer_info_register) (r->match_type, "seq", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
 	match_ack_info = (*m_funcs->layer_info_register) (r->match_type, "ack", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
 
@@ -103,6 +105,7 @@ int match_identify_tcp(struct layer* l, void* frame, unsigned int start, unsigne
 
 	match_sport_info->val.ui32 = ntohs(hdr->th_sport);
 	match_dport_info->val.ui32 = ntohs(hdr->th_dport);
+	match_flags_info->val.ui32 = hdr->th_flags;
 	match_seq_info->val.ui32 = ntohl(hdr->th_seq);
 	match_ack_info->val.ui32 = ntohl(hdr->th_ack);
 
@@ -143,3 +146,49 @@ int match_cleanup_tcp(struct match *m) {
 	return 1;
 
 }
+
+int match_layer_info_snprintf_tcp(char *buff, unsigned int len, struct layer_info *inf) {
+
+	char buffer[24];
+	bzero(buffer, 24);
+
+	if (inf->val.ui32 & TH_FIN) {
+		strcat(buffer, "FIN");
+	}
+
+	if (inf->val.ui32 & TH_SYN) {
+		if (buffer[0])
+			strcat(buffer, ",");
+		strcat(buffer, "SYN");
+	}
+
+	if (inf->val.ui32 & TH_RST) {
+		if (buffer[0])
+			strcat(buffer, ",");
+		strcat(buffer, "RST");
+	}
+
+	if (inf->val.ui32 & TH_PUSH) {
+		if (buffer[0])
+			strcat(buffer, ",");
+		strcat(buffer, "PSH");
+	}
+
+	if (inf->val.ui32 & TH_ACK) {
+		if (buffer[0])
+			strcat(buffer, ",");
+		strcat(buffer, "ACK");
+	}
+
+	if (inf->val.ui32 & TH_URG) {
+		if (buffer[0])
+			strcat(buffer, ",");
+		strcat(buffer, "URG");
+	}
+
+	strncpy(buff, buffer, len - 1);
+
+	return strlen(buff);
+}
+
+

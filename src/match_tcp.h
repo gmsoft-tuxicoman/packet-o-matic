@@ -44,4 +44,6 @@ int match_identify_tcp(struct layer* l, void* frame, unsigned int start, unsigne
 int match_eval_tcp(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l);
 int match_cleanup_tcp(struct match *m);
 
+int match_layer_info_snprintf_tcp(char *buff, unsigned int len, struct layer_info *inf);
+
 #endif
