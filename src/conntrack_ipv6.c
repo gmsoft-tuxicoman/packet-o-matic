@@ -21,9 +21,6 @@
 
 #include "conntrack_ipv6.h"
 
-#include <sys/socket.h>
-
-
 #define INITVAL 0x8529fc6a // Random value
 
 int conntrack_register_ipv6(struct conntrack_reg *r, struct conntrack_functions *ct_funcs) {

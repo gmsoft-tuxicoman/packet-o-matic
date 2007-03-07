@@ -75,6 +75,10 @@ int target_register_tcpkill(struct target_reg *r, struct target_functions *tg_fu
 
 	tg_functions = tg_funcs;
 
+	match_ipv4_id = (*tg_functions->match_register) ("ipv4");
+	match_ipv6_id = (*tg_functions->match_register) ("ipv6");
+	match_tcp_id = (*tg_functions->match_register) ("tcp");
+	match_ethernet_id = (*tg_functions->match_register) ("ethernet");
 
 	return 1;
 
@@ -95,11 +99,6 @@ int target_init_tcpkill(struct target *t) {
 
 	copy_params(t->params_value, target_tcpkill_params, 1, PARAMS_NUM);
 
-
-	match_ipv4_id = (*tg_functions->match_register) ("ipv4");
-	match_ipv6_id = (*tg_functions->match_register) ("ipv6");
-	match_tcp_id = (*tg_functions->match_register) ("tcp");
-	match_ethernet_id = (*tg_functions->match_register) ("ethernet");
 	if (match_tcp_id == -1)
 		return 0;
 

@@ -30,21 +30,15 @@ struct target_functions *target_funcs;
 int target_register_display(struct target_reg *r, struct target_functions *tg_funcs) {
 
 	r->process = target_process_display;
-	r->init = target_init_display;
 
 	target_funcs = tg_funcs;
-
-	return 1;
-
-}
-
-int target_init_display(struct target *t) {
 
 	match_undefined_id = (*target_funcs->match_register) ("undefined");
 
 	return 1;
 
 }
+
 
 int target_process_display(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce) {
 

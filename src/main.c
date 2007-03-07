@@ -50,9 +50,15 @@ void signal_handler(int signal) {
 }
 
 
-void print_help() {
-	
+void print_usage() {
+
 	printf("Usage : packet-o-matic [-c config_file] [-h]\n");
+
+}
+
+void print_help() {
+
+	print_usage();
 
 	char * path = getenv("LD_LIBRARY_PATH");
 
@@ -131,17 +137,17 @@ int main(int argc, char *argv[]) {
 	while ((o = getopt(argc, argv, "hc:")) != -1 ) {
 		switch(o) {
 			case 'h':
+				match_init();
 				print_help();
+				match_cleanup();
 				return 0;
 			case 'c':
 				cfgfile = optarg;
 				dprint("Config file is %s\n", optarg);
 				break;
-			case '?':
-				print_help();
-				return 1;
 			default:
-				abort();
+				print_usage();
+				return 1;
 
 		}
 	}

@@ -49,6 +49,8 @@ int target_register_dump_payload(struct target_reg *r, struct target_functions *
 
 	tg_functions = tg_funcs;
 
+	match_undefined_id = (*tg_functions->match_register) ("undefined");
+
 	return 1;
 
 }
@@ -62,8 +64,6 @@ int target_cleanup_dump_payload(struct target *t) {
 
 
 int target_init_dump_payload(struct target *t) {
-
-	match_undefined_id = (*tg_functions->match_register) ("undefined");
 
 	copy_params(t->params_value, target_dump_payload_params, 1, PARAMS_NUM);
 

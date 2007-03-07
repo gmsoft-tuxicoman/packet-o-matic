@@ -44,6 +44,9 @@ int target_register_pcap(struct target_reg *r, struct target_functions *tg_funcs
 
 	tg_functions = tg_funcs;
 
+	match_ethernet_id = (*tg_functions->match_register) ("ethernet");
+	match_linux_cooked_id = (*tg_functions->match_register) ("linux_cooked");
+
 	return 1;
 
 }
@@ -64,9 +67,6 @@ int target_init_pcap(struct target *t) {
 
 	struct target_priv_pcap *priv = malloc(sizeof(struct target_priv_pcap));
 	bzero(priv, sizeof(struct target_priv_pcap));
-
-	match_ethernet_id = (*tg_functions->match_register) ("ethernet");
-	match_linux_cooked_id = (*tg_functions->match_register) ("linux_cooked");
 
 
 	t->target_priv = priv;

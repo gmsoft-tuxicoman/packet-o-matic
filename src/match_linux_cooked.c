@@ -20,8 +20,6 @@
 
 #include "match_linux_cooked.h"
 
-#include <sys/socket.h>
-
 int match_ipv4_id, match_ipv6_id;
 struct match_functions *m_functions;
 struct layer_info *match_pkt_type_info, *match_dev_type_info, *match_saddr_info;

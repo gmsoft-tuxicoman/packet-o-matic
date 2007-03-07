@@ -49,6 +49,8 @@ int target_register_wave(struct target_reg *r, struct target_functions *tg_funcs
 
 	tg_functions = tg_funcs;
 
+	match_rtp_id = (*tg_functions->match_register) ("rtp");
+
 	return 1;
 
 }
@@ -64,8 +66,6 @@ int target_cleanup_wave(struct target *t) {
 int target_init_wave(struct target *t) {
 
 	copy_params(t->params_value, target_wave_params, 1, PARAMS_NUM);
-
-	match_rtp_id = (*tg_functions->match_register) ("rtp");
 
 	return 1;
 }

@@ -50,6 +50,7 @@ int target_register_inject(struct target_reg *r, struct target_functions *tg_fun
 
 	tg_functions = tg_funcs;
 
+	match_ethernet_id = (*tg_functions->match_register) ("ethernet");
 
 	return 1;
 
@@ -71,7 +72,6 @@ int target_init_inject(struct target *t) {
 	copy_params(t->params_value, target_inject_params, 1, PARAMS_NUM);
 
 
-	match_ethernet_id = (*tg_functions->match_register) ("ethernet");
 	if (match_ethernet_id == -1)
 		return 0;
 
