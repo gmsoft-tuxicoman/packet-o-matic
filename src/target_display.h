@@ -25,9 +25,28 @@
 #include "modules_common.h"
 #include "target.h"
 
+enum target_display_modes {
+	td_mode_normal,
+	td_mode_ascii,
+	td_mode_hex,
+
+};
+
+struct target_priv_display {
+
+	unsigned int skip;
+	unsigned int mode;
+
+};
+
 int target_register_display(struct target_reg *r, struct target_functions *tg_funcs);
 
 int target_init_display(struct target *t);
+int target_open_display(struct target *t);
 int target_process_display(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce);
+int target_cleanup_display(struct target *t);
+
+int target_display_print_hex(void *frame, unsigned int start, unsigned int len);
+int target_display_print_ascii(void *frame, unsigned int start, unsigned int len);
 
 #endif
