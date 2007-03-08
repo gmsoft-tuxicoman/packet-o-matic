@@ -138,8 +138,10 @@ int main(int argc, char *argv[]) {
 		switch(o) {
 			case 'h':
 				match_init();
+				target_init();
 				print_help();
 				match_cleanup();
+				target_cleanup();
 				return 0;
 			case 'c':
 				cfgfile = optarg;
