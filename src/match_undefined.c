@@ -20,9 +20,6 @@
 
 
 #include "match_undefined.h"
-#include <netinet/tcp.h>
-
-
 
 int match_register_undefined(struct match_reg *r, struct match_functions *m_funcs) {
 

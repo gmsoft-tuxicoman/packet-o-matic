@@ -21,6 +21,8 @@
 
 #include "match_ipv6.h"
 
+#include <sys/socket.h>
+
 #define PARAMS_NUM 5
 
 char *match_ipv6_params[PARAMS_NUM][3] = {

@@ -22,6 +22,7 @@
 #include "match_ethernet.h"
 
 #include <net/ethernet.h>
+#include <sys/socket.h>
 #include <netinet/if_ether.h>
 
 #ifdef HAVE_LINUX_IF_ETHER_H
