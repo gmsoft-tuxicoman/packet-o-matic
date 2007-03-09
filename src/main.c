@@ -167,13 +167,12 @@ int main(int argc, char *argv[]) {
 
 	if (!config_parse(c, cfgfile)) {
 		dprint("Error while parsing config\n");
-		config_cleanup(c);
-		return 1;
+		goto err;
 	}
 
 	if (!input_open(c->input)) {
 		dprint("Error while opening input\n");
-		return 1;
+		goto err;
 	}
 
 	// Set which rule list we want to use for helped packets
@@ -187,7 +186,7 @@ int main(int argc, char *argv[]) {
 	signal(SIGHUP, signal_handler);
 	signal(SIGINT, signal_handler);
 	
-	// Start reading from the docsis stream
+	// Start reading from the input
 
 	unsigned char packet[SNAPLEN];
 	unsigned int len;
@@ -205,6 +204,8 @@ int main(int argc, char *argv[]) {
 	}
 
 	input_close(c->input);
+err:
+
 	config_cleanup(c);
 
 	conntrack_cleanup();

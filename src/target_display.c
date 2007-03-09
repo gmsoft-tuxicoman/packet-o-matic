@@ -92,6 +92,9 @@ int target_process_display(struct target *t, struct layer *l, void *frame, unsig
 	if (!tmpl) {
 		// Skip is higher than number of layers, skip this packet
 		return 1;
+	} else {
+		// We won't care about skipped layers anymore
+		l = tmpl;
 	}
 
 	const int buffsize = 2048;
@@ -139,10 +142,12 @@ int target_process_display(struct target *t, struct layer *l, void *frame, unsig
 	printf("\n");
 
 	int start;
-	if (l->prev)
+	if (l->prev) {
 		start = l->prev->payload_start;
-	else
+		len = l->prev->payload_size;
+	} else
 		start = 0;
+
 	
 
 	switch (p->mode) {
@@ -181,6 +186,14 @@ int target_display_print_hex(void *frame, unsigned int start, unsigned int len) 
 				printf(" ");
 		}
 
+		int diff = len - pos;
+		if (diff < 16) {
+			diff = 16 - diff;
+			int space = (diff * 2) + (diff >> 1) + (diff & 0x1);
+			for (i = 0; i < space; i++)
+				printf(" ");
+		}
+
 		for (i = pos; i < max; i++) {
 			if ((f[i] >= ' ' && f[i] <= '~'))
 				printf("%c", f[i]);
@@ -191,7 +204,6 @@ int target_display_print_hex(void *frame, unsigned int start, unsigned int len) 
 		printf("\n");
 
 	}
-	printf("\n");
 	
 	return 1;
 

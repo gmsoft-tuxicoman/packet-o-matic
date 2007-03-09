@@ -1,6 +1,11 @@
+* 2007/03/09 Guy Martin <gmsoft@tuxicoman.be>
+Some formating fix for target_display.
+Avoid mem leak when input or config cannot be opened.
+
 * 2007/03/08 Guy Martin <gmsoft@tuxicoman.be>
 FreeBSD fixes.
 Fix segmentation fault with -h switch.
+Added parameter to skip headers and change display mode for target_display.
 
 * 2007/03/07 Guy Martin <gmsoft@tuxicoman.be>
 Added support for the tcp flags in match_tcp.c.
