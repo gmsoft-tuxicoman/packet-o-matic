@@ -53,17 +53,19 @@ int match_register(const char *match_name) {
 
 			
 			matchs[i] = my_match;
+			matchs[i]->match_name = malloc(strlen(match_name) + 1);
+			strcpy(matchs[i]->match_name, match_name);
+
 			my_match->match_type = i; // Allow the match to know it's number at registration time
 
 			if (!(*register_my_match) (my_match, m_funcs)) {
 				dprint("Error while loading match %s. Could not register match !\n", match_name);
+				free(my_match->match_name);
 				free(my_match);
 				matchs[i] = NULL;
 				return -1;
 			}
 
-			matchs[i]->match_name = malloc(strlen(match_name) + 1);
-			strcpy(matchs[i]->match_name, match_name);
 			matchs[i]->dl_handle = handle;
 
 			dprint("Match %s registered\n", match_name);

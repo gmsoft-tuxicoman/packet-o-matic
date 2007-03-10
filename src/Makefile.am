@@ -7,7 +7,7 @@ packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"'
 packet_o_matic_LDFLAGS = @LIBS@ @libxml2_LIBS@
 
 INPUT_OBJS = @INPUT_OBJS@
-MATCH_OBJS = match_ethernet.la match_ipv4.la match_ipv6.la match_tcp.la match_udp.la match_rtp.la match_undefined.la match_linux_cooked.la
+MATCH_OBJS = match_ethernet.la match_ipv4.la match_ipv6.la match_icmpv6.la match_tcp.la match_udp.la match_rtp.la match_undefined.la match_linux_cooked.la
 CONNTRACK_OBJS = conntrack_ipv4.la conntrack_ipv6.la conntrack_rtp.la conntrack_tcp.la conntrack_udp.la
 HELPER_OBJS = helper_ipv4.la
 TARGET_OBJS = target_display.la target_dump_payload.la target_wave.la target_null.la @TARGET_OBJS@
@@ -28,6 +28,8 @@ match_ipv4_la_SOURCES = match_ipv4.c match_ipv4.h modules_common.h
 match_ipv4_la_LDFLAGS = -module -avoid-version
 match_ipv6_la_SOURCES = match_ipv6.c match_ipv6.h modules_common.h
 match_ipv6_la_LDFLAGS = -module -avoid-version
+match_icmpv6_la_SOURCES = match_icmpv6.c match_icmpv6.h modules_common.h
+match_icmpv6_la_LDFLAGS = -module -avoid-version
 match_tcp_la_SOURCES = match_tcp.c match_tcp.h modules_common.h
 match_tcp_la_LDFLAGS = -module -avoid-version
 match_udp_la_SOURCES = match_udp.c match_udp.h modules_common.h

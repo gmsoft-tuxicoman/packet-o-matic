@@ -1,6 +1,9 @@
 * 2007/03/09 Guy Martin <gmsoft@tuxicoman.be>
 Some formating fix for target_display.
 Avoid mem leak when input or config cannot be opened.
+Fix recursive match registration.
+Added match_icmpv6.
+Better calulation of payload length in target_display.
 
 * 2007/03/08 Guy Martin <gmsoft@tuxicoman.be>
 FreeBSD fixes.

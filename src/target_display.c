@@ -144,7 +144,7 @@ int target_process_display(struct target *t, struct layer *l, void *frame, unsig
 	int start;
 	if (l->prev) {
 		start = l->prev->payload_start;
-		len = l->prev->payload_size;
+		len = l->payload_size + l->payload_start - l->prev->payload_start ;
 	} else
 		start = 0;
 
