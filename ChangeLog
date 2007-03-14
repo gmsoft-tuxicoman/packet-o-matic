@@ -1,3 +1,8 @@
+* 2007/03/14 Guy Martin <gmsoft@tuxicoman.be>
+Process the targets in the order that they are added.
+Some more display fix in target_display.
+Added custom snprintf function to match_icmpv6.
+
 * 2007/03/09 Guy Martin <gmsoft@tuxicoman.be>
 Some formating fix for target_display.
 Avoid mem leak when input or config cannot be opened.

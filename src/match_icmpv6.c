@@ -29,13 +29,13 @@ struct layer_info *match_type_info, *match_code_info;
 int match_register_icmpv6(struct match_reg *r, struct match_functions *m_funcs) {
 
 	r->identify = match_identify_icmpv6;
-	r->cleanup = match_cleanup_icmpv6;
 
 	m_functions = m_funcs;
 	
 	match_ipv6_id = (*m_functions->match_register) ("ipv6");
 
 	match_type_info = (*m_funcs->layer_info_register) (r->match_type, "type", LAYER_INFO_TYPE_UINT32);
+	match_type_info->snprintf = match_layer_info_snprintf_icmpv6;
 	match_code_info = (*m_funcs->layer_info_register) (r->match_type, "code", LAYER_INFO_TYPE_UINT32);
 
 	return 1;
@@ -51,16 +51,23 @@ int match_identify_icmpv6(struct layer* l, void* frame, unsigned int start, unsi
 	match_type_info->val.ui32 = ihdr->icmp6_type;
 	match_code_info->val.ui32 = ihdr->icmp6_code;
 
-//	if (ihdr->icmp6_type & ICMP6_INFOMSG_MASK)
-//			return match_ipv6_id;
+	if (!(ihdr->icmp6_type & ICMP6_INFOMSG_MASK))
+			return match_ipv6_id;
 	return -1;
 }
 
-int match_cleanup_icmpv6(struct match *m) {
+int match_layer_info_snprintf_icmpv6(char *buff, unsigned int len, struct layer_info *inf) {
 
-	if (m->match_priv)
-		free(m->match_priv);
 
-	return 1;
+	switch (match_type_info->val.ui32) {
+		case ICMP6_ECHO_REQUEST:
+			strncpy(buff, "ping", len);
+			return 4;
+		case ICMP6_ECHO_REPLY:
+			strncpy(buff, "pong", len);
+			return 4;
+	}
+
+	return snprintf(buff, len, "%u", match_type_info->val.ui32);
 
 }

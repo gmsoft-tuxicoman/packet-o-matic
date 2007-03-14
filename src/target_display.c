@@ -167,9 +167,10 @@ int target_process_display(struct target *t, struct layer *l, void *frame, unsig
 
 int target_display_print_hex(void *frame, unsigned int start, unsigned int len) {
 
-	int pos = start;
 
-	unsigned char *f = frame;
+	unsigned char *f = frame + start;
+
+	int pos = 0;
 
 	while (pos < len) {
 
@@ -193,6 +194,7 @@ int target_display_print_hex(void *frame, unsigned int start, unsigned int len) 
 			for (i = 0; i < space; i++)
 				printf(" ");
 		}
+		printf(" ");
 
 		for (i = pos; i < max; i++) {
 			if ((f[i] >= ' ' && f[i] <= '~'))
@@ -212,10 +214,10 @@ int target_display_print_hex(void *frame, unsigned int start, unsigned int len) 
 
 int target_display_print_ascii(void *frame, unsigned int start, unsigned int len) {
 
-	unsigned char *f = frame;
+	unsigned char *f = frame + start;
 	int i;
-	for (i = start; i < len; i++) {
-		if ((f[i] >= ' ' && f[i] <= '~') || f[i] == '\n' || f[i] =='\r')
+	for (i = 0; i < len; i++) {
+		if ((f[i] >= ' ' && f[i] <= '~') || f[i] == '\n')
 			printf("%c", f[i]);
 		else
 			printf(".");

@@ -292,8 +292,14 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 		if (!xmlStrcmp(cur->name, (const xmlChar *) "target")) {
 			struct target *t = parse_target(doc, cur);
 			if (t) {
-				t->next = r->target;
-				r->target = t;
+				if (!r->target)
+					r->target = t;
+				else {
+					struct target *tmpt = r->target;
+					while (tmpt->next)
+						tmpt = tmpt->next;
+					tmpt->next = t;
+				}		
 			}
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "matches")) {
 			if (r->node)
