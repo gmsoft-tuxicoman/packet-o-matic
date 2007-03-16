@@ -111,7 +111,7 @@ int input_open_docsis(struct input *i) {
 		p->output_layer = match_docsis_id;
 	} else {
 		dprint("Invalid output layer :%s\n", i->params_value[5]);
-		return 0;
+		return -1;
 	}
 
 
@@ -127,7 +127,7 @@ int input_open_docsis(struct input *i) {
 		modulation = QAM_256;
 	else {
 		dprint("Invalid modulation. Valid modulation are QAM64 or QAM256\n");
-		return 0;
+		return -1;
 	}	
 	
 	// Open the frontend
@@ -144,7 +144,7 @@ int input_open_docsis(struct input *i) {
 	p->frontend_fd = open(frontend, O_RDWR);
 	if (p->frontend_fd == -1) {
 		dprint("Unable to open frontend\n");
-		return 0;
+		return -1;
 	}
 
 	// Check if we are really using a DVB-C device
@@ -152,12 +152,12 @@ int input_open_docsis(struct input *i) {
 	struct dvb_frontend_info info;
 	if (ioctl(p->frontend_fd, FE_GET_INFO, &info) != 0) {
 		dprint("Unable to get frontend type\n");
-		return 0;
+		return -1;
 	}
 
 	if (info.type != FE_QAM) {
 		dprint("Error, device %s is not a DVB-C device\n", frontend);
-		return 0;
+		return -1;
 	}
 
 	// Open the demux
@@ -168,7 +168,7 @@ int input_open_docsis(struct input *i) {
 	p->demux_fd = open(demux, O_RDWR);
 	if (p->demux_fd == -1) {
 		dprint("Unable to open demux\n");
-		return 0;
+		return -1;
 	}
 
 	// Let's use a larger buffer
@@ -187,7 +187,7 @@ int input_open_docsis(struct input *i) {
 
 	if (ioctl(p->demux_fd, DMX_SET_PES_FILTER, &filter) != 0) {
 		dprint("Unable to set demuxer\n");
-		return 0;
+		return -1;
 	}
 
 
@@ -200,7 +200,7 @@ int input_open_docsis(struct input *i) {
 	p->dvr_fd = open(dvr, O_RDONLY);
 	if (p->dvr_fd == -1) {
 		dprint("Unable to open dvr\n");
-		return 0;
+		return -1;
 	}
 
 
@@ -226,11 +226,11 @@ int input_open_docsis(struct input *i) {
 		
 		if (tuned != 1) {
 			dprint("Error while tuning to the right freq.\n");
-			return 0;
+			return -1;
 		}
 		if (!input_docsis_check_downstream(i)) {
 			dprint("Error, no DOCSIS SYNC message received within timeout\n");
-			return 0;
+			return -1;
 		}
 
 	} else  { // No frequency supplied. Scanning for downstream
@@ -266,7 +266,7 @@ int input_open_docsis(struct input *i) {
 
 			int res = input_docsis_tune(i, j, symbolRate, modulation);
 			if (res == -1)
-				return 0;
+				return -1;
 			else if (res == 0) {
 				if (need_reinit) {
 					// Let's close and reopen the frontend to reinit it
@@ -303,12 +303,12 @@ int input_open_docsis(struct input *i) {
 
 	if (!tuned) {
 		dprint("Failed to open docsis input\n");
-		return 0;
+		return -1;
 	}
 
 	dprint("Docsis stream opened successfullly\n");
 	
-	return 1;
+	return p->dvr_fd;
 }
 
 

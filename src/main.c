@@ -32,6 +32,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/select.h>
 #include <dirent.h>
 
 
@@ -170,7 +171,9 @@ int main(int argc, char *argv[]) {
 		goto err;
 	}
 
-	if (!input_open(c->input)) {
+	int fd = input_open(c->input);
+
+	if (fd == -1) {
 		dprint("Error while opening input\n");
 		goto err;
 	}
@@ -179,8 +182,6 @@ int main(int argc, char *argv[]) {
 	helper_set_feedback_rules(c->rules);
 
 
-	// Init the timer only now to avoid bothering with SIGALARM
-	timers_init();
 	
 	// Install the signal handler
 	signal(SIGHUP, signal_handler);
@@ -192,7 +193,26 @@ int main(int argc, char *argv[]) {
 	unsigned int len;
 	int first_layer = input_get_first_layer(c->input);
 
+	fd_set fds;
+	struct timeval tv;
+	int ret;
+
+	FD_ZERO(&fds);
+	FD_SET(fd, &fds);
+
 	while (!finish) {
+
+		tv.tv_sec = 2;
+		tv.tv_usec = 0;
+
+		ret = select(fd + 1, &fds, NULL, NULL, &tv);
+
+		if (ret == -1)
+			break;
+
+		if (ret == 0)
+			continue;
+
 		len = input_read(c->input, packet, SNAPLEN);
 		if (len == -1) {
 			dprint("Error while reading. Abording\n");

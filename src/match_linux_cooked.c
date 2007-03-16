@@ -27,7 +27,6 @@ struct layer_info *match_pkt_type_info, *match_dev_type_info, *match_saddr_info;
 int match_register_linux_cooked(struct match_reg *r, struct match_functions *m_funcs) {
 
 	r->identify = match_identify_linux_cooked;
-	r->cleanup = match_cleanup_linux_cooked;
 
 	m_functions = m_funcs;
 	
@@ -62,11 +61,3 @@ int match_identify_linux_cooked(struct layer* l, void* frame, unsigned int start
 	return -1;
 }
 
-int match_cleanup_linux_cooked(struct match *m) {
-
-	if (m->match_priv)
-		free(m->match_priv);
-
-	return 1;
-
-}

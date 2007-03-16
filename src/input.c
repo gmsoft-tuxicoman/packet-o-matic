@@ -121,11 +121,11 @@ int input_set_param(struct input *i, char *name, char* value) {
 int input_open(struct input *i) {
 
 	if (!i)
-		return 0;
+		return -1;
 
 	if (inputs[i->input_type] && inputs[i->input_type]->open)
 		return (*inputs[i->input_type]->open) (i);
-	return 1;
+	return -1;
 
 }
 

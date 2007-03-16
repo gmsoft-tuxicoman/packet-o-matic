@@ -25,21 +25,20 @@
 
 
 struct timer_queue *timer_queues;
-struct itimerval itimer;
-
-static int do_timers = 0;
-
-void timers_handler(int signal) {
-	do_timers = 1;	
-}
+struct timeval next_run;
 
 
 int timers_process() {
 
-	if (!do_timers)
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+
+
+	if (timercmp(&tv, &next_run, <))
 		return 0;
 
-	do_timers = 0;
+	memcpy(&next_run, &tv, sizeof(struct timeval));
+	next_run.tv_sec += 2;
 
 	ndprint("Looking at timers ...\n");
 
@@ -47,8 +46,6 @@ int timers_process() {
 	struct timer_queue *tq;
 	tq = timer_queues;
 
-	struct timeval tv;
-	gettimeofday(&tv, NULL);
 
 	while (tq) {
 		while (tq->head && tq->head->expires <= tv.tv_sec) {
@@ -62,41 +59,10 @@ int timers_process() {
 	return 1;
 }
 
-int timers_init() {
-
-	// Setup signal handler for the timer
-
-	signal(SIGALRM, timers_handler);
-
-	// Setup the timer
-	
-	bzero(&itimer, sizeof(struct itimerval));
-	itimer.it_interval.tv_sec = 1;
-	itimer.it_value.tv_usec = 500000;
-
-	if (setitimer(ITIMER_REAL, &itimer, NULL) != 0) {
-		dprint("Error while setting up the timer\n");
-		return 0;
-	}
-
-	timer_queues = NULL;
-
-	dprint("Timers initialized\n");
-	
-	return 1;
-
-}
-
 
 int timers_cleanup() {
 
 
-	// Stop the timers
-	
-	itimer.it_value.tv_sec = 0;
-	itimer.it_value.tv_usec = 0;
-
-	
 	// Free the timers
 
 	while (timer_queues) {

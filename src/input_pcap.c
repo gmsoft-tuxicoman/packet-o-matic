@@ -86,7 +86,7 @@ int input_open_pcap(struct input *i) {
 		p->p = pcap_open_offline(filename, errbuf);
 		if (!p->p) {
 			dprint("Error opening file %s for reading\n", filename);
-			return 0;
+			return -1;
 		}
 	} else {
 		char interface[256];
@@ -104,7 +104,7 @@ int input_open_pcap(struct input *i) {
 		p->p = pcap_open_live(interface, snaplen, promisc, 0, errbuf);
 		if (!p->p) {
 			dprint("Error when opening interface %s : %s\n", filename, errbuf);
-			return 0;
+			return -1;
 		}
 	}
 
@@ -138,10 +138,10 @@ int input_open_pcap(struct input *i) {
 		dprint("Pcap opened successfullly\n");
 	else {
 		dprint("Error while opening pcap input\n");
-		return 0;
+		return 1;
 	}
 	
-	return 1;
+	return pcap_get_selectable_fd(p->p);
 }
 
 int input_get_first_layer_pcap(struct input *i) {
