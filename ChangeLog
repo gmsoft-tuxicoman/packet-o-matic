@@ -3,6 +3,8 @@ input_open now returns a fd we can select() on.
 Cleaned up match_linux_cooked.
 Timers now use gettimeofday() instead of SIGALARM.
 We now use select() before doing a read on the input.
+Fix tricky size comparison bug in match_ipv6.c.
+Added match_icmp by BoWRiS <bowris@mouh.be>.
 
 * 2007/03/14 Guy Martin <gmsoft@tuxicoman.be>
 Process the targets in the order that they are added.

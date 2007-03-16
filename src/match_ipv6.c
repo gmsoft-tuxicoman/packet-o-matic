@@ -126,6 +126,7 @@ int match_reconfig_ipv6(struct match *m) {
 int match_identify_ipv6(struct layer* l, void* frame, unsigned int start, unsigned int len) {
 
 	struct ip6_hdr* hdr = frame + start;
+	unsigned int hdrlen = sizeof(struct ip6_hdr);
 
 	memcpy(match_src_info->val.c, hdr->ip6_src.s6_addr, 16);
 	memcpy(match_dst_info->val.c, hdr->ip6_dst.s6_addr, 16);
@@ -135,9 +136,9 @@ int match_identify_ipv6(struct layer* l, void* frame, unsigned int start, unsign
 
 	unsigned int nhdr = hdr->ip6_nxt;
 	l->payload_size = ntohs(hdr->ip6_plen);
+	l->payload_start = start + hdrlen;
 
-	l->payload_start = start +  sizeof(struct ip6_hdr);
-	while (l->payload_start + 1 < len) {
+	while (hdrlen < len) {
 
 		struct ip6_ext *ehdr;
 		switch (nhdr) {
@@ -146,9 +147,10 @@ int match_identify_ipv6(struct layer* l, void* frame, unsigned int start, unsign
 			case IPPROTO_FRAGMENT: // 44
 			case IPPROTO_DSTOPTS: // 60
 				ehdr = frame + l->payload_start;
-				int hlen = (ehdr->ip6e_len + 1) * 8;
-				l->payload_start += hlen;
-				l->payload_size -= hlen;
+				int ehlen = (ehdr->ip6e_len + 1) * 8;
+				hdrlen += ehlen;
+				l->payload_start += ehlen;
+				l->payload_size -= ehlen;
 				nhdr = ehdr->ip6e_nxt;
 				break;
 		
