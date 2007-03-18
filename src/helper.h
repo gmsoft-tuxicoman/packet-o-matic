@@ -40,6 +40,8 @@ struct helper_functions {
 	int (*queue_timer) (struct timer *t, unsigned int expiry);
 	int (*dequeue_timer) (struct timer *t);
 	int (*process_packet) (void *frame, unsigned int len, int first_layer);
+	int (*layer_info_snprintf) (char *buff, unsigned int maxlen, struct layer_info *inf);
+
 
 };
 

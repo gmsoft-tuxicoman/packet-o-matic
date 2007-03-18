@@ -60,6 +60,7 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 				l->type = match_undefined_id;
 				return 0;
 			} else {
+				l->infos = layer_info_pool_get(l);
 				l->next = layer_pool_get();
 				l->next->type = next_layer;
 			}
@@ -137,7 +138,8 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 		if (l->next->type == -1) {
 			l->next = NULL;
 		}
-
+		
+		l->infos = layer_info_pool_get(l);
 
 
 		if (helper_need_help(frame, l)) // If it needs help, we don't process it
@@ -148,7 +150,7 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 
 		unsigned int new_len = l->payload_start + l->payload_size;
 		if (new_len > len) {
-			dprint("Error, new len greater than the computed maximum len or buffer (maximum %u, new %u). Not considering packet\n", len, new_len);
+			ndprint("Error, new len greater than the computed maximum len or buffer (maximum %u, new %u). Not considering packet\n", len, new_len);
 			return 1;
 		}
 
@@ -169,13 +171,6 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 			ndprint("Rule matched\n");
 		r = r->next;
 
-	}
-
-	// We need to attach the layer_info from the pool to the layers after they are matched and populated
-	l = layers;
-	while (l) {
-		l->infos = layer_info_pool_get(l);
-		l = l->next;
 	}
 
 	struct conntrack_entry *ce = conntrack_get_entry(layers, frame);

@@ -103,7 +103,7 @@ int input_open_pcap(struct input *i) {
 		dprint("Opening interface %s with a snaplen of %u\n", interface, snaplen);
 		p->p = pcap_open_live(interface, snaplen, promisc, 0, errbuf);
 		if (!p->p) {
-			dprint("Error when opening interface %s : %s\n", filename, errbuf);
+			dprint("Error when opening interface %s : %s\n", interface, errbuf);
 			return -1;
 		}
 	}

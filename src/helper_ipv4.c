@@ -135,13 +135,20 @@ int helper_need_help_ipv4(void *frame, struct layer *l) {
 	size_t frag_size = ntohs(hdr->ip_len) - (hdr->ip_hl * 4);
 	
 	// Ignore invalid fragments
-	if (! (frag_size & 0xFFFF))
+	if (frag_size > 0xFFFF)
 		return 1;
 
 	if (frag_start + frag_size > l->prev->payload_size + l->prev->payload_start) {
-		dprint("Error, packet len missmatch dropping this frag\n");
-		dprint("Frag_start %u, frag_size %u, size %u\n", frag_start, (unsigned int) frag_size, l->prev->payload_size);
-		dprint("ID = %u\n", ntohs(hdr->ip_id));
+		dprint("Error, packet len missmatch dropping this frag : ipv4 [");
+		struct layer_info *li = l->infos;
+		while (li) {
+			char buff[2048];
+			if((hlp_functions->layer_info_snprintf) (buff, 2048, li))
+				dprint("%s: %s, ", li->name, buff);
+			li = li->next;
+		}
+		dprint("id: %u, frag_start: %u, frag_size: %u, size: %u]\n", ntohs(hdr->ip_id), frag_start, (unsigned int) frag_size, l->prev->payload_size);
+
 		return 1;
 	}
 

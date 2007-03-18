@@ -38,6 +38,7 @@ int helper_init() {
 	hlp_funcs->queue_timer = timer_queue;
 	hlp_funcs->dequeue_timer = timer_dequeue;
 	hlp_funcs->process_packet = helper_process_packet;
+	hlp_funcs->layer_info_snprintf = layer_info_snprintf;
 
 	dprint("Helper initialized\n");
 

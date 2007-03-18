@@ -63,7 +63,7 @@ int match_register_ipv4(struct match_reg *r, struct match_functions *m_funcs) {
 	match_dst_info = (*m_funcs->layer_info_register) (r->match_type, "dst", LAYER_INFO_TYPE_UINT32);
 	match_dst_info->snprintf = match_layer_info_snprintf_ipv4;
 	match_tos_info = (*m_funcs->layer_info_register) (r->match_type, "tos", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
-	match_ttl_info = (*m_funcs->layer_info_register) (r->match_type, "ttl", LAYER_INFO_TYPE_UINT32);
+	match_ttl_info = (*m_funcs->layer_info_register) (r->match_type, "ttl", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_ZERO);
 
 	return 1;
 }
