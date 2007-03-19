@@ -197,13 +197,13 @@ int main(int argc, char *argv[]) {
 	struct timeval tv;
 	int ret;
 
-	FD_ZERO(&fds);
-	FD_SET(fd, &fds);
-
 	while (!finish) {
 
 		tv.tv_sec = 2;
 		tv.tv_usec = 0;
+
+		FD_ZERO(&fds);
+		FD_SET(fd, &fds);
 
 		ret = select(fd + 1, &fds, NULL, NULL, &tv);
 

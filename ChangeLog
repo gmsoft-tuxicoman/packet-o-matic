@@ -1,3 +1,13 @@
+* 2007/03/19 Guy Martin <gmsoft@tuxicoman.be>
+Fix fd_set initialisation in main.c.
+Fix segfault if one match can't be loaded.
+
+* 2007/03/18 Guy Martin <gmsoft@tuxicoman.be>
+Fix segfault with malformed ipv4 fragment in helper_ipv4.
+Improved error message in helper_ipv4.
+Attach layer_info to layer sooner.
+Fix error output of input_pcap.
+
 * 2007/03/16 Guy Martin <gmsoft@tuxicoman.be>
 input_open now returns a fd we can select() on.
 Cleaned up match_linux_cooked.

@@ -165,10 +165,12 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 
 	while (r) {
 
-		// If there is a conntrack_entry, it means one of the target added it's priv, so the packet needs to be processed
-		r->result = node_match(frame, 0, len, r->node, layers); // Get the result to fully populate layers
-		if (r->result)
-			ndprint("Rule matched\n");
+		if (r->node) {
+			// If there is a conntrack_entry, it means one of the target added it's priv, so the packet needs to be processed
+			r->result = node_match(frame, 0, len, r->node, layers); // Get the result to fully populate layers
+			if (r->result)
+				ndprint("Rule matched\n");
+		}
 		r = r->next;
 
 	}
