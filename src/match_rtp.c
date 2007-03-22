@@ -82,8 +82,7 @@ int match_identify_rtp(struct layer* l, void *frame, unsigned int start, unsigne
 
 	struct rtphdr *hdr = frame + start;
 
-	int hdr_len;
-	hdr_len = 12; // Len up to ssrc included
+	int hdr_len = sizeof(struct rtphdr);
 	hdr_len += hdr->csrc_count * 4;
 
 	if (len - hdr_len <= 0) {
@@ -106,7 +105,7 @@ int match_identify_rtp(struct layer* l, void *frame, unsigned int start, unsigne
 		}
 	}
 	l->payload_start = start + hdr_len;
-	l->payload_size = len - l->payload_start;
+	l->payload_size = len - hdr_len;
 
 	if (hdr->padding) {
 		l->payload_size = *(((unsigned char*) (frame)) + len - 1);

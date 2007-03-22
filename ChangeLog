@@ -1,3 +1,11 @@
+* 2007/03/22 Guy Martin <gmsoft@tuxicoman.be>
+Rewrote input_docsis to fix bug in docsis parsing algorithm.
+Target pcap no longuer auto detect the right layer.
+Added support for docsis layer to target_pcap.
+Inputs now use struct input_functions.
+Fixed length calculation of rtp payload in match_rtp.
+Added match_docsis.
+
 * 2007/03/19 Guy Martin <gmsoft@tuxicoman.be>
 Fix fd_set initialisation in main.c.
 Fix segfault if one match can't be loaded.

@@ -31,7 +31,6 @@ struct input {
 	int input_type;
 	char **params_value;
 	void *input_priv;
-	int (*match_register) (const char *);
 };
 
 struct input_reg {
@@ -47,6 +46,10 @@ struct input_reg {
 	int (*close) (struct input *i);
 	int (*cleanup) (struct input *i);
 
+};
+
+struct input_functions {
+	int (*match_register) (const char *);
 };
 
 int input_register(const char *input_name);

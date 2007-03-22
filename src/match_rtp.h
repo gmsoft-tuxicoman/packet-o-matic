@@ -38,28 +38,27 @@
 struct rtphdr {
 	
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	unsigned int csrc_count:4;
-	unsigned int extension:1;
-	unsigned int padding:1;
-	unsigned int version:2;
+	unsigned char csrc_count:4;
+	unsigned char extension:1;
+	unsigned char padding:1;
+	unsigned char version:2;
 
-	unsigned int payload_type:7;
-	unsigned int marker:1;
+	unsigned char payload_type:7;
+	unsigned char marker:1;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	unsigned int version:2;
-	unsigned int padding:1;
-	unsigned int extension:1;
-	unsigned int csrc_count:4;
+	unsigned char version:2;
+	unsigned char padding:1;
+	unsigned char extension:1;
+	unsigned char csrc_count:4;
 
-	unsigned int marker:1;
-	unsigned int payload_type:7;
+	unsigned char marker:1;
+	unsigned char payload_type:7;
 #else
 # error "Please fix <endian.h>"
 #endif
 	uint16_t seq_num;
 	uint32_t timestamp;
 	uint32_t ssrc;
-	uint32_t csrc[16];
 
 };
 

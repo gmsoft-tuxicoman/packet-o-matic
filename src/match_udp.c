@@ -92,8 +92,6 @@ int match_reconfig_udp(struct match *m) {
 int match_identify_udp(struct layer* l, void *frame, unsigned int start, unsigned int len) {
 	struct udphdr *hdr = frame + start;
 
-	l->payload_size = ntohs(hdr->uh_ulen) - sizeof(struct udphdr);
-
 	l->payload_start = start + sizeof(struct udphdr);
 	l->payload_size = ntohs(hdr->uh_ulen) - sizeof(struct udphdr);
 

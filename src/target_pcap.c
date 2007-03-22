@@ -18,16 +18,19 @@
  *
  */
 
-
 #include "target_pcap.h"
 
-#define PARAMS_NUM 2
+#define PARAMS_NUM 3
 char *target_pcap_params[PARAMS_NUM][3] = {
-	{ "filename", "dump.cap", "filename to save packets to" },
-	{ "snaplen", "1522", "snaplen of saved packets" },
+	{ "filename", "dump.cap", "filename to save packets to. default : dump.cap" },
+	{ "snaplen", "1522", "snaplen of saved packets. default : 1522" },
+	{ "layer", "ethernet", "type of layer to capture. default : ethernet" },
 };
 
 int match_ethernet_id, match_linux_cooked_id;
+#ifdef DLT_DOCSIS
+int match_docsis_id;
+#endif
 
 struct target_functions *tg_functions;
 
@@ -46,6 +49,9 @@ int target_register_pcap(struct target_reg *r, struct target_functions *tg_funcs
 
 	match_ethernet_id = (*tg_functions->match_register) ("ethernet");
 	match_linux_cooked_id = (*tg_functions->match_register) ("linux_cooked");
+#ifdef DLT_DOCSIS
+	match_docsis_id = (*tg_functions->match_register) ("docsis");
+#endif
 
 	return 1;
 
@@ -83,14 +89,17 @@ int target_open_pcap(struct target *t) {
 	sscanf(t->params_value[1], "%u", &priv->snaplen);
 
 
-	priv->last_layer_type = (*tg_functions->match_register) ("ethernet");
+	priv->last_layer_type = -1;
 
-	if (match_ethernet_id != -1) {
+	if (!strcasecmp("ethernet", t->params_value[2])) {
 		priv->p = pcap_open_dead(DLT_EN10MB, priv->snaplen);
 		priv->last_layer_type = match_ethernet_id;
-	} else if (match_linux_cooked_id != -1) {
+	} else if (!strcasecmp("linux_cooked", t->params_value[2])) {
 		priv->p = pcap_open_dead(DLT_LINUX_SLL, priv->snaplen);
 		priv->last_layer_type = match_linux_cooked_id;
+	} else if (!strcasecmp("docsis", t->params_value[2])) {
+		priv->p = pcap_open_dead(DLT_DOCSIS, priv->snaplen);
+		priv->last_layer_type = match_docsis_id;
 	} else {
 		dprint("Pcap : error: no supported header found.\n");
 		return 0;
@@ -123,22 +132,13 @@ int target_process_pcap(struct target *t, struct layer *l, void *frame, unsigned
 	
 	int start = layer_find_start(l, priv->last_layer_type);
 
-	if (start == -1 && priv->size == 0) {
-		if (priv->last_layer_type == match_ethernet_id) {
-			priv->last_layer_type = match_linux_cooked_id;
-			pcap_set_datalink(priv->p, DLT_LINUX_SLL);
-		} else {
-			priv->last_layer_type = match_ethernet_id;
-			pcap_set_datalink(priv->p, DLT_EN10MB);
-		}
-		start = layer_find_start(l, priv->last_layer_type);
-	}
-	
 	if (start == -1) {
-		dprint("Unable to find the start of the packet. Neither ethernet or linux_cooked. First layer is %s\n", (*tg_functions->match_get_name) (l->type));
+
+		dprint("input_pcap: Unable to find the start of the packet. You probably need to set the parameter \"layer\" to \"%s\"\n", (*tg_functions->match_get_name) (l->type));
 		return 0;
 
 	}
+	
 	
 	frame += start;
 	len -= start;

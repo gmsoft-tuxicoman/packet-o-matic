@@ -35,20 +35,20 @@
 #define TEMP_BUFF_LEN 2000
 
 
-
 struct input_priv_docsis {
 
 	int frontend_fd;
 	int demux_fd;
 	int dvr_fd;
-	char temp_buff[TEMP_BUFF_LEN];
+	unsigned char *temp_buff;
 	int output_layer;
-	unsigned int temp_buff_pos;
+	unsigned int temp_buff_len;
 	unsigned char last_seq;
+
+	// stats stuff
 	unsigned long total_packets;
 	unsigned long missed_packets;
 	unsigned long error_packets;
-	unsigned long dropped_packets;
 	unsigned long invalid_packets;
 
 
@@ -62,6 +62,7 @@ int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int buffl
 int input_close_docsis(struct input *i);
 int input_cleanup_docsis(struct input *i);
 
+int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_docsis *p);
 int input_docsis_scan_downstream(int eurodocsis);
 int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symboleRate, fe_modulation_t modulation);
 int input_docsis_check_downstream(struct input *i);

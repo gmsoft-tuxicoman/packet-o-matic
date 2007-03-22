@@ -30,12 +30,15 @@ char *input_pcap_params[PARAMS_NUM][3] = {
 	{ "promisc", "0", "set the interface in promisc mode if != 0" },
 };
 
+struct input_functions *i_functions;
 
-int input_register_pcap(struct input_reg *r) {
+
+int input_register_pcap(struct input_reg *r, struct input_functions *i_funcs) {
 
 	copy_params(r->params_name, input_pcap_params, 0, PARAMS_NUM);
 	copy_params(r->params_help, input_pcap_params, 2, PARAMS_NUM);
 
+	i_functions = i_funcs;
 
 	r->init = input_init_pcap;
 	r->open = input_open_pcap;
@@ -111,22 +114,22 @@ int input_open_pcap(struct input *i) {
 	switch (pcap_datalink(p->p)) {
 		case DLT_EN10MB:
 			dprint("PCAP output type is ethernet\n");
-			p->output_layer = (*i->match_register) ("ethernet");
+			p->output_layer = (*i_functions->match_register) ("ethernet");
 			break;
 #ifdef DLT_DOCSIS // this doesn't exits in all libpcap version
 		case DLT_DOCSIS:
 			dprint("PCAP output type is docsis\n");
-			p->output_layer = (*i->match_register) ("docsis");
+			p->output_layer = (*i_functions->match_register) ("docsis");
 			break;
 #endif
 		case DLT_LINUX_SLL:
 			dprint("PCAP output type is linux_cooked\n");
-			p->output_layer = (*i->match_register) ("linux_cooked");
+			p->output_layer = (*i_functions->match_register) ("linux_cooked");
 			break;
 
 		default:
 			dprint("PCAP output type is undefined\n");
-			p->output_layer = (*i->match_register) ("undefined");
+			p->output_layer = (*i_functions->match_register) ("undefined");
 
 	}
 
@@ -181,7 +184,10 @@ int input_close_pcap(struct input *i) {
 	struct input_priv_pcap *p = i->input_priv;
 	if (!p)
 		return 0;
-	
+
+	struct pcap_stat ps;
+	if (!pcap_stats(p->p, &ps)) 
+		dprint("0x%02lx; PCAP : Total packet read %u, dropped %u (%.1f%%)\n", (unsigned long) i->input_priv, ps.ps_recv, ps.ps_drop, (ps.ps_recv + ps.ps_drop) / 100.0 * (float)ps.ps_drop);
 
 	pcap_close(p->p);
 

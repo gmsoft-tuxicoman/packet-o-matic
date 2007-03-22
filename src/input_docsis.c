@@ -35,6 +35,7 @@
 #include <errno.h>
 
 #include "input_docsis.h"
+#include "match_docsis.h" // For docsis header definition
 
 #define DEMUX_BUFFER_SIZE 2097152 // 2Megs
 
@@ -46,15 +47,15 @@ char *input_docsis_params[PARAMS_NUM][3] = {
 	{ "modulation", "QAM256", "the modulation to use. either QAM64 or QAM256" },
 	{ "adapter", "0", "DVB adapter to use" },
 	{ "frontend", "0", "DVB frontend to use" },
-	{ "outlayer", "ethernet", "choose output layer : ethernet or docsis" },
+	{ "outlayer", "ethernet", "choose output layer : ethernet, atm or docsis" },
 	{ "scanstart", "0", "start docsis scan at this frequency (in Hz)" },
 	{ "frontend_reinit", "0", "set to 1 if frontend needs to be closed and reopened between each scan" },
 	{ "tuning_timeout", "10", "seconds we'll wait for a lock" },
 };
 
-int  match_ethernet_id, match_docsis_id;
+int match_ethernet_id, match_docsis_id, match_atm_id;
 
-int input_register_docsis(struct input_reg *r) {
+int input_register_docsis(struct input_reg *r, struct input_functions *i_funcs) {
 
 
 	copy_params(r->params_name, input_docsis_params, 0, PARAMS_NUM);
@@ -68,6 +69,10 @@ int input_register_docsis(struct input_reg *r) {
 	r->close = input_close_docsis;
 	r->cleanup = input_cleanup_docsis;
 
+	match_ethernet_id = (*i_funcs->match_register) ("ethernet");
+	match_atm_id = (*i_funcs->match_register) ("atm");
+	match_docsis_id = (*i_funcs->match_register) ("docsis");
+
 	return 1;
 }
 
@@ -77,10 +82,11 @@ int input_init_docsis(struct input *i) {
 	i->input_priv = malloc(sizeof(struct input_priv_docsis));
 	bzero(i->input_priv, sizeof(struct input_priv_docsis));
 
-	copy_params(i->params_value, input_docsis_params, 1, PARAMS_NUM);
+	struct input_priv_docsis *p = i->input_priv;
+	p->temp_buff = malloc(TEMP_BUFF_LEN);
+	ndprint("Temp buff is 0x%X-0x%X\n", (unsigned) p->temp_buff, (unsigned) p->temp_buff + TEMP_BUFF_LEN);
 
-	match_ethernet_id = (*i->match_register) ("ethernet");
-	match_docsis_id = (*i->match_register) ("docsis");
+	copy_params(i->params_value, input_docsis_params, 1, PARAMS_NUM);
 
 
 	return 1;
@@ -91,8 +97,9 @@ int input_cleanup_docsis(struct input *i) {
 
 	clean_params(i->params_value, PARAMS_NUM);
 
-	if (i->input_priv)
-		free(i->input_priv);
+	struct input_priv_docsis *p = i->input_priv;
+	free(p->temp_buff);
+	free(i->input_priv);
 
 	return 1;
 
@@ -100,13 +107,15 @@ int input_cleanup_docsis(struct input *i) {
 
 int input_open_docsis(struct input *i) {
 
+	struct input_priv_docsis *p = i->input_priv;
 	struct dmx_pes_filter_params filter;
 
-	struct input_priv_docsis *p = i->input_priv;
 
 	// Select the output type
 	if (!strcmp(i->params_value[5], "ethernet")) {
 		p->output_layer = match_ethernet_id;
+	} else if (!strcmp(i->params_value[5], "atm")) {
+		p->output_layer = match_atm_id;
 	} else if (!strcmp(i->params_value[5], "docsis")) {
 		p->output_layer = match_docsis_id;
 	} else {
@@ -533,164 +542,297 @@ int input_get_first_layer_docsis(struct input *i) {
 
 }
 
-int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int bufflen) {
 
-	struct input_priv_docsis *p = i->input_priv;
+/*
+ * buff : mpeg_buffer to fill of size MPEG_TS_LEN
+ *
+ * returns 0 on success, 1 if pusi is set, -1 if it's and invalid packet, -2 if there was an error
+ *
+ */
 
-	// Set to 1 if there are some mpeg packets lost for the current docsis packet
-	unsigned int missing_parts = 0;
-	unsigned int packet_pos = 0;
-	unsigned char mpeg_buff[MPEG_TS_LEN];
-	bzero(mpeg_buff, MPEG_TS_LEN);
-
-	// Copy the leftover from last time
-	if (p->temp_buff_pos > bufflen) {
-		dprint("Please increase your read buffer (needed %u, given %u)\n", p->temp_buff_pos, bufflen);
-		return 0;
-	}
-
-	memcpy(buffer, p->temp_buff, p->temp_buff_pos);
-
-	packet_pos = p->temp_buff_pos;
-
-	do {
+int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_docsis *p) {
+	
 
 		// Fill the mpeg buffer
 		size_t len = 0, r = 0;
 
 		do {
-			r = read(p->dvr_fd, mpeg_buff, MPEG_TS_LEN);
+			r = read(p->dvr_fd, buff + len, MPEG_TS_LEN - len);
 			if (r <= 0 ) {
 				dprint("Error while reading dvr\n");
-				return -1;
+				return -2;
 			}
 			len += r;
 		} while (len < MPEG_TS_LEN);
 
+		p->total_packets++;
 		// Let's see if we should care about that packet
 		
 		// Check sync byte
-		if (mpeg_buff[0] != 0x47) {
+		if (buff[0] != 0x47) {
 			dprint("Error, stream out of sync ! Abording !\n");
-			return -1;
+			return -2;
 		}
 		
 		// Check transport error indicator
-		if (mpeg_buff[1] & 0x80) {
+		if (buff[1] & 0x80) {
 			p->error_packets++;
-			continue;
+			return -1;
 		}
 		
-		// Check if payload unit start indicator is present and if it is valid
-		if (mpeg_buff[1] & 0x40 && (mpeg_buff[4] > 183)) {
-			p->invalid_packets++;
-			continue;
-		}
 		
 		// Check the transport priority
-		if (mpeg_buff[1] & 0x20) {
+		if (buff[1] & 0x20) {
 			p->invalid_packets++;
-			continue;
+			return -1;
 		}
 
 		// Check for the right PID, normaly the demux handle this
-		if ( ((mpeg_buff[1] & 0x1F) != 0x1F) && (mpeg_buff[2] != 0xFE)) {
+		if ( ((buff[1] & 0x1F) != 0x1F) && (buff[2] != 0xFE)) {
 			p->invalid_packets++;
-			continue;
+			return -1;
 		}
 
 		// Check the transport scrambling control
-		if (mpeg_buff[3] & 0xC0) {
+		if (buff[3] & 0xC0) {
 			p->invalid_packets++;
-			continue;
+			return -1;
 		}
 
 		// Check the adaptation field control
-		if ((mpeg_buff[3] & 0x30) != 0x10) {
+		if ((buff[3] & 0x30) != 0x10) {
 			p->invalid_packets++;
-			continue;
+			return -1;
 		}
+	
+		// Check if payload unit start indicator is present and if it is valid
+		if (buff[1] & 0x40) {
+			if (buff[4] > 183) {
+				p->invalid_packets++;
+				return -1;
+			}
+			return 1;
+		}
+
+		return 0;
+
+}
+
+int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int bufflen) {
+
+	struct input_priv_docsis *p = i->input_priv;
+
+	unsigned int packet_pos = 0;
+	unsigned char mpeg_buff[MPEG_TS_LEN];
+	bzero(mpeg_buff, MPEG_TS_LEN);
+
+	int dlen = 0; // len of the docsis MAC frame including headers
+	int new_start = 0;
+
+	// Copy leftover into current buffer
+	if (p->temp_buff_len > 0) {
+
+		int pos = 0;
+
+		// Skip stuff bytes
+		while (pos < p->temp_buff_len && p->temp_buff[pos] == 0xff)
+			pos++;
+
+
+		ndprint("Copying1 %u bytes into 0x%X-0x%X\n", p->temp_buff_len - pos, (unsigned) buffer,  (unsigned) buffer + p->temp_buff_len - pos);
+		memcpy(buffer, p->temp_buff + pos, p->temp_buff_len - pos);
+		packet_pos = p->temp_buff_len - pos;
+
+		// We don't need anything from the temp buffer now
+		p->temp_buff_len = 0;
+	
+	}
+
+	
+	struct docsis_hdr *dhdr = (struct docsis_hdr*) buffer;
+
+	// This only works because we can only capture downstream frames
+	// Upstream can have REQ frame in which then len field correspond to service id
+	while (1) {
 		
-		// Enough checking. Let's see if we got a new packet here
-		p->total_packets++;
+		if (packet_pos > sizeof(struct docsis_hdr)) {
+
+			dlen = ntohs(dhdr->len) + sizeof(struct docsis_hdr);
+
+			
+			if (dlen < sizeof(struct docsis_hdr) || dlen > bufflen) {
+				// Invalid packet, let's discard the whole thing
+				ndprint("Invalid packet. discarding.\n");
+				packet_pos = 0;
+				dlen = 0;
+			}
+
+			// We've got a full packet
+			if (dlen <= packet_pos)
+				break;
+
+		}
+
+		int res = input_docsis_read_mpeg_frame(mpeg_buff, p);
+
+		if (packet_pos == 0)
+			dlen = ntohs(dhdr->len) + sizeof(struct docsis_hdr);
+
+		if (res == -2) // Error while reading
+			return -1;
 
 		p->last_seq = (p->last_seq + 1) & 0xF;
 		while (p->last_seq != (mpeg_buff[3] & 0xF)) {
 			p->last_seq = (p->last_seq + 1) & 0xF;
 			p->missed_packets++;
-			missing_parts = 1;
+			if (packet_pos + MPEG_TS_LEN - 4 >= bufflen) {
+				//  buffer overflow. Let's discard the whole thing
+				ndprint("Buffer overflow\n");
+				packet_pos = 0;
+				dlen = 0;
+				break;
+			}
+			ndprint("Filling1 %u bytes with 0xff at 0x%X-0x%X\n", MPEG_TS_LEN - 4,(unsigned) (buffer + packet_pos), (unsigned) buffer + packet_pos + MPEG_TS_LEN - 4);
+			memset(buffer + packet_pos, 0xff, MPEG_TS_LEN - 4); // Fill buffer with stuff byte
+			packet_pos += MPEG_TS_LEN - 4;
+		}
+
+		//  buffer overflow. Let's discard the whole thing
+		if (packet_pos + MPEG_TS_LEN - 4 >= bufflen) {
+			ndprint("buffer overflow2\n");
 			packet_pos = 0;
+			dlen = 0;
 		}
 
 
-		if (missing_parts) { // If there are missing parts in the current docsis frame
-			if (mpeg_buff[1] & 0x40) {
-				packet_pos = MPEG_TS_LEN - mpeg_buff[4] - 5;
-				if (packet_pos > bufflen) {
-					dprint("Please increase your read buffer (needed %u, given %u)\n", packet_pos, bufflen);
-					return 0;
-				}
-				memcpy(buffer, mpeg_buff + mpeg_buff[4] + 5, packet_pos);
-				missing_parts = 0;
-				
-			} else { // Discard any other part
-				p->dropped_packets++;
+		switch (res) {
+			case -1: // Invalid MPEG packet
+				ndprint("Filling2 %u bytes with 0xff at 0x%X-0x%X\n", MPEG_TS_LEN - 4,(unsigned) (buffer + packet_pos), (unsigned) buffer + packet_pos + MPEG_TS_LEN - 4);
+				memset(buffer + packet_pos, 0xff, MPEG_TS_LEN - 4); // Fill buffer with stuff byte
+				packet_pos += MPEG_TS_LEN - 4;
 				continue;
-			}
+
+			case 0: // Packet is valid and does not contain the start of a PDU
+				ndprint("Copying2 %u bytes into 0x%X-0x%X\n", MPEG_TS_LEN - 4, (unsigned) buffer + packet_pos, (unsigned) buffer + packet_pos + MPEG_TS_LEN - 4);
+				memcpy(buffer + packet_pos, mpeg_buff + 4, MPEG_TS_LEN - 4);
+				packet_pos += MPEG_TS_LEN - 4;
+				continue;
+
+			case 1:	// Packet is valid and contains the start of a PDU
+
+				new_start = packet_pos + mpeg_buff[4];
 
 
-		} else if (mpeg_buff[1] & 0x40) { // There are no missing parts and we got a new packet. finish the previous one if needed
-			
-			if (mpeg_buff[4] > 0) {
+				if (mpeg_buff[4] == 0) {
+					ndprint("Start of new packet\n");
+					// The begining of the MAC frame is at the start of the MPEG payload
+					if (packet_pos > 0) {
+						// We got some cruft left. Discard the current buffer
+						ndprint("cruft left\n");
+						packet_pos = 0;
+					}
 
-				// Copy the first part in the provided buffer
-				if (packet_pos + mpeg_buff[4] > bufflen) {
-					dprint("Please increase your read buffer (needed %u, given %u)\n", packet_pos + mpeg_buff[4], bufflen);
-					return 0;
+					ndprint("Copying3 %u bytes into 0x%X-0x%X\n", MPEG_TS_LEN - 5, (unsigned) buffer + packet_pos, (unsigned) buffer + packet_pos + MPEG_TS_LEN - 5);
+					memcpy(buffer + packet_pos, mpeg_buff + 5, MPEG_TS_LEN - 5);
+					packet_pos = MPEG_TS_LEN - 5;
+
+					dlen = ntohs(dhdr->len) + sizeof(struct docsis_hdr);
+
+					continue;
 				}
+				
+				if (new_start < sizeof(struct docsis_hdr) || dlen > new_start) {
+					// Either the given size can't contain even a header
+					// Either the calulated size doesn't fit the gap
+					// let's discard the previous frame then
+					ndprint("discard previous frame\n");
+					packet_pos = MPEG_TS_LEN - 5 - mpeg_buff[4];
+					ndprint("Copying4 %u bytes into 0x%X-0x%X\n", packet_pos, (unsigned) buffer, (unsigned) buffer + packet_pos);
+					memcpy(buffer, mpeg_buff + 5 + mpeg_buff[4], packet_pos);
+					continue;
+					
+				}
+				
+
+				// Se we got part of the last and new PDU here
+				// Let's split it up
+				
+				// last packet
+				ndprint("Copying5 %u bytes into 0x%X-0x%X\n", mpeg_buff[4], (unsigned) buffer + packet_pos, (unsigned) buffer + packet_pos + mpeg_buff[4]);
 				memcpy(buffer + packet_pos, mpeg_buff + 5, mpeg_buff[4]);
 				packet_pos += mpeg_buff[4];
 
-			}
+				ndprint("Copying6 %u bytes into 0x%X-0x%X\n", MPEG_TS_LEN - 5 - mpeg_buff[4], (unsigned) p->temp_buff, (unsigned) p->temp_buff + MPEG_TS_LEN - 5 - mpeg_buff[4]);
+				memcpy(p->temp_buff, mpeg_buff + 5 + mpeg_buff[4], MPEG_TS_LEN - 5 - mpeg_buff[4]);
+				p->temp_buff_len += MPEG_TS_LEN - 5 - mpeg_buff[4];
 
-			// Copy the remaining part into our temp buffer
-			p->temp_buff_pos = MPEG_TS_LEN - mpeg_buff[4] - 5;
-			memcpy(p->temp_buff, mpeg_buff + mpeg_buff[4] + 5, p->temp_buff_pos);
+				continue;
 
-			if (p->output_layer == match_ethernet_id) {
-				// Byte 0 and 1 are set to 0 if it's an ethernet packet. If not, skip it
-				if (buffer[0] || buffer[1]) {
-					return 0;
-				} else if (packet_pos > 6) {
-					memmove(buffer, buffer + 6, packet_pos - 6);
-					return packet_pos - 6;
-				} else 
-					return 0;
-			}
-			return packet_pos;
-
-
-		} else {
-			
-			// Ok it's not a new packet. Let's append to what we already have
-
-			if (packet_pos + MPEG_TS_LEN - 4 > bufflen) {
-				dprint("Please increase your read buffer (needed %u, given %u)\n", packet_pos + MPEG_TS_LEN - 4, bufflen);
-				return 0;
-			}
-			memcpy(buffer + packet_pos, mpeg_buff + 4, MPEG_TS_LEN - 4);
-			packet_pos += MPEG_TS_LEN - 4;
-
+			default: // Should not be reached
+				return -1;
 
 		}
+
+
+	}
+	// We have a full packet !
+
+	if (dlen < packet_pos) { // Copy leftover if any
+		ndprint("Copying7 %u bytes into 0x%X-0x%X\n", packet_pos - dlen, (unsigned) p->temp_buff + p->temp_buff_len, (unsigned) p->temp_buff + p->temp_buff_len + packet_pos - dlen);
+		memcpy(p->temp_buff + p->temp_buff_len, buffer + dlen, packet_pos - dlen);
+		p->temp_buff_len += packet_pos - dlen;
+	} 
+
+
+	if (p->output_layer == match_ethernet_id || p->output_layer == match_atm_id) {
+
+		if (p->output_layer == match_ethernet_id) {
+			if (dhdr->fc_type != FC_TYPE_PKT_MAC) {
+				ndprint("output type is ethernet and fc_type doesn't match. ignoring\n");
+				return 0;
+			}
+			if (dlen < 64) // Minimum ethernet len
+				return 0;
+		}
+
+		if (p->output_layer == match_atm_id) {
+			if (dhdr->fc_type != FC_TYPE_ATM) {
+				ndprint("output type is atm and fc_type doesn't match. ignoring\n");	
+				return 0;
+			}
+			if (dlen % 53) // dlen is not a multiple of atm cell
+				return 0;
+		}
+
+		dlen -= sizeof(struct docsis_hdr);
+		new_start = sizeof(struct docsis_hdr);
 		
-	
+		// fc_parm is len of ehdr if ehdr_on == 1
+		if (dhdr->ehdr_on) {
+			new_start += dhdr->fc_parm;
+			dlen -= new_start;
+		
+		}
+
+		ndprint("calculated dlen is %u\n", dlen);
+
+		memmove(buffer, buffer + new_start, dlen);
 
 
-	} while(1);
 
-	// Never reached
-	return 0;
+
+	}
+
+
+	ndprint("outlayer : %u\n", p->output_layer);
+	ndprint("RETURNING packet of %u\n", dlen);
+
+	return dlen;
+
+
+
+
+
 }
 
 int input_close_docsis(struct input *i) {
@@ -703,19 +845,17 @@ int input_close_docsis(struct input *i) {
 	close(p->demux_fd);
 	close(p->dvr_fd);
 
-	dprint("0x%02lx; DOCSIS : Total packet read %lu, missed %lu (%.1f%%), dropped %lu (%.1f%%), erroneous %lu (%.1f%%), invalid %lu (%.1f%%), total dropped %lu (%.1f%%)\n", \
+	dprint("0x%02lx; DOCSIS : Total packet read %lu, missed %lu (%.1f%%),  erroneous %lu (%.1f%%), invalid %lu (%.1f%%), total errors %lu (%.1f%%)\n", \
 		(unsigned long) i->input_priv, \
 		p->total_packets, \
 		p->missed_packets, \
 		100.0 / (double) p->total_packets * (double) p->missed_packets, \
-		p->dropped_packets, \
-		100.0 / (double) p->total_packets * (double) p->dropped_packets, \
 		p->error_packets, \
 		100.0 / (double) p->total_packets * (double) p->error_packets, \
 		p->invalid_packets, \
 		100.0 / (double) p->total_packets * (double) p->invalid_packets, \
-		p->missed_packets + p->dropped_packets + p->error_packets + p->invalid_packets, \
-		100.0 / (double) p->total_packets * (double) (p->missed_packets + p->dropped_packets + p->error_packets + p->invalid_packets));
+		p->missed_packets + p->error_packets + p->invalid_packets, \
+		100.0 / (double) p->total_packets * (double) (p->missed_packets  + p->error_packets + p->invalid_packets));
 
 
 

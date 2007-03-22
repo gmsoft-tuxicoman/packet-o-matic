@@ -24,6 +24,7 @@
 #include "match.h"
 
 struct input_reg *inputs[MAX_INPUT];
+static struct input_functions i_funcs;
 
 int input_register(const char *input_name) {
 
@@ -38,7 +39,7 @@ int input_register(const char *input_name) {
 			}
 		} else {
 
-			int (*register_my_input) (struct input_reg *);
+			int (*register_my_input) (struct input_reg *, struct input_functions *);
 
 			void *handle = NULL;
 			register_my_input = lib_get_register_func("input", input_name, &handle);
@@ -51,8 +52,9 @@ int input_register(const char *input_name) {
 			struct input_reg *my_input = malloc(sizeof(struct input_reg));
 			bzero(my_input, sizeof(struct input_reg));
 
+			i_funcs.match_register = match_register;
 			
-			if (!(*register_my_input) (my_input)) {
+			if (!(*register_my_input) (my_input, &i_funcs)) {
 				dprint("Error while loading input %s. Could not register input !\n", input_name);
 				return -1;
 			}
@@ -86,7 +88,6 @@ struct input *input_alloc(int input_type) {
 	bzero(i, sizeof(struct input));
 
 	i->input_type = input_type;
-	i->match_register = match_register;
 	
 	if (inputs[input_type]->init)
 		if (!(*inputs[input_type]->init) (i)) {
