@@ -148,13 +148,12 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 		// check the calculated size and adjust the max len of the packet
 		// the initial size may be too long as some padding could have been introduced by the input
 
-		unsigned int new_len = l->payload_start + l->payload_size;
-		if (new_len > len) {
-			ndprint("Error, new len greater than the computed maximum len or buffer (maximum %u, new %u). Not considering packet\n", len, new_len);
+		if (l->prev && l->payload_start + l->payload_size > l->prev->payload_start + l->prev->payload_size) {
+			ndprint("Error, new len greater than the computed maximum len or buffer (maximum %u, new %u, layer %s). Not considering packet\n",
+				l->prev && l->payload_start + l->payload_size, l->prev->payload_start + l->prev->payload_size, match_get_name(l->type));
 			return 1;
 		}
 
-		len = new_len;
 
 
 		l = l->next;

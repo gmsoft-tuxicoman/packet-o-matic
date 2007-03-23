@@ -66,6 +66,7 @@ The match modules are used to specify the network traffic that you want to match
 
 IMPORTANT : You'll have to specify the full header chain to match a packet. For example to match tcp traffic (on IPv4), you have to match in order ethernet, ipv4, tcp.
 
+- docsis : match the docsis protocol
 - ethernet : match the ethernet protocol
 - linux_cooked : match linux cooked protocol used by pcap
 - ipv4 : match the IPv4 protocol commonly known as ip

@@ -1,3 +1,9 @@
+* 2007/03/23 Guy Martin <gmsoft@tuxicoman.be>
+Added output layer ipv4 to target_pcap.
+Fixed cosmetic bug when calculating % of packet droppes in target_pcap.
+Use input_docsis_read_mpeg_frame in input_docsis_check_downstream.
+Changed max size claculation algo in rules.c.
+
 * 2007/03/22 Guy Martin <gmsoft@tuxicoman.be>
 Rewrote input_docsis to fix bug in docsis parsing algorithm.
 Target pcap no longuer auto detect the right layer.

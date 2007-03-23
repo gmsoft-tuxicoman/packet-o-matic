@@ -127,6 +127,11 @@ int input_open_pcap(struct input *i) {
 			p->output_layer = (*i_functions->match_register) ("linux_cooked");
 			break;
 
+		case DLT_RAW:
+			dprint("PCAP output type is ipv4\n");
+			p->output_layer = (*i_functions->match_register) ("ipv4");
+			break;
+
 		default:
 			dprint("PCAP output type is undefined\n");
 			p->output_layer = (*i_functions->match_register) ("undefined");
@@ -185,9 +190,12 @@ int input_close_pcap(struct input *i) {
 	if (!p)
 		return 0;
 
+	if (!p->p)
+		return 1;
+
 	struct pcap_stat ps;
 	if (!pcap_stats(p->p, &ps)) 
-		dprint("0x%02lx; PCAP : Total packet read %u, dropped %u (%.1f%%)\n", (unsigned long) i->input_priv, ps.ps_recv, ps.ps_drop, (ps.ps_recv + ps.ps_drop) / 100.0 * (float)ps.ps_drop);
+		dprint("0x%02lx; PCAP : Total packet read %u, dropped %u (%.1f%%)\n", (unsigned long) i->input_priv, ps.ps_recv, ps.ps_drop, 100.0 / (ps.ps_recv + ps.ps_drop)  * (float)ps.ps_drop);
 
 	pcap_close(p->p);
 

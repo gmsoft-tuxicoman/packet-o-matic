@@ -326,7 +326,7 @@ int input_docsis_check_downstream(struct input *i) {
 	struct input_priv_docsis *p = i->input_priv;
 
 	unsigned char buffer[MPEG_TS_LEN];
-	int count = 0, len = 0, res;
+	int count = 0, res;
 	time_t sync_start = time(NULL);
 
 	fd_set set;
@@ -349,54 +349,23 @@ int input_docsis_check_downstream(struct input *i) {
 			dprint("Timeout while waiting for data\n");
 			break;
 		}
-	
-		len = 0;
 
-		while (len < MPEG_TS_LEN) {
-			res = read(p->dvr_fd, buffer + len, MPEG_TS_LEN - len);
-			if (res <= 0) {
-				dprint("Error while reading\n");
+		res = input_docsis_read_mpeg_frame(buffer, p);
+
+		switch (res) {
+			case -2:
+				dprint("Error while reading MPEG stream\n");
 				return 0;
-			}
-			len += res;
+			
+			case -1:
+			case 0:
+				continue;
+
+			case 1: // Got PUSI
+				break;
+				
+
 		}
-
-		// Let's see if we should care about that packet
-		
-		// Check sync byte
-		if (buffer[0] != 0x47) {
-			dprint("Error, stream out of sync ! Abording !\n");
-			return -1;
-		}
-		
-		// Check transport error indicator
-		if (buffer[1] & 0x80)
-			continue;
-		
-		// Check if payload unit start indicator is present and if it is valid
-		if (buffer[1] & 0x40 && (buffer[4] > 183))
-			continue;
-		
-		// Check the transport priority
-		if (buffer[1] & 0x20)
-			continue;
-
-		// Check for the right PID, normaly the demux handle this
-		if ( ((buffer[1] & 0x1F) != 0x1F) && (buffer[2] != 0xFE))
-			continue;
-
-		// Check the transport scrambling control
-		if (buffer[3] & 0xC0)
-			continue;
-
-		// Check the adaptation field control
-		if ((buffer[3] & 0x30) != 0x10)
-			continue;
-
-
-		// Checking if PUSI = 1 (SYNC message are not allowed to cross mpeg packets)
-		if (!(buffer[1] & 0x40))
-			continue;
 
 		unsigned char mac_start = buffer[4] + 5;
 		

@@ -24,13 +24,8 @@
 char *target_pcap_params[PARAMS_NUM][3] = {
 	{ "filename", "dump.cap", "filename to save packets to. default : dump.cap" },
 	{ "snaplen", "1522", "snaplen of saved packets. default : 1522" },
-	{ "layer", "ethernet", "type of layer to capture. default : ethernet" },
+	{ "layer", "ethernet", "type of layer to capture. ethernet, linux_cooked, docsis or ipv4. default : ethernet" },
 };
-
-int match_ethernet_id, match_linux_cooked_id;
-#ifdef DLT_DOCSIS
-int match_docsis_id;
-#endif
 
 struct target_functions *tg_functions;
 
@@ -46,12 +41,6 @@ int target_register_pcap(struct target_reg *r, struct target_functions *tg_funcs
 	r->cleanup = target_cleanup_pcap;
 
 	tg_functions = tg_funcs;
-
-	match_ethernet_id = (*tg_functions->match_register) ("ethernet");
-	match_linux_cooked_id = (*tg_functions->match_register) ("linux_cooked");
-#ifdef DLT_DOCSIS
-	match_docsis_id = (*tg_functions->match_register) ("docsis");
-#endif
 
 	return 1;
 
@@ -93,13 +82,18 @@ int target_open_pcap(struct target *t) {
 
 	if (!strcasecmp("ethernet", t->params_value[2])) {
 		priv->p = pcap_open_dead(DLT_EN10MB, priv->snaplen);
-		priv->last_layer_type = match_ethernet_id;
+		priv->last_layer_type = (*tg_functions->match_register) ("ethernet");
 	} else if (!strcasecmp("linux_cooked", t->params_value[2])) {
 		priv->p = pcap_open_dead(DLT_LINUX_SLL, priv->snaplen);
-		priv->last_layer_type = match_linux_cooked_id;
+		priv->last_layer_type = (*tg_functions->match_register) ("linux_cooked");
+	} else if (!strcasecmp("ipv4", t->params_value[2])) {
+		priv->p = pcap_open_dead(DLT_RAW, priv->snaplen);
+		priv->last_layer_type = (*tg_functions->match_register) ("ipv4");
+#ifdef DLT_DOCSIS
 	} else if (!strcasecmp("docsis", t->params_value[2])) {
 		priv->p = pcap_open_dead(DLT_DOCSIS, priv->snaplen);
-		priv->last_layer_type = match_docsis_id;
+		priv->last_layer_type = (*tg_functions->match_register) ("docsis");
+#endif
 	} else {
 		dprint("Pcap : error: no supported header found.\n");
 		return 0;
