@@ -1,3 +1,6 @@
+* 2007/03/26 Guy Martin <gmsoft@tuxicoman.be>
+Added sequence info and some type translation for echo.
+
 * 2007/03/23 Guy Martin <gmsoft@tuxicoman.be>
 Added output layer ipv4 to target_pcap.
 Fixed cosmetic bug when calculating % of packet droppes in target_pcap.
