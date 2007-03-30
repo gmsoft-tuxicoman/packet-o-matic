@@ -10,7 +10,7 @@ INPUT_OBJS = @INPUT_OBJS@
 MATCH_OBJS = match_docsis.la match_ethernet.la match_ipv4.la match_icmp.la match_ipv6.la match_icmpv6.la match_tcp.la match_udp.la match_rtp.la match_undefined.la match_linux_cooked.la
 CONNTRACK_OBJS = conntrack_ipv4.la conntrack_ipv6.la conntrack_rtp.la conntrack_tcp.la conntrack_udp.la
 HELPER_OBJS = helper_ipv4.la
-TARGET_OBJS = target_display.la target_dump_payload.la target_wave.la target_null.la @TARGET_OBJS@
+TARGET_OBJS = target_display.la target_dump_payload.la target_http.la target_wave.la target_null.la @TARGET_OBJS@
 
 
 lib_LTLIBRARIES = $(INPUT_OBJS) $(MATCH_OBJS) $(CONNTRACK_OBJS) $(HELPER_OBJS) $(TARGET_OBJS)
@@ -64,6 +64,8 @@ target_display_la_SOURCES = target_display.c target_display.h modules_common.h
 target_display_la_LDFLAGS = -module -avoid-version
 target_dump_payload_la_SOURCES = target_dump_payload.c target_dump_payload.h modules_common.h
 target_dump_payload_la_LDFLAGS = -module -avoid-version
+target_http_la_SOURCES = target_http.c target_http.h modules_common.h
+target_http_la_LDFLAGS = -module -avoid-version -rpath '$(libdir)'
 target_inject_la_SOURCES = target_inject.c target_inject.h modules_common.h
 target_inject_la_LDFLAGS = -module -avoid-version -rpath '$(libdir)'
 target_pcap_la_SOURCES = target_pcap.c target_pcap.h modules_common.h

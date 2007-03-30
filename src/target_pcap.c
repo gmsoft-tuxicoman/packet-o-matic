@@ -128,7 +128,7 @@ int target_process_pcap(struct target *t, struct layer *l, void *frame, unsigned
 
 	if (start == -1) {
 
-		dprint("input_pcap: Unable to find the start of the packet. You probably need to set the parameter \"layer\" to \"%s\"\n", (*tg_functions->match_get_name) (l->type));
+		dprint("target_pcap: Unable to find the start of the packet. You probably need to set the parameter \"layer\" to \"%s\"\n", (*tg_functions->match_get_name) (l->type));
 		return 0;
 
 	}
@@ -166,7 +166,7 @@ int target_close_pcap(struct target *t) {
 		return 0;
 
 	dprint("0x%lx; PCAP : saved %u bytes\n", (unsigned long) priv, priv->size);
-	
+
 	pcap_dump_close(priv->pdump);
 	pcap_close(priv->p);
 	free(priv);
