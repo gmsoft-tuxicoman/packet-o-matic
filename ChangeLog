@@ -1,5 +1,6 @@
 * 2007/03/30 Guy Martin <gmsoft@tuxicoman.be>
 Added target_http.c. Fixed typo in target_pcap.c.
+Fix segfaults in conntrack.c.
 
 * 2007/03/26 Guy Martin <gmsoft@tuxicoman.be>
 Added sequence info and some type translation for echo.

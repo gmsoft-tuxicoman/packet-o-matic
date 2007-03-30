@@ -218,7 +218,7 @@ uint32_t conntrack_hash(struct layer *l, void *frame, unsigned int flags) {
 	// Compute our hash for each layer
 	uint32_t hash, res;
 	hash = INITVAL;
-	while (l) {
+	while (l && l->type != -1) {
 
 		if (conntracks[l->type]) {
 			if (!flags || (flags & conntracks[l->type]->flags)) {
@@ -286,7 +286,7 @@ struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct layer *
 
 		if (!flags || (flags & conntracks[cp->priv_type]->flags)) { 
 
-			if (!(*conntracks[cp->priv_type]->doublecheck) (frame, start, cp->priv, flags)) {
+			if (start == -1 || !(*conntracks[cp->priv_type]->doublecheck) (frame, start, cp->priv, flags)) {
 
 				cl = cl->next; // If it's not the right conntrack entry, go to next one
 				if (!cl)
