@@ -18,7 +18,6 @@
  *
  */
 
-
 #include <errno.h>
 
 #include <netinet/ip.h>
@@ -28,7 +27,11 @@
 
 #include "target_tcpkill.h"
 
+#ifdef HAVE_LINUX_IP_SOCKET
 #define PARAMS_NUM 3
+#else
+#define PARAMS_NUM 2
+#endif
 
 int cksum(uint16_t *addr, int len)
 {
@@ -53,8 +56,10 @@ int cksum(uint16_t *addr, int len)
 
 char *target_tcpkill_params[PARAMS_NUM][3] = {
 	{ "severity", "2", "numbers of tcp rst packet by try"},
-	{ "mode", "routed", "operating mode : 'routed' (default) let linux decide where to send packets to but is IPv4 only. 'normal' send the packet to the specified interface"},
 	{ "interface", "eth0", "interface to send packets to in non routed mode" },
+#ifdef HAVE_LINUX_IP_SOCKET
+	{ "mode", "routed", "operating mode : 'routed' (default) let linux decide where to send packets to but is IPv4 only. 'normal' send the packet to the specified interface"},
+#endif
 };
 
 int match_ipv4_id, match_ipv6_id, match_tcp_id, match_ethernet_id;
@@ -107,8 +112,6 @@ int target_init_tcpkill(struct target *t) {
 
 	t->target_priv = priv;
 	
-	
-	
 	return 1;
 }
 
@@ -122,11 +125,12 @@ int target_open_tcpkill(struct target *t) {
 	}
 
 	if (sscanf(t->params_value[0], "%u", &p->severity) != 1) {
-		dprint("Wront severity parameter to target_tcpkill !\n");
+		dprint("Wrong severity parameter to target_tcpkill !\n");
 		p->severity = 2;
 	}
 
-	if (!strcmp(t->params_value[1], "routed")) {
+#ifdef HAVE_LINUX_IP_SOCKET
+	if (!strcmp(t->params_value[2], "routed")) {
 		p->routed = 1;
 
 		int one = 1;
@@ -144,29 +148,19 @@ int target_open_tcpkill(struct target *t) {
 			dprint("Unable to set IP_HDRINCL on IPv4 socket !\n");
 			return 0;
 		}
-
 	} else {
-
-		p->socket = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-
-		if (p->socket < 0) {
-			dprint("Unable to open ethernet socket to send TCP RST\n");
+#endif
+		p->lc = libnet_init (LIBNET_LINK_ADV, t->params_value[1], p->errbuf);
+	        if (!p->lc) {
+			dprint("Error, cannot open libnet context: %s", p->errbuf);
 			return 0;
 		}
-
-		// find out the interface number
-		struct ifreq req;
-		strcpy(req.ifr_name, t->params_value[2]);
-		if (ioctl(p->socket, SIOCGIFINDEX, &req)) {
-			dprint("Interface %s not found\n", t->params_value[2]);
-			return 0;
-		}
-		dprint("Found interface number %u\n", req.ifr_ifindex);
-
-		p->ifindex = req.ifr_ifindex;
-
+      		dprint("Libnet context initialized for interface %s\n", p->lc->device);
+#ifdef HAVE_LINUX_IP_SOCKET
 	}
-
+#else
+	p->routed = 0; /* we don't have linux' raw packet iface so we can't use routing */
+#endif
 
 	return 1;
 }
@@ -190,25 +184,26 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 	ipv4start = layer_find_start(l, match_ipv4_id);
 	ipv6start = layer_find_start(l, match_ipv6_id);
 
+	// init temp buffer
+	unsigned char buffer[1024];
+	bzero(buffer, 1024);
+
+	int tcpsum = 0;
+	int blen = 0; // Buffer len
+
+#ifdef HAVE_LINUX_IP_SOCKET
 	// init sockaddr
 	struct sockaddr_storage addr;
 	socklen_t addrlen = 0;
 	bzero(&addr, sizeof(struct sockaddr_storage));
 
-	
-	// init temp buffer
-	char buffer[1024];
-	bzero(buffer, 1024);
-
-
-	int tcpsum = 0;
-	int blen = 0; // Buffer len
 
 	// In routed mode, we can only send ipv4 packets. linux API doesn't allow random souce addr for ipv6
-	if (priv->routed  && ipv4start == -1) {
+	if (priv->routed && ipv4start == -1) {
 		dprint("No IPv4 header found in this packet\n");
 		return 0;
 	}
+#endif
 
 	// In normal mode we need at least an ipv6 or ipv4 header
 	if (!priv->routed && ipv4start == -1 && ipv6start == -1) {
@@ -216,12 +211,13 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 		return 0;
 	}
 
+#ifdef HAVE_LINUX_IP_SOCKET
 	// Check if the socket is opened
-	if (priv->socket <= 0) {
+	if (priv->routed && priv->socket <= 0) {
 		dprint("Error, socket not opened. Cannot send TCP RST\n");
 		return 0;
 	}
-
+#endif
 
 	// In normal mode, we have to include the ethernet header
 	if (!priv->routed) {
@@ -246,12 +242,6 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 		memcpy(dehdr->h_dest, sehdr->h_source, sizeof(dehdr->h_dest));
 		dehdr->h_proto = sehdr->h_proto;
 
-		struct sockaddr_ll *sal = (struct sockaddr_ll *) &addr;
-		addrlen = sizeof(struct sockaddr_ll);
-		sal->sll_family = AF_PACKET;
-		sal->sll_halen = 6;
-		sal->sll_ifindex = priv->ifindex;
-
 		blen = sizeof(struct ethhdr);
 
 	}
@@ -260,7 +250,8 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 	if (ipv4start != -1) {
 
 		struct ip *dv4hdr = (struct ip*) (buffer + blen), *sv4hdr = (struct ip*) (frame + ipv4start);
-		
+	
+#ifdef HAVE_LINUX_IP_SOCKET
 		if (priv->routed) { // Create the right sockaddr_in in routed mode
 			struct sockaddr_in *sin = (struct sockaddr_in *) &addr;
 			addrlen = sizeof(struct sockaddr_in);
@@ -268,6 +259,7 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 			memcpy(&sin->sin_addr, &sv4hdr->ip_src, sizeof(struct in_addr));
 			sin->sin_port = shdr->source;
 		}
+#endif
 
 		dv4hdr->ip_src = sv4hdr->ip_dst;
 		dv4hdr->ip_dst = sv4hdr->ip_src;
@@ -338,14 +330,21 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 
 		dhdr->check = ~mysum;
 
-
-		// Inject the packets
-		if(sendto(priv->socket, buffer, blen, 0, (struct sockaddr *) &addr, addrlen) <= 0) {
-			dprint("Error while inject TCP RST : %s\n", strerror(errno));
-			return 0;
+		if (!priv->routed) {
+			if (libnet_write_link (priv->lc, buffer, blen) == -1) {
+				dprint("Error while inject TCP RST : %s\n", strerror(errno));
+				return 0;
+			}
 		}
-
-
+#ifdef HAVE_LINUX_IP_SOCKET
+		else {
+			// Inject the packets
+			if(sendto(priv->socket, (u_int8_t *)buffer, blen, 0, (struct sockaddr *) &addr, addrlen) <= 0) {
+				dprint("Error while inject TCP RST : %s\n", strerror(errno));
+				return 0;
+			}
+		}
+#endif
 		dhdr->seq += htonl(ntohl(dhdr->seq) + ntohs(shdr->window));
 
 
@@ -363,8 +362,16 @@ int target_close_tcpkill(struct target *t) {
 		return 0;
 
 	struct target_priv_tcpkill *priv = t->target_priv;
-
-	close(priv->socket);
+	
+	if (!priv->routed) {
+		if (priv->lc)
+			libnet_destroy(priv->lc);
+	}
+#ifdef HAVE_LINUX_IP_SOCKET
+	else {
+		close(priv->socket);
+	}
+#endif
 	free(priv);
 	t->target_priv = NULL;
 

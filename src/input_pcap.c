@@ -47,7 +47,7 @@ int input_register_pcap(struct input_reg *r, struct input_functions *i_funcs) {
 	r->close = input_close_pcap;
 	r->cleanup = input_cleanup_pcap;
 
-	return 1;
+	return I_OK;
 }
 
 
@@ -58,7 +58,7 @@ int input_init_pcap(struct input *i) {
 
 	copy_params(i->params_value, input_pcap_params, 1, PARAMS_NUM);
 
-	return 1;
+	return I_OK;
 
 }
 
@@ -69,7 +69,7 @@ int input_cleanup_pcap(struct input *i) {
 	if (i->input_priv)
 		free(i->input_priv);
 
-	return 1;
+	return I_OK;
 
 };
 
@@ -89,7 +89,7 @@ int input_open_pcap(struct input *i) {
 		p->p = pcap_open_offline(filename, errbuf);
 		if (!p->p) {
 			dprint("Error opening file %s for reading\n", filename);
-			return -1;
+			return I_ERR;
 		}
 	} else {
 		char interface[256];
@@ -107,7 +107,7 @@ int input_open_pcap(struct input *i) {
 		p->p = pcap_open_live(interface, snaplen, promisc, 0, errbuf);
 		if (!p->p) {
 			dprint("Error when opening interface %s : %s\n", interface, errbuf);
-			return -1;
+			return I_ERR;
 		}
 	}
 
@@ -146,7 +146,7 @@ int input_open_pcap(struct input *i) {
 		dprint("Pcap opened successfullly\n");
 	else {
 		dprint("Error while opening pcap input\n");
-		return 1;
+		return I_ERR;
 	}
 	
 	return pcap_get_selectable_fd(p->p);
@@ -170,7 +170,7 @@ int input_read_pcap(struct input *i, unsigned char *buffer, unsigned int bufflen
 
 	if (result < 0) {
 		dprint("Error while reading packet.\n");
-		return -1;
+		return I_ERR;
 	}
 
 	if (bufflen < phdr->caplen) {
@@ -188,10 +188,10 @@ int input_close_pcap(struct input *i) {
 
 	struct input_priv_pcap *p = i->input_priv;
 	if (!p)
-		return 0;
+		return I_ERR;
 
 	if (!p->p)
-		return 1;
+		return I_OK;
 
 	struct pcap_stat ps;
 	if (!pcap_stats(p->p, &ps)) 
@@ -199,6 +199,6 @@ int input_close_pcap(struct input *i) {
 
 	pcap_close(p->p);
 
-	return 1;
+	return I_OK;
 
 }

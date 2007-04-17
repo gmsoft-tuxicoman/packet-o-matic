@@ -27,44 +27,62 @@
 #include "modules_common.h"
 #include "input.h"
 
-
+/// The PID of the DOCSIS MPEG stream
 #define DOCSIS_PID 0x1FFE
 
+/// Length of a MPEG packet
 #define MPEG_TS_LEN 188
 
+/// Buffer to temporarily store parts of DOCSIS packets
 #define TEMP_BUFF_LEN 2000
 
-
+/// Private structure of the docsis input.
 struct input_priv_docsis {
 
-	int frontend_fd;
-	int demux_fd;
-	int dvr_fd;
-	unsigned char *temp_buff;
-	int output_layer;
-	unsigned int temp_buff_len;
-	unsigned char last_seq;
+	int frontend_fd; ///< The fd of /dev/dvb/adapterX/frontendX.
+	int demux_fd; ///< The fd of /dev/dvb/adapterX/demuxX.
+	int dvr_fd; ///< The fd of /dev/dvb/adapterX/dvrX.
+	unsigned char *temp_buff; ///< A small temporary buffer.
+	int output_layer; ///< The type of packet we output.
+	unsigned int temp_buff_len; ///< The length of our temporary buffer.
+	unsigned char last_seq; ///< Last MPEG sequence in the stream used count packet loss.
 
 	// stats stuff
-	unsigned long total_packets;
-	unsigned long missed_packets;
-	unsigned long error_packets;
-	unsigned long invalid_packets;
+	unsigned long total_packets; ///< Total packet read.
+	unsigned long missed_packets; ///< Number of missed packets.
+	unsigned long error_packets; ///< Number of erroneous packets.
+	unsigned long invalid_packets; ///< Number of invalid packets.
 
 
 };
 
-
+/// Init the docsis modules
 int input_init_docsis(struct input *i);
+
+/// Open the cable interface to read from it.
 int input_open_docsis(struct input *i);
+
+/// Returns the selected output layer. Either docsis, ethernet or atm.
 int input_get_first_layer_docsis(struct input *i);
+
+/// Read packets from the DOCSIS cable interface and saves it into buffer.
 int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int bufflen);
+
+/// Close the cable interface.
 int input_close_docsis(struct input *i);
+
+/// Cleanup the docsis input.
 int input_cleanup_docsis(struct input *i);
 
+
+
+/// Reads an MPEG packet from the cable interface.
 int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_docsis *p);
-int input_docsis_scan_downstream(int eurodocsis);
+
+/// Tune to the given frequency, symbole rate and modulation.
 int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symboleRate, fe_modulation_t modulation);
+
+/// Check the validity of the MPEG stream to make sure we tuned on a DOCSIS stream.
 int input_docsis_check_downstream(struct input *i);
 
 #endif

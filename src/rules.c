@@ -63,6 +63,19 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 				l->infos = layer_info_pool_get(l);
 				l->next = layer_pool_get();
 				l->next->type = next_layer;
+
+				if (helper_need_help(frame, l)) // If it needs help, we don't process it
+					return 0;
+			
+				// check the calculated size and adjust the max len of the packet
+				// the initial size may be too long as some padding could have been introduced by the input
+
+				if (l->prev && (l->payload_start + l->payload_size > l->prev->payload_start + l->prev->payload_size || l->payload_size > l->prev->payload_size)) {
+					ndprint("Error, new len greater than the computed maximum len or buffer (maximum %u, new %u, layer %s). Not considering packet\n",
+						l->prev && l->payload_start + l->payload_size, l->prev->payload_start + l->prev->payload_size, match_get_name(l->type));
+					return 0;
+				}
+
 			}
 
 		}

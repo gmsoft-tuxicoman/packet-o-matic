@@ -18,18 +18,22 @@
  *
  */
 
-
 #ifndef __TARGET_INJECT_H__
 #define __TARGET_INJECT_H__
 
+#undef HAVE_LINUX_IP_SOCKET /* testing purpose */
+
+#ifdef HAVE_LINUX_IP_SOCKET
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <linux/if_ether.h>
-#include <unistd.h>
-#include <string.h>
 #include <sys/socket.h>
 #include <netpacket/packet.h>
+#endif
+#include <unistd.h>
+#include <string.h>
 #include <net/ethernet.h>
+#include <libnet.h>
 
 
 #include "modules_common.h"
@@ -38,7 +42,11 @@
 struct target_priv_tcpkill {
 
 	int routed; // 1 if mode is routed
+#ifdef HAVE_LINUX_IP_SOCKET
 	int socket;
+#endif
+	char errbuf[LIBNET_ERRBUF_SIZE];
+	libnet_t *lc;
 	int ifindex;
 	unsigned int severity;
 };

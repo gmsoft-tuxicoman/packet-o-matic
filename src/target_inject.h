@@ -22,14 +22,9 @@
 #ifndef __TARGET_INJECT_H__
 #define __TARGET_INJECT_H__
 
-#include <sys/ioctl.h>
-#include <net/if.h>
-#include <linux/if_ether.h>
 #include <unistd.h>
 #include <string.h>
-#include <sys/socket.h>
-#include <netpacket/packet.h>
-#include <net/ethernet.h>
+#include <libnet.h>
 
 
 #include "modules_common.h"
@@ -37,8 +32,8 @@
 
 struct target_priv_inject {
 
-	int socket;
-	struct sockaddr_ll sal;
+	libnet_t *lc;
+	char errbuf[LIBNET_ERRBUF_SIZE];
 	unsigned int size;
 };
 

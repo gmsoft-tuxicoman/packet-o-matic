@@ -147,7 +147,7 @@ int helper_need_help_ipv4(void *frame, struct layer *l) {
 				dprint("%s: %s, ", li->name, buff);
 			li = li->next;
 		}
-		dprint("id: %u, frag_start: %u, frag_size: %u, size: %u]\n", ntohs(hdr->ip_id), frag_start, (unsigned int) frag_size, l->prev->payload_size);
+		dprint("frag_off: 0x%X, id: %u, frag_start: %u, frag_size: %u, size: %u]\n", frag_off, ntohs(hdr->ip_id), frag_start, (unsigned int) frag_size, l->prev->payload_size);
 
 		return 1;
 	}

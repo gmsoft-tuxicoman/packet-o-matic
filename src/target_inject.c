@@ -30,7 +30,7 @@
 #define PARAMS_NUM 1
 
 char *target_inject_params[PARAMS_NUM][3] = {
-	{ "interface", "eth0", "interface to inject packets on"},
+	{ "interface", "eth0", "name or ip address of interface to inject packets on"},
 };
 
 int match_ethernet_id;
@@ -78,14 +78,7 @@ int target_init_inject(struct target *t) {
 	struct target_priv_inject *priv = malloc(sizeof(struct target_priv_inject));
 	bzero(priv, sizeof(struct target_priv_inject));
 
-	priv->socket = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-
-	if (priv->socket == -1)
-		return 0;
-
 	t->target_priv = priv;
-	
-	
 	
 	return 1;
 }
@@ -100,21 +93,13 @@ int target_open_inject(struct target *t) {
 		return 0;
 	}
 
-	
-	// find out the interface number
-	struct ifreq req;
-	strcpy(req.ifr_name, t->params_value[0]);
-	if (ioctl(priv->socket, SIOCGIFINDEX, &req)) {
-		dprint("Interface %s not found\n", t->params_value[0]);
+	priv->lc = libnet_init (LIBNET_LINK_ADV, t->params_value[0], priv->errbuf);
+	if (!priv->lc) {
+		dprint("Error, cannot open libnet context: %s", priv->errbuf);
 		return 0;
 	}
-	dprint("Found interface number %u\n", req.ifr_ifindex);
+	dprint("Libnet context initialized for interface %s\n", priv->lc->device);
 
-
-	// Let's say were to send it
-	priv->sal.sll_family = AF_PACKET;
-	priv->sal.sll_halen = 6;
-	priv->sal.sll_ifindex = req.ifr_ifindex;
 
 	return 1;
 }
@@ -123,8 +108,8 @@ int target_process_inject(struct target *t, struct layer *l, void *frame, unsign
 	
 	struct target_priv_inject *priv = t->target_priv;
 
-	if (!priv->socket) {
-		dprint("Error, inject target not opened !\n");
+	if (!priv->lc) {
+		dprint("Error, libnet context not initialized !\n");
 		return 0;
 	}
 	int start = layer_find_start(l, match_ethernet_id);
@@ -136,14 +121,14 @@ int target_process_inject(struct target *t, struct layer *l, void *frame, unsign
 	if (len > MAX_SEGMENT_LEN)
 		len = MAX_SEGMENT_LEN;
 	
-	//memcpy(&priv->sal.sll_addr, frame + 6, 6);
-	if(sendto(priv->socket, frame + start, len - start, 0, (struct sockaddr *)&priv->sal, sizeof(priv->sal)) == len) {
+	if (libnet_write_link (priv->lc, frame + start, len - start) != -1) {
+		
 		priv->size += len;
 		dprint("0x%lx; Packet injected (%u bytes (+%u bytes))!\n", (unsigned long) priv, priv->size, len);
 		return 1;
 	}
-	
-	dprint("Error while injecting packet : %s\n", strerror(errno));
+
+	dprint("Error while injecting packet : %s\n", libnet_geterror(priv->lc));
 	return 0;
 
 }
@@ -157,7 +142,11 @@ int target_close_inject(struct target *t) {
 
 	dprint("0x%lx; INJECT : %u bytes injected\n", (unsigned long) priv, priv->size);
 
-	close(priv->socket);
+	if (priv->lc) {
+
+		/* free libnet context */
+		libnet_destroy(priv->lc);
+	}
 	free(priv);
 	t->target_priv = NULL;
 

@@ -28,32 +28,34 @@
 
 #include "layer.h"
 
-
+/// save infos about a match instance
 struct match {
-	unsigned int match_type; // Type of match
-	void *match_priv;
-	char **params_value;
+	unsigned int match_type; ///< type of match
+	void *match_priv; ///< internal memory of the match
+	char **params_value; ///< values of the parameters
 };
 
+/// save infos about a registered match
 struct match_reg {
 
-	char *match_name;
-	unsigned int match_type;
-	void *dl_handle;
-	char **params_name;
-	char **params_help;
-	int (*init) (struct match *m);
-	int (*reconfig) (struct match *m);
-	int (*identify) (struct layer*, void*, unsigned int, unsigned int);
-	int (*eval) (struct match*, void*, unsigned int, unsigned int, struct layer*);
-	int (*cleanup) (struct match *m);
-	int (*unregister) (struct match_reg *r);
+	char *match_name; ///< name of the match
+	unsigned int match_type; ///< type of the match
+	void *dl_handle; ///< handle of the library
+	char **params_name; ///< parameter names
+	char **params_help; ///< parameter help string
+	int (*init) (struct match *m); ///< called when creating a new match
+	int (*reconfig) (struct match *m); ///< called when parameters were updated
+	int (*identify) (struct layer*, void*, unsigned int, unsigned int); ///< callled to identify the next layer of a packet
+	int (*eval) (struct match*, void*, unsigned int, unsigned int, struct layer*); ///< called to check if the packet match what we want
+	int (*cleanup) (struct match *m); ///< called when cleaning up the memory of the match
+	int (*unregister) (struct match_reg *r); ///< called when unregistering the match
 
 };
 
+/// provide usefull fonction pointers to the inputs
 struct match_functions {
-	int (*match_register) (const char *);
-	struct layer_info* (*layer_info_register) (unsigned int match_type, char *name, unsigned int flags);
+	int (*match_register) (const char *); ///< register a match
+	struct layer_info* (*layer_info_register) (unsigned int match_type, char *name, unsigned int flags); ///< add an info to a layer
 };
 
 int match_init();

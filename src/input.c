@@ -23,9 +23,15 @@
 #include "input.h"
 #include "match.h"
 
-struct input_reg *inputs[MAX_INPUT];
-static struct input_functions i_funcs;
+struct input_reg *inputs[MAX_INPUT]; ///< Global variable which contains all the input registered in a table.
+static struct input_functions i_funcs; ///< Variable to hold the function pointers passed to the input.
 
+/**
+ * This function will try to find the module input_<name>.so and
+ * call the function input_<name>_register() from it.
+ * This function should return the input type id on success or I_ERR on failure.
+ * Subsequently, this function behave the same.
+ **/
 int input_register(const char *input_name) {
 
 
@@ -46,7 +52,7 @@ int input_register(const char *input_name) {
 
 
 			if (!register_my_input) {
-				return -1;
+				return I_ERR;
 			}
 
 			struct input_reg *my_input = malloc(sizeof(struct input_reg));
@@ -54,9 +60,9 @@ int input_register(const char *input_name) {
 
 			i_funcs.match_register = match_register;
 			
-			if (!(*register_my_input) (my_input, &i_funcs)) {
+			if ((*register_my_input) (my_input, &i_funcs) != I_OK) {
 				dprint("Error while loading input %s. Could not register input !\n", input_name);
-				return -1;
+				return I_ERR;
 			}
 
 			inputs[i] = my_input;
@@ -73,10 +79,15 @@ int input_register(const char *input_name) {
 
 	}
 
-	return -1;
+	return I_ERR;
 
 }
 
+/**
+ * Allocate and return a struct *input.
+ * It calls the init function of the input module corresponding to the type of module given in input_type.
+ * On failure, it returns NULL.
+ **/
 struct input *input_alloc(int input_type) {
 
 	if (!inputs[input_type]) {
@@ -90,7 +101,7 @@ struct input *input_alloc(int input_type) {
 	i->input_type = input_type;
 	
 	if (inputs[input_type]->init)
-		if (!(*inputs[input_type]->init) (i)) {
+		if ((*inputs[input_type]->init) (i) != I_OK) {
 			free(i);
 			return NULL;
 		}
@@ -98,11 +109,14 @@ struct input *input_alloc(int input_type) {
 	return i;
 }
 
-
+/**
+ * It updates the value in the input structure. It will be parsed usually when opening the input.
+ * Returns I_OK on success and I_ERR on failure.
+ **/
 int input_set_param(struct input *i, char *name, char* value) {
 
 	if (!inputs[i->input_type]->params_name)
-		return 0;
+		return I_ERR;
 
 	int j;
 	for (j = 0; inputs[i->input_type]->params_name[j]; j++) {
@@ -110,54 +124,71 @@ int input_set_param(struct input *i, char *name, char* value) {
 			free(i->params_value[j]);
 			i->params_value[j] = malloc(strlen(value) + 1);
 			strcpy(i->params_value[j], value);
-			return 1;
+			return I_OK;
 		}
 	}
 
 
-	return 0;
+	return I_ERR;
 
 }
 
+/**
+ * Returns a selectable file descriptor
+ * or returns I_ERR on failure.
+ **/
 int input_open(struct input *i) {
 
 	if (!i)
-		return -1;
+		return I_ERR;
 
 	if (inputs[i->input_type] && inputs[i->input_type]->open)
 		return (*inputs[i->input_type]->open) (i);
-	return -1;
+	return I_ERR;
 
 }
 
+/**
+ * Returns I_ERR on failure.
+ **/
 int input_get_first_layer(struct input *i) {
 
 	return (*inputs[i->input_type]->get_first_layer) (i);
 
 }
 
+/**
+ * The buffer used should be at least 1528 bytes for ethernet and 802.1q marking. The argument bufflen is the length of the buffer.
+ * Returns the number of bytes copied. Returns 0 if nothing was read and I_ERR in case of fatal error.
+ **/
 inline int input_read(struct input *i, unsigned char *buffer, unsigned int bufflen) {
 
 	return (*inputs[i->input_type]->read) (i, buffer, bufflen);
 
 }
 
+/**
+ * Returns I_ERR on failure.
+ **/
 int input_close(struct input *i) {
 
 	if (!i)
-		return 0;
+		return I_ERR;
 
 	if (inputs[i->input_type] && inputs[i->input_type]->close)
 		return (*inputs[i->input_type]->close) (i);
 
-	return 1;
+	return I_ERR;
 
 }
 
+/**
+ * Returns I_ERR on failure.
+ **/
 int input_cleanup(struct input *i) {
 
 	if (!i)
-		return 0;
+		return I_ERR;
 
 	if (inputs[i->input_type] && inputs[i->input_type]->cleanup)
 		(*inputs[i->input_type]->cleanup) (i);
@@ -165,10 +196,15 @@ int input_cleanup(struct input *i) {
 
 	free (i);
 	
-	return 1;
+	return I_ERR;
 
 }
 
+/**
+ * This function makes sure that all the memory of the input is remove.
+ * However it doesn't call the cleanup() functions of the input.
+ * Returns I_ERR on failure.
+ **/
 int input_unregister_all() {
 
 	int i = 0;
@@ -190,7 +226,7 @@ int input_unregister_all() {
 
 	}
 
-	return 1;
+	return I_OK;
 
 }
 

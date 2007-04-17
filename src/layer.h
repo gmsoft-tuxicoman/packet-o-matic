@@ -37,35 +37,38 @@
 #define LAYER_INFO_PRINT_HEX	0x0100
 #define LAYER_INFO_PRINT_ZERO	0x1000
 
-
+/// a info can have multiple values
 union layer_info_val_t {
-	char *c;
-	int32_t i32;
-	uint32_t ui32;
-	int64_t i64;
-	uint64_t ui64;
-	double d;
+	char *c; ///< used with LAYER_INFO_TYPE_STRING or LAYER_INFO_TYPE_CUSTOM
+	int32_t i32; ///< used with LAYER_INFO_TYPE_INT32
+	uint32_t ui32; ///< used with LAYER_INFO_TYPE_UINT32
+	int64_t i64; ///< used with LAYER_INFO_TYPE_INT64
+	uint64_t ui64; ///< used with LAYER_INFO_TYPE_UINT64
+	double d; ///< used with LAYER_INFO_TYPE_DOUBLE
 };
 
+/// save info about a particular info of a layer
 struct layer_info {
 
-	char *name;
-	unsigned int flags;
-	union layer_info_val_t val;
-	struct layer_info *next;
+	char *name; ///< name of the info
+	unsigned int flags; ///< flags used when displaying it
+	union layer_info_val_t val; ///< value
+	struct layer_info *next; ///< next info for this layer
 
-	int (*snprintf) (char *buff, unsigned int len, struct layer_info *inf);
+	int (*snprintf) (char *buff, unsigned int len, struct layer_info *inf); ///< custom snprintf function for this info
 
 };
 
-struct layer {
-	struct layer *next;
-	struct layer *prev;
-	int type;
-	unsigned int payload_start;
-	unsigned int payload_size;
 
-	struct layer_info *infos;
+/// contains all the info of a layer
+struct layer {
+	struct layer *next; ///< next layer in the packet
+	struct layer *prev; ///< previous layer in the packet
+	int type; ///< type of this layer
+	unsigned int payload_start; ///< start of the payload
+	unsigned int payload_size; ///< size of the payload
+
+	struct layer_info *infos; ///< infos associated with this layer
 };
 
 

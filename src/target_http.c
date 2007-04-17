@@ -28,7 +28,7 @@
 
 #include "target_http.h"
 
-#define MIME_TYPES_COUNT 25
+#define MIME_TYPES_COUNT 28
 
 char *mime_types[MIME_TYPES_COUNT][2] = {
 
@@ -54,6 +54,9 @@ char *mime_types[MIME_TYPES_COUNT][2] = {
 	{ "application/x-shockwave-flash", "swf" },
 	{ "video/flv", "flv" },
 	{ "video/mpeg", "mpg" },
+	{ "video/x-ms-asf", "asf" },
+	{ "video/x-msvideo", "avi" },
+	{ "audio/mpeg", "mp3" },
 	{ "application/x-rar-compressed", "rar" },
 	{ "application/x-www-urlform-encoded", "url" },
 	{ "text/calendar", "cal" },

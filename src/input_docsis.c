@@ -37,6 +37,7 @@
 #include "input_docsis.h"
 #include "match_docsis.h" // For docsis header definition
 
+/// We use a bigger buffer size of the demux interface. This way we can cope with some burst.
 #define DEMUX_BUFFER_SIZE 2097152 // 2Megs
 
 #define PARAMS_NUM 9
@@ -55,6 +56,7 @@ char *input_docsis_params[PARAMS_NUM][3] = {
 
 int match_ethernet_id, match_docsis_id, match_atm_id;
 
+/// Register input_docsis
 int input_register_docsis(struct input_reg *r, struct input_functions *i_funcs) {
 
 
@@ -73,10 +75,10 @@ int input_register_docsis(struct input_reg *r, struct input_functions *i_funcs) 
 	match_atm_id = (*i_funcs->match_register) ("atm");
 	match_docsis_id = (*i_funcs->match_register) ("docsis");
 
-	return 1;
+	return I_OK;
 }
 
-
+/** Always returns I_OK. */
 int input_init_docsis(struct input *i) {
 
 	i->input_priv = malloc(sizeof(struct input_priv_docsis));
@@ -88,11 +90,11 @@ int input_init_docsis(struct input *i) {
 
 	copy_params(i->params_value, input_docsis_params, 1, PARAMS_NUM);
 
-
-	return 1;
+	return I_OK;
 
 }
 
+/** Always returns I_OK */
 int input_cleanup_docsis(struct input *i) {
 
 	clean_params(i->params_value, PARAMS_NUM);
@@ -101,10 +103,14 @@ int input_cleanup_docsis(struct input *i) {
 	free(p->temp_buff);
 	free(i->input_priv);
 
-	return 1;
+	return I_OK;
 
 };
 
+/**
+ * If a frequency is not specified, it will scan for a tuneable freq.
+ * Returns I_ERR on failure or a file descriptor useable with select().
+ **/
 int input_open_docsis(struct input *i) {
 
 	struct input_priv_docsis *p = i->input_priv;
@@ -120,7 +126,7 @@ int input_open_docsis(struct input *i) {
 		p->output_layer = match_docsis_id;
 	} else {
 		dprint("Invalid output layer :%s\n", i->params_value[5]);
-		return -1;
+		return I_ERR;
 	}
 
 
@@ -136,7 +142,7 @@ int input_open_docsis(struct input *i) {
 		modulation = QAM_256;
 	else {
 		dprint("Invalid modulation. Valid modulation are QAM64 or QAM256\n");
-		return -1;
+		return I_ERR;
 	}	
 	
 	// Open the frontend
@@ -153,7 +159,7 @@ int input_open_docsis(struct input *i) {
 	p->frontend_fd = open(frontend, O_RDWR);
 	if (p->frontend_fd == -1) {
 		dprint("Unable to open frontend\n");
-		return -1;
+		return I_ERR;
 	}
 
 	// Check if we are really using a DVB-C device
@@ -161,12 +167,12 @@ int input_open_docsis(struct input *i) {
 	struct dvb_frontend_info info;
 	if (ioctl(p->frontend_fd, FE_GET_INFO, &info) != 0) {
 		dprint("Unable to get frontend type\n");
-		return -1;
+		return I_ERR;
 	}
 
 	if (info.type != FE_QAM) {
 		dprint("Error, device %s is not a DVB-C device\n", frontend);
-		return -1;
+		return I_ERR;
 	}
 
 	// Open the demux
@@ -177,7 +183,7 @@ int input_open_docsis(struct input *i) {
 	p->demux_fd = open(demux, O_RDWR);
 	if (p->demux_fd == -1) {
 		dprint("Unable to open demux\n");
-		return -1;
+		return I_ERR;
 	}
 
 	// Let's use a larger buffer
@@ -196,7 +202,7 @@ int input_open_docsis(struct input *i) {
 
 	if (ioctl(p->demux_fd, DMX_SET_PES_FILTER, &filter) != 0) {
 		dprint("Unable to set demuxer\n");
-		return -1;
+		return I_ERR;
 	}
 
 
@@ -209,7 +215,7 @@ int input_open_docsis(struct input *i) {
 	p->dvr_fd = open(dvr, O_RDONLY);
 	if (p->dvr_fd == -1) {
 		dprint("Unable to open dvr\n");
-		return -1;
+		return I_ERR;
 	}
 
 
@@ -235,11 +241,11 @@ int input_open_docsis(struct input *i) {
 		
 		if (tuned != 1) {
 			dprint("Error while tuning to the right freq.\n");
-			return -1;
+			return I_ERR;
 		}
-		if (!input_docsis_check_downstream(i)) {
+		if (input_docsis_check_downstream(i) == I_ERR) {
 			dprint("Error, no DOCSIS SYNC message received within timeout\n");
-			return -1;
+			return I_ERR;
 		}
 
 	} else  { // No frequency supplied. Scanning for downstream
@@ -275,7 +281,7 @@ int input_open_docsis(struct input *i) {
 
 			int res = input_docsis_tune(i, j, symbolRate, modulation);
 			if (res == -1)
-				return -1;
+				return I_ERR;
 			else if (res == 0) {
 				if (need_reinit) {
 					// Let's close and reopen the frontend to reinit it
@@ -295,7 +301,7 @@ int input_open_docsis(struct input *i) {
 
 			dprint("Frequency tunned. Looking up for SYNC messages ...\n");
 
-			if (!input_docsis_check_downstream(i))
+			if (input_docsis_check_downstream(i) == I_ERR)
 				continue;
 
 			dprint("Downstream acquired !\n");
@@ -312,7 +318,7 @@ int input_open_docsis(struct input *i) {
 
 	if (!tuned) {
 		dprint("Failed to open docsis input\n");
-		return -1;
+		return I_ERR;
 	}
 
 	dprint("Docsis stream opened successfullly\n");
@@ -320,6 +326,12 @@ int input_open_docsis(struct input *i) {
 	return p->dvr_fd;
 }
 
+
+/**
+ * This function will check all the field in the MPEG packet.
+ * It will also make sure that we receive at least 10 DOCSIS SYNC messages in 2 seconds.
+ * Returns I_OK on success and I_ERR on failure.
+ **/
 
 int input_docsis_check_downstream(struct input *i) {
 
@@ -355,7 +367,7 @@ int input_docsis_check_downstream(struct input *i) {
 		switch (res) {
 			case -2:
 				dprint("Error while reading MPEG stream\n");
-				return 0;
+				return I_ERR;
 			
 			case -1:
 			case 0:
@@ -404,15 +416,18 @@ int input_docsis_check_downstream(struct input *i) {
 		count++;
 
 		if (count >= 10)
-			return 1;
+			return I_OK;
 		
 	} 
 
 	dprint("Did not receive SYNC message within timeout\n");
-	return 0;
+	return I_ERR;
 }
 
-
+/**
+ * This function will try to obtain a lock for tune_timeout seconds.
+ * Returns 0 if not tuned in, 1 on success and -1 on fatal error.
+ **/
 int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symbolRate, fe_modulation_t modulation) {
 	
 	fe_status_t status;
@@ -503,7 +518,9 @@ int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symbolRate, 
 	return 0;
 
 }
-
+/**
+ * If the current layer can't be determined, it returns -1.
+ **/
 int input_get_first_layer_docsis(struct input *i) {
 
 	struct input_priv_docsis *p = i->input_priv;
@@ -511,12 +528,9 @@ int input_get_first_layer_docsis(struct input *i) {
 
 }
 
-
-/*
- * buff : mpeg_buffer to fill of size MPEG_TS_LEN
- *
- * returns 0 on success, 1 if pusi is set, -1 if it's and invalid packet, -2 if there was an error
- *
+/**
+ * Fill buff with an MPEG packet of MPEG_TS_LEN bytes and check it's validity.
+ * Returns 0 on success, 1 if PUSI is set, -1 if it's and invalid packet, -2 if there was an error while reading.
  */
 
 int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_docsis *p) {
@@ -587,6 +601,10 @@ int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_docsis *
 
 }
 
+/**
+ * Returns the number of bytes copied into the buffer. Returns 0 if nothing was read and I_ERR in case of fatal error.
+ **/
+
 int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int bufflen) {
 
 	struct input_priv_docsis *p = i->input_priv;
@@ -648,7 +666,7 @@ int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int buffl
 			dlen = ntohs(dhdr->len) + sizeof(struct docsis_hdr);
 
 		if (res == -2) // Error while reading
-			return -1;
+			return I_ERR;
 
 		p->last_seq = (p->last_seq + 1) & 0xF;
 		while (p->last_seq != (mpeg_buff[3] & 0xF)) {
@@ -738,7 +756,7 @@ int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int buffl
 				continue;
 
 			default: // Should not be reached
-				return -1;
+				return I_ERR;
 
 		}
 
@@ -804,11 +822,14 @@ int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int buffl
 
 }
 
+/**
+ * Returns I_OK on success and I_ERR on failure.
+ **/
 int input_close_docsis(struct input *i) {
 
 	struct input_priv_docsis *p = i->input_priv;
 	if (!p)
-		return 0;
+		return I_ERR;
 	
 	close(p->frontend_fd);
 	close(p->demux_fd);
@@ -829,6 +850,6 @@ int input_close_docsis(struct input *i) {
 
 
 
-	return 1;
+	return I_OK;
 
 }

@@ -79,6 +79,10 @@ AC_SUBST(d[LIB_DL])
 AC_CHECK_HEADER([pcap.h])
 AC_CHECK_LIB([pcap], [pcap_open_offline, pcap_open_dead, pcap_close], [want_pcap=yes], [want_pcap=no])
 
+AC_CHECK_HEADER([libnet.h])
+AC_CHECK_LIB([net], [libnet_init, libnet_write_link], [want_libnet=yes], [want_libnet=no])
+
+AC_CHECK_HEADERS([linux/socket.h netpacket/packet.h], [want_netpacket=yes], [want_netpacket=no])
 
 # Checks for packages.
 PKG_CHECK_MODULES(libxml2, [libxml-2.0], [], [AC_MSG_ERROR([libxml2 is required to build this program])])
@@ -104,6 +108,18 @@ then
 	TARGET_OBJS="$TARGET_OBJS target_pcap.la"
 fi
 
+# Check for Libnet
+if test "x$want_libnet" = "xyes"
+then
+	TARGET_OBJS="$TARGET_OBJS target_inject.la target_tcpkill.la"
+fi
+
+# Check for Linux' raw socket iface
+if test "x$want_netpacket" = "xyes"
+then
+	AC_DEFINE(HAVE_LINUX_IP_SOCKET, , [Linux' raw socket iface])
+fi
+
 # Check for DVB
 AC_CHECK_HEADERS([linux/dvb/dmx.h linux/dvb/frontend.h], [INPUT_DOCSIS='input_docsis.la'])
 INPUT_OBJS="$INPUT_DOCSIS $INPUT_OBJS"
@@ -112,10 +128,6 @@ if test "x$INPUT_OBJS" = "x"
 then
 	AC_MSG_ERROR([No input could be compiled.])
 fi
-
-# Check for Linux' raw socket iface
-AC_CHECK_HEADERS([linux/socket.h netpacket/packet.h], [TARGET_RAW_SOCKET='target_tcpkill.la target_inject.la'])
-TARGET_OBJS="$TARGET_OBJS $TARGET_RAW_SOCKET"
 
 # Check for Linux' tun header
 AC_CHECK_HEADERS([linux/if_tun.h], [TARGET_TAP='target_tap.la'])

@@ -77,4 +77,18 @@
 	</matches>
 </rule>
 
+<!-- rule to inject all ipv4 packet to lo interface -->
+<rule>
+        <target type="inject">
+                <!-- could be either ip or eth name -->
+                <param name="interface">127.0.0.1</param>
+        </target>
+
+	<!-- all ipv4 traffic -->
+        <matches>
+                <match type="ethernet"/>
+                <match type="ipv4"/>
+        </matches>
+</rule>
+
 </config>

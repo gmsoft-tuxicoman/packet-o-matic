@@ -173,7 +173,7 @@ int main(int argc, char *argv[]) {
 
 	int fd = input_open(c->input);
 
-	if (fd == -1) {
+	if (fd == I_ERR) {
 		dprint("Error while opening input\n");
 		goto err;
 	}
@@ -214,7 +214,7 @@ int main(int argc, char *argv[]) {
 			continue;
 
 		len = input_read(c->input, packet, SNAPLEN);
-		if (len == -1) {
+		if (len == I_ERR) {
 			dprint("Error while reading. Abording\n");
 			break;
 		}

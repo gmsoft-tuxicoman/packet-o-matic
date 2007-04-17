@@ -55,7 +55,7 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 	}
 	ndprint("Parsing input of type %s\n", input_type);
 	int it = input_register(input_type);
-	if (it == -1) {
+	if (it == I_ERR) {
 		dprint("Could not load input %s !\n", input_type);
 		xmlFree(input_type);
 		return NULL;
@@ -72,7 +72,7 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 				xmlFree(param_type);
 				continue;
 			}
-			if (!input_set_param(ip, param_type, value))
+			if (input_set_param(ip, param_type, value) == I_ERR)
 				dprint("No parameter %s for input %s\n", param_type, input_type);
 
 			xmlFree(param_type);

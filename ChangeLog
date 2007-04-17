@@ -1,3 +1,12 @@
+* 2007/04/17 Guy Martin <gmsoft@tuxicoman.be>
+Added documentation support using doxygen.
+Already documented the inputs.
+Modify those to use I_OK and I_ERR as return value.
+
+* 2007/04/16 Thomas Gouverneur <wildcat@espix.org>
+Patched target_inject.c to use libnet to inject packets.
+Patched target_tcpkill.c to use both linux' raw socket and libnet.
+
 * 2007/03/30 Guy Martin <gmsoft@tuxicoman.be>
 Added target_http.c. Fixed typo in target_pcap.c.
 Fix segfaults in conntrack.c.

@@ -31,11 +31,11 @@
 #include "input.h"
 
 
-
+/// Private structure of the pcap input.
 struct input_priv_pcap {
 
-	pcap_t *p;
-	int output_layer;
+	pcap_t *p; /// Pcap instance
+	int output_layer; /// Layer type to use
 
 };
 

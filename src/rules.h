@@ -24,11 +24,11 @@
 #define __RULES_H__
 
 
-
+/// a rule_node containes two next node and a possible match
 struct rule_node {
-	struct rule_node *a; // next rule to match
-	struct rule_node *b; // possible other rule to match
-	struct match *match; // How to match the current rule
+	struct rule_node *a; ///< next rule to match
+	struct rule_node *b; ///< possible other rule to match
+	struct match *match; ///< how to match the current rule
 
 };
 
@@ -37,12 +37,12 @@ struct rule_node {
 #include "match.h"
 #include "target.h"
 
-
+/// each rule_list contains the first rule_node and target
 struct rule_list {
-	struct rule_list *next; // next rule to process in the list
-	struct rule_node *node; // rule node to see if we can match the packet
-	struct target *target; // what to do if we match
-	unsigned int result; // true if the packet has to be processed
+	struct rule_list *next; ///< next rule to process in the list
+	struct rule_node *node; ///< rule node to see if we can match the packet
+	struct target *target; ///< what to do if we match
+	unsigned int result; ///< true if the packet has to be processed
 };
 
 int rules_init();
