@@ -52,12 +52,12 @@ int match_register_tcp(struct match_reg *r, struct match_functions *m_funcs) {
 
 	match_undefined_id = (*m_functions->match_register) ("undefined");
 
-	match_sport_info = (*m_funcs->layer_info_register) (r->match_type, "sport", LAYER_INFO_TYPE_UINT32);
-	match_dport_info = (*m_funcs->layer_info_register) (r->match_type, "dport", LAYER_INFO_TYPE_UINT32);
-	match_flags_info = (*m_funcs->layer_info_register) (r->match_type, "flags", LAYER_INFO_TYPE_UINT32);
+	match_sport_info = (*m_funcs->layer_info_register) (r->type, "sport", LAYER_INFO_TYPE_UINT32);
+	match_dport_info = (*m_funcs->layer_info_register) (r->type, "dport", LAYER_INFO_TYPE_UINT32);
+	match_flags_info = (*m_funcs->layer_info_register) (r->type, "flags", LAYER_INFO_TYPE_UINT32);
 	match_flags_info->snprintf = match_layer_info_snprintf_tcp;
-	match_seq_info = (*m_funcs->layer_info_register) (r->match_type, "seq", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
-	match_ack_info = (*m_funcs->layer_info_register) (r->match_type, "ack", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
+	match_seq_info = (*m_funcs->layer_info_register) (r->type, "seq", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
+	match_ack_info = (*m_funcs->layer_info_register) (r->type, "ack", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
 
 	return 1;
 

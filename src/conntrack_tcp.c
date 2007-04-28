@@ -57,7 +57,7 @@ uint32_t conntrack_get_hash_tcp(void *frame, unsigned int start, unsigned int fl
 	uint32_t tcp_hash;
 	
 	switch (flags) {
-		case CT_DIR_NONE:
+		case CT_DIR_ONEWAY:
 		case CT_DIR_FWD:
 			tcp_hash = jhash_1word((hdr->th_sport << 16) |  hdr->th_dport , INITVAL);
 			break;
@@ -107,7 +107,7 @@ int conntrack_doublecheck_tcp(void *frame, unsigned int start, void *priv, unsig
 	p = priv;
 
 	switch (flags) {
-		case CT_DIR_NONE:
+		case CT_DIR_ONEWAY:
 		case CT_DIR_FWD:
 			if (p->sport != hdr->th_sport || p->dport != hdr->th_dport ) 
 				return 0;

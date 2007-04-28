@@ -48,7 +48,7 @@ uint32_t conntrack_get_hash_ipv6(void *frame, unsigned int start, unsigned int f
 	char addrs[32];
 	
 	switch (flags) {
-		case CT_DIR_NONE:
+		case CT_DIR_ONEWAY:
 		case CT_DIR_FWD:
 			memcpy(addrs, hdr->ip6_src.s6_addr, 16);
 			memcpy(addrs + 16, hdr->ip6_dst.s6_addr, 16);
@@ -87,7 +87,7 @@ int conntrack_doublecheck_ipv6(void *frame, unsigned int start, void *priv, unsi
 
 	switch (flags) {
 
-		case CT_DIR_NONE:
+		case CT_DIR_ONEWAY:
 		case CT_DIR_FWD:
 			for (i = 0; i < 16; i++)
 				if (hdr->ip6_src.s6_addr[i] != p->saddr.s6_addr[i] || hdr->ip6_dst.s6_addr[i] != p->daddr.s6_addr[i])

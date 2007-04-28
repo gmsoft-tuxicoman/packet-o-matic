@@ -48,9 +48,9 @@ int match_register_docsis(struct match_reg *r, struct match_functions *m_funcs) 
 	match_atm_id = (*m_functions->match_register) ("atm");
 	match_ethernet_id = (*m_functions->match_register) ("ethernet");
 
-	match_fc_type_info = (*m_funcs->layer_info_register) (r->match_type, "fc_type", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_ZERO);
-	match_fc_parm_info = (*m_funcs->layer_info_register) (r->match_type, "fc_parm", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_ZERO);
-	match_ehdr_on_info = (*m_funcs->layer_info_register) (r->match_type, "ehdr_on", LAYER_INFO_TYPE_UINT32);
+	match_fc_type_info = (*m_funcs->layer_info_register) (r->type, "fc_type", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_ZERO);
+	match_fc_parm_info = (*m_funcs->layer_info_register) (r->type, "fc_parm", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_ZERO);
+	match_ehdr_on_info = (*m_funcs->layer_info_register) (r->type, "ehdr_on", LAYER_INFO_TYPE_UINT32);
 
 
 	return 1;

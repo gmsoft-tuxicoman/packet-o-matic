@@ -98,7 +98,7 @@ struct input *input_alloc(int input_type) {
 	struct input *i = malloc(sizeof(struct input));
 	bzero(i, sizeof(struct input));
 
-	i->input_type = input_type;
+	i->type = input_type;
 	
 	if (inputs[input_type]->init)
 		if ((*inputs[input_type]->init) (i) != I_OK) {
@@ -115,12 +115,12 @@ struct input *input_alloc(int input_type) {
  **/
 int input_set_param(struct input *i, char *name, char* value) {
 
-	if (!inputs[i->input_type]->params_name)
+	if (!inputs[i->type]->params_name)
 		return I_ERR;
 
 	int j;
-	for (j = 0; inputs[i->input_type]->params_name[j]; j++) {
-		if (!strcmp(inputs[i->input_type]->params_name[j], name)) {
+	for (j = 0; inputs[i->type]->params_name[j]; j++) {
+		if (!strcmp(inputs[i->type]->params_name[j], name)) {
 			free(i->params_value[j]);
 			i->params_value[j] = malloc(strlen(value) + 1);
 			strcpy(i->params_value[j], value);
@@ -142,8 +142,8 @@ int input_open(struct input *i) {
 	if (!i)
 		return I_ERR;
 
-	if (inputs[i->input_type] && inputs[i->input_type]->open)
-		return (*inputs[i->input_type]->open) (i);
+	if (inputs[i->type] && inputs[i->type]->open)
+		return (*inputs[i->type]->open) (i);
 	return I_ERR;
 
 }
@@ -153,7 +153,7 @@ int input_open(struct input *i) {
  **/
 int input_get_first_layer(struct input *i) {
 
-	return (*inputs[i->input_type]->get_first_layer) (i);
+	return (*inputs[i->type]->get_first_layer) (i);
 
 }
 
@@ -163,7 +163,7 @@ int input_get_first_layer(struct input *i) {
  **/
 inline int input_read(struct input *i, unsigned char *buffer, unsigned int bufflen) {
 
-	return (*inputs[i->input_type]->read) (i, buffer, bufflen);
+	return (*inputs[i->type]->read) (i, buffer, bufflen);
 
 }
 
@@ -175,8 +175,8 @@ int input_close(struct input *i) {
 	if (!i)
 		return I_ERR;
 
-	if (inputs[i->input_type] && inputs[i->input_type]->close)
-		return (*inputs[i->input_type]->close) (i);
+	if (inputs[i->type] && inputs[i->type]->close)
+		return (*inputs[i->type]->close) (i);
 
 	return I_ERR;
 
@@ -190,8 +190,8 @@ int input_cleanup(struct input *i) {
 	if (!i)
 		return I_ERR;
 
-	if (inputs[i->input_type] && inputs[i->input_type]->cleanup)
-		(*inputs[i->input_type]->cleanup) (i);
+	if (inputs[i->type] && inputs[i->type]->cleanup)
+		(*inputs[i->type]->cleanup) (i);
 
 
 	free (i);

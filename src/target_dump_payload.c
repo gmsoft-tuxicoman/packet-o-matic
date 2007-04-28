@@ -116,7 +116,7 @@ int target_process_dump_payload(struct target *t, struct layer *l, void *frame, 
 
 		ndprint("%s opened\n", filename);
 
-		(*tg_functions->conntrack_add_priv) (t, cp, l, frame);
+		(*tg_functions->conntrack_add_priv) (t, cp, ce);
 	}
 
 	if (lastl->payload_size == 0)

@@ -35,7 +35,7 @@ int match_register(const char *match_name) {
 
 	for (i = 0; i < MAX_MATCH; i++) {
 		if (matchs[i] != NULL) {
-			if (matchs[i]->match_name && strcmp(matchs[i]->match_name, match_name) == 0) {
+			if (matchs[i]->name && strcmp(matchs[i]->name, match_name) == 0) {
 				return i;
 			}
 		} else {
@@ -53,14 +53,14 @@ int match_register(const char *match_name) {
 
 			
 			matchs[i] = my_match;
-			matchs[i]->match_name = malloc(strlen(match_name) + 1);
-			strcpy(matchs[i]->match_name, match_name);
+			matchs[i]->name = malloc(strlen(match_name) + 1);
+			strcpy(matchs[i]->name, match_name);
 
-			my_match->match_type = i; // Allow the match to know it's number at registration time
+			my_match->type = i; // Allow the match to know it's number at registration time
 
 			if (!(*register_my_match) (my_match, m_funcs)) {
 				dprint("Error while loading match %s. Could not register match !\n", match_name);
-				free(my_match->match_name);
+				free(my_match->name);
 				free(my_match);
 				matchs[i] = NULL;
 				return -1;
@@ -95,7 +95,7 @@ int match_init() {
 char *match_get_name(int match_type) {
 
 	if (matchs[match_type])
-		return matchs[match_type]->match_name;
+		return matchs[match_type]->name;
 	
 	return NULL;
 
@@ -106,7 +106,7 @@ int match_get_type(const char *match_name) {
 
 	int i;
 	for (i = 0; i < MAX_MATCH && matchs[i]; i++) {
-		if (strcmp(matchs[i]->match_name, match_name) == 0)
+		if (strcmp(matchs[i]->name, match_name) == 0)
 			return i;
 	}
 
@@ -124,7 +124,7 @@ struct match *match_alloc(int match_type) {
 	struct match *m = malloc(sizeof(struct match));
 	bzero(m, sizeof(struct match));
 
-	m->match_type = match_type;
+	m->type = match_type;
 	
 	if (matchs[match_type]->init)
 		if (!(*matchs[match_type]->init) (m)) {
@@ -136,18 +136,18 @@ struct match *match_alloc(int match_type) {
 
 int match_set_param(struct match *m, char *name, char *value) {
 
-	if (!matchs[m->match_type]->params_name)
+	if (!matchs[m->type]->params_name)
 		return 0;
 
 	int i;
-	for (i = 0; matchs[m->match_type]->params_name[i]; i++) {
-		if (!strcmp(matchs[m->match_type]->params_name[i], name)) {
+	for (i = 0; matchs[m->type]->params_name[i]; i++) {
+		if (!strcmp(matchs[m->type]->params_name[i], name)) {
 			free(m->params_value[i]);
 			m->params_value[i] = malloc(strlen(value) + 1);
 			strcpy(m->params_value[i], value);
-			if(matchs[m->match_type]->reconfig) {
-				if (!(*matchs[m->match_type]->reconfig) (m)) {
-					dprint("Unable to parse parameter %s (%s) for match %s\n", matchs[m->match_type]->params_name[i], m->params_value[i], matchs[m->match_type]->match_name);
+			if(matchs[m->type]->reconfig) {
+				if (!(*matchs[m->type]->reconfig) (m)) {
+					dprint("Unable to parse parameter %s (%s) for match %s\n", matchs[m->type]->params_name[i], m->params_value[i], matchs[m->type]->name);
 					return 0;
 				}	
 			}
@@ -155,7 +155,7 @@ int match_set_param(struct match *m, char *name, char *value) {
 		}
 	}
 
-	dprint("No parameter %s for match %s\n", matchs[m->match_type]->params_name[i], matchs[m->match_type]->match_name);
+	dprint("No parameter %s for match %s\n", matchs[m->type]->params_name[i], matchs[m->type]->name);
 
 	return 0;
 
@@ -172,8 +172,8 @@ inline int match_identify(struct layer *l, void* frame, unsigned int start, unsi
 
 inline int match_eval(struct match *m, void* frame, unsigned int start, unsigned int len, struct layer *l) {
 
-	if (matchs[m->match_type]->eval)
-		return (*matchs[m->match_type]->eval) (m, frame, start, len, l);
+	if (matchs[m->type]->eval)
+		return (*matchs[m->type]->eval) (m, frame, start, len, l);
 	else
 		return 1;
 
@@ -185,8 +185,8 @@ int match_cleanup_module(struct match *m) {
 	if (!m)
 		return 0;
 
-	if (matchs[m->match_type] && matchs[m->match_type]->cleanup)
-		(*matchs[m->match_type]->cleanup) (m);
+	if (matchs[m->type] && matchs[m->type]->cleanup)
+		(*matchs[m->type]->cleanup) (m);
 	
 
 	free(m);
@@ -225,7 +225,7 @@ int match_unregister(unsigned int match_type) {
 		free(r->params_name);
 		free(r->params_help);
 	}
-	free(r->match_name);
+	free(r->name);
 	dlclose(r->dl_handle);
 	free(r);
 
@@ -251,7 +251,7 @@ void match_print_help() {
 
 
 	for (i = 0; matchs[i]; i++) {
-		printf("* MATCH %s *\n", matchs[i]->match_name);
+		printf("* MATCH %s *\n", matchs[i]->name);
 
 		if (!matchs[i]->params_name) 
 			printf("No parameter for this match\n");

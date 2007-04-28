@@ -34,7 +34,7 @@ int conntrack_register_rtp(struct conntrack_reg *r, struct conntrack_functions *
 	r->doublecheck = conntrack_doublecheck_rtp;
 	r->alloc_match_priv = conntrack_alloc_match_priv_rtp;
 	r->cleanup_match_priv = conntrack_cleanup_match_priv_rtp;
-	r->flags = CT_DIR_NONE;
+	r->flags = CT_DIR_ONEWAY;
 
 	ct_functions = ct_funcs;
 	

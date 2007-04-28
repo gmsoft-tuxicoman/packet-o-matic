@@ -1,3 +1,8 @@
+* 2007/04/27 Thomas Gouverneur <wildcat@espix.org>
+Ported injection and tcpkill to FreeBSD
+Ported match_icmp & match_icmpv6 to FreeBSD
+Minor fix for rules.c
+
 * 2007/04/17 Guy Martin <gmsoft@tuxicoman.be>
 Added documentation support using doxygen.
 Already documented the inputs.

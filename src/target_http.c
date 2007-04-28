@@ -134,11 +134,11 @@ int target_process_http(struct target *t, struct layer *l, void *frame, unsigned
 		bzero(cp, sizeof(struct target_conntrack_priv_http));
 		cp->state = HTTP_HEADER;
 		cp->fd = -1;
-		(*tg_functions->conntrack_add_priv) (t, cp, l, frame);
+		(*tg_functions->conntrack_add_priv) (t, cp, ce);
 	
 	}
 
-	if (ce && cp->direction != CT_DIR_NONE && (ce->direction != cp->direction)) {
+	if (ce && cp->direction != CT_DIR_ONEWAY && (ce->direction != cp->direction)) {
 		dprint("Direction missmatch, %u, %u\n", ce->direction, cp->direction);
 		return 1;
 	}
@@ -252,9 +252,9 @@ int target_process_http(struct target *t, struct layer *l, void *frame, unsigned
 
 					if (!ce)
 						cp->direction = CT_DIR_FWD;
-					else if (ce->direction != CT_DIR_NONE)
+					else if (ce->direction != CT_DIR_ONEWAY)
 						cp->direction = ce->direction;
-					else if (ce->direction == CT_DIR_NONE)
+					else if (ce->direction == CT_DIR_ONEWAY)
 						dprint("WTF ?!?\n");
 
 				} else if (i - lstart == 1 && pload[lstart] == '\r') {

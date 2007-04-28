@@ -56,7 +56,7 @@ uint32_t conntrack_get_hash_ipv4(void *frame, unsigned int start, unsigned int f
 	uint32_t ipv4_hash;
 	
 	switch (flags) {
-		case CT_DIR_NONE:
+		case CT_DIR_ONEWAY:
 		case CT_DIR_FWD:
 			ipv4_hash = jhash_2words(hdr->ip_src.s_addr, hdr->ip_dst.s_addr, INITVAL);
 			break;
@@ -88,7 +88,7 @@ int conntrack_doublecheck_ipv4(void *frame, unsigned int start, void *priv, unsi
 	p = priv;
 	
 	switch (flags) {
-		case CT_DIR_NONE:
+		case CT_DIR_ONEWAY:
 		case CT_DIR_FWD:
 			if (p->saddr != hdr->ip_src.s_addr || p->daddr != hdr->ip_dst.s_addr)
 				return 0;

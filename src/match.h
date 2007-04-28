@@ -30,7 +30,7 @@
 
 /// save infos about a match instance
 struct match {
-	unsigned int match_type; ///< type of match
+	unsigned int type; ///< type of match
 	void *match_priv; ///< internal memory of the match
 	char **params_value; ///< values of the parameters
 };
@@ -38,8 +38,8 @@ struct match {
 /// save infos about a registered match
 struct match_reg {
 
-	char *match_name; ///< name of the match
-	unsigned int match_type; ///< type of the match
+	char *name; ///< name of the match
+	unsigned int type; ///< type of the match
 	void *dl_handle; ///< handle of the library
 	char **params_name; ///< parameter names
 	char **params_help; ///< parameter help string

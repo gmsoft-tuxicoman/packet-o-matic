@@ -57,14 +57,14 @@ int match_register_ipv6(struct match_reg *r, struct match_functions *m_funcs) {
 	match_tcp_id = (*m_funcs->match_register) ("tcp");
 	match_udp_id = (*m_funcs->match_register) ("udp");
 
-	match_src_info = (*m_funcs->layer_info_register) (r->match_type, "src", LAYER_INFO_TYPE_CUSTOM);
+	match_src_info = (*m_funcs->layer_info_register) (r->type, "src", LAYER_INFO_TYPE_CUSTOM);
 	match_src_info->val.c = malloc(16);
 	match_src_info->snprintf = match_layer_info_snprintf_ipv6;
-	match_dst_info = (*m_funcs->layer_info_register) (r->match_type, "dst", LAYER_INFO_TYPE_CUSTOM);
+	match_dst_info = (*m_funcs->layer_info_register) (r->type, "dst", LAYER_INFO_TYPE_CUSTOM);
 	match_dst_info->val.c = malloc(16);
 	match_dst_info->snprintf = match_layer_info_snprintf_ipv6;
-	match_fl_info = (*m_funcs->layer_info_register) (r->match_type, "flabel", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
-	match_hl_info = (*m_funcs->layer_info_register) (r->match_type, "hlim", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_ZERO);
+	match_fl_info = (*m_funcs->layer_info_register) (r->type, "flabel", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
+	match_hl_info = (*m_funcs->layer_info_register) (r->type, "hlim", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_ZERO);
 
 
 	return 1;

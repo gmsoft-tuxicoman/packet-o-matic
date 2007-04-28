@@ -159,7 +159,7 @@ int target_process_wave(struct target *t, struct layer *l, void *frame, unsigned
 
 		ndprint("%s opened\n", filename);
 
-		(*tg_functions->conntrack_add_priv) (t, cp, l, frame);
+		(*tg_functions->conntrack_add_priv) (t, cp, ce);
 
 
 

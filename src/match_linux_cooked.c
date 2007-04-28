@@ -33,9 +33,9 @@ int match_register_linux_cooked(struct match_reg *r, struct match_functions *m_f
 	match_ipv4_id = (*m_functions->match_register) ("ipv4");
 	match_ipv6_id = (*m_functions->match_register) ("ipv6");
 
-	match_pkt_type_info = (*m_funcs->layer_info_register) (r->match_type, "pkt_type", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
-	match_dev_type_info = (*m_funcs->layer_info_register) (r->match_type, "dev_type", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
-	match_saddr_info = (*m_funcs->layer_info_register) (r->match_type, "saddr", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
+	match_pkt_type_info = (*m_funcs->layer_info_register) (r->type, "pkt_type", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
+	match_dev_type_info = (*m_funcs->layer_info_register) (r->type, "dev_type", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
+	match_saddr_info = (*m_funcs->layer_info_register) (r->type, "saddr", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
 
 	return 1;
 }

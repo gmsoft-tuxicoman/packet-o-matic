@@ -21,7 +21,8 @@
 #ifndef __TARGET_INJECT_H__
 #define __TARGET_INJECT_H__
 
-#undef HAVE_LINUX_IP_SOCKET /* testing purpose */
+#include "modules_common.h"
+#include "target.h"
 
 #ifdef HAVE_LINUX_IP_SOCKET
 #include <sys/ioctl.h>
@@ -34,10 +35,6 @@
 #include <string.h>
 #include <net/ethernet.h>
 #include <libnet.h>
-
-
-#include "modules_common.h"
-#include "target.h"
 
 struct target_priv_tcpkill {
 

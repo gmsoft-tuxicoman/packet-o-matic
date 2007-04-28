@@ -64,10 +64,10 @@ int match_register_ethernet(struct match_reg *r, struct match_functions *m_funcs
 	match_ipv6_id = (*m_functions->match_register) ("ipv6");
 	match_arp_id = (*m_functions->match_register) ("arp");
 
-	match_src_info = (*m_funcs->layer_info_register) (r->match_type, "src", LAYER_INFO_TYPE_CUSTOM);
+	match_src_info = (*m_funcs->layer_info_register) (r->type, "src", LAYER_INFO_TYPE_CUSTOM);
 	match_src_info->snprintf = match_layer_info_snprintf_ethernet;
 	match_src_info->val.c = malloc(6);
-	match_dst_info = (*m_funcs->layer_info_register) (r->match_type, "dst", LAYER_INFO_TYPE_CUSTOM);
+	match_dst_info = (*m_funcs->layer_info_register) (r->type, "dst", LAYER_INFO_TYPE_CUSTOM);
 	match_dst_info->snprintf = match_layer_info_snprintf_ethernet;
 	match_dst_info->val.c = malloc(6);
 

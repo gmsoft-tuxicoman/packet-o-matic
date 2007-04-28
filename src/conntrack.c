@@ -115,7 +115,7 @@ struct conntrack_entry *conntrack_create_entry(struct layer *l, void* frame) {
 	cl_rev->rev = cl;
 
 
-	uint32_t hash = conntrack_hash(l, frame, CT_DIR_NONE);	
+	uint32_t hash = conntrack_hash(l, frame, CT_DIR_ONEWAY);	
 	uint32_t hash_rev = conntrack_hash(l, frame, CT_DIR_REV);
 	
 	struct conntrack_entry *ce;
@@ -158,9 +158,13 @@ struct conntrack_entry *conntrack_create_entry(struct layer *l, void* frame) {
 	return ce;
 }
 
-int conntrack_add_priv(void *obj, void *priv, struct layer *l, void *frame) {
+/**
+ * The obj is a variable which is used to identify the conntrack for this connection.
+ * You will want to use an instance variable or a global variable if your module has only one instance.
+ * The variable priv is the private value that you want to associate with the conntrack
+ **/
 
-	struct conntrack_entry *ce = conntrack_create_entry(l, frame);
+int conntrack_add_priv(void *obj, void *priv, struct conntrack_entry *ce) {
 
 	// Let's see if that priv_type is already present
 
@@ -221,6 +225,9 @@ uint32_t conntrack_hash(struct layer *l, void *frame, unsigned int flags) {
 	while (l && l->type != -1) {
 
 		if (conntracks[l->type]) {
+			// We compute the hash in two case only :
+			//  - if flags = CT_DIR_ONEWAY
+			//  - if the direction provided in flags (fwd or rev) is present in the conntrack module flags
 			if (!flags || (flags & conntracks[l->type]->flags)) {
 				int start = layer_find_start(l, l->type);
 				res = (*conntracks[l->type]->get_hash) (frame, start, flags);
@@ -243,13 +250,13 @@ struct conntrack_entry *conntrack_get_entry(struct layer *l, void *frame) {
 
 	// Let's start by calculating the full hash
 
-	hash = conntrack_hash(l, frame, CT_DIR_NONE);
+	hash = conntrack_hash(l, frame, CT_DIR_ONEWAY);
 
 	struct conntrack_list *cl;
 	cl = ct_table[hash];
 
 	struct conntrack_entry *ce;
-	ce = conntrack_find(cl, l, frame, CT_DIR_NONE);
+	ce = conntrack_find(cl, l, frame, CT_DIR_ONEWAY);
 
 
 	if (ce) {

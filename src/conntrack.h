@@ -27,9 +27,31 @@
 
 #include "jhash.h"
 
-#define CT_DIR_NONE 0
+/// One way only conntrack.
+/***
+ * The conntrack modules should set their flags to CT_DIR_ONEWAY
+ * if the conntrack cannot match a reverse direction. \br
+ * When computing the hash, CT_DIR_ONEWAY must be used to match bothe the forward direction and the one way direction.
+ **/
+#define CT_DIR_ONEWAY 0
+
+/// The forward direction.
+/**
+ * Used to compute the forward hash. This is the forward direction WITHOUT the one way direction.
+ **/
 #define CT_DIR_FWD 1
+
+/// The reverse direction.
+/**
+ * Used to compute the reverse hash.
+ * The conntrack modules with CT_DIR_ONEWAY will be ignored.
+ **/
 #define CT_DIR_REV 2
+
+/// Both directions.
+/**
+ * The conntrack modules should set their flags to CT_DIR_BOTH if they can handle both directions.
+ **/
 #define CT_DIR_BOTH 3
 
 struct conntrack_entry {
@@ -84,7 +106,7 @@ struct conntrack_privs {
 
 int conntrack_init();
 int conntrack_register(const char *name);
-int conntrack_add_priv(void*, void* priv, struct layer *l, void *frame);
+int conntrack_add_priv(void*, void* priv, struct conntrack_entry *ce);
 void *conntrack_get_priv(void*, struct conntrack_entry *ce);
 uint32_t conntrack_hash(struct layer *l, void *frame, unsigned int flags);
 struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct layer *l, void *frame, unsigned int flags);

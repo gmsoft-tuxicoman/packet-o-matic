@@ -18,14 +18,19 @@
  *
  */
 
+#include "target_tcpkill.h"
 #include <errno.h>
 
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <net/ethernet.h>
+#include <netinet/in_systm.h>
+#include <netinet/in.h>
+#include <netinet/if_ether.h>
 #include <netinet/ip.h>
 #include <netinet/ip6.h>
 #include <netinet/tcp.h>
-#include <linux/if_ether.h>
 
-#include "target_tcpkill.h"
 
 #ifdef HAVE_LINUX_IP_SOCKET
 #define PARAMS_NUM 3
@@ -237,12 +242,12 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 
 		// First copy create the right ethernet header
 		
-		struct ethhdr *dehdr = (struct ethhdr *) buffer, *sehdr = (struct ethhdr*) (frame + ethernetstart);
-		memcpy(dehdr->h_source, sehdr->h_dest, sizeof(dehdr->h_source));
-		memcpy(dehdr->h_dest, sehdr->h_source, sizeof(dehdr->h_dest));
-		dehdr->h_proto = sehdr->h_proto;
+		struct ether_header *dehdr = (struct ether_header*) buffer, *sehdr = (struct ether_header*) (frame + ethernetstart);
+		memcpy(dehdr->ether_shost, sehdr->ether_dhost, sizeof(dehdr->ether_shost));
+		memcpy(dehdr->ether_dhost, sehdr->ether_shost, sizeof(dehdr->ether_dhost));
+		dehdr->ether_type = sehdr->ether_type;
 
-		blen = sizeof(struct ethhdr);
+		blen = sizeof(struct ether_header);
 
 	}
 
@@ -257,7 +262,7 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 			addrlen = sizeof(struct sockaddr_in);
 			sin->sin_family = AF_INET;
 			memcpy(&sin->sin_addr, &sv4hdr->ip_src, sizeof(struct in_addr));
-			sin->sin_port = shdr->source;
+			sin->sin_port = shdr->th_sport;
 		}
 #endif
 
@@ -307,14 +312,15 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 
 	// Add the tcp header
 	struct tcphdr *dhdr = (struct tcphdr*) (buffer + blen);
-	dhdr->source = shdr->dest;
-	dhdr->dest = shdr->source;
-	dhdr->seq = shdr->ack_seq;
-	dhdr->rst = 1;
-	dhdr->ack = 1;
-	dhdr->ack_seq = htonl(ntohl(shdr->seq) + 1);
-	dhdr->window = shdr->window;
-	dhdr->doff = sizeof(struct tcphdr) / 4;
+	dhdr->th_sport = shdr->th_dport;
+	dhdr->th_dport = shdr->th_sport;
+	dhdr->th_seq = shdr->th_ack;
+	dhdr->th_flags = TH_RST & TH_ACK;
+	if (shdr->th_flags & TH_SYN && !(shdr->th_flags & TH_ACK)) /* only SYN in packet, remove ACK */
+		dhdr->th_flags ^= TH_ACK;
+	dhdr->th_ack = htonl(ntohl(shdr->th_seq) + 1);
+	dhdr->th_win = shdr->th_win;
+	dhdr->th_off = sizeof(struct tcphdr) / 4;
 
 	blen += sizeof(struct tcphdr);
 
@@ -322,13 +328,13 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 
 	for (i = 0; i < priv->severity; i++) {
 
-		dhdr->check = 0;
+		dhdr->th_sum = 0;
 		int mysum = tcpsum + cksum((uint16_t*)(dhdr), sizeof(struct tcphdr));
 	
 	    	while (mysum >> 16)
 			mysum = (mysum & 0xFFFF)+(mysum >> 16);
 
-		dhdr->check = ~mysum;
+		dhdr->th_sum = ~mysum;
 
 		if (!priv->routed) {
 			if (libnet_write_link (priv->lc, buffer, blen) == -1) {
@@ -345,7 +351,7 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 			}
 		}
 #endif
-		dhdr->seq += htonl(ntohl(dhdr->seq) + ntohs(shdr->window));
+		dhdr->th_seq += htonl(ntohl(dhdr->th_seq) + ntohs(shdr->th_win));
 
 
 	}

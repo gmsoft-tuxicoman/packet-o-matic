@@ -54,7 +54,7 @@ uint32_t conntrack_get_hash_udp(void *frame, unsigned int start, unsigned int fl
 
 	uint32_t udp_hash;
 	switch (flags) {
-		case CT_DIR_NONE:
+		case CT_DIR_ONEWAY:
 		case CT_DIR_FWD:
 			udp_hash = jhash_1word((hdr->uh_sport << 16) |  hdr->uh_dport, INITVAL);
 			break;
@@ -83,7 +83,7 @@ int conntrack_doublecheck_udp(void *frame, unsigned int start, void *priv, unsig
 	p = priv;
 	
 	switch (flags) {
-		case CT_DIR_NONE:
+		case CT_DIR_ONEWAY:
 		case CT_DIR_FWD:
 			if (p->sport != hdr->uh_sport || p->dport != hdr->uh_dport)
 				return 0;

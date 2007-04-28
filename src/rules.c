@@ -53,7 +53,7 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 				return 0;
 			}
 			unsigned int next_layer;
-			l->type = m->match_type;
+			l->type = m->type;
 			next_layer = match_identify(l, frame, l->prev->payload_start, l->prev->payload_size);
 			if (next_layer < 0) {
 				// restore the original value
@@ -83,7 +83,7 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 
 
 		// Check if the rule correspond to what we identified
-		if (l->type != m->match_type)
+		if (l->type != m->type)
 			return 0;
 
 		if (m->match_priv)
@@ -239,7 +239,7 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 int node_destroy(struct rule_node *node, int sub) {
 
 	static int done = 0;
-	static struct rule_node **done_stack;
+	static struct rule_node **done_stack = NULL;
 
 	if (!node)
 		return 1;
@@ -279,8 +279,11 @@ int node_destroy(struct rule_node *node, int sub) {
 	
 	free(node);
 
-	if (!sub)
+	if (!sub && done_stack) {
 		free(done_stack);
+		done_stack = NULL;
+		done = 0;
+	}
 	
 	return 1;
 

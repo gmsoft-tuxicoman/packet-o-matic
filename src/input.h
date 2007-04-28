@@ -35,7 +35,7 @@
 
 /// This structure saves infos about an input instances
 struct input {
-	int input_type; ///< Unique number assigned to this type of input.
+	int type; ///< Unique number assigned to this type of input.
 	char **params_value; ///< Values of the parametres.
 	void *input_priv; ///< Private stuff, place to store a struct used by the input internaly.
 };

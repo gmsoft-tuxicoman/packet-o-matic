@@ -19,6 +19,8 @@
  */
 
 #include "match_icmp.h"
+#include <netinet/in_systm.h>
+#include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
 
 int match_ipv4_id;
@@ -33,34 +35,34 @@ int match_register_icmp(struct match_reg *r, struct match_functions *m_funcs) {
 	
 	match_ipv4_id = (*m_functions->match_register) ("ipv4");
 
-	match_type_info = (*m_funcs->layer_info_register) (r->match_type, "type", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_ZERO);
+	match_type_info = (*m_funcs->layer_info_register) (r->type, "type", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_ZERO);
 	match_type_info->snprintf = match_layer_info_snprintf_icmp;
-	match_code_info = (*m_funcs->layer_info_register) (r->match_type, "code", LAYER_INFO_TYPE_UINT32);
-	match_seq_info = (*m_funcs->layer_info_register) (r->match_type, "seq", LAYER_INFO_TYPE_UINT32);
+	match_code_info = (*m_funcs->layer_info_register) (r->type, "code", LAYER_INFO_TYPE_UINT32);
+	match_seq_info = (*m_funcs->layer_info_register) (r->type, "seq", LAYER_INFO_TYPE_UINT32);
 
 	return 1;
 }
 
 int match_identify_icmp(struct layer* l, void* frame, unsigned int start, unsigned int len) {
 
-	struct icmphdr *ihdr = frame + start;
+	struct icmp *ihdr = frame + start;
 
-	l->payload_start = start + sizeof(struct icmphdr);
-	l->payload_size = len - sizeof(struct icmphdr);
+	l->payload_start = start + sizeof(struct icmp);
+	l->payload_size = len - sizeof(struct icmp);
 
-	match_type_info->val.ui32 = ihdr->type;
-	match_code_info->val.ui32 = ihdr->code;
+	match_type_info->val.ui32 = ihdr->icmp_type;
+	match_code_info->val.ui32 = ihdr->icmp_code;
 
-	switch (ihdr->type) {
+	switch (ihdr->icmp_type) {
 		case ICMP_ECHOREPLY:
 		case ICMP_ECHO:
-			match_seq_info->val.ui32 = ntohs(ihdr->un.echo.sequence);
+			match_seq_info->val.ui32 = ntohs(ihdr->icmp_seq);
 			return -1;
 
-		case ICMP_TIMESTAMP:
-		case ICMP_TIMESTAMPREPLY:
-		case ICMP_INFO_REQUEST:
-		case ICMP_INFO_REPLY:
+		case ICMP_TSTAMP:
+		case ICMP_TSTAMPREPLY:
+		case ICMP_IREQ:
+		case ICMP_IREQREPLY:
 			match_seq_info->val.ui32 = 0;
 			return -1;
 	}
