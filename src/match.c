@@ -170,6 +170,14 @@ inline int match_identify(struct layer *l, void* frame, unsigned int start, unsi
 
 }
 
+/**
+ * Parameters :
+ *  - m : the match to compare with
+ *  - frame : the packet
+ *  - start : the position of the current match header start in the packet
+ *  - len : the lenght of the current match header and it's payload
+ **/
+
 inline int match_eval(struct match *m, void* frame, unsigned int start, unsigned int len, struct layer *l) {
 
 	if (matchs[m->type]->eval)

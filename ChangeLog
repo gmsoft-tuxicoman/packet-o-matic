@@ -1,3 +1,20 @@
+* 2007/05/17 Guy Martin <gmsoft@tuxicoman.be>
+Print tcp sequence as decimal number instead of hex numbers and added window information.
+Added conntrack_del_priv to remove private struct from conntrack.
+Set total conntrack entries to 1048576.
+Modified conntrack to make it work with helpers.
+Fixed bug in target_tap when ethernet isn't the first layer.
+Show length in taget_display.
+Fixed match_icmp payload start and size calculation.
+Added helper_tcp.
+Fixed bug in timer handling with conntrack_tcp when received a FIN and then ACK.
+Make timer works continuously instead of every two seconds.
+Make match_icmp[v6] not advertise next layer if present.
+
+* 2007/04/27 Guy Martin <gmsoft@tuxicoman.be>
+Changed the name of some structure fields and defines.
+Changed some paremeters of the conntrack to optimize the fonction usage.
+
 * 2007/04/27 Thomas Gouverneur <wildcat@espix.org>
 Ported injection and tcpkill to FreeBSD
 Ported match_icmp & match_icmpv6 to FreeBSD
@@ -22,7 +39,7 @@ Added sequence info and some type translation for echo.
 
 * 2007/03/23 Guy Martin <gmsoft@tuxicoman.be>
 Added output layer ipv4 to target_pcap.
-Fixed cosmetic bug when calculating % of packet droppes in target_pcap.
+Fixed cosmetic bug when calculating % of packet dropped in target_pcap.
 Use input_docsis_read_mpeg_frame in input_docsis_check_downstream.
 Changed max size claculation algo in rules.c.
 

@@ -26,7 +26,7 @@
 
 struct timer {
 
-	time_t expires;
+	struct timeval expires;
 	void *priv;
 	int (*handler) (void *);
 	struct timer *next;

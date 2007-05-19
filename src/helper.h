@@ -25,10 +25,21 @@
 #include "common.h"
 #include "rules.h"
 
+/// Stores informations about a frame that needs to be processed
+struct helper_frame {
+
+	unsigned int len; ///< Length of the frame
+	char *frame; ///< The frame
+	int first_layer; ///< The first layer of this frame
+	struct helper_frame *next; ///< Next frame in the list
+
+};
+
 struct helper_reg {
 
 	void *dl_handle;
-	int (*need_help) (void *frame, struct layer *l);
+	int (*need_help) (struct layer *l, void *frame, unsigned int start, unsigned int len);
+	int (*flush_buffer) (void);
 	int (*cleanup) (void);
 
 
@@ -39,8 +50,13 @@ struct helper_functions {
 	int (*cleanup_timer) (struct timer *t);
 	int (*queue_timer) (struct timer *t, unsigned int expiry);
 	int (*dequeue_timer) (struct timer *t);
-	int (*process_packet) (void *frame, unsigned int len, int first_layer);
+	int (*queue_frame) (void *frame, unsigned int len, int first_layer);
 	int (*layer_info_snprintf) (char *buff, unsigned int maxlen, struct layer_info *inf);
+	struct conntrack_entry* (*conntrack_create_entry) (struct layer *l, void *frame);
+	struct conntrack_entry* (*conntrack_get_entry) (struct layer *l, void* frame);
+	int (*conntrack_add_priv) (void *priv, int type, struct conntrack_entry *ce, int (*flush_buffer) (struct conntrack_entry *ce, void *priv), int (*cleanup_handler) (struct conntrack_entry *ce, void *priv));
+	void *(*conntrack_get_priv) (int type, struct conntrack_entry *ce);
+
 
 
 };
@@ -48,9 +64,10 @@ struct helper_functions {
 
 int helper_init();
 int helper_register(const char *name);
-int helper_need_help(void *frame, struct layer *l);
-int helper_process_packet(void *frame, unsigned int len, int first_layer);
-int helper_set_feedback_rules(struct rule_list *rules);
+int helper_need_help(struct layer *l, void *frame, unsigned int start, unsigned int len);
+int helper_queue_frame(void *frame, unsigned int len, int first_layer);
+int helper_flush_buffer(struct rule_list *list);
+int helper_process_queue(struct rule_list *list);
 int helper_unregister_all();
 int helper_cleanup();
 

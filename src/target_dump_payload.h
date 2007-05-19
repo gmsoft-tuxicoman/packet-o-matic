@@ -36,7 +36,7 @@ int target_register_dump_payload(struct target_reg *r, struct target_functions *
 
 int target_init_dump_payload(struct target *t);
 int target_process_dump_payload(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce);
-int target_close_connection_dump_payload(void *conntrack_priv);
+int target_close_connection_dump_payload(struct conntrack_entry* ce, void *conntrack_priv);
 int target_cleanup_dump_payload(struct target *t);
 
 #endif

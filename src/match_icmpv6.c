@@ -54,7 +54,9 @@ int match_identify_icmpv6(struct layer* l, void* frame, unsigned int start, unsi
 	match_code_info->val.ui32 = ihdr->icmp6_code;
 
 	if (!(ihdr->icmp6_type & ICMP6_INFOMSG_MASK))
-			return match_ipv6_id;
+			// For now we don't advertise the ip layer
+			//return match_ipv6_id;
+			return -1;
 	return -1;
 }
 

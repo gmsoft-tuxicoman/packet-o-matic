@@ -59,14 +59,18 @@ int match_register_docsis(struct match_reg *r, struct match_functions *m_funcs) 
 int match_init_docsis(struct match *m) {
 
 	copy_params(m->params_value, match_docsis_params, 1, PARAMS_NUM);
-	m->match_priv = malloc(1);
 	return 1;
 }
 
 int match_reconfig_docsis(struct match *m) {
 
+	if (!m->match_priv) {
+		m->match_priv = malloc(sizeof(struct match_priv_docsis));
+		bzero(m->match_priv, sizeof(struct match_priv_docsis));
+	}
+
 	struct match_priv_docsis *p = m->match_priv;
-	
+
 	if (sscanf(m->params_value[0], "%hhu/%hhu", &p->fc_type, &p->fc_type_mask) != 2) {
 		if (sscanf(m->params_value[0], "%hhu", &p->fc_type)) {
 			p->fc_type_mask = 0xff;

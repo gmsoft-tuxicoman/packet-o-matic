@@ -178,11 +178,6 @@ int main(int argc, char *argv[]) {
 		goto err;
 	}
 
-	// Set which rule list we want to use for helped packets
-	helper_set_feedback_rules(c->rules);
-
-
-	
 	// Install the signal handler
 	signal(SIGHUP, signal_handler);
 	signal(SIGINT, signal_handler);
@@ -221,12 +216,14 @@ int main(int argc, char *argv[]) {
 		timers_process(); // This is not real-time timers but we don't really need it
 		if (len > 0)
 			do_rules(packet, 0, len, c->rules, first_layer);
+		helper_process_queue(c->rules); // Process packet that needed some help
 	}
+	// Process remaining queued packets
+	conntrack_close_connections(c->rules);
 
 	input_close(c->input);
 err:
 
-	config_cleanup(c);
 
 	conntrack_cleanup();
 	helper_cleanup();
@@ -244,5 +241,6 @@ err:
 	// Layers need to be cleaned up after the match
 	layer_cleanup();
 
+	config_cleanup(c);
 	return 0;
 }

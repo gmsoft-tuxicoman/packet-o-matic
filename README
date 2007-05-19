@@ -7,7 +7,7 @@ It is designed to be as protocol independant as possible. Each protocol has it's
 
 Building from svn :
 -------------------
-You need at least autconf-2.61. First run autoreconf to create ./configure and then follow the instructions as if you fetched from a tarball.
+You need at least autoconf-2.61. First run autoreconf to create ./configure and then follow the instructions as if you fetched from a tarball.
 
 
 Building from tarball :
@@ -28,6 +28,7 @@ Some modules such as input_pcap requires root privileges in order to perform the
 
 Dependencies :
 --------------
+ - libnet  : optional to build target_tcpkill and target_inject
  - libpcap : optional to build input_pcap and target_pcap
  - libxml2 : mandatory to parse the configuration
 

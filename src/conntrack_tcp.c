@@ -86,7 +86,10 @@ int conntrack_tcp_update_timer(struct conntrack_priv_tcp *priv, struct tcphdr *h
 	} else if (hdr->th_flags & TH_RST || hdr->th_flags & TH_FIN) {
 	        priv->state = STATE_TCP_CLOSE;
 	        (*ct_functions->queue_timer) (priv->timer, TCP_CLOSE_T);
-	} else {
+	} else if (priv->state == STATE_TCP_CLOSE) {
+		// Connection is on it's way to be closed
+	        (*ct_functions->queue_timer) (priv->timer, TCP_CLOSE_T);
+	} else 	{
 	        priv->state = STATE_TCP_ESTABLISHED;
 	        (*ct_functions->queue_timer) (priv->timer, TCP_ESTABLISHED_T);
 	}

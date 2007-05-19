@@ -28,7 +28,7 @@
 
 struct helper_reg *helpers[MAX_HELPER];
 struct helper_functions *hlp_funcs;
-struct rule_list *hlp_rules = NULL;
+struct helper_frame *frame_head, *frame_tail;
 
 int helper_init() {
 
@@ -37,8 +37,12 @@ int helper_init() {
 	hlp_funcs->cleanup_timer = timer_cleanup;
 	hlp_funcs->queue_timer = timer_queue;
 	hlp_funcs->dequeue_timer = timer_dequeue;
-	hlp_funcs->process_packet = helper_process_packet;
+	hlp_funcs->queue_frame = helper_queue_frame;
 	hlp_funcs->layer_info_snprintf = layer_info_snprintf;
+	hlp_funcs->conntrack_create_entry = conntrack_create_entry;
+	hlp_funcs->conntrack_get_entry = conntrack_get_entry;
+	hlp_funcs->conntrack_add_priv = conntrack_add_helper_priv;
+	hlp_funcs->conntrack_get_priv = conntrack_get_helper_priv;
 
 	dprint("Helper initialized\n");
 
@@ -91,12 +95,12 @@ int helper_register(const char *helper_name) {
 
 }
 
-int helper_need_help(void *frame, struct layer *l) {
+int helper_need_help(struct layer *l, void *frame, unsigned int start, unsigned int len) {
 
 	if (!helpers[l->type] || !helpers[l->type]->need_help)
 		return 0;
 
-	return helpers[l->type]->need_help(frame, l);
+	return helpers[l->type]->need_help(l, frame, start, len);
 
 }
 
@@ -135,21 +139,54 @@ int helper_cleanup() {
 	return 1;
 }
 
-int helper_set_feedback_rules(struct rule_list *rules) {
 
-	hlp_rules = rules;
+/**
+ * Parameters :
+ *  - frame : the content of the frame that needs to be processed
+ *  - len : length of the frame
+ *  - first_layer : first_layer of the frame
+ **/
+int helper_queue_frame(void *frame, unsigned int len, int first_layer) {
+
+	struct helper_frame *f = malloc(sizeof(struct helper_frame));
+	bzero(f, sizeof(struct helper_frame));
+	f->frame = frame; // We don't do a copy. The helper provide us a buffer that we'll free
+	f->len = len;
+	f->first_layer = first_layer;
+
+	if (!frame_head)
+		frame_head = f;
+
+	if (!frame_tail)
+		frame_tail = f;
+	else {
+		frame_tail->next = f;
+		frame_tail = f;
+	}
+	
 	return 1;
 
 }
 
-int helper_process_packet(void *frame, unsigned int len, int first_layer) {
 
-	if (!hlp_rules) {
-		dprint("Unable to process packet. Feedback rules not set !\n");
+int helper_process_queue(struct rule_list *list) {
+
+	if (!frame_head)
 		return 0;
+
+	while (frame_head) {
+		//dprint("Dequeing 0x%x\n", (unsigned)frame_head->frame);
+		if (0x8b491f0 == (unsigned)frame_head->frame) {
+			dprint("gotcha\n");
+		}
+		do_rules(frame_head->frame, 0, frame_head->len, list, frame_head->first_layer);
+		free(frame_head->frame);
+		struct helper_frame *tmpf = frame_head;
+		frame_head = frame_head->next;
+		free(tmpf);
 	}
+	frame_tail = NULL;
 
-	return do_rules(frame, 0, len, hlp_rules, first_layer);
-
+	return 1;
 }
 

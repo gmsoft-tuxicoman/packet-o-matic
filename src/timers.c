@@ -33,22 +33,13 @@ int timers_process() {
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
 
-
-	if (timercmp(&tv, &next_run, <))
-		return 0;
-
-	memcpy(&next_run, &tv, sizeof(struct timeval));
-	next_run.tv_sec += 2;
-
 	ndprint("Looking at timers ...\n");
-
 
 	struct timer_queue *tq;
 	tq = timer_queues;
 
-
 	while (tq) {
-		while (tq->head && tq->head->expires <= tv.tv_sec) {
+		while (tq->head && timercmp(&tq->head->expires, &tv, <)) {
 				ndprint("Timer 0x%lx reached. Starting handler ...\n", (unsigned long) tq->head);
 				(*tq->head->handler) (tq->head->priv);
 		}
@@ -201,7 +192,8 @@ int timer_queue(struct timer *t, unsigned int expiry) {
 
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
-	t->expires = tv.tv_sec + expiry;
+	memcpy(&t->expires, &tv, sizeof(struct timeval));
+	t->expires.tv_sec += expiry;
 
 	return 1;
 }
@@ -242,7 +234,7 @@ int timer_dequeue(struct timer *t) {
 			}
 			tq = tq->next;
 		}
-#ifdef DEBUG
+#if 0
 		if (!tq)
 			dprint("Warning, timer 0x%lx not found in timers queues heads\n", (unsigned long) t);
 #endif
@@ -265,7 +257,7 @@ int timer_dequeue(struct timer *t) {
 			}
 			tq = tq->next;
 		}
-#ifdef DEBUG
+#if 0
 		if (!tq) {
 			dprint("Warning, timer 0x%lx not found in timers queues tails\n", (unsigned long) t);
 		}

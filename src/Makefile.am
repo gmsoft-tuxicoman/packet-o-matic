@@ -9,7 +9,7 @@ packet_o_matic_LDFLAGS = @LIBS@ @libxml2_LIBS@
 INPUT_OBJS = @INPUT_OBJS@
 MATCH_OBJS = match_docsis.la match_ethernet.la match_ipv4.la match_icmp.la match_ipv6.la match_icmpv6.la match_tcp.la match_udp.la match_rtp.la match_undefined.la match_linux_cooked.la
 CONNTRACK_OBJS = conntrack_ipv4.la conntrack_ipv6.la conntrack_rtp.la conntrack_tcp.la conntrack_udp.la
-HELPER_OBJS = helper_ipv4.la
+HELPER_OBJS = helper_ipv4.la helper_tcp.la
 TARGET_OBJS = target_display.la target_dump_payload.la target_http.la target_wave.la target_null.la @TARGET_OBJS@
 
 
@@ -58,6 +58,8 @@ conntrack_udp_la_LDFLAGS = -module -avoid-version
 
 helper_ipv4_la_SOURCES = helper_ipv4.c helper_ipv4.h modules_common.h
 helper_ipv4_la_LDFLAGS = -module -avoid-version
+helper_tcp_la_SOURCES = helper_tcp.c helper_tcp.h modules_common.h
+helper_tcp_la_LDFLAGS = -module -avoid-version
 
 
 target_display_la_SOURCES = target_display.c target_display.h modules_common.h

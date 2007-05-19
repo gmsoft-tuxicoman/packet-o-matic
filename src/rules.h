@@ -35,7 +35,6 @@ struct rule_node {
 
 // We need to declare rule_node before including target.h and match.h
 #include "match.h"
-#include "target.h"
 
 /// each rule_list contains the first rule_node and target
 struct rule_list {
@@ -44,6 +43,8 @@ struct rule_list {
 	struct target *target; ///< what to do if we match
 	unsigned int result; ///< true if the packet has to be processed
 };
+
+#include "target.h"
 
 int rules_init();
 

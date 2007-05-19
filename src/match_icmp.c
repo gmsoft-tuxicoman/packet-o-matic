@@ -47,8 +47,8 @@ int match_identify_icmp(struct layer* l, void* frame, unsigned int start, unsign
 
 	struct icmp *ihdr = frame + start;
 
-	l->payload_start = start + sizeof(struct icmp);
-	l->payload_size = len - sizeof(struct icmp);
+	l->payload_start = start + 8; 
+	l->payload_size = len - 8;
 
 	match_type_info->val.ui32 = ihdr->icmp_type;
 	match_code_info->val.ui32 = ihdr->icmp_code;
@@ -68,7 +68,9 @@ int match_identify_icmp(struct layer* l, void* frame, unsigned int start, unsign
 	}
 
 	match_seq_info->val.ui32 = 0;
-	return  match_ipv4_id;
+	// For now we don't advertise the ip layer
+	//return  match_ipv4_id;
+	return -1;
 }
 
 int match_layer_info_snprintf_icmp(char *buff, unsigned int len, struct layer_info *inf) {

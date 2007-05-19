@@ -61,30 +61,39 @@ int helper_init_ipv4() {
 
 int helper_ipv4_process_frags(struct helper_priv_ipv4 *p) {
 
-	int pos = p->buffsize;
-	char *buffer = malloc(pos);
+	int bufflen = p->buffsize;
+	char *buffer;
 
 	struct helper_priv_ipv4_frag *f = p->frags;
 
+	// Calculate the total size of the new packet
 	while (f) {
-		buffer = realloc(buffer, pos + f->len);
+		bufflen += f->len;
+		f = f->next;
+	}
+
+	buffer = malloc(bufflen); // The helper subsystem will free that for us
+	memcpy(buffer, p->sublayer_buff, p->buffsize);
+
+	int pos = p->buffsize;
+
+	f = p->frags;
+	while (f) {
 		memcpy(buffer + pos, f->buffer, f->len);
 		pos += f->len;
 		f = f->next;
 	}
 
+	struct ip *hdr = (struct ip*) (buffer + p->hdr_offset);
 
-	p->hdr->ip_off = 0;
-	p->hdr->ip_id = 0;
-	p->hdr->ip_len = htons(pos - p->buffsize);
+	hdr->ip_off = 0;
+	hdr->ip_id = 0;
+	hdr->ip_len = htons(bufflen - p->hdr_offset);
 
-	memcpy(buffer, p->sublayer_buff, p->buffsize);
 
 	ndprint("Helper ipv4 : sending packet to rule processor. len %u, first_layer %u\n", pos, p->first_layer);
 
-	(*hlp_functions->process_packet) (buffer, pos, p->first_layer);
-
-	free(buffer);
+	(*hlp_functions->queue_frame) (buffer, bufflen, p->first_layer);
 
 
 	helper_cleanup_ipv4_frag(p);
@@ -94,15 +103,10 @@ int helper_ipv4_process_frags(struct helper_priv_ipv4 *p) {
 
 }
 
-int helper_need_help_ipv4(void *frame, struct layer *l) {
+int helper_need_help_ipv4(struct layer *l, void *frame, unsigned int start, unsigned int len) {
 
 
 	struct ip* hdr;
-	unsigned int start = l->prev->payload_start;
-	if (!l->prev)
-		return 0;
-
-
 	hdr = frame + start;
 
 	u_short frag_off = ntohs(hdr->ip_off);
@@ -123,10 +127,12 @@ int helper_need_help_ipv4(void *frame, struct layer *l) {
 	
 	struct helper_priv_ipv4 *tmp = frags_head;
 
+
 	while (tmp) {
-	        if (hdr->ip_src.s_addr == tmp->hdr->ip_src.s_addr
-	                && hdr->ip_dst.s_addr == tmp->hdr->ip_dst.s_addr
-	                && hdr->ip_id == tmp->hdr->ip_id)
+		struct ip *tmphdr = (struct ip*) (tmp->sublayer_buff + tmp->hdr_offset);
+	        if (hdr->ip_src.s_addr == tmphdr->ip_src.s_addr
+	                && hdr->ip_dst.s_addr == tmphdr->ip_dst.s_addr
+	                && hdr->ip_id == tmphdr->ip_id)
 			// Positive match we 've got it
 			break;
 		tmp = tmp->next;
@@ -167,7 +173,7 @@ int helper_need_help_ipv4(void *frame, struct layer *l) {
 		tmp->sublayer_buff = malloc(frag_start);
 		memcpy(tmp->sublayer_buff, frame, frag_start);
 		tmp->buffsize = frag_start;
-		tmp->hdr = (struct ip *) (tmp->sublayer_buff + start);
+		tmp->hdr_offset = start;
 
 		// Save the first layer type
 		while (l->prev)

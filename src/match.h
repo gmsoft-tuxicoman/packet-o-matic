@@ -65,6 +65,7 @@ char *match_get_name(int match_type);
 struct match *match_alloc(int match_type);
 int match_set_param(struct match *m, char *name, char *value);
 int match_identify(struct layer *l, void* frame, unsigned int start, unsigned int len);
+/// Evaluate the packet against the current match
 int match_eval(struct match* m, void* frame, unsigned int start, unsigned int len, struct layer *l);
 int match_cleanup_module(struct match *m);
 int match_cleanup();

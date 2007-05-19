@@ -124,7 +124,7 @@ int target_process_tap(struct target *t, struct layer *l, void *frame, unsigned 
 	frame += start;
 	len -= start;
 
-	write(priv->fd, frame + start, len);
+	write(priv->fd, frame, len);
 
 	return 1;
 };
@@ -132,8 +132,9 @@ int target_process_tap(struct target *t, struct layer *l, void *frame, unsigned 
 int target_close_tap(struct target *t) {
 	
 	struct target_priv_tap *priv = t->target_priv;
-	
-	close(priv->fd);
+
+	if (priv->fd != -1)
+		close(priv->fd);
 	free(priv);
 	t->target_priv = NULL;
 	return 1;

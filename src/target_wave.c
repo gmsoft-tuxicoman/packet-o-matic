@@ -44,7 +44,6 @@ int target_register_wave(struct target_reg *r, struct target_functions *tg_funcs
 
 	r->init = target_init_wave;
 	r->process = target_process_wave;
-	r->close_connection = target_close_connection_wave;
 	r->cleanup = target_cleanup_wave;
 
 	tg_functions = tg_funcs;
@@ -89,6 +88,9 @@ int target_process_wave(struct target *t, struct layer *l, void *frame, unsigned
 	// Do not create a file is there is nothing to save
 	if (rtpl->payload_size == 0)
 		return 1;
+	
+	if (!ce)
+		ce = (*tg_functions->conntrack_create_entry) (l, frame);
 
 	struct target_conntrack_priv_wave *cp;
 
@@ -159,7 +161,7 @@ int target_process_wave(struct target *t, struct layer *l, void *frame, unsigned
 
 		ndprint("%s opened\n", filename);
 
-		(*tg_functions->conntrack_add_priv) (t, cp, ce);
+		(*tg_functions->conntrack_add_priv) (cp, t, ce, target_close_connection_wave);
 
 
 
@@ -208,7 +210,7 @@ int target_process_wave(struct target *t, struct layer *l, void *frame, unsigned
 	return 1;
 };
 
-int target_close_connection_wave(void *conntrack_priv) {
+int target_close_connection_wave(struct conntrack_entry *ce, void *conntrack_priv) {
 
 	ndprint("Closing connection 0x%lx\n", (unsigned long) conntrack_priv);
 
@@ -218,7 +220,6 @@ int target_close_connection_wave(void *conntrack_priv) {
 	lseek(cp->fd, 8, SEEK_SET);
 	uint32_t size = htonl(cp->total_size);
 	write(cp->fd, &size , 4);
-
 
 	close(cp->fd);
 

@@ -25,7 +25,7 @@
 
 #define MAX_CONNTRACK MAX_MATCH
 
-#define CONNTRACK_SIZE 65535
+#define CONNTRACK_SIZE 1048576
 
 #define INITVAL 0xdf92b6eb
 
@@ -101,6 +101,9 @@ int conntrack_register(const char *conntrack_name) {
 
 struct conntrack_entry *conntrack_create_entry(struct layer *l, void* frame) {
 
+	// Rewind to first layer
+	while (l->prev)
+		l = l->prev;
 	
 	struct conntrack_list *cl, *cl_rev;
 
@@ -143,8 +146,8 @@ struct conntrack_entry *conntrack_create_entry(struct layer *l, void* frame) {
 			if (l->prev)
 				start = l->prev->payload_start;
 			void *priv = (*conntracks[l->type]->alloc_match_priv) (frame, start, ce);
-			struct conntrack_privs *cp;
-			cp = malloc(sizeof(struct conntrack_privs));
+			struct conntrack_match_priv *cp;
+			cp = malloc(sizeof(struct conntrack_match_priv));
 			cp->priv_type = l->type;
 			cp->priv = priv;
 			cp->next = ce->match_privs;
@@ -158,37 +161,38 @@ struct conntrack_entry *conntrack_create_entry(struct layer *l, void* frame) {
 	return ce;
 }
 
-/**
- * The obj is a variable which is used to identify the conntrack for this connection.
- * You will want to use an instance variable or a global variable if your module has only one instance.
- * The variable priv is the private value that you want to associate with the conntrack
- **/
 
-int conntrack_add_priv(void *obj, void *priv, struct conntrack_entry *ce) {
+/**
+* The obj is a variable which is used to identify target. The value of the struct target should be given.
+**/
+int conntrack_add_target_priv(void *priv, struct target *t, struct conntrack_entry *ce, int (*cleanup_handler) (struct conntrack_entry *ce, void *priv)) {
 
 	// Let's see if that priv_type is already present
 
-	struct conntrack_privs *cp;
-	cp = ce->privs;
+	struct conntrack_target_priv *cp;
 
+#ifdef DEBUG
+	cp = ce->target_privs;
 	while (cp) {
-		if (cp->priv_obj == obj) {
+		if (cp->t == t) {
 			dprint("Warning. Target priv already added\n");
 			return 0;
 		}
 		cp = cp->next;
 	}
+#endif
 
 	// Ok it's not. Creating a new conntrack_priv for our target
 
-	cp = malloc(sizeof(struct conntrack_privs));
-	bzero(cp, sizeof(struct conntrack_privs));
+	cp = malloc(sizeof(struct conntrack_target_priv));
+	bzero(cp, sizeof(struct conntrack_target_priv));
 
-	cp->next = ce->privs;
-	ce->privs = cp;
+	cp->next = ce->target_privs;
+	ce->target_privs = cp;
 
-	cp->priv_obj = obj;
+	cp->t = t;
 	cp->priv = priv;
+	cp->cleanup_handler = cleanup_handler;
 
 	ndprint("Target priv 0x%lx added to conntrack 0x%lx\n", (unsigned long) priv, (unsigned long) ce);
 
@@ -197,16 +201,69 @@ int conntrack_add_priv(void *obj, void *priv, struct conntrack_entry *ce) {
 }
 
 
-void *conntrack_get_priv(void *obj, struct conntrack_entry *ce) {
+int conntrack_add_helper_priv(void *priv, int type, struct conntrack_entry *ce, int (*flush_buffer) (struct conntrack_entry *ce, void *priv), int (*cleanup_handler) (struct conntrack_entry *ce, void *priv)) {
+
+	// Let's see if that priv_type is already present
+
+	struct conntrack_helper_priv *cp;
+
+#ifdef DEBUG
+	cp = ce->helper_privs;
+	while (cp) {
+		if (cp->type == type) {
+			dprint("Warning. Helper priv already added\n");
+			return 0;
+		}
+		cp = cp->next;
+	}
+#endif
+
+	// Ok it's not. Creating a new conntrack_priv for our target
+
+	cp = malloc(sizeof(struct conntrack_helper_priv));
+	bzero(cp, sizeof(struct conntrack_helper_priv));
+
+	cp->next = ce->helper_privs;
+	ce->helper_privs = cp;
+
+	cp->type = type;
+	cp->priv = priv;
+	cp->flush_buffer = flush_buffer;
+	cp->cleanup_handler = cleanup_handler;
+
+	ndprint("Helper priv 0x%lx added to conntrack 0x%lx\n", (unsigned long) priv, (unsigned long) ce);
+
+	
+	return 1;
+}
+
+void *conntrack_get_helper_priv(int type, struct conntrack_entry *ce) {
 
 
 	if (!ce)
 		return NULL;
 
-	struct conntrack_privs *cp;
-	cp = ce->privs;
+	struct conntrack_helper_priv *cp;
+	cp = ce->helper_privs;
 	while (cp) {
-		if (cp->priv_obj == obj) {
+		if (cp->type == type) {
+			return cp->priv;
+		}
+		cp = cp->next;
+	}
+
+	return NULL;
+}
+void *conntrack_get_target_priv(struct target *t, struct conntrack_entry *ce) {
+
+
+	if (!ce)
+		return NULL;
+
+	struct conntrack_target_priv *cp;
+	cp = ce->target_privs;
+	while (cp) {
+		if (cp->t == t) {
 			return cp->priv;
 		}
 		cp = cp->next;
@@ -245,6 +302,9 @@ uint32_t conntrack_hash(struct layer *l, void *frame, unsigned int flags) {
 
 struct conntrack_entry *conntrack_get_entry(struct layer *l, void *frame) {
 	
+	// Rewind to first layer
+	while (l->prev)
+		l = l->prev;
 
 	uint32_t hash;
 
@@ -284,7 +344,7 @@ struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct layer *
 	struct conntrack_entry *ce;
 	ce = cl->ce;
 
-	struct conntrack_privs *cp;
+	struct conntrack_match_priv *cp;
 	cp = ce->match_privs;
 
 	while (cp) {
@@ -312,32 +372,44 @@ struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct layer *
 	return ce;
 }
 
-int conntrack_close_connnection (struct conntrack_entry *ce) {
-
-
-	struct conntrack_privs *p, *tmp;
-	p = ce->privs;
-	while (p) {
-		if (p->priv)
-			target_close_connection(p->priv_type, p->priv);
-		tmp = p;
-		p = p->next;
-		free(tmp);
-
-	}
-
-	// Ok this connection is closed. let's remove it
+int conntrack_cleanup_connection(struct conntrack_entry *ce) {
 
 	// Remove the match privs
-	p = ce->match_privs;
-	while (p) {
-		if (conntracks[p->priv_type] && conntracks[p->priv_type]->cleanup_match_priv)
-			(*conntracks[p->priv_type]->cleanup_match_priv) (p->priv);
+	struct conntrack_match_priv *mp, *mptmp;
+	mp = ce->match_privs;
+	while (mp) {
+		if (conntracks[mp->priv_type] && conntracks[mp->priv_type]->cleanup_match_priv)
+			(*conntracks[mp->priv_type]->cleanup_match_priv) (mp->priv);
 
-		tmp = p;
-		p = p->next;
-		free(tmp);
+		mptmp = mp;
+		mp = mp->next;
+		free(mptmp);
 	}
+
+	// Free up the helper privs
+	
+	struct conntrack_helper_priv *hp, *hptmp;
+	hp = ce->helper_privs;
+	while (hp) {
+		if (hp->priv && hp->cleanup_handler)
+			(*hp->cleanup_handler) (ce, hp->priv);
+		hptmp = hp;
+		hp = hp->next;
+		free(hptmp);
+	}
+
+	// Free up the target privs
+
+	struct conntrack_target_priv *tp, *tptmp;
+	tp = ce->target_privs;
+	while (tp) {
+		if (tp->priv && tp->cleanup_handler)
+			(*tp->cleanup_handler) (ce, tp->priv);
+		tptmp = tp;
+		tp = tp->next;
+		free(tptmp);
+	}
+
 
 	// Free the conntrack lists
 
@@ -371,13 +443,12 @@ int conntrack_close_connnection (struct conntrack_entry *ce) {
 			}
 		}
 
-		cltmp = cl;
-		free(cltmp);	
-		
 
 		// Remove in the reverse table
+		cltmp = cl;
 		cl = cl->rev;
-
+		free(cltmp);	
+		
 		if (ct_table_rev[cl->hash] == cl)
 			ct_table_rev[cl->hash] = cl->next;
 		else  {
@@ -405,15 +476,62 @@ int conntrack_close_connnection (struct conntrack_entry *ce) {
 	return 1;
 }
 
-int conntrack_cleanup() {
+
+int conntrack_close_connection(struct conntrack_entry *ce) {
+
+	struct conntrack_helper_priv *hp;
+
+	// Let's start by emptying out the buffer. We may not need to close it after all
+	hp = ce->helper_privs;
+	while (hp) {
+		if (hp->priv && hp->flush_buffer)
+			if ((*hp->flush_buffer) (ce, hp->priv))
+				return 0; // There was stuff in the buffer. Let's not close it
+		hp = hp->next;
+	}
+
+	// Now we can clean and close stuff out
+	
+	return 1;
+}
+
+int conntrack_close_connections(struct rule_list *r) {
 
 	int i;
 
 	// Close remaining connections
 
 	for (i = 0; i < CONNTRACK_SIZE; i ++) {
+		struct conntrack_list *cl = ct_table[i];
+		while (cl) {
+			conntrack_close_connection(cl->ce);
+			// At this point we want to process all the remaining packets in the buffer
+			
+			struct conntrack_helper_priv *hp = cl->ce->helper_privs;
+			while (hp) {
+				while ((*hp->flush_buffer) (cl->ce, hp->priv))
+					helper_process_queue(r);
+
+				hp = hp->next;
+			}
+
+			cl = cl->next;
+		}
+	}
+
+	return 1;
+
+}
+
+int conntrack_cleanup() {
+
+	int i;
+
+	// Cleanup remaining connections
+
+	for (i = 0; i < CONNTRACK_SIZE; i ++) {
 		while (ct_table[i]) {
-			conntrack_close_connnection(ct_table[i]->ce);
+			conntrack_cleanup_connection(ct_table[i]->ce);
 		}
 	}
 
@@ -442,7 +560,9 @@ int conntrack_unregister_all() {
 
 int conntrack_do_timer(void * ce) {
 
-	return conntrack_close_connnection(ce);
+	conntrack_close_connection(ce);
+	conntrack_cleanup_connection(ce);
+	return 1;
 }
 
 struct timer *conntrack_timer_alloc(struct conntrack_entry *ce) {

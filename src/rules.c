@@ -64,7 +64,7 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 				l->next = layer_pool_get();
 				l->next->type = next_layer;
 
-				if (helper_need_help(frame, l)) // If it needs help, we don't process it
+				if (helper_need_help(l, frame, l->prev->payload_start, l->prev->payload_size)) // If it needs help, we don't process it
 					return 0;
 			
 				// check the calculated size and adjust the max len of the packet
@@ -141,12 +141,15 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 	while (l && l->type != match_undefined_id) { // If it's undefined, it means we can't assume anything about the rest of the packet
 		l->next = layer_pool_get();
 		l->next->prev = l;
+		
+		int new_start = 0, new_len = len;
+		if (l->prev) {
+			new_start = l->prev->payload_start;
+			new_len = l->prev->payload_size;
+		}
 
 		// identify must populate payload_start and payload_size
-		if (l->prev)
-			l->next->type = match_identify(l, frame, l->prev->payload_start, l->prev->payload_size);
-		else
-			l->next->type = match_identify(l, frame, 0, len);
+		l->next->type = match_identify(l, frame, new_start, new_len);
 
 		if (l->next->type == -1) {
 			l->next = NULL;
@@ -155,15 +158,15 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 		l->infos = layer_info_pool_get(l);
 
 
-		if (helper_need_help(frame, l)) // If it needs help, we don't process it
+		if (helper_need_help(l, frame, new_start, len)) // If it needs help, we don't process it
 			return 1;
 	
 		// check the calculated size and adjust the max len of the packet
 		// the initial size may be too long as some padding could have been introduced by the input
 
 		if (l->prev && (l->payload_start + l->payload_size > l->prev->payload_start + l->prev->payload_size || l->payload_size > l->prev->payload_size)) {
-			ndprint("Error, new len greater than the computed maximum len or buffer (maximum %u, new %u, layer %s). Not considering packet\n",
-				l->prev && l->payload_start + l->payload_size, l->prev->payload_start + l->prev->payload_size, match_get_name(l->type));
+			dprint("Error, new len greater than the computed maximum len or buffer (maximum %u, new %u, layer %s). Not considering packet\n",
+				l->prev->payload_start + l->prev->payload_size, l->payload_start + l->payload_size, match_get_name(l->type));
 			return 1;
 		}
 
@@ -189,14 +192,14 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 
 	struct conntrack_entry *ce = conntrack_get_entry(layers, frame);
 
-	if (ce) { // We got a conntrack_entry, process the corresponding target
-		struct conntrack_privs *cp = ce->privs;
+	if (ce) { // We got a conntrack_entry, process the corresponding targets
+		struct conntrack_target_priv *cp = ce->target_privs;
 		while (cp) {
 			r = rules;
 			while (r) {
 				struct target *t = r->target;
 				while (t) {
-					if (t == cp->priv_obj) {
+					if (t == cp->t) {
 						target_process(r->target, layers, frame, len, ce);
 						t->matched_conntrack = 1; // Do no process this target again if it matched here
 					}

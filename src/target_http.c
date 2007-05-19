@@ -83,7 +83,6 @@ int target_register_http(struct target_reg *r, struct target_functions *tg_funcs
 
 	r->init = target_init_http;
 	r->process = target_process_http;
-	r->close_connection = target_close_connection_http;
 	r->cleanup = target_cleanup_http;
 
 	tg_functions = tg_funcs;
@@ -123,6 +122,8 @@ int target_process_http(struct target *t, struct layer *l, void *frame, unsigned
 	while (lastl->next && lastl->next->type != match_undefined_id)
 		lastl = lastl->next;
 
+	if (!ce)
+		ce = (*tg_functions->conntrack_create_entry) (l, frame);
 
 	struct target_conntrack_priv_http *cp;
 
@@ -134,7 +135,7 @@ int target_process_http(struct target *t, struct layer *l, void *frame, unsigned
 		bzero(cp, sizeof(struct target_conntrack_priv_http));
 		cp->state = HTTP_HEADER;
 		cp->fd = -1;
-		(*tg_functions->conntrack_add_priv) (t, cp, ce);
+		(*tg_functions->conntrack_add_priv) (cp, t, ce, target_close_connection_http);
 	
 	}
 
@@ -333,7 +334,7 @@ int target_process_http(struct target *t, struct layer *l, void *frame, unsigned
 	return 1;
 };
 
-int target_close_connection_http(void *conntrack_priv) {
+int target_close_connection_http(struct conntrack_entry *ce, void *conntrack_priv) {
 
 	ndprint("Closing connection 0x%lx\n", (unsigned long) conntrack_priv);
 

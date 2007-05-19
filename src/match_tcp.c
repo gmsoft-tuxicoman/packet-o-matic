@@ -35,7 +35,7 @@ char *match_tcp_params[PARAMS_NUM][3] = {
 
 int match_undefined_id;
 struct match_functions *m_functions;
-struct layer_info *match_sport_info, *match_dport_info, *match_flags_info, *match_seq_info, *match_ack_info;
+struct layer_info *match_sport_info, *match_dport_info, *match_flags_info, *match_seq_info, *match_ack_info, *match_win_info;
 
 int match_register_tcp(struct match_reg *r, struct match_functions *m_funcs) {
 
@@ -56,8 +56,9 @@ int match_register_tcp(struct match_reg *r, struct match_functions *m_funcs) {
 	match_dport_info = (*m_funcs->layer_info_register) (r->type, "dport", LAYER_INFO_TYPE_UINT32);
 	match_flags_info = (*m_funcs->layer_info_register) (r->type, "flags", LAYER_INFO_TYPE_UINT32);
 	match_flags_info->snprintf = match_layer_info_snprintf_tcp;
-	match_seq_info = (*m_funcs->layer_info_register) (r->type, "seq", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
-	match_ack_info = (*m_funcs->layer_info_register) (r->type, "ack", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
+	match_seq_info = (*m_funcs->layer_info_register) (r->type, "seq", LAYER_INFO_TYPE_UINT32);
+	match_ack_info = (*m_funcs->layer_info_register) (r->type, "ack", LAYER_INFO_TYPE_UINT32);
+	match_win_info = (*m_funcs->layer_info_register) (r->type, "win", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_ZERO);
 
 	return 1;
 
@@ -108,6 +109,7 @@ int match_identify_tcp(struct layer* l, void* frame, unsigned int start, unsigne
 	match_flags_info->val.ui32 = hdr->th_flags;
 	match_seq_info->val.ui32 = ntohl(hdr->th_seq);
 	match_ack_info->val.ui32 = ntohl(hdr->th_ack);
+	match_win_info->val.ui32 = ntohs(hdr->th_win);
 
 	return match_undefined_id;
 

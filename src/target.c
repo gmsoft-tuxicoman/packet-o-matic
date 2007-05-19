@@ -34,8 +34,8 @@ int target_init() {
 	tg_funcs = malloc(sizeof(struct target_functions));
 	tg_funcs->match_register = match_register;
 	tg_funcs->conntrack_get_entry = conntrack_get_entry;
-	tg_funcs->conntrack_add_priv = conntrack_add_priv;
-	tg_funcs->conntrack_get_priv = conntrack_get_priv;
+	tg_funcs->conntrack_add_priv = conntrack_add_target_priv;
+	tg_funcs->conntrack_get_priv = conntrack_get_target_priv;
 	tg_funcs->layer_info_snprintf = layer_info_snprintf;
 	tg_funcs->match_get_name = match_get_name;
 
@@ -147,14 +147,6 @@ int target_process(struct target *t, struct layer *l, unsigned char *buffer, uns
 
 	if (targets[t->target_type]->process)
 		return (*targets[t->target_type]->process) (t, l,  buffer, bufflen, ce);
-	return 1;
-
-}
-
-int target_close_connection(int target_type, void *conntrack_priv) {
-
-	if (targets[target_type] && targets[target_type]->close_connection)
-		return (*targets[target_type]->close_connection) (conntrack_priv);
 	return 1;
 
 }

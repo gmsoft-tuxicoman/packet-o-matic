@@ -315,9 +315,7 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 	dhdr->th_sport = shdr->th_dport;
 	dhdr->th_dport = shdr->th_sport;
 	dhdr->th_seq = shdr->th_ack;
-	dhdr->th_flags = TH_RST & TH_ACK;
-	if (shdr->th_flags & TH_SYN && !(shdr->th_flags & TH_ACK)) /* only SYN in packet, remove ACK */
-		dhdr->th_flags ^= TH_ACK;
+	dhdr->th_flags = TH_RST | TH_ACK;
 	dhdr->th_ack = htonl(ntohl(shdr->th_seq) + 1);
 	dhdr->th_win = shdr->th_win;
 	dhdr->th_off = sizeof(struct tcphdr) / 4;

@@ -139,7 +139,8 @@ int target_process_display(struct target *t, struct layer *l, void *frame, unsig
 		tmpl = tmpl->next;
 	}
 
-	printf("\n");
+	printf(" [len: %u]\n", len);
+
 
 	int start;
 	if (l->prev) {

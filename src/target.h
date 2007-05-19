@@ -19,12 +19,12 @@
  */
 
 
-
 #ifndef __TARGET_H__
 #define __TARGET_H__
 
 #include "conntrack.h"
 #include "match.h"
+
 
 struct target {
 	int target_type;
@@ -44,7 +44,6 @@ struct target_reg {
 	int (*init) (struct target*);
 	int (*open) (struct target*);
 	int (*process) (struct target*, struct layer *l, void*, unsigned int, struct conntrack_entry*);
-	int (*close_connection) (void *);
 	int (*close) (struct target *t);
 	int (*cleanup) (struct target *t);
 };
@@ -53,9 +52,10 @@ struct target_reg {
 struct target_functions {
 
 	int (*match_register) (const char *);
+	struct conntrack_entry* (*conntrack_create_entry) (struct layer *l, void *frame);
 	struct conntrack_entry* (*conntrack_get_entry) (struct layer *l, void* frame);
-	int (*conntrack_add_priv) (void *obj, void* priv, struct conntrack_entry *ce);
-	void* (*conntrack_get_priv) (void *obj, struct conntrack_entry *ce);
+	int (*conntrack_add_priv) (void *priv, struct target *t,  struct conntrack_entry *ce, int (*cleanup_handler) (struct conntrack_entry *ce, void *priv));
+	void *(*conntrack_get_priv) (struct target *t, struct conntrack_entry *ce);
 	int (*layer_info_snprintf) (char *buff, unsigned int maxlen, struct layer_info *inf);
 	char *(*match_get_name) (int match_type);
 
@@ -67,7 +67,6 @@ struct target *target_alloc(int target_type);
 int target_set_param(struct target *t, char *name, char* value);
 int target_open(struct target *t);
 int target_process(struct target *t, struct layer *l, unsigned char *buffer, unsigned int bufflen, struct conntrack_entry *ce);
-int target_close_connection(int target_type, void *conntrack_privs);
 int target_close(struct target *t);
 int target_cleanup_t(struct target *t);
 int target_unregister_all();

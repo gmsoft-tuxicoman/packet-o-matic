@@ -18,12 +18,14 @@
  *
  */
 
+#include "rules.h"
 
 #ifndef __CONNTRACK_H__
 #define __CONNTRACK_H__
 
 #include "common.h"
 #include "timers.h"
+#include "helper.h"
 
 #include "jhash.h"
 
@@ -54,15 +56,20 @@
  **/
 #define CT_DIR_BOTH 3
 
+
+/// This structure contains all that needs to be known about a connection.
 struct conntrack_entry {
 
 	uint32_t full_hash;
-	struct conntrack_privs *match_privs;
-	struct conntrack_privs *privs;
+	struct conntrack_match_priv *match_privs;
+	struct conntrack_helper_priv *helper_privs;
+	struct conntrack_target_priv *target_privs;
 	unsigned int direction;
 
 };
 
+
+/// Structure used to avoid collisions if two connections have the same hash
 struct conntrack_list {
 
 	uint32_t hash;
@@ -94,26 +101,50 @@ struct conntrack_functions {
 
 };
 
-struct conntrack_privs {
 
-	struct conntrack_privs *next;
-	unsigned int priv_type;
-	void *priv_obj;
-	void *priv;
-	unsigned int flags; // To store direction info
+/// Structure which hold usefull data to identify the connection
+struct conntrack_match_priv {
+
+	struct conntrack_match_priv *next;
+	unsigned int priv_type; ///< Type of match
+	void *priv; ///< Private data of the match
+
 
 };
 
+/// Structure which hold private data for a target
+struct conntrack_target_priv {
+
+	struct conntrack_target_priv *next; ///< Next private stuff in the list
+	struct target *t;
+	void *priv; ///< The private data itself
+	int (*cleanup_handler) (struct conntrack_entry *ce, void *priv); ///< Handler used to cleanup the conntrack priv
+
+};
+
+struct conntrack_helper_priv {
+
+	struct conntrack_helper_priv *next; ///< Next private stuff in the list
+	unsigned int type; ///< Type of helper
+	void *priv; ///< The private data itself
+	int (*flush_buffer) (struct conntrack_entry *ce, void *priv); ///< Handler used to flush the remaining packets in the helper if needed
+	int (*cleanup_handler) (struct conntrack_entry *ce, void *priv); ///< Handler used to cleanup the conntrack priv
+
+};
 int conntrack_init();
 int conntrack_register(const char *name);
-int conntrack_add_priv(void*, void* priv, struct conntrack_entry *ce);
-void *conntrack_get_priv(void*, struct conntrack_entry *ce);
+int conntrack_add_target_priv(void *priv, struct target *t,  struct conntrack_entry *ce, int (*cleanup_handler) (struct conntrack_entry *ce, void *priv));
+int conntrack_add_helper_priv(void *priv, int type, struct conntrack_entry *ce, int (*flush_buffer) (struct conntrack_entry *ce, void *priv), int (*cleanup_handler) (struct conntrack_entry *ce, void *priv));
+void *conntrack_get_helper_priv(int type, struct conntrack_entry *ce);
+void *conntrack_get_target_priv(struct target *t, struct conntrack_entry *ce);
 uint32_t conntrack_hash(struct layer *l, void *frame, unsigned int flags);
 struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct layer *l, void *frame, unsigned int flags);
 struct conntrack_entry *conntrack_get_entry(struct layer *l, void *frame);
 struct conntrack_entry *conntrack_create_entry(struct layer *l, void *frame);
+int conntrack_cleanup_connection (struct conntrack_entry *ce);
 int conntrack_do_timer(void * ce);
 struct timer *conntrack_timer_alloc(struct conntrack_entry *ce);
+int conntrack_close_connections(struct rule_list *r);
 int conntrack_cleanup();
 int conntrack_unregister_all();
 

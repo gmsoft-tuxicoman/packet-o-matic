@@ -44,7 +44,6 @@ int target_register_dump_payload(struct target_reg *r, struct target_functions *
 
 	r->init = target_init_dump_payload;
 	r->process = target_process_dump_payload;
-	r->close_connection = target_close_connection_dump_payload;
 	r->cleanup = target_cleanup_dump_payload;
 
 	tg_functions = tg_funcs;
@@ -77,6 +76,9 @@ int target_process_dump_payload(struct target *t, struct layer *l, void *frame, 
 	struct layer *lastl = l;
 	while (lastl->next && lastl->next->type != match_undefined_id)
 		lastl = lastl->next;
+
+	if (!ce)
+		ce = (*tg_functions->conntrack_create_entry) (l, frame);
 
 
 	struct target_conntrack_priv_dump_payload *cp;
@@ -116,7 +118,7 @@ int target_process_dump_payload(struct target *t, struct layer *l, void *frame, 
 
 		ndprint("%s opened\n", filename);
 
-		(*tg_functions->conntrack_add_priv) (t, cp, ce);
+		(*tg_functions->conntrack_add_priv) (cp, t, ce, target_close_connection_dump_payload);
 	}
 
 	if (lastl->payload_size == 0)
@@ -139,7 +141,7 @@ int target_process_dump_payload(struct target *t, struct layer *l, void *frame, 
 	return 1;
 };
 
-int target_close_connection_dump_payload(void *conntrack_priv) {
+int target_close_connection_dump_payload(struct conntrack_entry *ce, void *conntrack_priv) {
 
 	ndprint("Closing connection 0x%lx\n", (unsigned long) conntrack_priv);
 
