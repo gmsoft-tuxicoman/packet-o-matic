@@ -115,19 +115,19 @@ int target_init_http(struct target *t) {
 }
 
 
-int target_process_http(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce) {
+int target_process_http(struct target *t, struct frame *f) {
 
 
-	struct layer *lastl = l;
+	struct layer *lastl = f->l;
 	while (lastl->next && lastl->next->type != match_undefined_id)
 		lastl = lastl->next;
 
-	if (!ce)
-		ce = (*tg_functions->conntrack_create_entry) (l, frame);
+	if (!f->ce)
+		(*tg_functions->conntrack_create_entry) (f);
 
 	struct target_conntrack_priv_http *cp;
 
-	cp = (*tg_functions->conntrack_get_priv) (t, ce);
+	cp = (*tg_functions->conntrack_get_priv) (t, f->ce);
 
 	if (!cp) { // We need to track all connections
 
@@ -135,12 +135,12 @@ int target_process_http(struct target *t, struct layer *l, void *frame, unsigned
 		bzero(cp, sizeof(struct target_conntrack_priv_http));
 		cp->state = HTTP_HEADER;
 		cp->fd = -1;
-		(*tg_functions->conntrack_add_priv) (cp, t, ce, target_close_connection_http);
+		(*tg_functions->conntrack_add_priv) (cp, t, f->ce, target_close_connection_http);
 	
 	}
 
-	if (ce && cp->direction != CT_DIR_ONEWAY && (ce->direction != cp->direction)) {
-		dprint("Direction missmatch, %u, %u\n", ce->direction, cp->direction);
+	if (f->ce && cp->direction != CT_DIR_ONEWAY && (f->ce->direction != cp->direction)) {
+		dprint("Direction missmatch, %u, %u\n", f->ce->direction, cp->direction);
 		return 1;
 	}
 
@@ -156,7 +156,7 @@ int target_process_http(struct target *t, struct layer *l, void *frame, unsigned
 	psize = lastl->payload_size;
 
 	if (cp->state == HTTP_HEADER) {
-		char *pload = frame + lastl->payload_start;
+		char *pload = f->buff + lastl->payload_start;
 		int i, lstart = 0;
 		for (i = 0; i < lastl->payload_size; i++) {
 
@@ -251,11 +251,9 @@ int target_process_http(struct target *t, struct layer *l, void *frame, unsigned
 					}
 					// One of the header matched
 
-					if (!ce)
-						cp->direction = CT_DIR_FWD;
-					else if (ce->direction != CT_DIR_ONEWAY)
-						cp->direction = ce->direction;
-					else if (ce->direction == CT_DIR_ONEWAY)
+					if (f->ce->direction != CT_DIR_ONEWAY)
+						cp->direction = f->ce->direction;
+					else if (f->ce->direction == CT_DIR_ONEWAY)
 						dprint("WTF ?!?\n");
 
 				} else if (i - lstart == 1 && pload[lstart] == '\r') {
@@ -319,7 +317,7 @@ int target_process_http(struct target *t, struct layer *l, void *frame, unsigned
 
 	cp->pos += psize;
 
-	write(cp->fd, frame + pstart, psize);
+	write(cp->fd, f->buff + pstart, psize);
 	ndprint("Saved %u of payload\n", psize);
 	
 	if (cp->pos >= cp->content_len) { // Everything was captuer, we can close the file

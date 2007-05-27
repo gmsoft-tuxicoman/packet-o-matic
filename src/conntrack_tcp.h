@@ -33,14 +33,8 @@ enum
   STATE_TCP_ESTABLISHED = 1,
   STATE_TCP_SYN_SENT,
   STATE_TCP_SYN_RECV,  
-  STATE_TCP_FIN_WAIT1, 
-  STATE_TCP_FIN_WAIT2,
-  STATE_TCP_TIME_WAIT,
   STATE_TCP_CLOSE,
-  STATE_TCP_CLOSE_WAIT,
   STATE_TCP_LAST_ACK,
-  STATE_TCP_LISTEN,
-  STATE_TCP_CLOSING
 };
 
 
@@ -54,9 +48,9 @@ struct conntrack_priv_tcp {
 };
 
 int conntrack_register_tcp(struct conntrack_reg *r, struct conntrack_functions *ct_funcs);
-uint32_t conntrack_get_hash_tcp(void *frame, unsigned int start, unsigned int flags);
-int conntrack_doublecheck_tcp(void *frame, unsigned int start, void *priv, unsigned int flags);
-void *conntrack_alloc_match_priv_tcp(void *frame, unsigned int start, struct conntrack_entry *ce);
+uint32_t conntrack_get_hash_tcp(struct frame *f, unsigned int start, unsigned int flags);
+int conntrack_doublecheck_tcp(struct frame *f, unsigned int start, void *priv, unsigned int flags);
+void *conntrack_alloc_match_priv_tcp(struct frame *f, unsigned int start, struct conntrack_entry *ce);
 int conntrack_cleanup_match_priv_tcp(void *priv);
 
 

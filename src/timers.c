@@ -22,16 +22,17 @@
 #include <signal.h>
 
 #include "timers.h"
+#include "input.h"
 
 
 struct timer_queue *timer_queues;
 struct timeval next_run;
 
 
-int timers_process() {
+int timers_process(struct input *i) {
 
 	struct timeval tv;
-	gettimeofday(&tv, NULL);
+	input_gettimeof(i, &tv);
 
 	ndprint("Looking at timers ...\n");
 

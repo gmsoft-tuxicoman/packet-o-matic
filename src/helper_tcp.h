@@ -30,10 +30,12 @@
 
 struct helper_priv_tcp_packet {
 
-	char *buffer;
-	size_t len;
-	uint32_t seq;
+	struct frame *f;
+	uint32_t seq; ///< TCP sequence of this packet
+	uint32_t ack; ///< ACK contained is this packet
+	unsigned int data_len; ///< payload lenght of this packet
 	struct helper_priv_tcp_packet *next;
+	struct helper_priv_tcp_packet *prev;
 };
 
 struct helper_priv_tcp {
@@ -41,9 +43,9 @@ struct helper_priv_tcp {
 	uint32_t last_seq[2];
 	uint32_t seq_expected[2];
 	int flags[2];
-	int first_layer;
 
 	struct helper_priv_tcp_packet *pkts[2];
+	struct helper_priv_tcp_packet *pkts_tail[2];
 	unsigned int buff_len[2]; ///< Used to keep track of the total buffer length we have in memory for this connection
 
 	struct timer *t[2];
@@ -60,7 +62,7 @@ struct helper_timer_priv_tcp {
 };
 
 int helper_register_tcp(struct helper_reg *r, struct helper_functions *ct_funcs);
-int helper_need_help_tcp(struct layer *l, void *frame, unsigned int start, unsigned int len);
+int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, struct layer *l);
 int helper_process_next_tcp(struct helper_priv_tcp *p, int dir);
 int helper_process_timer_tcp(void *priv);
 int helper_flush_buffer_tcp(struct conntrack_entry *ce, void *conntrack_priv);

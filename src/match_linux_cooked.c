@@ -40,9 +40,9 @@ int match_register_linux_cooked(struct match_reg *r, struct match_functions *m_f
 	return 1;
 }
 
-int match_identify_linux_cooked(struct layer* l, void* frame, unsigned int start, unsigned int len) {
+int match_identify_linux_cooked(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
-	struct cooked_hdr *chdr = frame + start;
+	struct cooked_hdr *chdr = f->buff + start;
 
 	l->payload_start = start + sizeof(struct cooked_hdr);
 	l->payload_size = len - sizeof(struct cooked_hdr);

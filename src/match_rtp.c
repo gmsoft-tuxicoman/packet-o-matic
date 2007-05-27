@@ -78,9 +78,9 @@ int match_reconfig_rtp(struct match *m) {
 	return sscanf(m->params_value[0], "%hhu", &(p->payload_type));
 }
 
-int match_identify_rtp(struct layer* l, void *frame, unsigned int start, unsigned int len) {
+int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
-	struct rtphdr *hdr = frame + start;
+	struct rtphdr *hdr = f->buff + start;
 
 	int hdr_len = sizeof(struct rtphdr);
 	hdr_len += hdr->csrc_count * 4;
@@ -97,7 +97,7 @@ int match_identify_rtp(struct layer* l, void *frame, unsigned int start, unsigne
 
 	if (hdr->extension) {
 		struct rtphdrext *ext;
-		ext = frame + start + hdr_len;
+		ext = f->buff + start + hdr_len;
 		hdr_len += ntohs(ext->length);
 		if (len < (hdr_len + start)) {
 			ndprint(" Invalid size for RTP packet\n");
@@ -108,7 +108,7 @@ int match_identify_rtp(struct layer* l, void *frame, unsigned int start, unsigne
 	l->payload_size = len - hdr_len;
 
 	if (hdr->padding) {
-		l->payload_size = *(((unsigned char*) (frame)) + len - 1);
+		l->payload_size = *(((unsigned char*) (f->buff)) + len - 1);
 	}
 
 
@@ -116,9 +116,9 @@ int match_identify_rtp(struct layer* l, void *frame, unsigned int start, unsigne
 
 }
 	
-int match_eval_rtp(struct match* match, void *frame, unsigned int start, unsigned int len, struct layer *l) {
+int match_eval_rtp(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
 
-	struct rtphdr *hdr = frame + start;
+	struct rtphdr *hdr = f->buff + start;
 	struct match_priv_rtp *mp = match->match_priv;
 
 	if (hdr->payload_type != mp->payload_type)

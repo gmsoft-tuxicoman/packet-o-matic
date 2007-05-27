@@ -40,8 +40,8 @@ struct match_priv_ethernet {
 int match_register_ethernet(struct match_reg *r, struct match_functions *m_funcs);
 int match_init_ethernet(struct match *m);
 int match_reconfig_ethernet(struct match *m);
-int match_identify_ethernet(struct layer* l, void* frame, unsigned int start, unsigned int len);
-int match_eval_ethernet(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l);
+int match_identify_ethernet(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
+int match_eval_ethernet(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l);
 int match_cleanup_ethernet(struct match *m);
 int match_unregister_ethernet(struct match_reg *r);
 

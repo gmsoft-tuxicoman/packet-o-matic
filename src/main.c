@@ -184,9 +184,13 @@ int main(int argc, char *argv[]) {
 	
 	// Start reading from the input
 
-	unsigned char packet[SNAPLEN];
-	unsigned int len;
-	int first_layer = input_get_first_layer(c->input);
+	struct frame *f;
+	f = malloc(sizeof(struct frame));
+	bzero(f, sizeof(struct frame));
+	f->buff = malloc(SNAPLEN);
+	f->bufflen = SNAPLEN;
+
+
 
 	fd_set fds;
 	struct timeval tv;
@@ -208,22 +212,26 @@ int main(int argc, char *argv[]) {
 		if (ret == 0)
 			continue;
 
-		len = input_read(c->input, packet, SNAPLEN);
-		if (len == I_ERR) {
+		if (input_read(c->input, f) == I_ERR) {
 			dprint("Error while reading. Abording\n");
 			break;
 		}
-		timers_process(); // This is not real-time timers but we don't really need it
-		if (len > 0)
-			do_rules(packet, 0, len, c->rules, first_layer);
-		helper_process_queue(c->rules); // Process packet that needed some help
+		timers_process(c->input); // This is not real-time timers but we don't really need it
+		if (f->len > 0)
+			do_rules(f, c->rules);
+		helper_process_queue(c->rules); // Process frames that needed some help
 	}
-	// Process remaining queued packets
+	// Process remaining queued frames
 	conntrack_close_connections(c->rules);
 
 	input_close(c->input);
+
+	free(f->buff);
+	free(f);
 err:
 
+
+	config_cleanup(c);
 
 	conntrack_cleanup();
 	helper_cleanup();
@@ -241,6 +249,5 @@ err:
 	// Layers need to be cleaned up after the match
 	layer_cleanup();
 
-	config_cleanup(c);
 	return 0;
 }

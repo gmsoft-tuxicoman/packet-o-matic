@@ -23,6 +23,13 @@
 #define __TIMERS_H__
 
 #include "common.h"
+#include "input.h"
+
+#include <time.h>
+#ifdef TIME_WITH_SYS_TIME
+#include <sys/time.h>
+#endif
+
 
 struct timer {
 
@@ -46,7 +53,7 @@ struct timer_queue {
 
 
 
-int timers_process();
+int timers_process(struct input *i);
 int timers_cleanup();
 struct timer *timer_alloc();
 int timer_cleanup(struct timer *t);

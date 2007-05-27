@@ -27,7 +27,8 @@
 
 #define TCP_SYN_SENT_T	2 * 60
 #define TCP_SYN_RECV_T	60
-#define TCP_CLOSE_T	60
+#define TCP_LAST_ACK_T	30
+#define TCP_CLOSE_T	2
 #define TCP_ESTABLISHED_T 2 * 60 * 60
 
 struct conntrack_functions *ct_functions;
@@ -46,11 +47,11 @@ int conntrack_register_tcp(struct conntrack_reg *r, struct conntrack_functions *
 }
 
 
-uint32_t conntrack_get_hash_tcp(void *frame, unsigned int start, unsigned int flags) {
+uint32_t conntrack_get_hash_tcp(struct frame *f, unsigned int start, unsigned int flags) {
 
 	struct tcphdr* hdr;
 	
-	hdr = frame + start;	
+	hdr = f->buff + start;	
 
 	// Compute the hash
 
@@ -84,12 +85,15 @@ int conntrack_tcp_update_timer(struct conntrack_priv_tcp *priv, struct tcphdr *h
 	        priv->state = STATE_TCP_SYN_SENT;
 	        (*ct_functions->queue_timer) (priv->timer, TCP_SYN_SENT_T);
 	} else if (hdr->th_flags & TH_RST || hdr->th_flags & TH_FIN) {
-	        priv->state = STATE_TCP_CLOSE;
+		priv->state = STATE_TCP_LAST_ACK;
+		(*ct_functions->queue_timer) (priv->timer, TCP_CLOSE_T);
+	} else if (priv->state == STATE_TCP_LAST_ACK && hdr->th_flags & TH_ACK) {
+		// Connection is closed now
+		priv->state = STATE_TCP_CLOSE;
 	        (*ct_functions->queue_timer) (priv->timer, TCP_CLOSE_T);
 	} else if (priv->state == STATE_TCP_CLOSE) {
-		// Connection is on it's way to be closed
-	        (*ct_functions->queue_timer) (priv->timer, TCP_CLOSE_T);
-	} else 	{
+		return 1;
+	} else {
 	        priv->state = STATE_TCP_ESTABLISHED;
 	        (*ct_functions->queue_timer) (priv->timer, TCP_ESTABLISHED_T);
 	}
@@ -98,11 +102,11 @@ int conntrack_tcp_update_timer(struct conntrack_priv_tcp *priv, struct tcphdr *h
 
 }
 
-int conntrack_doublecheck_tcp(void *frame, unsigned int start, void *priv, unsigned int flags) {
+int conntrack_doublecheck_tcp(struct frame *f, unsigned int start, void *priv, unsigned int flags) {
 
 	
 	struct tcphdr* hdr;
-	hdr = frame + start;
+	hdr = f->buff + start;
 
 	// Check if there is a collision
 	
@@ -133,13 +137,14 @@ int conntrack_doublecheck_tcp(void *frame, unsigned int start, void *priv, unsig
 }
 
 
-void *conntrack_alloc_match_priv_tcp(void *frame, unsigned int start, struct conntrack_entry *ce) {
+void *conntrack_alloc_match_priv_tcp(struct frame *f, unsigned int start, struct conntrack_entry *ce) {
 	
 	struct tcphdr* hdr;
-	hdr = frame + start;
+	hdr = f->buff + start;
 	
 	struct conntrack_priv_tcp *priv;
 	priv = malloc(sizeof(struct conntrack_priv_tcp));
+	bzero(priv, sizeof(struct conntrack_priv_tcp));
 	priv->sport = hdr->th_sport;
 	priv->dport = hdr->th_dport;
 

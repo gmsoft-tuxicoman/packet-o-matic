@@ -40,8 +40,8 @@ struct match_priv_tcp {
 int match_register_tcp(struct match_reg *r, struct match_functions *m_funcs);
 int match_init_tcp(struct match *m);
 int match_reconfig_tcp(struct match *m);
-int match_identify_tcp(struct layer* l, void* frame, unsigned int start, unsigned int len);
-int match_eval_tcp(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l);
+int match_identify_tcp(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
+int match_eval_tcp(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l);
 int match_cleanup_tcp(struct match *m);
 
 int match_layer_info_snprintf_tcp(char *buff, unsigned int len, struct layer_info *inf);

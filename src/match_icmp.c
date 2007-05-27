@@ -43,9 +43,9 @@ int match_register_icmp(struct match_reg *r, struct match_functions *m_funcs) {
 	return 1;
 }
 
-int match_identify_icmp(struct layer* l, void* frame, unsigned int start, unsigned int len) {
+int match_identify_icmp(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
-	struct icmp *ihdr = frame + start;
+	struct icmp *ihdr = f->buff + start;
 
 	l->payload_start = start + 8; 
 	l->payload_size = len - 8;

@@ -22,6 +22,7 @@
 #include "common.h"
 #include "input.h"
 #include "match.h"
+#include "timers.h"
 
 struct input_reg *inputs[MAX_INPUT]; ///< Global variable which contains all the input registered in a table.
 static struct input_functions i_funcs; ///< Variable to hold the function pointers passed to the input.
@@ -149,21 +150,12 @@ int input_open(struct input *i) {
 }
 
 /**
- * Returns I_ERR on failure.
- **/
-int input_get_first_layer(struct input *i) {
-
-	return (*inputs[i->type]->get_first_layer) (i);
-
-}
-
-/**
  * The buffer used should be at least 1528 bytes for ethernet and 802.1q marking. The argument bufflen is the length of the buffer.
  * Returns the number of bytes copied. Returns 0 if nothing was read and I_ERR in case of fatal error.
  **/
-inline int input_read(struct input *i, unsigned char *buffer, unsigned int bufflen) {
+inline int input_read(struct input *i, struct frame *f) {
 
-	return (*inputs[i->type]->read) (i, buffer, bufflen);
+	return (*inputs[i->type]->read) (i, f);
 
 }
 
@@ -229,6 +221,19 @@ int input_unregister_all() {
 	return I_OK;
 
 }
+
+int input_gettimeof(struct input *i, struct timeval *tv) {
+
+	if (!i || !inputs[i->type])
+		return I_ERR;
+
+	if (inputs[i->type]->gettimeof)
+		return (*inputs[i->type]->gettimeof) (i, tv);
+	
+	return gettimeofday(tv, NULL);
+
+}
+
 
 void input_print_help() {
 

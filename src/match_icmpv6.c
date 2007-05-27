@@ -43,9 +43,9 @@ int match_register_icmpv6(struct match_reg *r, struct match_functions *m_funcs) 
 	return 1;
 }
 
-int match_identify_icmpv6(struct layer* l, void* frame, unsigned int start, unsigned int len) {
+int match_identify_icmpv6(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
-	struct icmp6_hdr *ihdr = frame + start;
+	struct icmp6_hdr *ihdr = f->buff + start;
 
 	l->payload_start = start + sizeof(struct icmp6_hdr); 
 	l->payload_size = len - sizeof(struct icmp6_hdr);

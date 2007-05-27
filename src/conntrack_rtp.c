@@ -42,11 +42,11 @@ int conntrack_register_rtp(struct conntrack_reg *r, struct conntrack_functions *
 }
 
 
-uint32_t conntrack_get_hash_rtp(void *frame, unsigned int start, unsigned int flags) {
+uint32_t conntrack_get_hash_rtp(struct frame *f, unsigned int start, unsigned int flags) {
 
 	struct rtphdr* hdr;
 	
-	hdr = frame + start;	
+	hdr = f->buff + start;	
 
 	// Compute the hash
 
@@ -58,12 +58,12 @@ uint32_t conntrack_get_hash_rtp(void *frame, unsigned int start, unsigned int fl
 
 }
 
-int conntrack_doublecheck_rtp(void *frame, unsigned int start, void *priv, unsigned int flags) {
+int conntrack_doublecheck_rtp(struct frame *f, unsigned int start, void *priv, unsigned int flags) {
 
 	
 
 	struct rtphdr* hdr;
-	hdr = frame + start;
+	hdr = f->buff + start;
 
 	// Check if there is a collision
 	
@@ -84,10 +84,10 @@ int conntrack_doublecheck_rtp(void *frame, unsigned int start, void *priv, unsig
 }
 
 
-void *conntrack_alloc_match_priv_rtp(void *frame, unsigned int start, struct conntrack_entry *ce) {
+void *conntrack_alloc_match_priv_rtp(struct frame *f, unsigned int start, struct conntrack_entry *ce) {
 	
 	struct rtphdr* hdr;
-	hdr = frame + start;
+	hdr = f->buff + start;
 	
 
 	// Allocate the rtp priv

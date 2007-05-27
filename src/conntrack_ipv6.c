@@ -36,11 +36,11 @@ int conntrack_register_ipv6(struct conntrack_reg *r, struct conntrack_functions 
 }
 
 
-uint32_t conntrack_get_hash_ipv6(void *frame, unsigned int start, unsigned int flags) {
+uint32_t conntrack_get_hash_ipv6(struct frame *f, unsigned int start, unsigned int flags) {
 
 	struct ip6_hdr* hdr;
 	
-	hdr = frame + start;	
+	hdr = f->buff + start;	
 
 	// Compute the hash
 
@@ -71,12 +71,12 @@ uint32_t conntrack_get_hash_ipv6(void *frame, unsigned int start, unsigned int f
 
 }
 
-int conntrack_doublecheck_ipv6(void *frame, unsigned int start, void *priv, unsigned int flags) {
+int conntrack_doublecheck_ipv6(struct frame *f, unsigned int start, void *priv, unsigned int flags) {
 
 	
 
 	struct ip6_hdr* hdr;
-	hdr = frame + start;
+	hdr = f->buff + start;
 
 	// Check if there is a collision
 	
@@ -109,10 +109,10 @@ int conntrack_doublecheck_ipv6(void *frame, unsigned int start, void *priv, unsi
 }
 
 
-void *conntrack_alloc_match_priv_ipv6(void *frame, unsigned int start, struct conntrack_entry *ce) {
+void *conntrack_alloc_match_priv_ipv6(struct frame *f, unsigned int start, struct conntrack_entry *ce) {
 	
 	struct ip6_hdr* hdr;
-	hdr = frame + start;
+	hdr = f->buff + start;
 	
 	struct conntrack_priv_ipv6 *priv;
 	priv = malloc(sizeof(struct conntrack_priv_ipv6));

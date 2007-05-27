@@ -95,12 +95,20 @@ int helper_register(const char *helper_name) {
 
 }
 
-int helper_need_help(struct layer *l, void *frame, unsigned int start, unsigned int len) {
+/**
+ * Parameters :
+ *  - f : the frame to be examined
+ *  - start : the start of the current header in the frame
+ *  - len : the len of the current header + it's payload
+ *  - l : the current layer
+ **/
+
+int helper_need_help(struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
 
 	if (!helpers[l->type] || !helpers[l->type]->need_help)
 		return 0;
 
-	return helpers[l->type]->need_help(l, frame, start, len);
+	return helpers[l->type]->need_help(f, start, len, l);
 
 }
 
@@ -146,22 +154,20 @@ int helper_cleanup() {
  *  - len : length of the frame
  *  - first_layer : first_layer of the frame
  **/
-int helper_queue_frame(void *frame, unsigned int len, int first_layer) {
+int helper_queue_frame(struct frame *f) {
 
-	struct helper_frame *f = malloc(sizeof(struct helper_frame));
-	bzero(f, sizeof(struct helper_frame));
-	f->frame = frame; // We don't do a copy. The helper provide us a buffer that we'll free
-	f->len = len;
-	f->first_layer = first_layer;
+	struct helper_frame *hf = malloc(sizeof(struct helper_frame));
+	bzero(hf, sizeof(struct helper_frame));
+	hf->f = f; // We don't do a copy. The helper provide us a struct frame and the corresponding buffer that we'll free
 
 	if (!frame_head)
-		frame_head = f;
+		frame_head = hf;
 
 	if (!frame_tail)
-		frame_tail = f;
+		frame_tail = hf;
 	else {
-		frame_tail->next = f;
-		frame_tail = f;
+		frame_tail->next = hf;
+		frame_tail = hf;
 	}
 	
 	return 1;
@@ -175,12 +181,9 @@ int helper_process_queue(struct rule_list *list) {
 		return 0;
 
 	while (frame_head) {
-		//dprint("Dequeing 0x%x\n", (unsigned)frame_head->frame);
-		if (0x8b491f0 == (unsigned)frame_head->frame) {
-			dprint("gotcha\n");
-		}
-		do_rules(frame_head->frame, 0, frame_head->len, list, frame_head->first_layer);
-		free(frame_head->frame);
+		do_rules(frame_head->f, list);
+		free(frame_head->f->buff);
+		free(frame_head->f);
 		struct helper_frame *tmpf = frame_head;
 		frame_head = frame_head->next;
 		free(tmpf);

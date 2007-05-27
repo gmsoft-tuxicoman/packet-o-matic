@@ -104,7 +104,7 @@ int target_open_inject(struct target *t) {
 	return 1;
 }
 
-int target_process_inject(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce) {
+int target_process_inject(struct target *t, struct frame *f) {
 	
 	struct target_priv_inject *priv = t->target_priv;
 
@@ -112,16 +112,18 @@ int target_process_inject(struct target *t, struct layer *l, void *frame, unsign
 		dprint("Error, libnet context not initialized !\n");
 		return 0;
 	}
-	int start = layer_find_start(l, match_ethernet_id);
+	int start = layer_find_start(f->l, match_ethernet_id);
 	if (start == -1) {
 		dprint("Unable to find the start of the packet\n");
 		return 0;
 	}
 
+	unsigned int len = f->len;
+
 	if (len > MAX_SEGMENT_LEN)
 		len = MAX_SEGMENT_LEN;
 	
-	if (libnet_write_link (priv->lc, frame + start, len - start) != -1) {
+	if (libnet_write_link (priv->lc, f->buff + start, len - start) != -1) {
 		
 		priv->size += len;
 		dprint("0x%lx; Packet injected (%u bytes (+%u bytes))!\n", (unsigned long) priv, priv->size, len);

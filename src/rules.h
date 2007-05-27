@@ -48,7 +48,10 @@ struct rule_list {
 
 int rules_init();
 
-int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list *rules, int first_layer);
+/// Recursively walk trough the rule_node tree and return 1 if the current frame match
+int node_match(struct frame *f, struct rule_node *n, struct layer *l);
+
+int do_rules(struct frame *f, struct rule_list *rules);
 
 int node_destroy(struct rule_node *node, int sub);
 

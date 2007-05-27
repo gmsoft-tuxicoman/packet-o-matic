@@ -62,11 +62,8 @@ int input_init_docsis(struct input *i);
 /// Open the cable interface to read from it.
 int input_open_docsis(struct input *i);
 
-/// Returns the selected output layer. Either docsis, ethernet or atm.
-int input_get_first_layer_docsis(struct input *i);
-
 /// Read packets from the DOCSIS cable interface and saves it into buffer.
-int input_read_docsis(struct input *i, unsigned char *buffer, unsigned int bufflen);
+int input_read_docsis(struct input *i, struct frame *f);
 
 /// Close the cable interface.
 int input_close_docsis(struct input *i);

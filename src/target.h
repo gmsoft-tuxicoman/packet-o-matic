@@ -43,7 +43,7 @@ struct target_reg {
 	char **params_help;
 	int (*init) (struct target*);
 	int (*open) (struct target*);
-	int (*process) (struct target*, struct layer *l, void*, unsigned int, struct conntrack_entry*);
+	int (*process) (struct target*, struct frame *f);
 	int (*close) (struct target *t);
 	int (*cleanup) (struct target *t);
 };
@@ -52,8 +52,7 @@ struct target_reg {
 struct target_functions {
 
 	int (*match_register) (const char *);
-	struct conntrack_entry* (*conntrack_create_entry) (struct layer *l, void *frame);
-	struct conntrack_entry* (*conntrack_get_entry) (struct layer *l, void* frame);
+	struct conntrack_entry* (*conntrack_create_entry) (struct frame *f);
 	int (*conntrack_add_priv) (void *priv, struct target *t,  struct conntrack_entry *ce, int (*cleanup_handler) (struct conntrack_entry *ce, void *priv));
 	void *(*conntrack_get_priv) (struct target *t, struct conntrack_entry *ce);
 	int (*layer_info_snprintf) (char *buff, unsigned int maxlen, struct layer_info *inf);
@@ -66,7 +65,7 @@ int target_register(const char *target_name);
 struct target *target_alloc(int target_type);
 int target_set_param(struct target *t, char *name, char* value);
 int target_open(struct target *t);
-int target_process(struct target *t, struct layer *l, unsigned char *buffer, unsigned int bufflen, struct conntrack_entry *ce);
+int target_process(struct target *t, struct frame *f);
 int target_close(struct target *t);
 int target_cleanup_t(struct target *t);
 int target_unregister_all();

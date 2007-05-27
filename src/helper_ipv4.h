@@ -40,10 +40,8 @@ struct helper_priv_ipv4_frag {
 
 struct helper_priv_ipv4 {
 
-	char *sublayer_buff;
-	size_t buffsize;
-	unsigned int hdr_offset;
-	int first_layer;
+	struct frame *f; ///< hold info about the original packet
+	unsigned int hdr_offset; ///< ipv4 header offset in the buffer contained in the frame structure
 	struct timer *t;
 
 	struct helper_priv_ipv4_frag * frags;
@@ -55,7 +53,7 @@ struct helper_priv_ipv4 {
 
 int helper_register_ipv4(struct helper_reg *r, struct helper_functions *ct_funcs);
 int helper_init_ipv4();
-int helper_need_help_ipv4(struct layer *l, void *frame, unsigned int start, unsigned int len);
+int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len, struct layer *l);
 int helper_cleanup_ipv4_frag(void *priv);
 int helper_cleanup_ipv4();
 

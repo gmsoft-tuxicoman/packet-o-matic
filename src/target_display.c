@@ -80,42 +80,39 @@ int target_open_display(struct target *t) {
 	return 1;
 }
 
-int target_process_display(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce) {
+int target_process_display(struct target *t, struct frame *f) {
 
 	struct target_priv_display *p = t->target_priv;
 
-	struct layer *tmpl = l;
+	struct layer *l = f->l;
 	int i;
-	for (i = 0; i < p->skip && tmpl; i++)
-		tmpl = tmpl->next;
+	for (i = 0; i < p->skip && l; i++)
+		l = l->next;
 
-	if (!tmpl) {
+	if (!l) {
 		// Skip is higher than number of layers, skip this packet
 		return 1;
-	} else {
-		// We won't care about skipped layers anymore
-		l = tmpl;
 	}
 
 	const int buffsize = 2048;
 	char buff[buffsize];
 	int first_layer = 0, first_info = 0;
 
-	while (tmpl && tmpl->type != match_undefined_id) {
+	while (l && l->type != match_undefined_id) {
 	
 		if (first_layer)
 			printf(", ");
 		
 		first_layer = 1;
 
-		printf("%s", (*target_funcs->match_get_name) (tmpl->type));
+		printf("%s", (*target_funcs->match_get_name) (l->type));
 
-		if (tmpl->infos && tmpl->infos->name) {
+		if (l->infos && l->infos->name) {
 		
 
 			first_info = 1;
 			
-			struct layer_info *inf = tmpl->infos;
+			struct layer_info *inf = l->infos;
 			while (inf) {
 				if ((*target_funcs->layer_info_snprintf) (buff, buffsize, inf)) {
 
@@ -136,13 +133,14 @@ int target_process_display(struct target *t, struct layer *l, void *frame, unsig
 				printf("]");
 		}
 
-		tmpl = tmpl->next;
+		l = l->next;
 	}
 
-	printf(" [len: %u]\n", len);
+	printf(" [len: %u]\n", f->len);
 
 
 	int start;
+	unsigned int len;
 	if (l->prev) {
 		start = l->prev->payload_start;
 		len = l->payload_size + l->payload_start - l->prev->payload_start ;
@@ -153,11 +151,11 @@ int target_process_display(struct target *t, struct layer *l, void *frame, unsig
 
 	switch (p->mode) {
 		case td_mode_hex:
-			target_display_print_hex(frame, start, len);
+			target_display_print_hex(f->buff, start, len);
 			break;
 
 		case td_mode_ascii:
-			target_display_print_ascii(frame, start, len);
+			target_display_print_ascii(f->buff, start, len);
 			break;
 	}
 

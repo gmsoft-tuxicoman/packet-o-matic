@@ -99,11 +99,7 @@ int conntrack_register(const char *conntrack_name) {
 
 }
 
-struct conntrack_entry *conntrack_create_entry(struct layer *l, void* frame) {
-
-	// Rewind to first layer
-	while (l->prev)
-		l = l->prev;
+int conntrack_create_entry(struct frame *f) {
 	
 	struct conntrack_list *cl, *cl_rev;
 
@@ -118,8 +114,8 @@ struct conntrack_entry *conntrack_create_entry(struct layer *l, void* frame) {
 	cl_rev->rev = cl;
 
 
-	uint32_t hash = conntrack_hash(l, frame, CT_DIR_ONEWAY);	
-	uint32_t hash_rev = conntrack_hash(l, frame, CT_DIR_REV);
+	uint32_t hash = conntrack_hash(f, CT_DIR_ONEWAY);	
+	uint32_t hash_rev = conntrack_hash(f, CT_DIR_REV);
 	
 	struct conntrack_entry *ce;
 
@@ -140,12 +136,15 @@ struct conntrack_entry *conntrack_create_entry(struct layer *l, void* frame) {
 
 
 	// TODO : add matches in the opposite direction for speed
+	
+	struct layer *l = f->l;
+
 	while (l) {
 		if (conntracks[l->type] && conntracks[l->type]->alloc_match_priv) {
 			int start = 0;
 			if (l->prev)
 				start = l->prev->payload_start;
-			void *priv = (*conntracks[l->type]->alloc_match_priv) (frame, start, ce);
+			void *priv = (*conntracks[l->type]->alloc_match_priv) (f, start, ce);
 			struct conntrack_match_priv *cp;
 			cp = malloc(sizeof(struct conntrack_match_priv));
 			cp->priv_type = l->type;
@@ -158,7 +157,10 @@ struct conntrack_entry *conntrack_create_entry(struct layer *l, void* frame) {
 
 	ndprint("Conntrack entry 0x%lx created\n", (unsigned long) ce);
 
-	return ce;
+	ce->direction = CT_DIR_FWD;
+	f->ce = ce;
+
+	return C_OK;
 }
 
 
@@ -273,12 +275,15 @@ void *conntrack_get_target_priv(struct target *t, struct conntrack_entry *ce) {
 }
 
 
-uint32_t conntrack_hash(struct layer *l, void *frame, unsigned int flags) {
+uint32_t conntrack_hash(struct frame *f, unsigned int flags) {
 
 
 	// Compute our hash for each layer
 	uint32_t hash, res;
 	hash = INITVAL;
+
+	struct layer *l = f->l;
+
 	while (l && l->type != -1) {
 
 		if (conntracks[l->type]) {
@@ -287,7 +292,7 @@ uint32_t conntrack_hash(struct layer *l, void *frame, unsigned int flags) {
 			//  - if the direction provided in flags (fwd or rev) is present in the conntrack module flags
 			if (!flags || (flags & conntracks[l->type]->flags)) {
 				int start = layer_find_start(l, l->type);
-				res = (*conntracks[l->type]->get_hash) (frame, start, flags);
+				res = (*conntracks[l->type]->get_hash) (f, start, flags);
 				hash = jhash_2words(hash, res, INITVAL);
 			}
 
@@ -300,23 +305,19 @@ uint32_t conntrack_hash(struct layer *l, void *frame, unsigned int flags) {
 	return hash;
 }
 
-struct conntrack_entry *conntrack_get_entry(struct layer *l, void *frame) {
+int conntrack_get_entry(struct frame *f) {
 	
-	// Rewind to first layer
-	while (l->prev)
-		l = l->prev;
-
 	uint32_t hash;
 
 	// Let's start by calculating the full hash
 
-	hash = conntrack_hash(l, frame, CT_DIR_ONEWAY);
+	hash = conntrack_hash(f, CT_DIR_ONEWAY);
 
 	struct conntrack_list *cl;
 	cl = ct_table[hash];
 
 	struct conntrack_entry *ce;
-	ce = conntrack_find(cl, l, frame, CT_DIR_ONEWAY);
+	ce = conntrack_find(cl, f, CT_DIR_ONEWAY);
 
 
 	if (ce) {
@@ -325,18 +326,25 @@ struct conntrack_entry *conntrack_get_entry(struct layer *l, void *frame) {
 
 	} else {// Conntrack not found. Let's try the opposite direction
 		// We need the match the forward hash in the reverse table
-		uint32_t hash_fwd = conntrack_hash(l, frame, CT_DIR_FWD);	
+		uint32_t hash_fwd = conntrack_hash(f, CT_DIR_FWD);	
 		cl = ct_table_rev[hash_fwd];
-		ce = conntrack_find(cl, l, frame, CT_DIR_REV);
+		ce = conntrack_find(cl, f, CT_DIR_REV);
 		if (ce)
 			ce->direction = CT_DIR_REV;
 	}
 
-	return ce;
+
+	if (ce) { 
+		f->ce = ce;
+		return C_OK;
+	}
+
+	f->ce = NULL;
+	return C_ERR;
 
 }
 
-struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct layer *l, void *frame, unsigned int flags) {
+struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct frame *f, unsigned int flags) {
 
 	if (!cl)
 		return NULL;
@@ -347,13 +355,15 @@ struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct layer *
 	struct conntrack_match_priv *cp;
 	cp = ce->match_privs;
 
+	struct layer *l = f->l;
+
 	while (cp) {
 
 		int start = layer_find_start(l, cp->priv_type);
 
 		if (!flags || (flags & conntracks[cp->priv_type]->flags)) { 
 
-			if (start == -1 || !(*conntracks[cp->priv_type]->doublecheck) (frame, start, cp->priv, flags)) {
+			if (start == -1 || !(*conntracks[cp->priv_type]->doublecheck) (f, start, cp->priv, flags)) {
 
 				cl = cl->next; // If it's not the right conntrack entry, go to next one
 				if (!cl)

@@ -80,8 +80,8 @@ struct match_priv_rtp {
 int match_register_rtp(struct match_reg *r, struct match_functions *m_funcs);
 int match_init_rtp(struct match *m);
 int match_reconfig_rtp(struct match *m);
-int match_identify_rtp(struct layer* l, void* frame, unsigned int start, unsigned int len);
-int match_eval_rtp(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l);
+int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
+int match_eval_rtp(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l);
 int match_cleanup_rtp(struct match *m);
 
 

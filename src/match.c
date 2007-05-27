@@ -161,10 +161,10 @@ int match_set_param(struct match *m, char *name, char *value) {
 
 }
 
-inline int match_identify(struct layer *l, void* frame, unsigned int start, unsigned int len) {
+inline int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigned int len) {
 	
 	if (matchs[l->type]->identify)
-		return (*matchs[l->type]->identify) (l, frame, start, len);
+		return (*matchs[l->type]->identify) (f, l, start, len);
 
 	return match_undefined_id;
 
@@ -173,15 +173,16 @@ inline int match_identify(struct layer *l, void* frame, unsigned int start, unsi
 /**
  * Parameters :
  *  - m : the match to compare with
- *  - frame : the packet
+ *  - f : the packet and it's corresponding info
  *  - start : the position of the current match header start in the packet
  *  - len : the lenght of the current match header and it's payload
+ *  - l : the current layer
  **/
 
-inline int match_eval(struct match *m, void* frame, unsigned int start, unsigned int len, struct layer *l) {
+inline int match_eval(struct match *m, struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
 
 	if (matchs[m->type]->eval)
-		return (*matchs[m->type]->eval) (m, frame, start, len, l);
+		return (*matchs[m->type]->eval) (m, f, start, len, l);
 	else
 		return 1;
 

@@ -89,8 +89,8 @@ int match_reconfig_udp(struct match *m) {
 	return 1;
 }
 
-int match_identify_udp(struct layer* l, void *frame, unsigned int start, unsigned int len) {
-	struct udphdr *hdr = frame + start;
+int match_identify_udp(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
+	struct udphdr *hdr = f->buff + start;
 
 	l->payload_start = start + sizeof(struct udphdr);
 	l->payload_size = ntohs(hdr->uh_ulen) - sizeof(struct udphdr);
@@ -102,9 +102,9 @@ int match_identify_udp(struct layer* l, void *frame, unsigned int start, unsigne
 
 }
 
-int match_eval_udp(struct match* match, void *frame, unsigned int start, unsigned int len, struct layer *l) {
+int match_eval_udp(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
 
-	struct udphdr *hdr = frame + start;
+	struct udphdr *hdr = f->buff + start;
 
 	struct match_priv_udp *mp = match->match_priv;
 

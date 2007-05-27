@@ -22,7 +22,15 @@
 #ifndef __LAYER_H__
 #define __LAYER_H__
 
+#include "config.h"
+
 #include <stdint.h>
+#include <time.h>
+#ifdef TIME_WITH_SYS_TIME
+#include <sys/time.h>
+#endif
+
+
 
 #define LAYER_INFO_TYPE_MASK	0x00ff
 #define LAYER_INFO_TYPE_INT32	0x0001
@@ -67,10 +75,22 @@ struct layer {
 	int type; ///< type of this layer
 	unsigned int payload_start; ///< start of the payload
 	unsigned int payload_size; ///< size of the payload
-
 	struct layer_info *infos; ///< infos associated with this layer
 };
 
+
+/// info of a single frame
+
+struct frame {
+	struct layer* l; ///< layers of the frame
+	unsigned int len; ///< length of the current frame
+	unsigned int bufflen; ///< total length of the buffer
+	int first_layer; ///< first layer of the frame
+	struct timeval tv; ///< when the packet arrived
+	void *buff; ///< the frame itself
+	struct conntrack_entry *ce; ///< Conntrack entry associated with this packet if any
+
+};
 
 int layer_init();
 

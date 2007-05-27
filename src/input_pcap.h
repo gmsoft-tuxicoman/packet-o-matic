@@ -30,22 +30,26 @@
 
 #include "input.h"
 
+#define PCAP_CLOCK_SYSTEM 0
+#define PCAP_CLOCK_FILE 1
 
 /// Private structure of the pcap input.
 struct input_priv_pcap {
 
 	pcap_t *p; /// Pcap instance
 	int output_layer; /// Layer type to use
+	int clock_source; /// Clock source to use
+	struct timeval tv; /// Store the time to return if we use file clock source
 
 };
 
 
 int input_init_pcap(struct input *i);
 int input_open_pcap(struct input *i);
-int input_get_first_layer_pcap(struct input *i);
-int input_read_pcap(struct input *i, unsigned char *buffer, unsigned int bufflen);
+int input_read_pcap(struct input *i, struct frame *f);
 int input_close_pcap(struct input *i);
 int input_cleanup_pcap(struct input *i);
+int input_gettimeof_pcap(struct input *i, struct timeval *tv);
 
 
 #endif

@@ -35,9 +35,9 @@ struct conntrack_priv_rtp {
 };
 
 int conntrack_register_rtp(struct conntrack_reg *r, struct conntrack_functions *ct_funcs);
-uint32_t conntrack_get_hash_rtp(void *frame, unsigned int start, unsigned int flags);
-int conntrack_doublecheck_rtp(void *frame, unsigned int start, void *priv, unsigned int flags);
-void *conntrack_alloc_match_priv_rtp(void *frame, unsigned int start, struct conntrack_entry *ce);
+uint32_t conntrack_get_hash_rtp(struct frame *f, unsigned int start, unsigned int flags);
+int conntrack_doublecheck_rtp(struct frame *f, unsigned int start, void *priv, unsigned int flags);
+void *conntrack_alloc_match_priv_rtp(struct frame *f, unsigned int start, struct conntrack_entry *ce);
 int conntrack_cleanup_match_priv_rtp(void *priv);
 int conntrack_do_timeouts_rtp( int (*conntrack_close_connection) (struct conntrack_entry *ce));
 

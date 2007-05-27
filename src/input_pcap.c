@@ -42,10 +42,10 @@ int input_register_pcap(struct input_reg *r, struct input_functions *i_funcs) {
 
 	r->init = input_init_pcap;
 	r->open = input_open_pcap;
-	r->get_first_layer = input_get_first_layer_pcap;
 	r->read = input_read_pcap;
 	r->close = input_close_pcap;
 	r->cleanup = input_cleanup_pcap;
+	r->gettimeof = input_gettimeof_pcap;
 
 	return I_OK;
 }
@@ -91,6 +91,7 @@ int input_open_pcap(struct input *i) {
 			dprint("Error opening file %s for reading\n", filename);
 			return I_ERR;
 		}
+		p->clock_source = PCAP_CLOCK_FILE;
 	} else {
 		char interface[256];
 		bzero(interface, 256);
@@ -152,13 +153,7 @@ int input_open_pcap(struct input *i) {
 	return pcap_get_selectable_fd(p->p);
 }
 
-int input_get_first_layer_pcap(struct input *i) {
-	struct input_priv_pcap *p = i->input_priv;
-	return p->output_layer;
-}
-
-
-int input_read_pcap(struct input *i, unsigned char *buffer, unsigned int bufflen) {
+int input_read_pcap(struct input *i, struct frame *f) {
 
 	struct input_priv_pcap *p = i->input_priv;
 	const u_char *next_pkt;
@@ -173,15 +168,20 @@ int input_read_pcap(struct input *i, unsigned char *buffer, unsigned int bufflen
 		return I_ERR;
 	}
 
-	if (bufflen < phdr->caplen) {
-		dprint("Please increase your read buffer. Provided %u, needed %u\n", bufflen, phdr->caplen);
-		phdr->caplen = bufflen;
+	if (f->bufflen < phdr->caplen) {
+		dprint("Please increase your read buffer. Provided %u, needed %u\n", f->bufflen, phdr->caplen);
+		phdr->caplen = f->bufflen;
 		
 	}
-	memcpy(buffer, next_pkt, phdr->caplen);
+	memcpy(f->buff, next_pkt, phdr->caplen);
+	memcpy(&f->tv, &phdr->ts, sizeof(struct timeval));
+	memcpy(&p->tv, &phdr->ts, sizeof(struct timeval));
 
 
-	return phdr->caplen;
+	f->len = phdr->caplen;
+	f->first_layer = p->output_layer;
+
+	return I_OK;
 }
 
 int input_close_pcap(struct input *i) {
@@ -202,3 +202,20 @@ int input_close_pcap(struct input *i) {
 	return I_OK;
 
 }
+
+int input_gettimeof_pcap(struct input *i, struct timeval *tv) {
+
+	struct input_priv_pcap *p = i->input_priv;
+
+	if (p->clock_source == PCAP_CLOCK_FILE) {
+		memcpy(tv, &p->tv, sizeof(struct timeval));
+		// Add one usec not to create some virtual delay
+		tv->tv_usec++;
+		return I_OK;
+	}
+
+	return gettimeofday(tv, NULL);
+
+}
+
+

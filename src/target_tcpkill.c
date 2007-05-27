@@ -170,7 +170,7 @@ int target_open_tcpkill(struct target *t) {
 	return 1;
 }
 
-int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce) {
+int target_process_tcpkill(struct target *t, struct frame *f) {
 
 
 	struct target_priv_tcpkill *priv = t->target_priv;
@@ -178,16 +178,20 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 
 	int ipv4start, ipv6start, tcpstart, i;
 
-	tcpstart = layer_find_start(l, match_tcp_id);
+	tcpstart = layer_find_start(f->l, match_tcp_id);
 	if (tcpstart == -1) {
 		dprint("No TCP header found in this packet\n");
 		return 0;
 	}
 
-	struct tcphdr *shdr = (struct tcphdr*) (frame + tcpstart);
+	struct tcphdr *shdr = (struct tcphdr*) (f->buff + tcpstart);
 
-	ipv4start = layer_find_start(l, match_ipv4_id);
-	ipv6start = layer_find_start(l, match_ipv6_id);
+	// No need to kill RST or FIN packets
+	if ((shdr->th_flags & TH_RST) || (shdr->th_flags & TH_FIN))
+		return 0;
+
+	ipv4start = layer_find_start(f->l, match_ipv4_id);
+	ipv6start = layer_find_start(f->l, match_ipv6_id);
 
 	// init temp buffer
 	unsigned char buffer[1024];
@@ -227,13 +231,13 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 	// In normal mode, we have to include the ethernet header
 	if (!priv->routed) {
 		int ethernetstart;
-		ethernetstart = layer_find_start(l, match_ethernet_id);
+		ethernetstart = layer_find_start(f->l, match_ethernet_id);
 		if (ethernetstart == -1) {
 			dprint("No ethernet header found in this packet\n");
 			return 0;
 		}
 		
-		ipv6start = layer_find_start(l, match_ipv6_id);
+		ipv6start = layer_find_start(f->l, match_ipv6_id);
 
 		if (ipv4start == -1 && ipv6start == -1) {
 			dprint("Neither IPv4 or IPv6 header found in this packet\n");
@@ -242,7 +246,7 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 
 		// First copy create the right ethernet header
 		
-		struct ether_header *dehdr = (struct ether_header*) buffer, *sehdr = (struct ether_header*) (frame + ethernetstart);
+		struct ether_header *dehdr = (struct ether_header*) buffer, *sehdr = (struct ether_header*) (f->buff + ethernetstart);
 		memcpy(dehdr->ether_shost, sehdr->ether_dhost, sizeof(dehdr->ether_shost));
 		memcpy(dehdr->ether_dhost, sehdr->ether_shost, sizeof(dehdr->ether_dhost));
 		dehdr->ether_type = sehdr->ether_type;
@@ -254,7 +258,7 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 	// Let's see if we have a IPv4 header. This can only be false in normal mode in case of an IPv6 packet
 	if (ipv4start != -1) {
 
-		struct ip *dv4hdr = (struct ip*) (buffer + blen), *sv4hdr = (struct ip*) (frame + ipv4start);
+		struct ip *dv4hdr = (struct ip*) (buffer + blen), *sv4hdr = (struct ip*) (f->buff + ipv4start);
 	
 #ifdef HAVE_LINUX_IP_SOCKET
 		if (priv->routed) { // Create the right sockaddr_in in routed mode
@@ -297,7 +301,7 @@ int target_process_tcpkill(struct target *t, struct layer *l, void *frame, unsig
 	// Add the IPv6 header if any
 	if (ipv6start != -1) {
 		
-		struct ip6_hdr *dv6hdr = (struct ip6_hdr *) (buffer + blen), *sv6hdr = (struct ip6_hdr *) (frame + ipv6start);
+		struct ip6_hdr *dv6hdr = (struct ip6_hdr *) (buffer + blen), *sv6hdr = (struct ip6_hdr *) (f->buff + ipv6start);
 		memcpy(dv6hdr->ip6_src.s6_addr, sv6hdr->ip6_dst.s6_addr, sizeof(dv6hdr->ip6_src));
 		memcpy(dv6hdr->ip6_dst.s6_addr, sv6hdr->ip6_src.s6_addr, sizeof(dv6hdr->ip6_dst));
 		buffer[blen] = 0x6 << 4;

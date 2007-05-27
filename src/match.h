@@ -45,8 +45,8 @@ struct match_reg {
 	char **params_help; ///< parameter help string
 	int (*init) (struct match *m); ///< called when creating a new match
 	int (*reconfig) (struct match *m); ///< called when parameters were updated
-	int (*identify) (struct layer*, void*, unsigned int, unsigned int); ///< callled to identify the next layer of a packet
-	int (*eval) (struct match*, void*, unsigned int, unsigned int, struct layer*); ///< called to check if the packet match what we want
+	int (*identify) (struct frame *f, struct layer*, unsigned int, unsigned int); ///< callled to identify the next layer of a packet
+	int (*eval) (struct match*, struct frame*, unsigned int, unsigned int, struct layer*); ///< called to check if the packet match what we want
 	int (*cleanup) (struct match *m); ///< called when cleaning up the memory of the match
 	int (*unregister) (struct match_reg *r); ///< called when unregistering the match
 
@@ -64,9 +64,9 @@ int match_get_type(const char *match_name);
 char *match_get_name(int match_type);
 struct match *match_alloc(int match_type);
 int match_set_param(struct match *m, char *name, char *value);
-int match_identify(struct layer *l, void* frame, unsigned int start, unsigned int len);
+int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigned int len);
 /// Evaluate the packet against the current match
-int match_eval(struct match* m, void* frame, unsigned int start, unsigned int len, struct layer *l);
+int match_eval(struct match* m, struct frame *f, unsigned int start, unsigned int len, struct layer *l);
 int match_cleanup_module(struct match *m);
 int match_cleanup();
 int match_unregister(unsigned int match_type);

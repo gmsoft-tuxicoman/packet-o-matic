@@ -70,20 +70,20 @@ int target_init_dump_payload(struct target *t) {
 }
 
 
-int target_process_dump_payload(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce) {
+int target_process_dump_payload(struct target *t, struct frame *f) {
 
 
-	struct layer *lastl = l;
+	struct layer *lastl = f->l;
 	while (lastl->next && lastl->next->type != match_undefined_id)
 		lastl = lastl->next;
 
-	if (!ce)
-		ce = (*tg_functions->conntrack_create_entry) (l, frame);
+	if (!f->ce)
+		(*tg_functions->conntrack_create_entry) (f);
 
 
 	struct target_conntrack_priv_dump_payload *cp;
 
-	cp = (*tg_functions->conntrack_get_priv) (t, ce);
+	cp = (*tg_functions->conntrack_get_priv) (t, f->ce);
 
 	if (!cp) {
 
@@ -118,23 +118,20 @@ int target_process_dump_payload(struct target *t, struct layer *l, void *frame, 
 
 		ndprint("%s opened\n", filename);
 
-		(*tg_functions->conntrack_add_priv) (cp, t, ce, target_close_connection_dump_payload);
+		(*tg_functions->conntrack_add_priv) (cp, t, f->ce, target_close_connection_dump_payload);
 	}
 
 	if (lastl->payload_size == 0)
 		return 1;
 
 	if (*t->params_value[1] == '1') {
-		unsigned int direction = CT_DIR_FWD;
-		if (ce)
-			direction = ce->direction;
-		if (direction == CT_DIR_FWD)
+		if (f->ce->direction == CT_DIR_FWD)
 			write(cp->fd, "\n> ", 3);
 		else
 			write(cp->fd, "\n< ", 3);
 	}
 
-	write(cp->fd, frame + lastl->payload_start, lastl->payload_size);
+	write(cp->fd, f->l + lastl->payload_start, lastl->payload_size);
 
 	ndprint("Saved %u bytes of payload\n", lastl->payload_size);
 

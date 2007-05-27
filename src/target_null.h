@@ -26,6 +26,6 @@
 #include "target.h"
 
 
-int target_process_null(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce);
+int target_process_null(struct target *t, struct frame *f);
 
 #endif

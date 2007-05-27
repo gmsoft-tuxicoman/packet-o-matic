@@ -83,9 +83,9 @@ struct match_priv_docsis {
 
 int match_register_docsis(struct match_reg *r, struct match_functions *m_funcs);
 int match_init_docsis(struct match *m);
-int match_identify_docsis(struct layer* l, void* frame, unsigned int start, unsigned int len);
+int match_identify_docsis(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
 int match_reconfig_docsis(struct match *m);
-int match_eval_docsis(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l);
+int match_eval_docsis(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l);
 int match_cleanup_docsis(struct match *m);
 
 #endif

@@ -57,6 +57,13 @@
 #define CT_DIR_BOTH 3
 
 
+
+/// Return value in case of error
+#define C_ERR -1
+
+/// Return value on success
+#define C_OK 0
+
 /// This structure contains all that needs to be known about a connection.
 struct conntrack_entry {
 
@@ -83,9 +90,9 @@ struct conntrack_reg {
 
 	void *dl_handle;
 	unsigned int flags;
-	uint32_t (*get_hash) (void* frame, unsigned int start, unsigned int flags);
-	int (*doublecheck) (void *frame, unsigned int start, void *priv, unsigned int flags);
-	void* (*alloc_match_priv) (void *frame, unsigned int start, struct conntrack_entry *ce);
+	uint32_t (*get_hash) (struct frame *f, unsigned int start, unsigned int flags);
+	int (*doublecheck) (struct frame *f, unsigned int start, void *priv, unsigned int flags);
+	void* (*alloc_match_priv) (struct frame *f, unsigned int start, struct conntrack_entry *ce);
 	int (*cleanup_match_priv) (void *priv);
 	int (*conntrack_do_timeouts) (int (*conntrack_close_connection)(struct conntrack_entry *ce));
 
@@ -137,10 +144,10 @@ int conntrack_add_target_priv(void *priv, struct target *t,  struct conntrack_en
 int conntrack_add_helper_priv(void *priv, int type, struct conntrack_entry *ce, int (*flush_buffer) (struct conntrack_entry *ce, void *priv), int (*cleanup_handler) (struct conntrack_entry *ce, void *priv));
 void *conntrack_get_helper_priv(int type, struct conntrack_entry *ce);
 void *conntrack_get_target_priv(struct target *t, struct conntrack_entry *ce);
-uint32_t conntrack_hash(struct layer *l, void *frame, unsigned int flags);
-struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct layer *l, void *frame, unsigned int flags);
-struct conntrack_entry *conntrack_get_entry(struct layer *l, void *frame);
-struct conntrack_entry *conntrack_create_entry(struct layer *l, void *frame);
+uint32_t conntrack_hash(struct frame *f, unsigned int flags);
+struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct frame *f, unsigned int flags);
+int conntrack_get_entry(struct frame *f);
+int conntrack_create_entry(struct frame *f);
 int conntrack_cleanup_connection (struct conntrack_entry *ce);
 int conntrack_do_timer(void * ce);
 struct timer *conntrack_timer_alloc(struct conntrack_entry *ce);

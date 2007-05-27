@@ -36,7 +36,7 @@ int target_register_null(struct target_reg *r, struct target_functions *tg_funcs
 
 }
 
-int target_process_null(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce) {
+int target_process_null(struct target *t, struct frame *f) {
 
 	ndprint("Packet processed\n");
 

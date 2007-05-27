@@ -44,11 +44,11 @@ int conntrack_register_udp(struct conntrack_reg *r, struct conntrack_functions *
 }
 
 
-uint32_t conntrack_get_hash_udp(void *frame, unsigned int start, unsigned int flags) {
+uint32_t conntrack_get_hash_udp(struct frame *f, unsigned int start, unsigned int flags) {
 
 	struct udphdr* hdr;
 	
-	hdr = frame + start;	
+	hdr = f->buff + start;	
 
 	// Compute the hash
 
@@ -72,10 +72,10 @@ uint32_t conntrack_get_hash_udp(void *frame, unsigned int start, unsigned int fl
 
 }
 
-int conntrack_doublecheck_udp(void *frame, unsigned int start, void *priv, unsigned int flags) {
+int conntrack_doublecheck_udp(struct frame *f, unsigned int start, void *priv, unsigned int flags) {
 
 	struct udphdr* hdr;
-	hdr = frame + start;
+	hdr = f->buff + start;
 
 	// Check if there is a collision
 	
@@ -111,10 +111,10 @@ int conntrack_doublecheck_udp(void *frame, unsigned int start, void *priv, unsig
 }
 
 
-void *conntrack_alloc_match_priv_udp(void *frame, unsigned int start, struct conntrack_entry *ce) {
+void *conntrack_alloc_match_priv_udp(struct frame *f, unsigned int start, struct conntrack_entry *ce) {
 	
 	struct udphdr* hdr;
-	hdr = frame + start;
+	hdr = f->buff + start;
 	
 
 	// Allocate the udp priv

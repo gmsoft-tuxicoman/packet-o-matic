@@ -71,9 +71,9 @@ int target_init_wave(struct target *t) {
 
 
 
-int target_process_wave(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce) {
+int target_process_wave(struct target *t, struct frame *f) {
 
-	struct layer *rtpl = l;
+	struct layer *rtpl = f->l;
 	while (rtpl) {
 		if (rtpl->type == match_rtp_id)
 			break;
@@ -89,16 +89,16 @@ int target_process_wave(struct target *t, struct layer *l, void *frame, unsigned
 	if (rtpl->payload_size == 0)
 		return 1;
 	
-	if (!ce)
-		ce = (*tg_functions->conntrack_create_entry) (l, frame);
+	if (!f->ce)
+		(*tg_functions->conntrack_create_entry) (f);
 
 	struct target_conntrack_priv_wave *cp;
 
-	cp = (*tg_functions->conntrack_get_priv) (t, ce);
+	cp = (*tg_functions->conntrack_get_priv) (t, f->ce);
 
 	int rtp_start = rtpl->prev->payload_start;
 	struct rtphdr *rtphdr;
-	rtphdr = frame + rtp_start;
+	rtphdr = f->buff + rtp_start;
 
 	if (!cp) {
 
@@ -161,7 +161,7 @@ int target_process_wave(struct target *t, struct layer *l, void *frame, unsigned
 
 		ndprint("%s opened\n", filename);
 
-		(*tg_functions->conntrack_add_priv) (cp, t, ce, target_close_connection_wave);
+		(*tg_functions->conntrack_add_priv) (cp, t, f->ce, target_close_connection_wave);
 
 
 
@@ -205,7 +205,7 @@ int target_process_wave(struct target *t, struct layer *l, void *frame, unsigned
 
 	cp->total_size += rtpl->payload_size;
 
-	write(cp->fd, frame + rtpl->payload_start, rtpl->payload_size);
+	write(cp->fd, f->buff + rtpl->payload_start, rtpl->payload_size);
 
 	return 1;
 };

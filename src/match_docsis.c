@@ -83,9 +83,9 @@ int match_reconfig_docsis(struct match *m) {
 	return 1;
 }
 
-int match_identify_docsis(struct layer* l, void* frame, unsigned int start, unsigned int len) {
+int match_identify_docsis(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
-	struct docsis_hdr *dhdr = frame + start;
+	struct docsis_hdr *dhdr = f->buff + start;
 	
 
 	l->payload_start = start + sizeof(struct docsis_hdr);
@@ -129,10 +129,10 @@ int match_identify_docsis(struct layer* l, void* frame, unsigned int start, unsi
 	return -1;
 }
 
-int match_eval_docsis(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l) {
+int match_eval_docsis(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
 
 	
-	struct docsis_hdr *dhdr = frame + start;
+	struct docsis_hdr *dhdr = f->buff + start;
 
 	struct match_priv_docsis *p =  match->match_priv;
 

@@ -38,8 +38,8 @@ struct match_priv_ipv4 {
 int match_register_ipv4();
 int match_init_ipv4(struct match *m);
 int match_reconfig_ipv4(struct match *m);
-int match_identify_ipv4(struct layer* l, void* frame, unsigned int start, unsigned int len);
-int match_eval_ipv4(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l);
+int match_identify_ipv4(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
+int match_eval_ipv4(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l);
 int match_cleanup_ipv4(struct match *m);
 
 int match_layer_info_snprintf_ipv4(char *buff, unsigned int len, struct layer_info *inf);

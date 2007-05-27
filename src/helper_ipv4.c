@@ -61,39 +61,38 @@ int helper_init_ipv4() {
 
 int helper_ipv4_process_frags(struct helper_priv_ipv4 *p) {
 
-	int bufflen = p->buffsize;
-	char *buffer;
+	struct frame *f = p->f;
 
-	struct helper_priv_ipv4_frag *f = p->frags;
+	struct helper_priv_ipv4_frag *frg = p->frags;
+	int pos = f->bufflen;
 
 	// Calculate the total size of the new packet
-	while (f) {
-		bufflen += f->len;
-		f = f->next;
+	while (frg) {
+		f->bufflen += frg->len;
+		frg = frg->next;
 	}
 
-	buffer = malloc(bufflen); // The helper subsystem will free that for us
-	memcpy(buffer, p->sublayer_buff, p->buffsize);
+	f->len = f->bufflen;
 
-	int pos = p->buffsize;
+	f->buff = realloc(f->buff, f->bufflen); // The helper subsystem will free that and the struct frame for us
 
-	f = p->frags;
-	while (f) {
-		memcpy(buffer + pos, f->buffer, f->len);
-		pos += f->len;
-		f = f->next;
+	frg = p->frags;
+	while (frg) {
+		memcpy(f->buff + pos, frg->buffer, frg->len);
+		pos += frg->len;
+		frg = frg->next;
 	}
 
-	struct ip *hdr = (struct ip*) (buffer + p->hdr_offset);
+	struct ip *hdr = (struct ip*) (f->buff + p->hdr_offset);
 
 	hdr->ip_off = 0;
 	hdr->ip_id = 0;
-	hdr->ip_len = htons(bufflen - p->hdr_offset);
+	hdr->ip_len = htons(f->bufflen - p->hdr_offset);
 
 
-	ndprint("Helper ipv4 : sending packet to rule processor. len %u, first_layer %u\n", pos, p->first_layer);
+	ndprint("Helper ipv4 : sending packet to rule processor. len %u, first_layer %u\n", pos, f->first_layer);
 
-	(*hlp_functions->queue_frame) (buffer, bufflen, p->first_layer);
+	(*hlp_functions->queue_frame) (f);
 
 
 	helper_cleanup_ipv4_frag(p);
@@ -103,11 +102,11 @@ int helper_ipv4_process_frags(struct helper_priv_ipv4 *p) {
 
 }
 
-int helper_need_help_ipv4(struct layer *l, void *frame, unsigned int start, unsigned int len) {
+int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
 
 
 	struct ip* hdr;
-	hdr = frame + start;
+	hdr = f->buff + start;
 
 	u_short frag_off = ntohs(hdr->ip_off);
 
@@ -129,7 +128,7 @@ int helper_need_help_ipv4(struct layer *l, void *frame, unsigned int start, unsi
 
 
 	while (tmp) {
-		struct ip *tmphdr = (struct ip*) (tmp->sublayer_buff + tmp->hdr_offset);
+		struct ip *tmphdr = (struct ip*) (tmp->f->buff + tmp->hdr_offset);
 	        if (hdr->ip_src.s_addr == tmphdr->ip_src.s_addr
 	                && hdr->ip_dst.s_addr == tmphdr->ip_dst.s_addr
 	                && hdr->ip_id == tmphdr->ip_id)
@@ -144,7 +143,7 @@ int helper_need_help_ipv4(struct layer *l, void *frame, unsigned int start, unsi
 	if (frag_size > 0xFFFF)
 		return 1;
 
-	if (frag_start + frag_size > l->prev->payload_size + l->prev->payload_start) {
+	if (frag_start + frag_size > len + start) {
 		dprint("Error, packet len missmatch dropping this frag : ipv4 [");
 		struct layer_info *li = l->infos;
 		while (li) {
@@ -170,16 +169,13 @@ int helper_need_help_ipv4(struct layer *l, void *frame, unsigned int start, unsi
 		frags_head = tmp;
 
 		// Save the sublayer (ethernet or else) up to the start of the IPv4 payload
-		tmp->sublayer_buff = malloc(frag_start);
-		memcpy(tmp->sublayer_buff, frame, frag_start);
-		tmp->buffsize = frag_start;
+		tmp->f = malloc(sizeof(struct frame));
+		memcpy(tmp->f, f, sizeof(struct frame));
+		tmp->f->buff = malloc(frag_start);
+		memcpy(tmp->f->buff, f->buff, frag_start);
+		tmp->f->bufflen = frag_start;
+		tmp->f->len = frag_start;
 		tmp->hdr_offset = start;
-
-		// Save the first layer type
-		while (l->prev)
-			l = l->prev;
-		tmp->first_layer = l->type;
-
 
 		ndprint("Helper ipv4 : allocated buffer for new packet id %u\n", ntohs(hdr->ip_id));
 		tmp->t = (*hlp_functions->alloc_timer) (tmp, helper_cleanup_ipv4_frag);
@@ -219,7 +215,7 @@ int helper_need_help_ipv4(struct layer *l, void *frame, unsigned int start, unsi
 	bzero(ftmp, sizeof(struct helper_priv_ipv4_frag));
 	ftmp->offset = offset;
 	ftmp->buffer = malloc(frag_size);
-	memcpy(ftmp->buffer, frame + frag_start, frag_size);
+	memcpy(ftmp->buffer, f->buff + frag_start, frag_size);
 	ftmp->len = frag_size;
 	if (!(frag_off & IP_MORE_FRAG))
 		ftmp->last = 1;
@@ -285,9 +281,6 @@ int helper_cleanup_ipv4_frag(void *priv) {
 		p->frags = p->frags->next;
 		free(f);
 	}
-	
-
-	free(p->sublayer_buff);
 
 	if (p->t) {
 		(*hlp_functions->dequeue_timer) (p->t);
@@ -309,8 +302,12 @@ int helper_cleanup_ipv4_frag(void *priv) {
 
 int helper_cleanup_ipv4() {
 
-	while (frags_head)
+	while (frags_head) {
+		struct helper_priv_ipv4 *p = frags_head;
+		free(p->f->buff);
+		free(p->f);
 		helper_cleanup_ipv4_frag(frags_head);
+	}
 	
 	return 1;
 }

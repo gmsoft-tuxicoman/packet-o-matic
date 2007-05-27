@@ -96,9 +96,9 @@ int match_reconfig_tcp(struct match *m) {
 	return 1;
 }
 
-int match_identify_tcp(struct layer* l, void* frame, unsigned int start, unsigned int len) {
+int match_identify_tcp(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
-	struct tcphdr* hdr = frame + start;
+	struct tcphdr* hdr = f->buff + start;
 	
 	unsigned int hdrlen = (hdr->th_off << 2);
 	l->payload_start = start + hdrlen;
@@ -115,9 +115,9 @@ int match_identify_tcp(struct layer* l, void* frame, unsigned int start, unsigne
 
 }
 
-int match_eval_tcp(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l) {
+int match_eval_tcp(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
 	
-	struct tcphdr* hdr = frame + start;
+	struct tcphdr* hdr = f->buff + start;
 	
 	unsigned short sport = ntohs(hdr->th_sport);
 	unsigned short dport = ntohs(hdr->th_dport);

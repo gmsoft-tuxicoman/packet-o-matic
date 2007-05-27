@@ -33,7 +33,13 @@ int rules_init() {
 
 }
 
-inline int node_match(void *frame, unsigned int start, unsigned int len, struct rule_node *n, struct layer *l) {
+/**
+ * Parameters :
+ * - n : current node what we are evaluating
+ * - l : current layer that we are currently looking at
+ **/
+
+inline int node_match(struct frame *f, struct rule_node *n, struct layer *l) {
 
 	if (!l)
 		return 0;
@@ -54,7 +60,7 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 			}
 			unsigned int next_layer;
 			l->type = m->type;
-			next_layer = match_identify(l, frame, l->prev->payload_start, l->prev->payload_size);
+			next_layer = match_identify(f, l, l->prev->payload_start, l->prev->payload_size);
 			if (next_layer < 0) {
 				// restore the original value
 				l->type = match_undefined_id;
@@ -64,7 +70,7 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 				l->next = layer_pool_get();
 				l->next->type = next_layer;
 
-				if (helper_need_help(l, frame, l->prev->payload_start, l->prev->payload_size)) // If it needs help, we don't process it
+				if (helper_need_help(f, l->prev->payload_start, l->prev->payload_size, l)) // If it needs help, we don't process it
 					return 0;
 			
 				// check the calculated size and adjust the max len of the packet
@@ -86,15 +92,15 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 		if (l->type != m->type)
 			return 0;
 
-		if (m->match_priv)
-			result = match_eval(m, frame, start, len, l);
+		if (m->match_priv) {
+			if (l->prev)
+				result = match_eval(m, f, l->prev->payload_start, l->prev->payload_size, l);
+			else
+				result = match_eval(m, f, 0 , f->len, l);
+		}
 
-
-		start = l->payload_start;
-	} else {
+	} else { // If there is no match, it means this node is a 'or' operation
 		next_layer = l;
-		if (l->prev)
-			start = l->prev->payload_start;
 	}
 
 	if (result == 0)
@@ -107,20 +113,17 @@ inline int node_match(void *frame, unsigned int start, unsigned int len, struct 
 
 
 	if (!n->b) // There is only one next node
-		return node_match(frame, start, len, n->a, next_layer);
+		return node_match(f, n->a, next_layer);
 
 
 	// there is two node, let's see if we match one of them
-	return node_match(frame, start, len, n->a, next_layer) && node_match(frame, start, len, n->b, next_layer);
+	return node_match(f, n->a, next_layer) && node_match(f, n->b, next_layer);
 
 }
 
-int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list *rules, int first_layer) {
+int do_rules(struct frame *f, struct rule_list *rules) {
 
 	
-
-	frame += start;
-	len -= start;
 	
 	struct rule_list *r = rules;
 	if (r == NULL) {
@@ -133,32 +136,38 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 	layer_pool_discard();
 
 	// Let's identify the layers as far as we can go
-	struct layer *layers, *l;
+	struct layer *l;
 
-	layers = layer_pool_get();
-	l = layers;
-	l->type = first_layer;
+	l = layer_pool_get();
+	l->type = f->first_layer;
+
+
+	f->l = l;
+	f->ce = NULL;
+
 	while (l && l->type != match_undefined_id) { // If it's undefined, it means we can't assume anything about the rest of the packet
 		l->next = layer_pool_get();
 		l->next->prev = l;
 		
-		int new_start = 0, new_len = len;
+		int new_start = 0, new_len = f->len;
 		if (l->prev) {
 			new_start = l->prev->payload_start;
 			new_len = l->prev->payload_size;
 		}
 
 		// identify must populate payload_start and payload_size
-		l->next->type = match_identify(l, frame, new_start, new_len);
+		l->next->type = match_identify(f, l, new_start, new_len);
 
 		if (l->next->type == -1) {
 			l->next = NULL;
-		}
+		} else if (l->next->type != match_undefined_id)
+			// Next layer is new. Need to discard current conntrack entry
+			f->ce = NULL;
 		
 		l->infos = layer_info_pool_get(l);
 
 
-		if (helper_need_help(l, frame, new_start, len)) // If it needs help, we don't process it
+		if (helper_need_help(f, new_start, new_len, l)) // If it needs help, we don't process it
 			return 1;
 	
 		// check the calculated size and adjust the max len of the packet
@@ -182,7 +191,7 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 
 		if (r->node) {
 			// If there is a conntrack_entry, it means one of the target added it's priv, so the packet needs to be processed
-			r->result = node_match(frame, 0, len, r->node, layers); // Get the result to fully populate layers
+			r->result = node_match(f, r->node, f->l); // Get the result to fully populate layers
 			if (r->result)
 				ndprint("Rule matched\n");
 		}
@@ -190,17 +199,15 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 
 	}
 
-	struct conntrack_entry *ce = conntrack_get_entry(layers, frame);
-
-	if (ce) { // We got a conntrack_entry, process the corresponding targets
-		struct conntrack_target_priv *cp = ce->target_privs;
+	if (f->ce || conntrack_get_entry(f) == C_OK) { // We got a conntrack_entry, process the corresponding targets
+		struct conntrack_target_priv *cp = f->ce->target_privs;
 		while (cp) {
 			r = rules;
 			while (r) {
 				struct target *t = r->target;
 				while (t) {
 					if (t == cp->t) {
-						target_process(r->target, layers, frame, len, ce);
+						target_process(r->target, f);
 						t->matched_conntrack = 1; // Do no process this target again if it matched here
 					}
 					t = t->next;
@@ -218,7 +225,7 @@ int do_rules(void *frame, unsigned int start, unsigned int len, struct rule_list
 		if (r->result) {
 			while (t) {
 				if (!t->matched_conntrack)
-					target_process(t, layers, frame, len, ce);
+					target_process(t, f);
 				t = t->next;
 			}
 		}

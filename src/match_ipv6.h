@@ -43,8 +43,8 @@ struct match_priv_ipv6 {
 int match_register_ipv6(struct match_reg *r, struct match_functions *m_funcs);
 int match_init_ipv6(struct match *m);
 int match_reconfig_ipv6(struct match *m);
-int match_identify_ipv6(struct layer* l, void* frame, unsigned int start, unsigned int len);
-int match_eval_ipv6(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l);
+int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
+int match_eval_ipv6(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l);
 int match_cleanup_ipv6(struct match *m);
 int match_unregister_ipv6(struct match_reg *r);
 

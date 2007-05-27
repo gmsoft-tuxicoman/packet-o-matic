@@ -39,7 +39,7 @@ struct target_priv_inject {
 
 int target_init_inject(struct target *t);
 int target_open_inject(struct target *t);
-int target_process_inject(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce);
+int target_process_inject(struct target *t, struct frame *f);
 int target_close_inject(struct target *t);
 int target_cleanup_inject(struct target *t);
 

@@ -115,7 +115,7 @@ int target_open_pcap(struct target *t) {
 }
 
 
-int target_process_pcap(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce) {
+int target_process_pcap(struct target *t, struct frame *f) {
 
 	struct target_priv_pcap *priv = t->target_priv;
 	
@@ -124,31 +124,30 @@ int target_process_pcap(struct target *t, struct layer *l, void *frame, unsigned
 		return 0;
 	}
 	
-	int start = layer_find_start(l, priv->last_layer_type);
+	int start = layer_find_start(f->l, priv->last_layer_type);
 
 	if (start == -1) {
 
-		dprint("target_pcap: Unable to find the start of the packet. You probably need to set the parameter \"layer\" to \"%s\"\n", (*tg_functions->match_get_name) (l->type));
+		dprint("target_pcap: Unable to find the start of the packet. You probably need to set the parameter \"layer\" to \"%s\"\n", (*tg_functions->match_get_name) (f->l->type));
 		return 0;
 
 	}
 	
 	
-	frame += start;
-	len -= start;
 	
 	struct pcap_pkthdr phdr;
 	
-	gettimeofday(&phdr.ts, NULL);
+	memcpy(&phdr.ts, &f->tv, sizeof(struct timeval));
 	
+	unsigned int len = f->len - start;
 	phdr.len = len;
 	
 	if (SNAPLEN > len)
 		phdr.caplen = len;
-	 else
+	else
 		phdr.caplen = SNAPLEN;
 	
-	pcap_dump((u_char*)priv->pdump, &phdr, frame);
+	pcap_dump((u_char*)priv->pdump, &phdr, f->buff + start);
 	//pcap_dump_flush(priv->pdump);
 
 	priv->size += len;

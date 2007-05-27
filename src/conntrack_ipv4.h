@@ -34,9 +34,9 @@ struct conntrack_priv_ipv4 {
 };
 
 int conntrack_register_ipv4(struct conntrack_reg *r, struct conntrack_functions *ct_funcs);
-uint32_t conntrack_get_hash_ipv4(void *frame, unsigned int start, unsigned int flags);
-int conntrack_doublecheck_ipv4(void *frame, unsigned int start, void *priv, unsigned int flags);
-void *conntrack_alloc_match_priv_ipv4(void *frame, unsigned int start, struct conntrack_entry *ce);
+uint32_t conntrack_get_hash_ipv4(struct frame *f, unsigned int start, unsigned int flags);
+int conntrack_doublecheck_ipv4(struct frame *f, unsigned int start, void *priv, unsigned int flags);
+void *conntrack_alloc_match_priv_ipv4(struct frame *f, unsigned int start, struct conntrack_entry *ce);
 int conntrack_cleanup_match_priv_ipv4(void *priv);
 
 

@@ -107,9 +107,9 @@ int match_reconfig_ethernet(struct match *m) {
 
 }
 
-int match_identify_ethernet(struct layer* l, void* frame, unsigned int start, unsigned int len) {
+int match_identify_ethernet(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
-	struct ether_header *ehdr = frame + start;
+	struct ether_header *ehdr = f->buff + start;
 
 	l->payload_start = start + sizeof(struct ether_header);
 	l->payload_size = len - sizeof(struct ether_header);
@@ -131,9 +131,9 @@ int match_identify_ethernet(struct layer* l, void* frame, unsigned int start, un
 	return -1;
 }
 
-int match_eval_ethernet(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l) {
+int match_eval_ethernet(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
 	
-	struct ether_header *ehdr = frame + start;
+	struct ether_header *ehdr = f->buff + start;
 
 	struct match_priv_ethernet *mp = match->match_priv;
 	

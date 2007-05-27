@@ -47,7 +47,6 @@ struct input {
  * - params_help
  * - init
  * - open
- * - get_first_layer
  * - read
  * - close
  * - cleanup
@@ -73,19 +72,13 @@ struct input_reg {
 	 **/
 	int (*open) (struct input *i);
 
-	/// Pointer to get_first_layer function
-	/**
-	 * The get_first_layer function is used by the program to know what type of layer the input provides.
-	 * It returns the type of the layer or I_ERR.
-	 **/
-	int (*get_first_layer) (struct input *i);
-
 	/// Pointer to the read function
 	/**
-	 *  Reads a packet and store it in the buffer.
-	 *  Return the number of bytes copied. Return 0 if nothing was read and I_ERR in case of fatal error.
+	 *  Reads a packet and store it in the buffer present in the frame structure.
+	 *  It must populate first_layer, len and buff. Set len to 0 if nothing was read.
+	 *  Return I_OK or I_ERR in case of fatal error.
 	 **/
-	int (*read) (struct input *i, unsigned char *buffer, unsigned int bufflen);
+	int (*read) (struct input *i, struct frame *f);
 
 	/// Pointer to the close fonction
 	/**
@@ -100,6 +93,16 @@ struct input_reg {
 	 * Returns I_OK on success and I_ERR on failure.
 	 **/
 	int (*cleanup) (struct input *i);
+
+
+	/// Pointer to the fonction to provide the time of the input
+	/**
+	 * Fill tv with with the time when the packet was taken.
+	 * Works as gettimeofday() if not provided by underlaying module.
+	 * Returns I_OK on success and I_ERR on failure.
+	 **/
+
+	int (*gettimeof) (struct input *i, struct timeval *tv);
 
 };
 
@@ -120,11 +123,8 @@ int input_set_param(struct input *i, char *name, char* value);
 /// Open the input.
 int input_open(struct input *i);
 
-/// Gives the layer type of the packets returned by the input.
-int input_get_first_layer(struct input *i);
-
 /// Read a packet from the input.
-inline int input_read(struct input *i, unsigned char *buffer, unsigned int bufflen);
+inline int input_read(struct input *i, struct frame *f);
 
 /// Close the input.
 int input_close(struct input *i);
@@ -137,6 +137,9 @@ int input_unregister_all();
 
 /// Display the help of every input.
 void input_print_help();
+
+/// Return current input clock
+int input_gettimeof(struct input *i, struct timeval *tv); 
 
 
 #endif

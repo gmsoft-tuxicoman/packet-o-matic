@@ -52,7 +52,6 @@
 #define NAME_MAX 255
 #endif
 
-
 void *lib_get_register_func(const char *type, const char *name, void **handle);
 
 

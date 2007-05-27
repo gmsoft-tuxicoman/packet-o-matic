@@ -48,7 +48,7 @@ struct target_conntrack_priv_http {
 int target_register_http(struct target_reg *r, struct target_functions *tg_funcs);
 
 int target_init_http(struct target *t);
-int target_process_http(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce);
+int target_process_http(struct target *t, struct frame *f);
 int target_close_connection_http(struct conntrack_entry *ce, void *conntrack_priv);
 int target_cleanup_http(struct target *t);
 

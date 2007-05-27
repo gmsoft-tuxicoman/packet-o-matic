@@ -104,7 +104,7 @@ int target_open_tap(struct target *t) {
 }
 
 
-int target_process_tap(struct target *t, struct layer *l, void *frame, unsigned int len, struct conntrack_entry *ce) {
+int target_process_tap(struct target *t, struct frame *f) {
 
 	struct target_priv_tap *priv = t->target_priv;
 
@@ -113,18 +113,15 @@ int target_process_tap(struct target *t, struct layer *l, void *frame, unsigned 
 		return 0;
 	}
 	
-	int start = layer_find_start(l, match_ethernet_id);
+	int start = layer_find_start(f->l, match_ethernet_id);
 
 	if (start == -1) {
 		dprint("Unable to find the start of the packet\n");
 		return 0;
 
 	}
-	
-	frame += start;
-	len -= start;
 
-	write(priv->fd, frame, len);
+	write(priv->fd, f->buff + start, f->len - start);
 
 	return 1;
 };

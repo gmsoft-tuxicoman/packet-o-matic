@@ -96,10 +96,10 @@ int match_reconfig_ipv4(struct match *m) {
 
 }
 
-int match_identify_ipv4(struct layer* l, void* frame, unsigned int start, unsigned int len) {
+int match_identify_ipv4(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
 	struct in_addr saddr, daddr;
-	struct ip* hdr = frame + start;
+	struct ip* hdr = f->buff + start;
 	saddr.s_addr = hdr->ip_src.s_addr;
 	daddr.s_addr = hdr->ip_dst.s_addr;
 
@@ -131,10 +131,10 @@ int match_identify_ipv4(struct layer* l, void* frame, unsigned int start, unsign
 	return -1;
 }
 
-int match_eval_ipv4(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l) {
+int match_eval_ipv4(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
 	
 	struct in_addr saddr, daddr;
-	struct ip* hdr = frame + start; 
+	struct ip* hdr = f->buff + start; 
 	saddr.s_addr = hdr->ip_src.s_addr;
 	daddr.s_addr = hdr->ip_dst.s_addr;
 

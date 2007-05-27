@@ -41,8 +41,8 @@ int match_register_udp();
 int match_register_udp();
 int match_init_udp(struct match *m);
 int match_reconfig_udp(struct match *m);
-int match_identify_udp(struct layer* l, void* frame, unsigned int start, unsigned int len);
-int match_eval_udp(struct match* match, void* frame, unsigned int start, unsigned int len, struct layer *l);
+int match_identify_udp(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
+int match_eval_udp(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l);
 int match_cleanup_udp(struct match *m);
 
 
