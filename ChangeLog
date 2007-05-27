@@ -1,10 +1,11 @@
 * 2007/05/27 Guy Martin <gmsoft@tuxicoman.be>
 Use struct frame to describe the current frame instead of passing each param as a separate argument.
 A timestamp is associated to each frame and saved in the struct frame.
-Added timestamp support in input_pcap, input_docsis, timers and target_pcap.
+Added timestamp support in input_pcap, input_docsis, timers and target_pcap, http, wave and dump_payload.
 Made struct conntrack_entry part of the struct frame and modified code accordingly.
 A lot of bugs fixed in helper_tcp.c.
 Fixed conntrack_tcp to handle the LAST_ACK state.
+Provide the input when allocating timer in order to query the correct clock source.
 
 * 2007/05/17 Guy Martin <gmsoft@tuxicoman.be>
 Print tcp sequence as decimal number instead of hex numbers and added window information.

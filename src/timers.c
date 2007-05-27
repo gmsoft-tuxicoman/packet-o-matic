@@ -81,7 +81,7 @@ int timers_cleanup() {
 }
 
 
-struct timer *timer_alloc(void* priv, int (*handler) (void*)) {
+struct timer *timer_alloc(void* priv, struct input *i, int (*handler) (void*)) {
 
 	struct timer *t;
 	t = malloc(sizeof(struct timer));
@@ -89,6 +89,7 @@ struct timer *timer_alloc(void* priv, int (*handler) (void*)) {
 
 	t->priv = priv;
 	t->handler = handler;
+	t->input = i;
 
 
 	return t;
@@ -192,7 +193,7 @@ int timer_queue(struct timer *t, unsigned int expiry) {
 	// Update the expiry time
 
 	struct timeval tv;
-	gettimeofday(&tv, NULL);
+	input_gettimeof(t->input, &tv);
 	memcpy(&t->expires, &tv, sizeof(struct timeval));
 	t->expires.tv_sec += expiry;
 

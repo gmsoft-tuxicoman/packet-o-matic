@@ -87,6 +87,7 @@ struct frame {
 	unsigned int bufflen; ///< total length of the buffer
 	int first_layer; ///< first layer of the frame
 	struct timeval tv; ///< when the packet arrived
+	struct input *input; ///< The input from where the packet comes from
 	void *buff; ///< the frame itself
 	struct conntrack_entry *ce; ///< Conntrack entry associated with this packet if any
 

@@ -150,7 +150,7 @@ void *conntrack_alloc_match_priv_tcp(struct frame *f, unsigned int start, struct
 
 	// Allocate the timer and set it up
 	struct timer *t;
-	t = (*ct_functions->alloc_timer) (ce);
+	t = (*ct_functions->alloc_timer) (ce, f->input);
 	
 	priv->timer = t;
 

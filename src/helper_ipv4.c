@@ -178,7 +178,7 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 		tmp->hdr_offset = start;
 
 		ndprint("Helper ipv4 : allocated buffer for new packet id %u\n", ntohs(hdr->ip_id));
-		tmp->t = (*hlp_functions->alloc_timer) (tmp, helper_cleanup_ipv4_frag);
+		tmp->t = (*hlp_functions->alloc_timer) (tmp, f->input, helper_cleanup_ipv4_frag);
 
 
 	} else  // Remove this from the timer queue 

@@ -575,8 +575,8 @@ int conntrack_do_timer(void * ce) {
 	return 1;
 }
 
-struct timer *conntrack_timer_alloc(struct conntrack_entry *ce) {
+struct timer *conntrack_timer_alloc(struct conntrack_entry *ce, struct input *i) {
 
-	return timer_alloc(ce, conntrack_do_timer);
+	return timer_alloc(ce, i, conntrack_do_timer);
 }
 

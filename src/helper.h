@@ -44,7 +44,7 @@ struct helper_reg {
 };
 
 struct helper_functions {
-	struct timer* (*alloc_timer) (void *priv, int (*handler) (void *));
+	struct timer* (*alloc_timer) (void *priv, struct input *i, int (*handler) (void *));
 	int (*cleanup_timer) (struct timer *t);
 	int (*queue_timer) (struct timer *t, unsigned int expiry);
 	int (*dequeue_timer) (struct timer *t);

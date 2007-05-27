@@ -198,7 +198,7 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 		bzero(tmp, sizeof(struct helper_timer_priv_tcp));
 		tmp->priv = cp;
 		tmp->dir = dir;
-		cp->t[dir] = (*hlp_functions->alloc_timer) (tmp, helper_process_timer_tcp);
+		cp->t[dir] = (*hlp_functions->alloc_timer) (tmp, f->input, helper_process_timer_tcp);
 	}
 
 	cp->last_seq[dir] = new_seq;
@@ -247,6 +247,12 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 int helper_process_timer_tcp(void *priv) {
 
 	struct helper_timer_priv_tcp *p = priv;
+	if (!p->priv->pkts[p->dir]) {
+		dprint("helper_tcp.c: wtf, timer poped up and there is no packet to dequeue\n");
+		(*hlp_functions->dequeue_timer) (p->priv->t[p->dir]);
+		return 0;
+	}
+
 	ndprint("helper_tcp.c: 0x%x-%u, warning, timer expired for missing segment. processing anyway. lost %u bytes cp = 0x%x, seq %u, expected %u\n", (unsigned) p->priv->pkts[p->dir]->f->ce, p->dir, p->priv->seq_expected[p->dir] - p->priv->last_seq[p->dir], (unsigned) p->priv, p->priv->last_seq[p->dir], p->priv->seq_expected[p->dir]);
 	return helper_process_next_tcp(p->priv, p->dir);
 
@@ -256,6 +262,7 @@ int helper_process_next_tcp(struct helper_priv_tcp *p, int dir) {
 
 
 	struct helper_priv_tcp_packet *pkt = p->pkts[dir];
+
 	p->pkts[dir] = p->pkts[dir]->next;
 
 	if (p->pkts[dir]) {
@@ -275,10 +282,7 @@ int helper_process_next_tcp(struct helper_priv_tcp *p, int dir) {
 
 		if (p->pkts[dir])
 			(*hlp_functions->queue_timer) (p->t[dir], TCP_PACKET_TIMEOUT);
-	} else {
-		dprint("helper_tcp.c: wtf, timer poped up and there is no packet to dequeue\n");
 	}
-
 	ndprint("helper_tcp.c: %u.%u 0x%x-%u, dequeuing packet with seq %u, bufflen is %u\n", (unsigned)pkt->f->tv.tv_sec, (unsigned)pkt->f->tv.tv_usec, (unsigned) pkt->f->ce, dir, pkt->seq, p->buff_len[dir]);
 	(*hlp_functions->queue_frame) (pkt->f);
 

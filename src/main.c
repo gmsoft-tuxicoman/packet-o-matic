@@ -190,7 +190,7 @@ int main(int argc, char *argv[]) {
 	f->buff = malloc(SNAPLEN);
 	f->bufflen = SNAPLEN;
 
-
+	f->input = c->input;
 
 	fd_set fds;
 	struct timeval tv;

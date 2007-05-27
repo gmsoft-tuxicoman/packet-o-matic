@@ -139,16 +139,14 @@ int target_process_wave(struct target *t, struct frame *f) {
 		bzero(outstr, 20);
 		// YYYYMMDD-HHMMSS-UUUUUU
 		char *format = "-%Y%m%d-%H%M%S-";
-		struct timeval tv;
 		struct tm *tmp;
-		gettimeofday(&tv, NULL);
-	        tmp = localtime((time_t*)&tv.tv_sec);
+	        tmp = localtime((time_t*)&f->tv.tv_sec);
 
 		strftime(outstr, 20, format, tmp);
 
 		strcpy(filename, t->params_value[0]);
 		strcat(filename, outstr);
-		sprintf(outstr, "%u", (unsigned int)tv.tv_usec);
+		sprintf(outstr, "%u", (unsigned int)f->tv.tv_usec);
 		strcat(filename, outstr);
 		strcat(filename, ".au");
 		cp->fd = open(filename, O_RDWR | O_CREAT, 0666);

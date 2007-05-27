@@ -100,7 +100,7 @@ struct conntrack_reg {
 };
 
 struct conntrack_functions {
-	struct timer* (*alloc_timer) (struct conntrack_entry *);
+	struct timer* (*alloc_timer) (struct conntrack_entry *ce, struct input *i);
 	int (*cleanup_timer) (struct timer *t);
 	int (*queue_timer) (struct timer *t, unsigned int expiry);
 	int (*dequeue_timer) (struct timer *t);
@@ -150,7 +150,7 @@ int conntrack_get_entry(struct frame *f);
 int conntrack_create_entry(struct frame *f);
 int conntrack_cleanup_connection (struct conntrack_entry *ce);
 int conntrack_do_timer(void * ce);
-struct timer *conntrack_timer_alloc(struct conntrack_entry *ce);
+struct timer *conntrack_timer_alloc(struct conntrack_entry *ce, struct input *i);
 int conntrack_close_connections(struct rule_list *r);
 int conntrack_cleanup();
 int conntrack_unregister_all();
