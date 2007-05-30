@@ -18,12 +18,14 @@
  *
  */
 
+//#define NDEBUG 1
+
 #include "helper_tcp.h"
 
 #include <netinet/tcp.h>
 
 /// We should receive the dropped data within the 10 seconds
-#define TCP_PACKET_TIMEOUT 10
+#define TCP_PACKET_TIMEOUT 30
 
 
 struct helper_functions *hlp_functions;
@@ -40,8 +42,10 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 
 
 	struct tcphdr* hdr = f->buff + start;
-	int payload_size;
-	payload_size = len - (hdr->th_off << 2);
+	int payload_size = l->payload_size;
+
+	if (!payload_size) // We don't need to reorder empty packets
+		return 0;
 
 	// We need to track all the tcp packets
 	if (!f->ce)
@@ -65,8 +69,8 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 
 	if (cp->flags[dir] & HELPER_TCP_SEQ_KNOWN) {
 	
-		if (new_seq < cp->seq_expected[dir]) {
-			ndprint("helper_tcp.c: %u.%u 0x%x-%u, expected seq %u < got seq %u, bufflen is %u. discarding packet\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, cp->seq_expected[dir], new_seq, cp->buff_len[dir]);
+		if (new_seq + payload_size < cp->seq_expected[dir]) {
+			ndprint("helper_tcp.c: %u.%u 0x%x-%u, expected seq %u < got seq %u, bufflen is %d. discarding packet\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, cp->seq_expected[dir], new_seq, cp->buff_len[dir]);
 			return 1;
 		} else if (new_seq > cp->seq_expected[dir]) {
 		
@@ -109,10 +113,11 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 								// looks like we already got a packet with some payload
 								if (tmp_pkt->data_len >= payload_size) {
 									// same payload size -> we can safely discard it
-									ndprint("helper_tcp.c: %u.%u 0x%x-%u, got seq %u, bufflen is %u. discarding duplicate already in the queue\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, new_seq, cp->buff_len[dir]);
+									ndprint("helper_tcp.c: %u.%u 0x%x-%u, got seq %u, bufflen is %d. discarding duplicate already in the queue\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, new_seq, cp->buff_len[dir]);
 									return 1;
 								} else {
-									ndprint("helper_tcp.c: %u.%u 0x%x-%u, got seq %u, bufflen is %u. replacing duplicate already in the queue\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, new_seq, cp->buff_len[dir]);
+									ndprint("helper_tcp.c: %u.%u 0x%x-%u, got seq %u, bufflen is %d. replacing duplicate already in the queue\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, new_seq, cp->buff_len[dir]);
+									cp->buff_len[dir] += payload_size - tmp_pkt->data_len;
 
 									free(tmp_pkt->f->buff);
 									free(tmp_pkt->f);
@@ -136,7 +141,7 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 			}
 
 			// At this point we need to queue the packet before tmp_pkt or at the end of the list if empty
-			ndprint("helper_tcp.c: %u.%u 0x%x-%u, expected seq %u > got seq %u, bufflen is %u. queuing packet\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, cp->seq_expected[dir], new_seq, cp->buff_len[dir]);
+			ndprint("helper_tcp.c: %u.%u 0x%x-%u, expected seq %u > got seq %u, bufflen is %d. queuing packet\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, cp->seq_expected[dir], new_seq, cp->buff_len[dir]);
 
 			struct helper_priv_tcp_packet *pkt = malloc(sizeof(struct helper_priv_tcp_packet));
 			bzero(pkt, sizeof(struct helper_priv_tcp_packet));
@@ -207,17 +212,19 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 	if (hdr->th_flags & TH_SYN || hdr->th_flags & TH_FIN)
 		cp->seq_expected[dir]++;
 
-	ndprint("helper_tcp.c: %u.%u 0x%x-%u, got seq %u, new expected seq %u, bufflen is %u. processing packet\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, new_seq, cp->seq_expected[dir], cp->buff_len[dir]);
+	ndprint("helper_tcp.c: %u.%u 0x%x-%u, got seq %u, new expected seq %u, bufflen is %d. processing packet\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, new_seq, cp->seq_expected[dir], cp->buff_len[dir]);
 
 	// Discard any packet that we are sure not to need anymore
 	while (cp->pkts[dir] && ((cp->pkts[dir]->seq + cp->pkts[dir]->data_len) < cp->seq_expected[dir])) {
 		ndprint("helper_tcp.c: 0x%x-%u, discarding packet with seq %u from queue\n", (unsigned) f->ce, dir, cp->pkts[dir]->seq);
 		struct helper_priv_tcp_packet *pkt = cp->pkts[dir];
 		cp->pkts[dir] = cp->pkts[dir]->next;
-		if (cp->pkts[dir])
+		if (cp->pkts[dir]) {
 			cp->pkts[dir]->prev = NULL;
-		else
+		} else {
+			(*hlp_functions->dequeue_timer) (cp->t[dir]);
 			cp->pkts_tail[dir] = NULL;
+		}
 		cp->buff_len[dir] -= pkt->f->len;
 		free(pkt->f->buff);
 		free(pkt->f);
@@ -226,12 +233,14 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 	}
 
 	// Let's see if we can dequeue the next packets now
-	if (cp->pkts[dir] && payload_size > 0) {
+	if (cp->pkts[dir]) {
 		ndprint("helper_tcp.c: %u.%u 0x%x-%u, expected seq %u, first packet in queue seq %u\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, cp->seq_expected[dir], cp->pkts[dir]->seq);
 		if (cp->pkts[dir]->seq == cp->seq_expected[dir]) {
 			// It's easy, the sequence number match !
 			helper_process_next_tcp(cp, dir);
-		} else if (cp->pkts[dir]->seq < cp->seq_expected[dir] && cp->pkts[dir]->seq + cp->pkts[dir]->data_len >= cp->seq_expected[dir]) {
+		} else if (cp->pkts[dir]->seq < cp->seq_expected[dir] && // packet must be before what we expect
+				cp->pkts[dir]->seq + cp->pkts[dir]->data_len >= cp->seq_expected[dir] && 
+				(!cp->pkts[dir]->next || cp->pkts[dir]->seq + cp->pkts[dir]->data_len < cp->pkts[dir]->next->seq + cp->pkts[dir]->next->data_len)) {
 			// Looks like we need already have data from this packet in the buffer
 			unsigned int dup_data_len = cp->seq_expected[dir] - cp->pkts[dir]->seq;
 			ndprint("helper_tcp.c: 0x%x-%u, need to drop %u of data over %u from current packet\n", (unsigned) f->ce, dir, dup_data_len, payload_size);
@@ -240,7 +249,12 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 		}
 		
 	}
-
+/*
+	if (cp->t[dir] && cp->pkts[dir]) {
+		(*hlp_functions->dequeue_timer) (cp->t[dir]);
+		(*hlp_functions->queue_timer) (cp->t[dir], TCP_PACKET_TIMEOUT);
+	}
+*/
 	return 0;
 }
 
@@ -253,7 +267,7 @@ int helper_process_timer_tcp(void *priv) {
 		return 0;
 	}
 
-	ndprint("helper_tcp.c: 0x%x-%u, warning, timer expired for missing segment. processing anyway. lost %u bytes cp = 0x%x, seq %u, expected %u\n", (unsigned) p->priv->pkts[p->dir]->f->ce, p->dir, p->priv->seq_expected[p->dir] - p->priv->last_seq[p->dir], (unsigned) p->priv, p->priv->last_seq[p->dir], p->priv->seq_expected[p->dir]);
+	dprint("helper_tcp.c: 0x%x-%u, warning, timer expired for missing segment. processing anyway. lost %u bytes cp = 0x%x, seq %u, expected %u\n", (unsigned) p->priv->pkts[p->dir]->f->ce, p->dir, p->priv->seq_expected[p->dir] - p->priv->last_seq[p->dir], (unsigned) p->priv, p->priv->last_seq[p->dir], p->priv->seq_expected[p->dir]);
 	return helper_process_next_tcp(p->priv, p->dir);
 
 }
@@ -277,13 +291,13 @@ int helper_process_next_tcp(struct helper_priv_tcp *p, int dir) {
 	p->seq_expected[dir] = pkt->seq;
 
 	if (p->t[dir]) {
-
 		(*hlp_functions->dequeue_timer) (p->t[dir]);
 
-		if (p->pkts[dir])
+		if (p->pkts[dir]) {
 			(*hlp_functions->queue_timer) (p->t[dir], TCP_PACKET_TIMEOUT);
+		}
 	}
-	ndprint("helper_tcp.c: %u.%u 0x%x-%u, dequeuing packet with seq %u, bufflen is %u\n", (unsigned)pkt->f->tv.tv_sec, (unsigned)pkt->f->tv.tv_usec, (unsigned) pkt->f->ce, dir, pkt->seq, p->buff_len[dir]);
+	ndprint("helper_tcp.c: %u.%u 0x%x-%u, dequeuing packet with seq %u, bufflen is %d\n", (unsigned)pkt->f->tv.tv_sec, (unsigned)pkt->f->tv.tv_usec, (unsigned) pkt->f->ce, dir, pkt->seq, p->buff_len[dir]);
 	(*hlp_functions->queue_frame) (pkt->f);
 
 	free(pkt);
@@ -325,14 +339,12 @@ int helper_cleanup_connection_tcp(struct conntrack_entry *ce, void *conntrack_pr
 #endif
 
 	if (cp->t[0]) {
-		(*hlp_functions->dequeue_timer) (cp->t[0]);
 		free (cp->t[0]->priv);
 		(*hlp_functions->cleanup_timer) (cp->t[0]);
 		cp->t[0] = NULL;
 	}
 
 	if (cp->t[1]) {
-		(*hlp_functions->dequeue_timer) (cp->t[1]);
 		free (cp->t[1]->priv);
 		(*hlp_functions->cleanup_timer) (cp->t[1]);
 		cp->t[1] = NULL;

@@ -144,7 +144,6 @@ int conntrack_cleanup_match_priv_udp(void *priv) {
 	struct conntrack_priv_udp *p = priv;
 	
 	if (p->timer) {
-		(*ct_functions->dequeue_timer) (p->timer);
 		(*ct_functions->cleanup_timer) (p->timer);
 	}
 

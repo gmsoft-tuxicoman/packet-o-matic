@@ -118,7 +118,6 @@ int conntrack_cleanup_match_priv_rtp(void *priv) {
 	struct conntrack_priv_rtp *p = priv;
 
 	if (p->timer) {
-		(*ct_functions->dequeue_timer) (p->timer);
 		(*ct_functions->cleanup_timer) (p->timer);
 	}
 

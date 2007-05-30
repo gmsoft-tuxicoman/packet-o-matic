@@ -283,7 +283,6 @@ int helper_cleanup_ipv4_frag(void *priv) {
 	}
 
 	if (p->t) {
-		(*hlp_functions->dequeue_timer) (p->t);
 		(*hlp_functions->cleanup_timer) (p->t);
 	}
 

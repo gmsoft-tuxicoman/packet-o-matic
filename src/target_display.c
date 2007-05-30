@@ -139,14 +139,12 @@ int target_process_display(struct target *t, struct frame *f) {
 	printf(" [len: %u]\n", f->len);
 
 
-	int start;
-	unsigned int len;
+	int start = 0;
+	unsigned int len = 0;
 	if (l->prev) {
 		start = l->prev->payload_start;
 		len = l->payload_size + l->payload_start - l->prev->payload_start ;
-	} else
-		start = 0;
-
+	}
 	
 
 	switch (p->mode) {

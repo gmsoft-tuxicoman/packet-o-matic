@@ -208,9 +208,9 @@ int input_gettimeof_pcap(struct input *i, struct timeval *tv) {
 	struct input_priv_pcap *p = i->input_priv;
 
 	if (p->clock_source == PCAP_CLOCK_FILE) {
-		memcpy(tv, &p->tv, sizeof(struct timeval));
 		// Add one usec not to create some virtual delay
-		tv->tv_usec++;
+		p->tv.tv_usec++;
+		memcpy(tv, &p->tv, sizeof(struct timeval));
 		return I_OK;
 	}
 

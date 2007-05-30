@@ -80,7 +80,6 @@ int timers_cleanup() {
 
 }
 
-
 struct timer *timer_alloc(void* priv, struct input *i, int (*handler) (void*)) {
 
 	struct timer *t;
@@ -91,15 +90,23 @@ struct timer *timer_alloc(void* priv, struct input *i, int (*handler) (void*)) {
 	t->handler = handler;
 	t->input = i;
 
-
 	return t;
 }
 
 int timer_cleanup(struct timer *t) {
 
 	if (t->next || t->prev) {
-		dprint("Error timer not dequeued before cleanup\n");
-		return 0;
+		timer_dequeue(t);
+	} else { // Timer could be alone in the list
+		struct timer_queue *tq;
+		tq = timer_queues;
+		while (tq) {
+			if (tq->head == t) {
+				tq->head = NULL;
+				tq->tail = NULL;
+			}
+			tq = tq->next;
+		}
 	}
 
 	free(t);
@@ -186,8 +193,8 @@ int timer_queue(struct timer *t, unsigned int expiry) {
 		tq->tail = t;
 	} else {
 		t->prev = tq->tail;
-		tq->tail->next = t;
 		tq->tail = t;
+		t->prev->next = t;
 	}
 
 	// Update the expiry time
@@ -203,7 +210,6 @@ int timer_queue(struct timer *t, unsigned int expiry) {
 
 int timer_dequeue(struct timer *t) {
 
-	
 	// First let's check if it's the one at the begining of the queue
 
 	if (t->prev) {
@@ -236,15 +242,10 @@ int timer_dequeue(struct timer *t) {
 			}
 			tq = tq->next;
 		}
-#if 0
+#ifdef DEBUG
 		if (!tq)
 			dprint("Warning, timer 0x%lx not found in timers queues heads\n", (unsigned long) t);
 #endif
-	}
-
-	if (!timer_queues) {
-		dprint("WTF\n");
-		return 1;
 	}
 
 	if (t->next) {
@@ -259,7 +260,7 @@ int timer_dequeue(struct timer *t) {
 			}
 			tq = tq->next;
 		}
-#if 0
+#ifdef DEBUG
 		if (!tq) {
 			dprint("Warning, timer 0x%lx not found in timers queues tails\n", (unsigned long) t);
 		}
@@ -271,9 +272,6 @@ int timer_dequeue(struct timer *t) {
 
 	t->prev = NULL;
 	t->next = NULL;
-
-
-
 
 	return 1;
 }
