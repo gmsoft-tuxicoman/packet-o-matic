@@ -33,6 +33,7 @@ int target_init() {
 
 	tg_funcs = malloc(sizeof(struct target_functions));
 	tg_funcs->match_register = match_register;
+	tg_funcs->conntrack_create_entry = conntrack_create_entry;
 	tg_funcs->conntrack_add_priv = conntrack_add_target_priv;
 	tg_funcs->conntrack_get_priv = conntrack_get_target_priv;
 	tg_funcs->layer_info_snprintf = layer_info_snprintf;

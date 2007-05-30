@@ -4,6 +4,7 @@ Some more bug fixing on helper_tcp.
 Timers don't need to be dequeued before being cleaned up anymore.
 Make sure len is initialized in target_display.c.
 Modified conntrack_tcp to better handle TIME_WAIT state and LAST_ACK.
+Fixed missing conntrack modification in targets.
 
 * 2007/05/27 Guy Martin <gmsoft@tuxicoman.be>
 Use struct frame to describe the current frame instead of passing each param as a separate argument.

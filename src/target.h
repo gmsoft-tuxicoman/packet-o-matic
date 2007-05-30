@@ -52,7 +52,7 @@ struct target_reg {
 struct target_functions {
 
 	int (*match_register) (const char *);
-	struct conntrack_entry* (*conntrack_create_entry) (struct frame *f);
+	int (*conntrack_create_entry) (struct frame *f);
 	int (*conntrack_add_priv) (void *priv, struct target *t,  struct conntrack_entry *ce, int (*cleanup_handler) (struct conntrack_entry *ce, void *priv));
 	void *(*conntrack_get_priv) (struct target *t, struct conntrack_entry *ce);
 	int (*layer_info_snprintf) (char *buff, unsigned int maxlen, struct layer_info *inf);
