@@ -94,6 +94,7 @@ int target_process_display(struct target *t, struct frame *f) {
 		return 1;
 	}
 
+	struct layer *start_layer = l;
 	const int buffsize = 2048;
 	char buff[buffsize];
 	int first_layer = 0, first_info = 0;
@@ -138,12 +139,13 @@ int target_process_display(struct target *t, struct frame *f) {
 
 	printf(" [len: %u]\n", f->len);
 
+	l = start_layer;
 
 	int start = 0;
 	unsigned int len = 0;
 	if (l->prev) {
 		start = l->prev->payload_start;
-		len = l->payload_size + l->payload_start - l->prev->payload_start ;
+		len = l->payload_size + l->payload_start - l->prev->payload_start;
 	}
 	
 

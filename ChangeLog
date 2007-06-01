@@ -1,3 +1,6 @@
+* 2007/06/01 Guy Martin <gmsoft@tuxicoman.be>
+Fixed possible segfault in target_display.c reported by <briaeros007@gmail.com>.
+
 * 2007/05/30 Guy Martin <gmsoft@tuxicoman.be>
 Made clock source from input_pcap always growing when using pcap file.
 Some more bug fixing on helper_tcp.
