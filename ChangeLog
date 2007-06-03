@@ -1,3 +1,6 @@
+* 2007/06/02 Guy Martin <gmsoft@tuxicoman.be>
+Updated copyright information.
+
 * 2007/06/01 Guy Martin <gmsoft@tuxicoman.be>
 Fixed possible segfault in target_display.c reported by <briaeros007@gmail.com>.
 
