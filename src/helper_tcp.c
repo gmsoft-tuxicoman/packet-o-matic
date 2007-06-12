@@ -188,7 +188,7 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 
 			// Maybe we suffer from packet loss. We allow a max buffer of 256K
 			if (cp->buff_len[dir] > 262144 / 2) {
-				dprint("helper_tcp.c: 0x%x-%u, warning, buffer is too large : %u. we probably lost a packet. processing anyway. lost %u bytes cp = 0x%x, seq %u, expected %u\n", (unsigned) f->ce, dir, cp->buff_len[dir], cp->seq_expected[dir] - cp->last_seq[dir], (unsigned) cp, cp->last_seq[dir], cp->seq_expected[dir]);
+				ndprint("helper_tcp.c: 0x%x-%u, warning, buffer is too large : %u. we probably lost a packet. processing anyway. lost %u bytes cp = 0x%x, seq %u, expected %u\n", (unsigned) f->ce, dir, cp->buff_len[dir], cp->seq_expected[dir] - cp->last_seq[dir], (unsigned) cp, cp->last_seq[dir], cp->seq_expected[dir]);
 				helper_process_next_tcp(cp, dir);
 			}
 
@@ -267,7 +267,7 @@ int helper_process_timer_tcp(void *priv) {
 		return 0;
 	}
 
-	dprint("helper_tcp.c: 0x%x-%u, warning, timer expired for missing segment. processing anyway. lost %u bytes cp = 0x%x, seq %u, expected %u\n", (unsigned) p->priv->pkts[p->dir]->f->ce, p->dir, p->priv->seq_expected[p->dir] - p->priv->last_seq[p->dir], (unsigned) p->priv, p->priv->last_seq[p->dir], p->priv->seq_expected[p->dir]);
+	ndprint("helper_tcp.c: 0x%x-%u, warning, timer expired for missing segment. processing anyway. lost %u bytes cp = 0x%x, seq %u, expected %u\n", (unsigned) p->priv->pkts[p->dir]->f->ce, p->dir, p->priv->seq_expected[p->dir] - p->priv->last_seq[p->dir], (unsigned) p->priv, p->priv->last_seq[p->dir], p->priv->seq_expected[p->dir]);
 	return helper_process_next_tcp(p->priv, p->dir);
 
 }

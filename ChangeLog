@@ -1,3 +1,6 @@
+* 2007/06/12 Guy Martin <gmsoft@tuxicoman.be>
+Improved target_http. Save in directory named after the ip source and configure what type of file to save.
+
 * 2007/06/02 Guy Martin <gmsoft@tuxicoman.be>
 Updated copyright information.
 

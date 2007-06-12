@@ -28,38 +28,58 @@
 
 #include "target_http.h"
 
-#define MIME_TYPES_COUNT 28
+#define MIME_TYPES_COUNT 35
 
-char *mime_types[MIME_TYPES_COUNT][2] = {
+#define MIME_BIN "\0"
+#define MIME_IMG "\1"
+#define MIME_VID "\2"
+#define MIME_SND "\3"
+#define MIME_TXT "\4"
 
-	{ "private/unknown", "unk" }, // Special non-existant type
-	{ "image/jpeg", "jpg" },
-	{ "image/jpg", "jpg" },
-	{ "image/gif", "gif" },
-	{ "image/png", "png" },
-	{ "image/bmp", "bmp" },
-	{ "text/html", "html" },
-	{ "application/x-javascript", "js" },
-	{ "application/javascript", "js" },
-	{ "text/x-js", "js" },
-	{ "text/javascript", "js" },
-	{ "application/zip", "gz" },
-	{ "application/octet-stream", "bin" },
-	{ "text/plain", "txt" },
-	{ "message/rfc822", "msg" },
-	{ "application/xml", "xml" },
-	{ "text/xml", "xml" },
-	{ "text/css", "css" },
-	{ "image/x-icon", "ico" },
-	{ "application/x-shockwave-flash", "swf" },
-	{ "video/flv", "flv" },
-	{ "video/mpeg", "mpg" },
-	{ "video/x-ms-asf", "asf" },
-	{ "video/x-msvideo", "avi" },
-	{ "audio/mpeg", "mp3" },
-	{ "application/x-rar-compressed", "rar" },
-	{ "application/x-www-urlform-encoded", "url" },
-	{ "text/calendar", "cal" },
+#define TYPE_BIN 0
+#define TYPE_IMG 1
+#define TYPE_VID 2
+#define TYPE_SND 3
+#define TYPE_TXT 4
+
+
+const char *mime_types[MIME_TYPES_COUNT][3] = {
+
+	{ "private/unknown", "unk", MIME_BIN }, // Special non-existant type
+	{ "application/x-javascript", "js", MIME_TXT },
+	{ "application/javascript", "js", MIME_TXT },
+	{ "application/zip", "gz", MIME_BIN },
+	{ "application/octet-stream", "bin", MIME_BIN },
+	{ "application/octetstream", "bin", MIME_BIN },
+	{ "application/x-shockwave-flash", "swf", MIME_BIN },
+	{ "application/x-rar-compressed", "rar", MIME_BIN },
+	{ "application/x-www-urlform-encoded", "url", MIME_TXT },
+	{ "application/xml", "xml", MIME_TXT },
+	{ "application/pdf", "pdf", MIME_TXT },
+	{ "audio/mpeg", "mp3", MIME_SND },
+	{ "audio/x-pn-realaudio", "rm", MIME_SND },
+	{ "image/jpeg", "jpg", MIME_IMG },
+	{ "image/pjpeg", "pjpg", MIME_IMG },
+	{ "image/jpg", "jpg", MIME_IMG },
+	{ "image/gif", "gif", MIME_IMG },
+	{ "image/png", "png", MIME_IMG },
+	{ "image/bmp", "bmp", MIME_IMG },
+	{ "image/x-icon", "ico", MIME_IMG },
+	{ "message/rfc822", "msg", MIME_TXT },
+	{ "text/html", "html", MIME_TXT },
+	{ "text/x-js", "js", MIME_TXT },
+	{ "text/javascript", "js", MIME_TXT },
+	{ "text/plain", "txt", MIME_TXT },
+	{ "text/xml", "xml", MIME_TXT },
+	{ "text/css", "css", MIME_TXT },
+	{ "text/calendar", "cal", MIME_TXT },
+	{ "video/flv", "flv", MIME_VID },
+	{ "video/x-flv", "flv", MIME_VID },
+	{ "video/quicktime", "mov", MIME_VID },
+	{ "video/mpeg", "mpg", MIME_VID },
+	{ "video/x-ms-asf", "asf", MIME_VID },
+	{ "video/x-msvideo", "avi", MIME_VID },
+	{ "video/x-ms-wmv", "wmv", MIME_VID },
 
 
 };
@@ -67,9 +87,15 @@ char *mime_types[MIME_TYPES_COUNT][2] = {
 unsigned char mime_types_hash[MIME_TYPES_COUNT];
 
 
-#define PARAMS_NUM 1 
+#define PARAMS_NUM 6
 char *target_http_params[PARAMS_NUM][3] = {
-	{"prefix", "dump", "prefix of dumped files including directory"},
+	{"path", ".", "path to the directory where the dumped files will be saved"},
+	{"dump_img", "1", "specifiy if you want to dump image content or not"},
+	{"dump_vid", "1", "specifiy if you want to dump video content or not"},
+	{"dump_snd", "0", "specifiy if you want to dump audio content or not"},
+	{"dump_txt", "0", "specifiy if you want to dump text content or not"},
+	{"dump_bin", "0", "specifiy if you want to dump binary content or not"},
+	
 };
 
 struct target_functions *tg_functions;
@@ -82,6 +108,7 @@ int target_register_http(struct target_reg *r, struct target_functions *tg_funcs
 	copy_params(r->params_help, target_http_params, 2, PARAMS_NUM);
 
 	r->init = target_init_http;
+	r->open = target_open_http;
 	r->process = target_process_http;
 	r->cleanup = target_cleanup_http;
 
@@ -102,6 +129,8 @@ int target_register_http(struct target_reg *r, struct target_functions *tg_funcs
 int target_cleanup_http(struct target *t) {
 
 	clean_params(t->params_value, PARAMS_NUM);
+	if (t->target_priv)
+		free(t->target_priv);
 
 	return 1;
 }
@@ -111,9 +140,32 @@ int target_init_http(struct target *t) {
 
 	copy_params(t->params_value, target_http_params, 1, PARAMS_NUM);
 
+	t->target_priv = malloc(sizeof(int));
+	int *match_mask = t->target_priv;
+	*match_mask = 0;
+
 	return 1;
 }
 
+
+int target_open_http(struct target *t) {
+
+	int *match_mask = t->target_priv;
+
+	if (*t->params_value[1] == '1') // img
+		*match_mask |= TYPE_IMG;
+	if (*t->params_value[2] == '1') // vid
+		*match_mask |= TYPE_VID;
+	if (*t->params_value[3] == '1') // snd
+		*match_mask |= TYPE_SND;
+	if (*t->params_value[4] == '1') // txt
+		*match_mask |= TYPE_TXT;
+	if (*t->params_value[5] == '1') // bin
+		*match_mask |= TYPE_BIN;
+
+	return 1;
+
+}
 
 int target_process_http(struct target *t, struct frame *f) {
 
@@ -139,8 +191,8 @@ int target_process_http(struct target *t, struct frame *f) {
 	
 	}
 
-	if (f->ce && cp->direction != CT_DIR_ONEWAY && (f->ce->direction != cp->direction)) {
-		dprint("Direction missmatch, %u, %u\n", f->ce->direction, cp->direction);
+	if ((cp->state == HTTP_MATCH || cp->state == HTTP_NO_MATCH)&& cp->direction != CT_DIR_ONEWAY && (f->ce->direction != cp->direction)) {
+		//dprint("Direction missmatch, %u, %u\n", f->ce->direction, cp->direction);
 		return 1;
 	}
 
@@ -271,62 +323,97 @@ int target_process_http(struct target *t, struct frame *f) {
 
 	}
 
-
-	if (cp->content_len == 0) {
+	if (cp->state == (HTTP_HAVE_CTYPE | HTTP_HAVE_CLEN | HTTP_HEADER)) {
+		// Ok, we have all the info we need. Let's see if we need to actually save that
+		int *match_mask = t->target_priv;
+		if (*mime_types[cp->content_type][2] & *match_mask)
+			cp->state = HTTP_MATCH;
+		else
+			cp->state = HTTP_NO_MATCH;
+	} else if (cp->state == (HTTP_HAVE_CLEN | HTTP_HEADER)) {
+		cp->state = HTTP_NO_MATCH;
+	} else if (cp->state & HTTP_HEADER)
 		cp->state = HTTP_HEADER;
-		ndprint("Content len == 0\n");
-		return 1;
-	}
-
-	// At this point the only possible state is HTTP_MATCH
 
 
-	if (cp->fd == -1) {
-
-
-		char filename[NAME_MAX];
-
-		char outstr[20];
-		bzero(outstr, 20);
-		// YYYYMMDD-HHMMSS-UUUUUU
-		char *format = "-%Y%m%d-%H%M%S-";
-		struct tm *tmp;
-	        tmp = localtime((time_t*)&f->tv.tv_sec);
-
-		strftime(outstr, 20, format, tmp);
-
-		strcpy(filename, t->params_value[0]);
-		strcat(filename, outstr);
-		sprintf(outstr, "%u", (unsigned int)f->tv.tv_usec);
-		strcat(filename, outstr);
-		strcat(filename, ".");
-		strcat(filename, mime_types[cp->content_type][1]);
-		cp->fd = open(filename, O_RDWR | O_CREAT, 0666);
+	if (cp->state == HTTP_MATCH) {
 
 		if (cp->fd == -1) {
-			free(cp);
-			dprint("Unable to open file %s for writing : %s\n", filename, strerror(errno));
-			return -1;
+
+			char filename[NAME_MAX];
+			strcpy(filename, t->params_value[0]);
+
+			if (filename[strlen(filename) - 1] != '/')
+				strcat(filename, "/");
+
+			// Check if the directory exists yet
+			if (lastl->prev) {
+				struct layer_info *inf = lastl->prev->infos;
+				while (inf) {
+					if (!strcmp(inf->name, "src")) {
+						(*tg_functions->layer_info_snprintf) (filename + strlen(filename), NAME_MAX - strlen(filename), inf);
+						strcat(filename, "/");
+					}
+					inf = inf->next;
+				}
+
+				struct stat sbuf;
+				if (stat(filename, &sbuf) == -1) {
+					if (mkdir(filename, 0777) == -1) {
+						dprint("error while creating directory %s\n", filename);
+						return -1;
+					}
+				}
+
+			}
+			
+
+			char outstr[20];
+			bzero(outstr, 20);
+			// YYYYMMDD-HHMMSS-UUUUUU
+			char *format = "%Y%m%d-%H%M%S-";
+			struct tm *tmp;
+			tmp = localtime((time_t*)&f->tv.tv_sec);
+
+			strftime(outstr, 20, format, tmp);
+
+			strcat(filename, outstr);
+			sprintf(outstr, "%u", (unsigned int)f->tv.tv_usec);
+			strcat(filename, outstr);
+			strcat(filename, ".");
+			strcat(filename, mime_types[cp->content_type][1]);
+			cp->fd = open(filename, O_RDWR | O_CREAT, 0666);
+
+			if (cp->fd == -1) {
+				dprint("Unable to open file %s for writing : %s\n", filename, strerror(errno));
+				cp->state = HTTP_NO_MATCH;
+				return -1;
+			}
+
+			ndprint("%s opened\n", filename);
+
 		}
 
-		ndprint("%s opened\n", filename);
 
+		cp->pos += psize;
+		write(cp->fd, f->buff + pstart, psize);
+		ndprint("Saved %u of payload\n", psize);
+		
+
+	} 
+
+	if (cp->state == HTTP_MATCH || cp->state == HTTP_NO_MATCH) {
+		if (cp->pos >= cp->content_len) { // Everything was captured, we can close the file
+			cp->state = HTTP_HEADER;
+			cp->content_len = 0;
+			cp->content_type = 0;
+			cp->pos = 0;
+			if (cp->fd != -1) {
+				close(cp->fd);
+			}
+			cp->fd = -1;
+		}
 	}
-
-	cp->pos += psize;
-
-	write(cp->fd, f->buff + pstart, psize);
-	ndprint("Saved %u of payload\n", psize);
-	
-	if (cp->pos >= cp->content_len) { // Everything was captuer, we can close the file
-		cp->state = HTTP_HEADER;
-		cp->content_len = 0;
-		cp->content_type = 0;
-		cp->pos = 0;
-		close(cp->fd);
-		cp->fd = -1;
-	}
-
 	return 1;
 };
 
@@ -337,7 +424,9 @@ int target_close_connection_http(struct conntrack_entry *ce, void *conntrack_pri
 	struct target_conntrack_priv_http *cp;
 	cp = conntrack_priv;
 
-	close(cp->fd);
+	if (cp->fd != -1) {
+		close(cp->fd);
+	}
 
 	free(cp);
 
