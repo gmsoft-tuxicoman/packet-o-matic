@@ -222,15 +222,13 @@ int input_unregister_all() {
 
 }
 
-int input_gettimeof(struct input *i, struct timeval *tv) {
+int input_getcaps(struct input *i, struct input_caps *ic) {
 
 	if (!i || !inputs[i->type])
 		return I_ERR;
 
-	if (inputs[i->type]->gettimeof)
-		return (*inputs[i->type]->gettimeof) (i, tv);
+	return (*inputs[i->type]->getcaps) (i, ic);
 	
-	return gettimeofday(tv, NULL);
 
 }
 

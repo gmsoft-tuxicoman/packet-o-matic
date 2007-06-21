@@ -28,19 +28,21 @@
 
 #include "target_http.h"
 
-#define MIME_TYPES_COUNT 35
+#define MIME_TYPES_COUNT 45
 
-#define MIME_BIN "\0"
-#define MIME_IMG "\1"
-#define MIME_VID "\2"
-#define MIME_SND "\3"
-#define MIME_TXT "\4"
+#define MIME_BIN "\x01"
+#define MIME_IMG "\x02"
+#define MIME_VID "\x04"
+#define MIME_SND "\x08"
+#define MIME_TXT "\x10"
+#define MIME_DOC "\x20"
 
-#define TYPE_BIN 0
-#define TYPE_IMG 1
-#define TYPE_VID 2
-#define TYPE_SND 3
-#define TYPE_TXT 4
+#define TYPE_BIN 0x01
+#define TYPE_IMG 0x02
+#define TYPE_VID 0x04
+#define TYPE_SND 0x08
+#define TYPE_TXT 0x10
+#define TYPE_DOC 0x20
 
 
 const char *mime_types[MIME_TYPES_COUNT][3] = {
@@ -48,6 +50,8 @@ const char *mime_types[MIME_TYPES_COUNT][3] = {
 	{ "private/unknown", "unk", MIME_BIN }, // Special non-existant type
 	{ "application/x-javascript", "js", MIME_TXT },
 	{ "application/javascript", "js", MIME_TXT },
+	{ "application/json", "json", MIME_TXT },
+	{ "application/x-json", "json", MIME_TXT },
 	{ "application/zip", "gz", MIME_BIN },
 	{ "application/octet-stream", "bin", MIME_BIN },
 	{ "application/octetstream", "bin", MIME_BIN },
@@ -55,9 +59,16 @@ const char *mime_types[MIME_TYPES_COUNT][3] = {
 	{ "application/x-rar-compressed", "rar", MIME_BIN },
 	{ "application/x-www-urlform-encoded", "url", MIME_TXT },
 	{ "application/xml", "xml", MIME_TXT },
-	{ "application/pdf", "pdf", MIME_TXT },
+	{ "application/pdf", "pdf", MIME_DOC },
+	{ "application/vnd.ms-excel", "xls", MIME_DOC },
+	{ "application/vnd.ms-powerpoint", "ppt", MIME_DOC },
+	{ "application/msword", "doc", MIME_DOC },
 	{ "audio/mpeg", "mp3", MIME_SND },
+	{ "audio/mp3", "mp3", MIME_SND },
 	{ "audio/x-pn-realaudio", "rm", MIME_SND },
+	{ "video/x-ms-wma", "wma", MIME_SND },
+	{ "audio/x-wav", "wav", MIME_SND },
+	{ "audio/wav", "wav", MIME_SND },
 	{ "image/jpeg", "jpg", MIME_IMG },
 	{ "image/pjpeg", "pjpg", MIME_IMG },
 	{ "image/jpg", "jpg", MIME_IMG },
@@ -79,6 +90,7 @@ const char *mime_types[MIME_TYPES_COUNT][3] = {
 	{ "video/mpeg", "mpg", MIME_VID },
 	{ "video/x-ms-asf", "asf", MIME_VID },
 	{ "video/x-msvideo", "avi", MIME_VID },
+	{ "video/vnd.divx", "avi", MIME_VID },
 	{ "video/x-ms-wmv", "wmv", MIME_VID },
 
 
@@ -87,14 +99,15 @@ const char *mime_types[MIME_TYPES_COUNT][3] = {
 unsigned char mime_types_hash[MIME_TYPES_COUNT];
 
 
-#define PARAMS_NUM 6
+#define PARAMS_NUM 7
 char *target_http_params[PARAMS_NUM][3] = {
 	{"path", ".", "path to the directory where the dumped files will be saved"},
-	{"dump_img", "1", "specifiy if you want to dump image content or not"},
-	{"dump_vid", "1", "specifiy if you want to dump video content or not"},
+	{"dump_img", "0", "specifiy if you want to dump image content or not"},
+	{"dump_vid", "0", "specifiy if you want to dump video content or not"},
 	{"dump_snd", "0", "specifiy if you want to dump audio content or not"},
 	{"dump_txt", "0", "specifiy if you want to dump text content or not"},
 	{"dump_bin", "0", "specifiy if you want to dump binary content or not"},
+	{"dump_doc", "0", "specifiy if you want to dump documents content or not"},
 	
 };
 
@@ -162,6 +175,8 @@ int target_open_http(struct target *t) {
 		*match_mask |= TYPE_TXT;
 	if (*t->params_value[5] == '1') // bin
 		*match_mask |= TYPE_BIN;
+	if (*t->params_value[6] == '1') // doc
+		*match_mask |= TYPE_DOC;
 
 	return 1;
 

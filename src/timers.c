@@ -23,24 +23,24 @@
 
 #include "timers.h"
 #include "input.h"
-
+#include "main.h"
 
 struct timer_queue *timer_queues;
 struct timeval next_run;
 
 
-int timers_process(struct input *i) {
-
-	struct timeval tv;
-	input_gettimeof(i, &tv);
+int timers_process() {
 
 	ndprint("Looking at timers ...\n");
+
+	struct timeval now;
+	get_current_input_time(&now);
 
 	struct timer_queue *tq;
 	tq = timer_queues;
 
 	while (tq) {
-		while (tq->head && timercmp(&tq->head->expires, &tv, <)) {
+		while (tq->head && timercmp(&tq->head->expires, &now, <)) {
 				ndprint("Timer 0x%lx reached. Starting handler ...\n", (unsigned long) tq->head);
 				(*tq->head->handler) (tq->head->priv);
 		}
@@ -200,7 +200,7 @@ int timer_queue(struct timer *t, unsigned int expiry) {
 	// Update the expiry time
 
 	struct timeval tv;
-	input_gettimeof(t->input, &tv);
+	get_current_input_time(&tv);
 	memcpy(&t->expires, &tv, sizeof(struct timeval));
 	t->expires.tv_sec += expiry;
 

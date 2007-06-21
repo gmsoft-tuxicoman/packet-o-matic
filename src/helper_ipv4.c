@@ -90,7 +90,7 @@ int helper_ipv4_process_frags(struct helper_priv_ipv4 *p) {
 	hdr->ip_len = htons(f->bufflen - p->hdr_offset);
 
 
-	ndprint("Helper ipv4 : sending packet to rule processor. len %u, first_layer %u\n", pos, f->first_layer);
+	ndprint("Helper ipv4 : sending packet to rule processor. len %u, first_layer %u\n", f->bufflen, f->first_layer);
 
 	(*hlp_functions->queue_frame) (f);
 
@@ -209,7 +209,7 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 
 	// At this point we don't have the fragment in memory yet. Let's add it
 	
-	ndprint("Helper ipv4 : adding fragment %u for id %u in memory (start %u, len %u)\n", offset, ntohs(tmp->hdr->ip_id), frag_start, (unsigned int) frag_size);
+	ndprint("Helper ipv4 : adding fragment %u for id %u in memory (start %u, len %u)\n", offset, ntohs(hdr->ip_id), frag_start, (unsigned int) frag_size);
 
 	struct helper_priv_ipv4_frag *ftmp = malloc(sizeof(struct helper_priv_ipv4_frag));
 	bzero(ftmp, sizeof(struct helper_priv_ipv4_frag));
@@ -272,8 +272,10 @@ int helper_cleanup_ipv4_frag(void *priv) {
 
 	struct helper_priv_ipv4 *p = priv;
 
-	ndprint("Helper ipv4 : cleaning up fragments of id %u\n", ntohs(p->hdr->ip_id));
-
+#ifdef NDEBUG
+	struct ip *tmphdr = (struct ip*) (p->f->buff + p->hdr_offset);
+	ndprint("Helper ipv4 : cleaning up fragments of id %u\n", ntohs(tmphdr->ip_id));
+#endif
 	while (p->frags) {
 		struct helper_priv_ipv4_frag *f;
 		f = p->frags;

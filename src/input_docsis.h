@@ -82,5 +82,8 @@ int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symboleRate,
 /// Check the validity of the MPEG stream to make sure we tuned on a DOCSIS stream.
 int input_docsis_check_downstream(struct input *i);
 
+/// Provide the capabilities of the input
+int input_getcaps_docsis(struct input *i, struct input_caps *ic);
+
 #endif
 

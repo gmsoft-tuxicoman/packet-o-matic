@@ -37,6 +37,7 @@
 #include "input_docsis.h"
 #include "match_docsis.h" // For docsis header definition
 
+
 /// We use a bigger buffer size of the demux interface. This way we can cope with some burst.
 #define DEMUX_BUFFER_SIZE 2097152 // 2Megs
 
@@ -66,6 +67,7 @@ int input_register_docsis(struct input_reg *r, struct input_functions *i_funcs) 
 
 	r->init = input_init_docsis;
 	r->open = input_open_docsis;
+	r->getcaps = input_getcaps_docsis;
 	r->read = input_read_docsis;
 	r->close = input_close_docsis;
 	r->cleanup = input_cleanup_docsis;
@@ -85,6 +87,7 @@ int input_init_docsis(struct input *i) {
 
 	struct input_priv_docsis *p = i->input_priv;
 	p->temp_buff = malloc(TEMP_BUFF_LEN);
+	memset(p->temp_buff, 0xff, TEMP_BUFF_LEN);
 	ndprint("Temp buff is 0x%X-0x%X\n", (unsigned) p->temp_buff, (unsigned) p->temp_buff + TEMP_BUFF_LEN);
 
 	copy_params(i->params_value, input_docsis_params, 1, PARAMS_NUM);
@@ -191,19 +194,17 @@ int input_open_docsis(struct input *i) {
 	}
 
 	// Let's filter on the DOCSIS PID
-	
+	bzero(&filter, sizeof(struct dmx_pes_filter_params));	
 	filter.pid = DOCSIS_PID;
 	filter.input = DMX_IN_FRONTEND;
 	filter.output = DMX_OUT_TS_TAP;
 	filter.pes_type = DMX_PES_OTHER;
 	filter.flags = DMX_IMMEDIATE_START;
 
-
 	if (ioctl(p->demux_fd, DMX_SET_PES_FILTER, &filter) != 0) {
 		dprint("Unable to set demuxer\n");
 		return I_ERR;
 	}
-
 
 	// Let's open the dvr device
 
@@ -498,16 +499,13 @@ int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symbolRate, 
 					dprint("LOCK ");
 					dprint("\n");
 					return 1;
-				} else if (status) {
-					dprint("\n");
-					break;
 				}
 				if (status)
 					dprint("\n");
 
 
-			} else
-				try++;
+			} /*else
+				try++;*/
 		} else
 			try++;
 	};
@@ -638,7 +636,6 @@ int input_read_docsis(struct input *i, struct frame *f) {
 		if (packet_pos > sizeof(struct docsis_hdr)) {
 
 			dlen = ntohs(dhdr->len) + sizeof(struct docsis_hdr);
-
 			
 			if (dlen < sizeof(struct docsis_hdr) || dlen > f->bufflen) {
 				// Invalid packet, let's discard the whole thing
@@ -852,3 +849,14 @@ int input_close_docsis(struct input *i) {
 	return I_OK;
 
 }
+
+int input_getcaps_docsis(struct input *i, struct input_caps *ic) {
+
+	ic->snaplen = 1800; /// Must be at least that high for internal processing
+	ic->is_live = 1;
+
+	return I_OK;
+
+}
+
+

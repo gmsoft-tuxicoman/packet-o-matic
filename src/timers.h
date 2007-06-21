@@ -54,9 +54,9 @@ struct timer_queue {
 
 
 
-int timers_process(struct input *i);
+int timers_process();
 int timers_cleanup();
-struct timer *timer_alloc();
+struct timer *timer_alloc(void* priv, struct input *i, int (*handler) (void*));
 int timer_cleanup(struct timer *t);
 int timer_queue(struct timer *t, unsigned int expiry);
 int timer_dequeue(struct timer *t);

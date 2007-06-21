@@ -1,3 +1,10 @@
+* 2007/06/21 Guy Martin <gmsoft@tuxicoman.be>
+Fixed bug in algo when input_docsis tunes to a frequency.
+Fixed compilation error with NDEBUG defined in helper_ipv4.
+Moved reading from the input in a separate thread and added a ring buffer.
+Added some more mime types to target_http and control on what needs to be captured.
+Input are now queried via the input_getcaps functions to find out about what we are reading from.
+
 * 2007/06/12 Guy Martin <gmsoft@tuxicoman.be>
 Improved target_http. Save in directory named after the ip source and configure what type of file to save.
 

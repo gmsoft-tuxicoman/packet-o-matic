@@ -45,7 +45,7 @@ int input_register_pcap(struct input_reg *r, struct input_functions *i_funcs) {
 	r->read = input_read_pcap;
 	r->close = input_close_pcap;
 	r->cleanup = input_cleanup_pcap;
-	r->gettimeof = input_gettimeof_pcap;
+	r->getcaps = input_getcaps_pcap;
 
 	return I_OK;
 }
@@ -91,7 +91,6 @@ int input_open_pcap(struct input *i) {
 			dprint("Error opening file %s for reading\n", filename);
 			return I_ERR;
 		}
-		p->clock_source = PCAP_CLOCK_FILE;
 	} else {
 		char interface[256];
 		bzero(interface, 256);
@@ -203,18 +202,20 @@ int input_close_pcap(struct input *i) {
 
 }
 
-int input_gettimeof_pcap(struct input *i, struct timeval *tv) {
+int input_getcaps_pcap(struct input *i, struct input_caps *ic) {
 
 	struct input_priv_pcap *p = i->input_priv;
 
-	if (p->clock_source == PCAP_CLOCK_FILE) {
-		// Add one usec not to create some virtual delay
-		p->tv.tv_usec++;
-		memcpy(tv, &p->tv, sizeof(struct timeval));
-		return I_OK;
-	}
+	if (!p->p)
+		return I_ERR;
 
-	return gettimeofday(tv, NULL);
+	ic->snaplen = pcap_snapshot(p->p);
+	if (strlen(i->params_value[0]) > 0) 
+		ic->is_live = 0;
+	else
+		ic->is_live = 1;
+
+	return I_OK;
 
 }
 

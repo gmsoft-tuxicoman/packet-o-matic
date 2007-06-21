@@ -33,12 +33,22 @@
 /// Return value on success
 #define I_OK 0
 
+
 /// This structure saves infos about an input instances
 struct input {
 	int type; ///< Unique number assigned to this type of input.
 	char **params_value; ///< Values of the parametres.
 	void *input_priv; ///< Private stuff, place to store a struct used by the input internaly.
 };
+
+/// This structure is used to retreive the capabilities of the current opened input
+struct input_caps {
+
+	unsigned int snaplen; ///< Snaplen of the input
+	int is_live; ///< Define if the opened input is reading prerecorded pcakets or is capturing live traffic
+
+};
+
 
 /// This structure saves infos about a registered input
 /**
@@ -95,14 +105,14 @@ struct input_reg {
 	int (*cleanup) (struct input *i);
 
 
-	/// Pointer to the fonction to provide the time of the input
+	/// Pointer to the fonction to provide the capabilities of an input
 	/**
-	 * Fill tv with with the time when the packet was taken.
-	 * Works as gettimeofday() if not provided by underlaying module.
+	 * Fills the struct input_caps with the capabilities of the input.
+	 * The input must be opened or I_ERR will be returned.
 	 * Returns I_OK on success and I_ERR on failure.
 	 **/
 
-	int (*gettimeof) (struct input *i, struct timeval *tv);
+	int (*getcaps) (struct input *i, struct input_caps *ic);
 
 };
 
@@ -138,8 +148,8 @@ int input_unregister_all();
 /// Display the help of every input.
 void input_print_help();
 
-/// Return current input clock
-int input_gettimeof(struct input *i, struct timeval *tv); 
+/// Return current input caps
+int input_getcaps(struct input *i, struct input_caps *ic); 
 
 
 #endif
