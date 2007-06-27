@@ -23,6 +23,7 @@
 #include "conntrack.h"
 #include "helper.h"
 #include "input.h"
+#include "mgmtsrv.h"
 
 #include "main.h"
 
@@ -149,6 +150,14 @@ void print_help() {
 }
 
 
+void *mgmtsrv_thread_func(void *params) {
+
+	while (!finish) {
+		mgmtsrv_process();
+	}
+	return NULL;
+}
+
 void *input_thread_func(void *params) {
 
 	struct input_thread_params *p = params;
@@ -242,6 +251,8 @@ int main(int argc, char *argv[]) {
 	target_init();
 	rules_init();
 
+	mgmtsrv_init();
+
 	struct conf *c = config_alloc();
 
 	if (!config_parse(c, cfgfile)) {
@@ -287,6 +298,12 @@ int main(int argc, char *argv[]) {
 	pthread_t input_thread;
 	if (pthread_create(&input_thread, NULL, input_thread_func, (void*)&itp)) {
 		dprint("Error when creating the input thread. Abording\n");
+		goto finish;
+	}
+
+	pthread_t mgmtsrv_thread;
+	if (pthread_create(&mgmtsrv_thread, NULL, mgmtsrv_thread_func, NULL)) {
+		dprint("Error when creating the config server thread. Abording\n");
 		goto finish;
 	}
 
@@ -405,7 +422,9 @@ int main(int argc, char *argv[]) {
 	}
 
 finish:
+	finish = 1;
 	pthread_join(input_thread, NULL);
+	pthread_join(mgmtsrv_thread, NULL);
 
 	dprint("Total packets read : %lu, dropped %lu (%.2f%%)\n", ringbuffer_total_packets, ringbuffer_dropped_packets, 100.0 / ringbuffer_total_packets * ringbuffer_dropped_packets);
 
@@ -429,6 +448,7 @@ err:
 	target_cleanup();
 	match_cleanup();
 
+	mgmtsrv_cleanup();
 
 	target_unregister_all();
 	match_unregister_all();

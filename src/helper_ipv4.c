@@ -231,8 +231,23 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 			fp->prev = ftmp;
 			ftmp->next = fp;
 		} else { // We are at the end of the list
-			ftmp->prev = fp;
-			fp->next = ftmp;
+			if (!fp->prev) { // There is only one packet in the list
+					if (fp->offset > offset) { // Let's see if we need to add it after or before this one
+						// We add it before this one
+						ftmp->next = fp;
+						fp->prev = ftmp;
+						tmp->frags = ftmp;
+						
+					} else {
+						// We add it after this one
+						fp->next = ftmp;
+						ftmp->prev = fp;
+					}
+
+			} else {
+				ftmp->prev = fp;
+				fp->next = ftmp;
+			}
 		}
 
 	} else

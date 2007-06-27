@@ -1,3 +1,7 @@
+* 2007/06/27 Guy Martin <gmsoft@tuxicoman.be>
+Fixed bug in helper_ipv4 when the second packet of a 2 fragments arrived first.
+Introduction of a management interface. No command supported yet besides 'quit'.
+
 * 2007/06/21 Guy Martin <gmsoft@tuxicoman.be>
 Fixed bug in algo when input_docsis tunes to a frequency.
 Fixed compilation error with NDEBUG defined in helper_ipv4.
