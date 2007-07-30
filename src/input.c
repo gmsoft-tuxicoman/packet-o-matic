@@ -211,8 +211,9 @@ int input_unregister_all() {
 			free(inputs[i]->params_name);
 			free(inputs[i]->params_help);
 		}
+		if (dlclose(inputs[i]->dl_handle))
+			dprint("Error while closing library of input %s\n", inputs[i]->input_name);
 		free(inputs[i]->input_name);
-		dlclose(inputs[i]->dl_handle);
 		free(inputs[i]);
 		inputs[i] = NULL;
 

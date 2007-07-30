@@ -251,7 +251,6 @@ int main(int argc, char *argv[]) {
 	target_init();
 	rules_init();
 
-	mgmtsrv_init();
 
 	struct conf *c = config_alloc();
 
@@ -260,6 +259,10 @@ int main(int argc, char *argv[]) {
 		goto err;
 	}
 
+	if (mgmtsrv_init() == MGMT_ERR) {
+		dprint("Error when initializing the management console. Abording\n");
+		goto err;
+	}
 	int fd = input_open(c->input);
 
 	if (fd == I_ERR) {
@@ -300,18 +303,19 @@ int main(int argc, char *argv[]) {
 		dprint("Error when creating the input thread. Abording\n");
 		goto finish;
 	}
-
+	
 	pthread_t mgmtsrv_thread;
 	if (pthread_create(&mgmtsrv_thread, NULL, mgmtsrv_thread_func, NULL)) {
-		dprint("Error when creating the config server thread. Abording\n");
-		goto finish;
+		dprint("Error when creating the management console thread. Abording\n");
+		goto err;
 	}
+
 
 	struct sched_param sp;
 	sp.sched_priority = 5;
 
 	if (pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp)) {
-			dprint("Error while setting input thread priority\n");
+		dprint("Error while setting input thread priority\n");
 	}
 
 	if (pthread_mutex_lock(&ringbuffer_mutex)) {

@@ -119,7 +119,8 @@ int helper_unregister_all() {
 
 	for (i = 0; i < MAX_HELPER; i++) {
 		if (helpers[i]) {
-			dlclose(helpers[i]->dl_handle);
+			if (dlclose(helpers[i]->dl_handle))
+				dprint("Error while closing library of target %s\n", match_get_name(i));
 			free(helpers[i]);
 			helpers[i] = NULL;
 		}

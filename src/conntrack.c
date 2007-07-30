@@ -557,7 +557,8 @@ int conntrack_unregister_all() {
 
 	for (i = 0; i < MAX_CONNTRACK; i++) {
 		if (conntracks[i]) {
-			dlclose(conntracks[i]->dl_handle);
+			if (dlclose(conntracks[i]->dl_handle))
+				dprint("Error while closing library of conntrack %s\n", match_get_name(i));
 			free(conntracks[i]);
 			conntracks[i] = NULL;
 		}

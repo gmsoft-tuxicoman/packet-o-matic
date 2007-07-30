@@ -36,8 +36,10 @@ struct mgmt_connection {
 	int fd; // fd of the socket
 	int listening; // is it a listening socket ?
 	char cmd[MGMT_CMD_BUFF_LEN];
+	size_t cmdlen;
 	struct mgmt_connection *prev;
 	struct mgmt_connection *next;
+	uint16_t win_x, win_y; // size of the remote window
 
 };
 
@@ -55,10 +57,13 @@ struct mgmt_command {
 
 int mgmtsrv_init();
 int mgmtsrv_process();
-int mgmtsrv_read_command(struct mgmt_connection *c);
+int mgmtsrv_read_socket(struct mgmt_connection *c);
 int mgmtsrv_cleanup();
 
 int mgmtsrv_accept_connection(struct mgmt_connection *c);
+int mgmtsrv_process_telnet_option(struct mgmt_connection *c, unsigned char *opt, unsigned int len);
+int mgmtsrv_process_key(struct mgmt_connection *c, unsigned char key);
+int mgmtsrv_process_command(struct mgmt_connection *c);
 int mgmtsrv_close_connection(struct mgmt_connection *c);
 
 

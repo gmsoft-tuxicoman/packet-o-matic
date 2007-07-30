@@ -190,8 +190,9 @@ int target_unregister_all() {
 			free(targets[i]->params_name);
 			free(targets[i]->params_help);
 		}
+		if(dlclose(targets[i]->dl_handle))
+			dprint("Error while closing library of target %s\n", targets[i]->target_name);
 		free(targets[i]->target_name);
-		dlclose(targets[i]->dl_handle);
 		free(targets[i]);
 		targets[i] = NULL;
 

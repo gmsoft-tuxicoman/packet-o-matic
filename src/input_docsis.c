@@ -467,11 +467,11 @@ int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symbolRate, 
 		if (poll(pfd, 1, 1000)){
 			if (pfd[0].revents & POLLIN) {
 				if (ioctl(p->frontend_fd, FE_GET_EVENT, &event)) {
-					dprint("IOCTL failed\n");
+					dprint("IOCTL failed while getting event of DOCSIS input\n");
 					return -1;
 				}
 				if (ioctl(p->frontend_fd, FE_READ_STATUS, &status)) {
-					dprint("IOCTL failed\n");
+					dprint("IOCTL failed while getting status of DOCSIS input\n");
 					return -1;
 				}
 				
@@ -642,6 +642,7 @@ int input_read_docsis(struct input *i, struct frame *f) {
 				ndprint("Invalid packet. discarding.\n");
 				packet_pos = 0;
 				dlen = 0;
+				continue;
 			}
 
 			// We've got a full packet

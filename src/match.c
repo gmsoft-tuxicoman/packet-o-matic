@@ -234,8 +234,9 @@ int match_unregister(unsigned int match_type) {
 		free(r->params_name);
 		free(r->params_help);
 	}
+	if (dlclose(r->dl_handle))
+		dprint("Error while closing library of match %s\n", r->name);
 	free(r->name);
-	dlclose(r->dl_handle);
 	free(r);
 
 	matchs[match_type] = NULL;

@@ -1,3 +1,9 @@
+* 2007/07/30 Guy Martin <gmsoft@tuxicoman.be>
+Fixed small bug in input_docsis when handling invalid packet and improved error messages.
+Improved handling of telnet options in the management console.
+Added error checking when unloading modules with dlclose().
+More verbose and understandable error message when invalid packets are discarded.
+
 * 2007/06/27 Guy Martin <gmsoft@tuxicoman.be>
 Fixed bug in helper_ipv4 when the second packet of a 2 fragments arrived first.
 Introduction of a management interface. No command supported yet besides 'quit'.

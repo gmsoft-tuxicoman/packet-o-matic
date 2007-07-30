@@ -33,6 +33,25 @@ int rules_init() {
 
 }
 
+
+int dump_invalid_packet(struct frame *f) {
+
+	struct layer *l = f->l;
+
+	dprint("Invalid packet : frame len %u, bufflen %u > ", f->len, f->bufflen);
+
+	while (l) {
+		dprint("%s pstart %u, psize %u", match_get_name(l->type), l->payload_start, l->payload_size);
+		l = l->next;
+		if (l)
+			dprint(" > ");
+
+	}
+	dprint("\n");
+
+	return 0;
+}
+
 /**
  * Parameters :
  * - n : current node what we are evaluating
@@ -77,8 +96,7 @@ inline int node_match(struct frame *f, struct rule_node *n, struct layer *l) {
 				// the initial size may be too long as some padding could have been introduced by the input
 
 				if (l->prev && (l->payload_start + l->payload_size > l->prev->payload_start + l->prev->payload_size || l->payload_size > l->prev->payload_size)) {
-					ndprint("Error, new len greater than the computed maximum len or buffer (maximum %u, new %u, layer %s). Not considering packet\n",
-						l->prev && l->payload_start + l->payload_size, l->prev->payload_start + l->prev->payload_size, match_get_name(l->type));
+					dump_invalid_packet(f);
 					return 0;
 				}
 
@@ -174,8 +192,7 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 		// the initial size may be too long as some padding could have been introduced by the input
 
 		if (l->prev && (l->payload_start + l->payload_size > l->prev->payload_start + l->prev->payload_size || l->payload_size > l->prev->payload_size)) {
-			dprint("Error, new len greater than the computed maximum len or buffer (maximum %u, new %u, layer %s). Not considering packet\n",
-				l->prev->payload_start + l->prev->payload_size, l->payload_start + l->payload_size, match_get_name(l->type));
+			dump_invalid_packet(f);
 			return 1;
 		}
 
