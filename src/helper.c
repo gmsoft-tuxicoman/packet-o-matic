@@ -24,8 +24,6 @@
 #include "timers.h"
 #include "rules.h"
 
-#define MAX_HELPER MAX_MATCH
-
 struct helper_reg *helpers[MAX_HELPER];
 struct helper_functions *hlp_funcs;
 struct helper_frame *frame_head, *frame_tail;

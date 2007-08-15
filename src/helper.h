@@ -22,6 +22,8 @@
 #ifndef __HELPER_H__
 #define __HELPER_H__
 
+#define MAX_HELPER MAX_MATCH
+
 #include "common.h"
 #include "rules.h"
 

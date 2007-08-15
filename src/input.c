@@ -153,7 +153,7 @@ int input_open(struct input *i) {
  * The buffer used should be at least 1528 bytes for ethernet and 802.1q marking. The argument bufflen is the length of the buffer.
  * Returns the number of bytes copied. Returns 0 if nothing was read and I_ERR in case of fatal error.
  **/
-inline int input_read(struct input *i, struct frame *f) {
+int input_read(struct input *i, struct frame *f) {
 
 	return (*inputs[i->type]->read) (i, f);
 

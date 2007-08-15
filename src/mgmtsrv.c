@@ -26,16 +26,11 @@
 #define TELNET_SUBOPT_MAX 256
 #define READ_BUFF_LEN 2048
 
-#include <sys/socket.h>
-#include <fcntl.h>
-#include <unistd.h>
-#include <netdb.h>
 #include "common.h"
 #include "mgmtsrv.h"
+#include "mgmtcmd.h"
 
-#include <errno.h>
 #include <signal.h>
-
 
 #define TELCMDS 1 // will populate the table telcmds
 #define TELOPTS 1 // will populate the table telopts
@@ -43,6 +38,8 @@
 
 struct mgmt_connection *conn_head;
 struct mgmt_connection *conn_tail;
+
+struct mgmt_command *cmds;
 
 int mgmtsrv_init() {
 
@@ -53,6 +50,9 @@ int mgmtsrv_init() {
 	conn_head = NULL;
 	conn_tail = NULL;
 
+	cmds = NULL;
+
+	char errbuff[256];
 
 	struct addrinfo hints, *res;
 	bzero(&hints, sizeof(struct addrinfo));
@@ -61,7 +61,8 @@ int mgmtsrv_init() {
 	hints.ai_socktype = SOCK_STREAM;
 
 	if (getaddrinfo(NULL, PORT, &hints, &res) < 0) {
-		dprint("Error while finding an address to listen on\n");
+		strerror_r(errno, errbuff, 256);
+		dprint("Error while finding an address to listen on : %s\n", errbuff);
 		return MGMT_ERR;
 	}
 
@@ -70,23 +71,42 @@ int mgmtsrv_init() {
 	while (tmpres) {
 		if (tmpres->ai_family != AF_INET && tmpres->ai_family != AF_INET6)
 			continue;
+ 
+		char host[NI_MAXHOST], port[NI_MAXSERV];
+		bzero(host, NI_MAXHOST);
+		bzero(port, NI_MAXSERV);
+
+		getnameinfo((struct sockaddr*)tmpres->ai_addr, tmpres->ai_addrlen, host, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST);
 
 		sockfd = socket(tmpres->ai_family, tmpres->ai_socktype, tmpres->ai_protocol);
 		if (sockfd < 0) {
-			dprint("Error while creating socket\n");
+			strerror_r(errno, errbuff, 256);
+			dprint("Error while creating socket : %s\n", errbuff);
 			tmpres = tmpres->ai_next;
 			continue;
 		}
 
+		const int yes = 1;
+		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
+			strerror_r(errno, errbuff, 256);
+			dprint("Error while setting REUSEADDR option on socket : %s\n", errbuff);
+			close(sockfd);
+			tmpres = tmpres->ai_next;
+			continue;
+
+		}
+
 		if (bind(sockfd, tmpres->ai_addr, tmpres->ai_addrlen) < 0) {
-			dprint("Error while binding socket\n");
+			strerror_r(errno, errbuff, 256);
+			dprint("Error while binding socket on address %s : %s\n", host, errbuff);
 			close(sockfd);
 			tmpres = tmpres->ai_next;
 			continue;
 		}
 
 		if (listen(sockfd, WAIT_CONNS)) {
-			dprint("Error while switching socket to listen state\n");
+			strerror_r(errno, errbuff, 256);
+			dprint("Error while switching socket to listen state : %s\n", errbuff);
 			close(sockfd);
 			tmpres = tmpres->ai_next;
 			continue;
@@ -97,6 +117,8 @@ int mgmtsrv_init() {
 		conn->fd = sockfd;
 		conn->listening = 1;
 
+		dprint("Management console listening on %s\n", host);
+	
 		if (!conn_head) {
 			conn_head = conn;
 			conn_tail = conn;
@@ -106,6 +128,7 @@ int mgmtsrv_init() {
 			conn_tail = conn;
 		}
 
+		tmpres = tmpres->ai_next;
 	}
 
 	freeaddrinfo(res);
@@ -114,6 +137,10 @@ int mgmtsrv_init() {
 		dprint("Could not open a single socket\n");
 		return MGMT_ERR;
 	}
+
+	// register all the commands
+	mgmtcmd_register_all();
+
 
 	return MGMT_OK;
 
@@ -314,14 +341,16 @@ int mgmtsrv_read_socket(struct mgmt_connection *c) {
 
 int mgmtsrv_process_telnet_option(struct mgmt_connection *c, unsigned char *opt, unsigned int len) {
 
+#ifdef NDEBUG
 
 	if (opt[0] == SB) {
-		dprint("Got telnet suboption %s\n", TELOPT(opt[1]));
+		ndprint("Got telnet suboption %s\n", TELOPT(opt[1]));
 	} else {
 
-		dprint("Got telnet option %s %s\n", TELCMD(opt[0]), TELOPT(opt[1]));
+		ndprint("Got telnet option %s %s\n", TELCMD(opt[0]), TELOPT(opt[1]));
 	}
 
+#endif
 
 	switch (opt[1]) { // Handle the stuff we support
 		case TELOPT_ECHO:
@@ -354,7 +383,7 @@ int mgmtsrv_process_telnet_option(struct mgmt_connection *c, unsigned char *opt,
 					c->win_x += opt[3];
 					c->win_y = opt[4] * 0x100;
 					c->win_y += opt[5];
-					dprint("New remote window size for connection %u is %ux%u\n", c->fd, c->win_x, c->win_y);
+					ndprint("New remote window size for connection %u is %ux%u\n", c->fd, c->win_x, c->win_y);
 			}
 			break;
 		case TELOPT_SGA:
@@ -412,6 +441,11 @@ int mgmtsrv_process_key(struct mgmt_connection *c, unsigned char key) {
 			break;
 		}
 
+		case 4: // Ctrl-D
+			if (c->cmdlen == 0)
+				mgmtcmd_exit(c);
+			break;
+
 		case '\b': { // backspace
 			if (c->cmdlen == 0)
 				break;
@@ -431,13 +465,7 @@ int mgmtsrv_process_key(struct mgmt_connection *c, unsigned char key) {
 			break;
 		}
 
-		case '\t': { // tab completion
-			char *completion_msg = "\r\nCompletion not implemented (yet :)\r\n" MGMT_CMD_PROMPT;
-			send(c->fd, completion_msg, strlen(completion_msg), 0);
-			send(c->fd, c->cmd, c->cmdlen, 0);
-			break;
-		}
-
+		case '\t': // tab completion
 		case '?': { // completion
 			char *completion_msg = "\r\nCompletion not implemented (yet :)\r\n" MGMT_CMD_PROMPT;
 			send(c->fd, completion_msg, strlen(completion_msg), 0);
@@ -451,7 +479,7 @@ int mgmtsrv_process_key(struct mgmt_connection *c, unsigned char key) {
 				send(c->fd, error_msg, strlen(error_msg), 0);
 				send(c->fd, c->cmd, c->cmdlen, 0);
 			} else {
-				dprint("Got key 0x%x\n", key);
+				ndprint("Got key 0x%x\n", key);
 				send(c->fd, &key, 1, 0);
 				c->cmd[c->cmdlen] = key;
 				c->cmdlen++;
@@ -464,20 +492,65 @@ int mgmtsrv_process_key(struct mgmt_connection *c, unsigned char key) {
 
 }
 
+int mgmtsrv_register_command(struct mgmt_command *cmd) {
+
+
+	if (!cmds) {
+		cmds = cmd;
+		return MGMT_OK;
+	}
+
+	struct mgmt_command *tmp = cmds;
+
+	while (tmp->next) {
+		tmp = tmp->next;
+	}
+
+	tmp->next = cmd;
+
+	return MGMT_OK;
+
+}
+
 int mgmtsrv_process_command(struct mgmt_connection *c) {
 
+	// Let's start by splitting this line
+	char *words[MGMT_MAX_CMD_WORDS];
+	unsigned int words_count = 0, i;
+	char *str, *saveptr, *token;
 
-	if (!strcmp(c->cmd, "quit")) {
-		char *bye_msg = "\r\nThanks for using packet-o-matic ! Bye !\r\n";
-		send(c->fd, bye_msg, strlen(bye_msg), 0);
-		mgmtsrv_close_connection(c);
-		return MGMT_OK;
-	} else {
-		char *error_msg = "\r\nNo such command";
-		send(c->fd, error_msg, strlen(error_msg), 0);
-		return MGMT_OK;
+	for (i = 0; i < MGMT_MAX_CMD_WORDS; i++)
+		words[i] = 0;
 
+	for (str = c->cmd; ;str = NULL) {
+		token = strtok_r(str, " ", &saveptr);
+		if (token == NULL)
+			break;
+		if (strlen(token) == 0)
+			continue;
+		words[words_count] = token;
+		words_count++;
 	}
+
+	if (words_count == 0)
+		return MGMT_OK;
+	
+	mgmtsrv_send(c, "\r\n");
+
+	struct mgmt_command *tmpcmd = cmds;
+
+	while (tmpcmd) {
+		for (i = 0; i < words_count; i++) {
+			if (strcmp(words[i], tmpcmd->words[i]))
+				break;	
+		}
+		if (i == words_count && tmpcmd->words[i] == NULL) {
+			return (*tmpcmd->callback_func) (c);
+		}
+		tmpcmd = tmpcmd->next;
+	}
+	
+	mgmtsrv_send(c, "No such command");
 
 	return MGMT_OK;
 
@@ -518,5 +591,10 @@ int mgmtsrv_cleanup() {
 	}
 
 	return MGMT_OK;
+}
 
+
+int mgmtsrv_send(struct mgmt_connection *c, char* msg) {
+
+	return send(c->fd, msg, strlen(msg), 0);
 }

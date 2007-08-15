@@ -58,7 +58,7 @@ int dump_invalid_packet(struct frame *f) {
  * - l : current layer that we are currently looking at
  **/
 
-inline int node_match(struct frame *f, struct rule_node *n, struct layer *l) {
+int node_match(struct frame *f, struct rule_node *n, struct layer *l) {
 
 	if (!l)
 		return 0;

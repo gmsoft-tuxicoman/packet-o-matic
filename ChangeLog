@@ -1,3 +1,10 @@
+* 2007/08/15 Guy Martin <gmsoft@tuxicoman.be>
+Changed strerror() into strerror_r() in the whole code.
+Management commands can be registered.
+Added support for Ctrl-D in the management console.
+Removed useless inline keywords.
+Added command "show license" and "show helpers".
+
 * 2007/07/30 Guy Martin <gmsoft@tuxicoman.be>
 Fixed small bug in input_docsis when handling invalid packet and improved error messages.
 Improved handling of telnet options in the management console.

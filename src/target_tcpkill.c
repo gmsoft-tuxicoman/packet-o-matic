@@ -338,9 +338,12 @@ int target_process_tcpkill(struct target *t, struct frame *f) {
 
 		dhdr->th_sum = ~mysum;
 
+		char errbuff[256];
+
 		if (!priv->routed) {
 			if (libnet_write_link (priv->lc, buffer, blen) == -1) {
-				dprint("Error while inject TCP RST : %s\n", strerror(errno));
+				strerror_r(errno, errbuff, 256);
+				dprint("Error while inject TCP ST : %s\n", errbuff);
 				return 0;
 			}
 		}
@@ -348,7 +351,8 @@ int target_process_tcpkill(struct target *t, struct frame *f) {
 		else {
 			// Inject the packets
 			if(sendto(priv->socket, (u_int8_t *)buffer, blen, 0, (struct sockaddr *) &addr, addrlen) <= 0) {
-				dprint("Error while inject TCP RST : %s\n", strerror(errno));
+				strerror_r(errno, errbuff, 256);
+				dprint("Error while inject TCP RST : %s\n", errbuff);
 				return 0;
 			}
 		}

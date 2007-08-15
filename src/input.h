@@ -134,7 +134,7 @@ int input_set_param(struct input *i, char *name, char* value);
 int input_open(struct input *i);
 
 /// Read a packet from the input.
-inline int input_read(struct input *i, struct frame *f);
+int input_read(struct input *i, struct frame *f);
 
 /// Close the input.
 int input_close(struct input *i);

@@ -161,7 +161,7 @@ int match_set_param(struct match *m, char *name, char *value) {
 
 }
 
-inline int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigned int len) {
+int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigned int len) {
 	
 	if (matchs[l->type]->identify)
 		return (*matchs[l->type]->identify) (f, l, start, len);
@@ -179,7 +179,7 @@ inline int match_identify(struct frame *f, struct layer *l, unsigned int start, 
  *  - l : the current layer
  **/
 
-inline int match_eval(struct match *m, struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
+int match_eval(struct match *m, struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
 
 	if (matchs[m->type]->eval)
 		return (*matchs[m->type]->eval) (m, f, start, len, l);

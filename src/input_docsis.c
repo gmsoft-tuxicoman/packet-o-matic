@@ -190,7 +190,9 @@ int input_open_docsis(struct input *i) {
 
 	// Let's use a larger buffer
 	if (ioctl(p->demux_fd, DMX_SET_BUFFER_SIZE, (unsigned long) DEMUX_BUFFER_SIZE) != 0) {
-		dprint("Unable to set the buffer size on the demux : %s\n", strerror(errno));
+		char errbuff[256];
+		strerror_r(errno, errbuff, 256);
+		dprint("Unable to set the buffer size on the demux : %s\n", errbuff);
 	}
 
 	// Let's filter on the DOCSIS PID
@@ -355,7 +357,9 @@ int input_docsis_check_downstream(struct input *i) {
 		res = select(p->dvr_fd + 1, &set, NULL, NULL, &tv);
 		
 		if (res == -1) {
-			dprint("Error select() : %s\n", strerror(errno));
+			char errbuff[256];
+			strerror_r(errno, errbuff, 256);
+			dprint("Error select() : %s\n", errbuff);
 			break;
 		} else if (res == 0) {
 			dprint("Timeout while waiting for data\n");

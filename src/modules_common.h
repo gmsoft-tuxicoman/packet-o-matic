@@ -79,7 +79,7 @@ void dprint_hex(unsigned char *str, unsigned int len) {
 
 #include "rules.h"
 
-inline int mask_compare2(unsigned char *value1, unsigned char *mask1, unsigned char *value2, unsigned char *mask2, unsigned int len) {
+static inline int mask_compare2(unsigned char *value1, unsigned char *mask1, unsigned char *value2, unsigned char *mask2, unsigned int len) {
 
 	int i;
 	

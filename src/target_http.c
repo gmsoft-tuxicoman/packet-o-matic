@@ -400,7 +400,9 @@ int target_process_http(struct target *t, struct frame *f) {
 			cp->fd = open(filename, O_RDWR | O_CREAT, 0666);
 
 			if (cp->fd == -1) {
-				dprint("Unable to open file %s for writing : %s\n", filename, strerror(errno));
+				char errbuff[256];
+				strerror_r(errno, errbuff, 256);
+				dprint("Unable to open file %s for writing : %s\n", filename, errbuff);
 				cp->state = HTTP_NO_MATCH;
 				return -1;
 			}

@@ -110,7 +110,9 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 
 		if (cp->fd == -1) {
 			free(cp);
-			dprint("Unable to open file %s for writing : %s\n", filename, strerror(errno));
+			char errbuff[256];
+			strerror_r(errno, errbuff, 256);
+			dprint("Unable to open file %s for writing : %s\n", filename, errbuff);
 			return -1;
 		}
 
