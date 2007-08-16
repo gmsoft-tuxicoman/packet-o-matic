@@ -22,20 +22,36 @@
 
 #include "helper_tcp.h"
 
+#include "ptype_uint32.h"
+
 #include <netinet/tcp.h>
 
-/// We should receive the dropped data within the 10 seconds
-#define TCP_PACKET_TIMEOUT 30
-
+struct ptype *pkt_timeout;
+struct ptype *conn_buff;
 
 struct helper_functions *hlp_functions;
 int helper_register_tcp(struct helper_reg *r, struct helper_functions *hlp_funcs) {
 	
 	r->need_help = helper_need_help_tcp;
+	r->cleanup = helper_cleanup_tcp;
 
 	hlp_functions = hlp_funcs;
 
-	return 1;
+	pkt_timeout = (*hlp_funcs->ptype_alloc) ("uint32", "Number of seconds to wait for out of order packets", "seconds");
+	if (!pkt_timeout)
+		return H_ERR;
+	
+	conn_buff = (*hlp_funcs->ptype_alloc) ("uint32", "Maximum KBytes of buffer per connection", "KBytes");
+	if (!conn_buff) {
+		(*hlp_funcs->ptype_cleanup) (pkt_timeout);
+		return H_ERR;
+	}
+
+	(*hlp_funcs->register_param) (r->type, "pkt_timeout", "30", pkt_timeout);
+	(*hlp_funcs->register_param) (r->type, "conn_buffer", "256", conn_buff);
+
+
+	return H_OK;
 }
 
 int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
@@ -45,7 +61,7 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 	int payload_size = l->payload_size;
 
 	if (!payload_size) // We don't need to reorder empty packets
-		return 0;
+		return H_OK;
 
 	// We need to track all the tcp packets
 	if (!f->ce)
@@ -101,7 +117,7 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 							// we don't really care where it'll end up in the queue so let's queue it at the end
 							if (tmp_pkt->ack == new_ack) {
 								// got duplicate. discard it
-								return 1;
+								return H_NEED_HELP;
 							}
 
 						} else {
@@ -114,7 +130,7 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 								if (tmp_pkt->data_len >= payload_size) {
 									// same payload size -> we can safely discard it
 									ndprint("helper_tcp.c: %u.%u 0x%x-%u, got seq %u, bufflen is %d. discarding duplicate already in the queue\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, new_seq, cp->buff_len[dir]);
-									return 1;
+									return H_NEED_HELP;
 								} else {
 									ndprint("helper_tcp.c: %u.%u 0x%x-%u, got seq %u, bufflen is %d. replacing duplicate already in the queue\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, new_seq, cp->buff_len[dir]);
 									cp->buff_len[dir] += payload_size - tmp_pkt->data_len;
@@ -129,7 +145,7 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 									tmp_pkt->seq = new_seq;
 									tmp_pkt->ack = new_ack;
 									tmp_pkt->data_len = payload_size;
-									return 1;
+									return H_NEED_HELP;
 								}
 							}
 						}
@@ -176,7 +192,7 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 				} else {
 					// This is the first packet in the queue
 					cp->pkts[dir] = pkt;
-					(*hlp_functions->queue_timer) (cp->t[dir], TCP_PACKET_TIMEOUT);
+					(*hlp_functions->queue_timer) (cp->t[dir], PTYPE_UINT32_GETVAL(pkt_timeout));
 				}
 
 			}
@@ -186,13 +202,13 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 			cp->buff_len[dir] += f->len;
 
 
-			// Maybe we suffer from packet loss. We allow a max buffer of 256K
-			if (cp->buff_len[dir] > 262144 / 2) {
+			// Maybe we suffer from packet loss. Default maximum buffer is 256 KBytes 
+			if (cp->buff_len[dir] > PTYPE_UINT32_GETVAL(conn_buff) * 1024) {
 				ndprint("helper_tcp.c: 0x%x-%u, warning, buffer is too large : %u. we probably lost a packet. processing anyway. lost %u bytes cp = 0x%x, seq %u, expected %u\n", (unsigned) f->ce, dir, cp->buff_len[dir], cp->seq_expected[dir] - cp->last_seq[dir], (unsigned) cp, cp->last_seq[dir], cp->seq_expected[dir]);
 				helper_process_next_tcp(cp, dir);
 			}
 
-			return 1;
+			return H_NEED_HELP;
 		}
 
 
@@ -252,10 +268,10 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 /*
 	if (cp->t[dir] && cp->pkts[dir]) {
 		(*hlp_functions->dequeue_timer) (cp->t[dir]);
-		(*hlp_functions->queue_timer) (cp->t[dir], TCP_PACKET_TIMEOUT);
+		(*hlp_functions->queue_timer) (cp->t[dir], PTYPE_UINT32_GETVAL(pkt_timeout));
 	}
 */
-	return 0;
+	return H_OK;
 }
 
 int helper_process_timer_tcp(void *priv) {
@@ -294,7 +310,7 @@ int helper_process_next_tcp(struct helper_priv_tcp *p, int dir) {
 		(*hlp_functions->dequeue_timer) (p->t[dir]);
 
 		if (p->pkts[dir]) {
-			(*hlp_functions->queue_timer) (p->t[dir], TCP_PACKET_TIMEOUT);
+			(*hlp_functions->queue_timer) (p->t[dir], PTYPE_UINT32_GETVAL(pkt_timeout));
 		}
 	}
 	ndprint("helper_tcp.c: %u.%u 0x%x-%u, dequeuing packet with seq %u, bufflen is %d\n", (unsigned)pkt->f->tv.tv_sec, (unsigned)pkt->f->tv.tv_usec, (unsigned) pkt->f->ce, dir, pkt->seq, p->buff_len[dir]);
@@ -302,7 +318,7 @@ int helper_process_next_tcp(struct helper_priv_tcp *p, int dir) {
 
 	free(pkt);
 
-	return 1;
+	return H_OK;
 }
 
 
@@ -312,15 +328,15 @@ int helper_flush_buffer_tcp(struct conntrack_entry *ce, void *conntrack_priv) {
 
 	if (cp->pkts[0]) {
 		helper_process_next_tcp(cp, 0);
-		return 1;
+		return H_OK;
 	}
 
 	if (cp->pkts[1]) {
 		helper_process_next_tcp(cp, 1);
-		return 1;
+		return H_OK;
 	}
 
-	return 0;
+	return H_ERR;
 }
 
 int helper_cleanup_connection_tcp(struct conntrack_entry *ce, void *conntrack_priv) {
@@ -352,6 +368,12 @@ int helper_cleanup_connection_tcp(struct conntrack_entry *ce, void *conntrack_pr
 
 		
 	free(cp);
-	return 1;
+	return H_OK;
+}
+
+int helper_cleanup_tcp() {
+	(hlp_functions->ptype_cleanup) (pkt_timeout);
+	(hlp_functions->ptype_cleanup) (conn_buff);
+	return H_OK;
 }
 

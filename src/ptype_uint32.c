@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -19,33 +19,54 @@
  */
 
 
-#ifndef __TARGET_PCAP_H__
-#define __TARGET_PCAP_H__
+
+#include "ptype_uint32.h"
 
 
-#include "modules_common.h"
-#include "rules.h"
+int ptype_register_uint32(struct ptype_reg *r) {
 
-#include <pcap.h>
+	r->alloc = ptype_alloc_uint32;
+	r->cleanup = ptype_cleanup_uint32;
+	r->parse_val = ptype_parse_uint32;
+	r->print_val = ptype_print_uint32;
+	
+	return P_OK;
 
-#define SNAPLEN 1522
+}
 
-struct target_priv_pcap {
+int ptype_alloc_uint32(struct ptype* p) {
 
-	pcap_dumper_t *pdump;
-	pcap_t *p;
-	int last_layer_type;
-	unsigned int snaplen;
-	unsigned int size;
+	p->value = malloc(sizeof(uint32_t));
+	uint32_t *v = p->value;
+	*v = 0;
+
+	return P_OK;
+
+}
+
+
+int ptype_cleanup_uint32(struct ptype *p) {
+
+	free(p->value);
+	return P_OK;
+}
+
+
+int ptype_parse_uint32(struct ptype *p, char *val) {
+
+
+	uint32_t *v = p->value;
+	if(sscanf(val, "%u", v) == 1)
+		return P_OK;
+
+	return P_ERR;
 
 };
 
-int target_init_pcap(struct target *t);
-int target_open_pcap(struct target *t);
-int target_process_pcap(struct target *t, struct frame *f);
-int target_close_pcap(struct target *t);
-int target_cleanup_pcap(struct target *t);
+int ptype_print_uint32(struct ptype *p, char *val, size_t size) {
 
+	uint32_t *v = p->value;
+	return snprintf(val, size, "%u", *v);
 
+}
 
-#endif

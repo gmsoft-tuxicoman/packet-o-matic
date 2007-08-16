@@ -1,3 +1,11 @@
+* 2007/08/16 Guy Martin <gmsoft@tuxicoman.be>
+Use ptypes to store helper parameters.
+Use H_OK and H_ERR for helpers return value.
+Fixed typo in target_tcpkill ST->RST.
+Fixed potential deadlock when using non live capture and input buffer gets full.
+The command "show helpers" now shows the parameters and their value.
+Moved some include around.
+
 * 2007/08/15 Guy Martin <gmsoft@tuxicoman.be>
 Changed strerror() into strerror_r() in the whole code.
 Management commands can be registered.

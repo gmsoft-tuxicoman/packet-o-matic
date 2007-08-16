@@ -46,6 +46,7 @@
 struct mgmt_connection {
 	int fd; // fd of the socket
 	int listening; // is it a listening socket ?
+	int closed; // was the socket closed earlier ?
 	char cmd[MGMT_CMD_BUFF_LEN];
 	size_t cmdlen;
 	struct mgmt_connection *prev;

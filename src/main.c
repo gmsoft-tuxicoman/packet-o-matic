@@ -24,6 +24,7 @@
 #include "helper.h"
 #include "input.h"
 #include "mgmtsrv.h"
+#include "ptype.h"
 
 #include "main.h"
 
@@ -250,6 +251,7 @@ int main(int argc, char *argv[]) {
 	helper_init();
 	target_init();
 	rules_init();
+	ptype_init();
 
 
 	struct conf *c = config_alloc();
@@ -323,6 +325,7 @@ int main(int argc, char *argv[]) {
 		goto finish;
 	}
 
+	// wait for at least one packet to be available
 	while (ringbuffer_usage <= 0) {
 		if (finish) {
 			pthread_mutex_unlock(&ringbuffer_mutex);
@@ -377,9 +380,8 @@ int main(int argc, char *argv[]) {
 			goto finish;
 		}
 		ringbuffer_usage--;
-		if (ringbuffer_usage == RINGBUFFER_SIZE - 1)
+		if (!ic.is_live && ringbuffer_usage <= RINGBUFFER_SIZE - 1)
 			pthread_cond_signal(&ringbuffer_overflow_cond);
-
 
 		ringbuffer_read_pos++;
 		if (ringbuffer_read_pos >= RINGBUFFER_SIZE)
@@ -408,11 +410,6 @@ int main(int argc, char *argv[]) {
 					goto finish;
 
 			}
-		}
-		
-		if (!ic.is_live && ringbuffer_usage >= RINGBUFFER_SIZE) {
-			dprint("Buffer was full and is now one packet free\n");
-			pthread_cond_signal(&ringbuffer_overflow_cond);
 		}
 		
 		if (pthread_mutex_unlock(&ringbuffer_mutex)) {
@@ -459,6 +456,7 @@ err:
 	conntrack_unregister_all();
 	helper_unregister_all();
 	input_unregister_all();
+	ptype_unregister_all();
 
 	// Layers need to be cleaned up after the match
 	layer_cleanup();

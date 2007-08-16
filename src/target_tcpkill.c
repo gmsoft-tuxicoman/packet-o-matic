@@ -343,7 +343,7 @@ int target_process_tcpkill(struct target *t, struct frame *f) {
 		if (!priv->routed) {
 			if (libnet_write_link (priv->lc, buffer, blen) == -1) {
 				strerror_r(errno, errbuff, 256);
-				dprint("Error while inject TCP ST : %s\n", errbuff);
+				dprint("Error while inject TCP RST : %s\n", errbuff);
 				return 0;
 			}
 		}

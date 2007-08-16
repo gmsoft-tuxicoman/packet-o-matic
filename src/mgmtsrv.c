@@ -156,6 +156,24 @@ int mgmtsrv_process() {
 
 	struct mgmt_connection *cc = conn_head;
 	while(cc) {
+		if (cc->closed) { // cleanup this connection entry if it was closed earlier
+			struct mgmt_connection *tmp = cc->next;
+			if (!cc->prev)
+				conn_head = cc->next;
+			 else 
+				cc->prev->next = cc->next;
+
+			if (!cc->next)
+				conn_tail = cc->prev;
+			else
+				cc->next->prev = cc->prev;
+
+			free(cc);
+			cc = tmp;
+			continue;
+		}
+
+
 		FD_SET(cc->fd, &fds);
 		if (cc->fd > max_fd)
 			max_fd = cc->fd;
@@ -171,6 +189,7 @@ int mgmtsrv_process() {
 
 	cc = conn_head;
 	while(cc) {
+
 		if (FD_ISSET(cc->fd, &fds)) {
 			if (cc->listening)
 				return mgmtsrv_accept_connection(cc);
@@ -561,18 +580,7 @@ int mgmtsrv_close_connection(struct mgmt_connection *c) {
 
 	ndprint("Closing socket %u\n", c->fd);
 	close(c->fd);
-	if (!c->prev)
-		conn_head = c->next;
-	else
-		c->prev->next = c->next;
-
-	if (!c->next)
-		conn_tail = c->prev;
-	else
-		c->next->prev = c->prev;
-
-
-	free(c);
+	c->closed = 1;
 
 	return MGMT_OK;
 

@@ -24,6 +24,7 @@
 #include "mgmtcmd.h"
 #include "helper.h"
 #include "match.h"
+#include "ptype.h"
 
 extern struct helper_reg *helpers[];
 
@@ -100,16 +101,32 @@ int mgmtcmd_show_license(struct mgmt_connection *c) {
 
 int mgmtcmd_show_helpers(struct mgmt_connection *c) {
 
-	mgmtsrv_send(c, "Loaded helpers : ");
+	mgmtsrv_send(c, "Loaded helpers : \r\n");
 
-	int i, first = 1;
+
+	int i;
 	for (i = 0; i < MAX_HELPER; i++) {
-		if (helpers[i]) {
-			if (!first)
-				mgmtsrv_send(c, ", ");
-			else
-				first = 0;
-			mgmtsrv_send(c, match_get_name(i));
+		if (!helpers[i])
+			continue;
+		mgmtsrv_send(c, "    ");
+		mgmtsrv_send(c, match_get_name(i));
+		mgmtsrv_send(c, "\r\n");
+
+		struct helper_param *tmp = helpers[i]->params;
+		while (tmp) {
+			mgmtsrv_send(c, "        ");
+			mgmtsrv_send(c, tmp->name);
+			mgmtsrv_send(c, " = ");
+
+			char buff[256];
+			bzero(buff, sizeof(buff));
+			ptype_print_val(tmp->value, buff, 256);
+			mgmtsrv_send(c, buff);
+			mgmtsrv_send(c, " ");
+			mgmtsrv_send(c, tmp->value->unit);
+			mgmtsrv_send(c, "\r\n");
+
+			tmp = tmp->next;
 		}
 	}
 				

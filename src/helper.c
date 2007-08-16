@@ -22,6 +22,7 @@
 #include "helper.h"
 
 #include "timers.h"
+#include "ptype.h"
 #include "rules.h"
 
 struct helper_reg *helpers[MAX_HELPER];
@@ -31,6 +32,7 @@ struct helper_frame *frame_head, *frame_tail;
 int helper_init() {
 
 	hlp_funcs = malloc(sizeof(struct helper_functions));
+	hlp_funcs->register_param = helper_register_param;
 	hlp_funcs->alloc_timer = timer_alloc;
 	hlp_funcs->cleanup_timer = timer_cleanup;
 	hlp_funcs->queue_timer = timer_queue;
@@ -41,10 +43,12 @@ int helper_init() {
 	hlp_funcs->conntrack_get_entry = conntrack_get_entry;
 	hlp_funcs->conntrack_add_priv = conntrack_add_helper_priv;
 	hlp_funcs->conntrack_get_priv = conntrack_get_helper_priv;
+	hlp_funcs->ptype_alloc = ptype_alloc;
+	hlp_funcs->ptype_cleanup = ptype_cleanup_module;
 
 	dprint("Helper initialized\n");
 
-	return 1;
+	return H_OK;
 
 }
 
@@ -55,7 +59,7 @@ int helper_register(const char *helper_name) {
 	id = match_get_type(helper_name);
 	if (id == -1) {
 		dprint("Unable to register helper %s. Corresponding match not found\n", helper_name);
-		return -1;
+		return H_ERR;
 	}
 
 	if (helpers[id])
@@ -69,26 +73,58 @@ int helper_register(const char *helper_name) {
 	register_my_helper = lib_get_register_func("helper", helper_name, &handle);
 	
 	if (!register_my_helper) {
-		return -1;
+		return H_ERR;
 	}
 
 	struct helper_reg *my_helper = malloc(sizeof(struct helper_reg));
 	bzero(my_helper, sizeof(struct helper_reg));
-
-
-	if (!(*register_my_helper) (my_helper, hlp_funcs)) {
-		dprint("Error while loading helper %s. Could not register helper !\n", helper_name);
-		free(my_helper);
-		return -1;
-	}
-
+	my_helper->type = id;
 	helpers[id] = my_helper;
 	helpers[id]->dl_handle = handle;
+
+	if ((*register_my_helper) (my_helper, hlp_funcs) != H_OK) {
+		dprint("Error while loading helper %s. Could not register helper !\n", helper_name);
+		helpers[id] = NULL;
+		free(my_helper);
+		return H_ERR;
+	}
+
 
 	dprint("Helper %s registered\n", helper_name);
 
 
 	return id;
+
+
+}
+
+int helper_register_param(int helper_type, char *name, char *defval, struct ptype *value) {
+
+	if (!helpers[helper_type])
+		return H_ERR;
+
+	struct helper_param *p = malloc(sizeof(struct helper_param));
+	bzero(p, sizeof(struct helper_param));
+	p->name = malloc(strlen(name) + 1);
+	strcpy(p->name, name);
+	p->defval = malloc(strlen(defval) + 1);
+	strcpy(p->defval, defval);
+	p->value = value;
+
+	// Store the default value in the ptype
+	if (ptype_parse_val(p->value, defval) == P_ERR)
+		return H_ERR;
+
+	if (!helpers[helper_type]->params) {
+		helpers[helper_type]->params = p;
+	} else {
+		struct helper_param *tmp = helpers[helper_type]->params;
+		while (tmp->next)
+			tmp = tmp->next;
+		tmp->next = p;
+	}
+
+	return H_OK;
 
 
 }
@@ -104,7 +140,7 @@ int helper_register(const char *helper_name) {
 int helper_need_help(struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
 
 	if (!helpers[l->type] || !helpers[l->type]->need_help)
-		return 0;
+		return H_OK;
 
 	return helpers[l->type]->need_help(f, start, len, l);
 
@@ -119,13 +155,21 @@ int helper_unregister_all() {
 		if (helpers[i]) {
 			if (dlclose(helpers[i]->dl_handle))
 				dprint("Error while closing library of target %s\n", match_get_name(i));
+			while (helpers[i]->params) {
+				free(helpers[i]->params->name);
+				free(helpers[i]->params->defval);
+				struct helper_param *next = helpers[i]->params->next;
+				free(helpers[i]->params);
+				helpers[i]->params = next;
+
+			}
 			free(helpers[i]);
 			helpers[i] = NULL;
 		}
 
 	}
 
-	return 1;
+	return H_OK;
 
 }
 
@@ -143,7 +187,7 @@ int helper_cleanup() {
 
 	free(hlp_funcs);
 
-	return 1;
+	return H_OK;
 }
 
 
@@ -169,7 +213,7 @@ int helper_queue_frame(struct frame *f) {
 		frame_tail = hf;
 	}
 	
-	return 1;
+	return H_OK;
 
 }
 
@@ -177,7 +221,7 @@ int helper_queue_frame(struct frame *f) {
 int helper_process_queue(struct rule_list *list) {
 
 	if (!frame_head)
-		return 0;
+		return H_OK;
 
 	while (frame_head) {
 		do_rules(frame_head->f, list);
@@ -189,6 +233,6 @@ int helper_process_queue(struct rule_list *list) {
 	}
 	frame_tail = NULL;
 
-	return 1;
+	return H_OK;
 }
 

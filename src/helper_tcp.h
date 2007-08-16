@@ -67,6 +67,7 @@ int helper_process_next_tcp(struct helper_priv_tcp *p, int dir);
 int helper_process_timer_tcp(void *priv);
 int helper_flush_buffer_tcp(struct conntrack_entry *ce, void *conntrack_priv);
 int helper_cleanup_connection_tcp(struct conntrack_entry *ce, void *conntrack_priv);
+int helper_cleanup_tcp();
 
 #endif
 

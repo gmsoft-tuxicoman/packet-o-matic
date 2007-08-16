@@ -519,7 +519,7 @@ int conntrack_close_connections(struct rule_list *r) {
 			
 			struct conntrack_helper_priv *hp = cl->ce->helper_privs;
 			while (hp) {
-				while ((*hp->flush_buffer) (cl->ce, hp->priv))
+				while ((*hp->flush_buffer) (cl->ce, hp->priv) == H_OK)
 					helper_process_queue(r);
 
 				hp = hp->next;

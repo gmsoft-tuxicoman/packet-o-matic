@@ -22,6 +22,9 @@
 #ifndef __TARGET_TAP_H__
 #define __TARGET_TAP_H__
 
+#include "modules_common.h"
+#include "rules.h"
+
 #include <linux/if_tun.h>
 #include <net/if.h>
 #include <unistd.h>
@@ -29,10 +32,6 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
-
-
-#include "modules_common.h"
-#include "rules.h"
 
 struct target_priv_tap {
 

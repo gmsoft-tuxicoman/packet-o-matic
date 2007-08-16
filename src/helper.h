@@ -22,10 +22,21 @@
 #ifndef __HELPER_H__
 #define __HELPER_H__
 
-#define MAX_HELPER MAX_MATCH
 
 #include "common.h"
 #include "rules.h"
+
+/// Return value in case of error
+#define H_ERR -1
+
+/// Return value on success
+#define H_OK 0
+
+/// Return value if the packet needs to be processed by the helper
+/// Returned by helper_need_help only
+#define H_NEED_HELP 1
+
+#define MAX_HELPER MAX_MATCH
 
 /// Stores informations about a frame that needs to be processed
 struct helper_frame {
@@ -35,17 +46,29 @@ struct helper_frame {
 
 };
 
+struct helper_param {
+
+	char *name;
+	char *defval;
+	struct ptype *value;
+	struct helper_param *next;
+
+};
+
 struct helper_reg {
 
+	int type; ///< unique id of the helper
 	void *dl_handle;
 	int (*need_help) (struct frame *f, unsigned int start, unsigned int len, struct layer *l);
 	int (*flush_buffer) (void);
 	int (*cleanup) (void);
+	struct helper_param *params;
 
 
 };
 
 struct helper_functions {
+	int (*register_param) (int helper_type, char *name, char *defval, struct ptype *value);
 	struct timer* (*alloc_timer) (void *priv, struct input *i, int (*handler) (void *));
 	int (*cleanup_timer) (struct timer *t);
 	int (*queue_timer) (struct timer *t, unsigned int expiry);
@@ -56,6 +79,8 @@ struct helper_functions {
 	int (*conntrack_get_entry) (struct frame *f);
 	int (*conntrack_add_priv) (void *priv, int type, struct conntrack_entry *ce, int (*flush_buffer) (struct conntrack_entry *ce, void *priv), int (*cleanup_handler) (struct conntrack_entry *ce, void *priv));
 	void *(*conntrack_get_priv) (int type, struct conntrack_entry *ce);
+	struct ptype* (*ptype_alloc) (const char* type, char *descr, char* unit);
+	int (*ptype_cleanup) (struct ptype* p);
 
 
 
@@ -64,6 +89,7 @@ struct helper_functions {
 
 int helper_init();
 int helper_register(const char *name);
+int helper_register_param(int helper_type, char *name, char *defval, struct ptype *value);
 int helper_need_help(struct frame *f, unsigned int start, unsigned int len, struct layer *l);
 int helper_queue_frame(struct frame *f);
 int helper_flush_buffer(struct rule_list *list);

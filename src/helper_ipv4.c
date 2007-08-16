@@ -20,6 +20,8 @@
 
 #include "helper_ipv4.h"
 
+#include "ptype_uint32.h"
+
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #include <netinet/in.h>
@@ -27,10 +29,6 @@
 #ifdef HAVE_NETINET_IP_VAR_H
 #include <netinet/ip_var.h>
 #endif
-
-
-// 60 sec of fragmentation timeout
-#define IP_FRAG_TIMEOUT 60
 
 #define IP_DONT_FRAG 0x4000
 #define IP_MORE_FRAG 0x2000
@@ -40,22 +38,23 @@
 struct helper_priv_ipv4 *frags_head;
 struct helper_functions *hlp_functions;
 
+struct ptype *frag_timeout;
+
 int helper_register_ipv4(struct helper_reg *r, struct helper_functions *hlp_funcs) {
 	
 	r->need_help = helper_need_help_ipv4;
 	r->cleanup = helper_cleanup_ipv4;
 
 	hlp_functions = hlp_funcs;
-
-	return 1;
-}
-
-int helper_init_ipv4() {
-
 	frags_head = NULL;
 
-	return 1;
+	frag_timeout = (*hlp_funcs->ptype_alloc) ("uint32", "Number of seconds to wait for subsequent packets", "seconds");
+	if (!frag_timeout)
+		return H_ERR;
 
+	(*hlp_funcs->register_param) (r->type, "frag_timeout", "60", frag_timeout);
+
+	return H_OK;
 }
 
 
@@ -97,7 +96,7 @@ int helper_ipv4_process_frags(struct helper_priv_ipv4 *p) {
 
 	helper_cleanup_ipv4_frag(p);
 
-	return 1;
+	return H_OK;
 
 
 }
@@ -113,12 +112,12 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 
 	// No help needed if the don't fragment bit is set
 	if (frag_off & IP_DONT_FRAG)
-		return 0;
+		return H_OK;
 
 	// We don't need to look at the packet if there are no more frags and it's an unfragmented packet
 	// This imply MF -> 0 and offset = 0
 	if (!(frag_off & IP_MORE_FRAG) && !(frag_off & IP_OFFSET_MASK))
-		return 0;
+		return H_OK;
 
 	u_short offset = (frag_off & IP_OFFSET_MASK) << 3;
 
@@ -141,7 +140,7 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 	
 	// Ignore invalid fragments
 	if (frag_size > 0xFFFF)
-		return 1;
+		return H_ERR;
 
 	if (frag_start + frag_size > len + start) {
 		dprint("Error, packet len missmatch dropping this frag : ipv4 [");
@@ -154,7 +153,7 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 		}
 		dprint("frag_off: 0x%X, id: %u, frag_start: %u, frag_size: %u, size: %u]\n", frag_off, ntohs(hdr->ip_id), frag_start, (unsigned int) frag_size, l->prev->payload_size);
 
-		return 1;
+		return H_ERR;
 	}
 
 	if (!tmp) {
@@ -185,7 +184,7 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 		(*hlp_functions->dequeue_timer) (tmp->t);
 
 	// Reschedule the timer
-	(*hlp_functions->queue_timer) (tmp->t, IP_FRAG_TIMEOUT);
+	(*hlp_functions->queue_timer) (tmp->t, PTYPE_UINT32_GETVAL(frag_timeout));
 
 
 
@@ -195,7 +194,7 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 
 	while (fp) {
 		if (fp->offset == offset)
-			return 1; // We already have it
+			return H_NEED_HELP; // We already have it
 
 		if (fp->offset > offset) // The next fragment has a higher offset
 			break;
@@ -260,13 +259,13 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 
 	if (fp->offset != 0) {
 		ndprint("Helper ipv4 : missing first fragment\n");
-		return 1; // We miss the first fragment
+		return H_NEED_HELP; // We miss the first fragment
 	}
 
 	while (fp->next) {
 		ndprint("Helper ipv4 : fragment offset %u, len %u\n", fp->next->offset, fp->next->len);
 		if (fp->next->offset != (fp->len + fp->offset))
-			return 1; // Return if we miss a fragment
+			return H_NEED_HELP; // Return if we miss a fragment
 		fp = fp->next;
 	}
 
@@ -274,13 +273,13 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 		// We have the last fragment. Process the packet
 		ndprint("Helper ipv4 : processing packet\n");
 		helper_ipv4_process_frags(tmp);
-		return 1;
+		return H_NEED_HELP;
 
 	}
 
 	// We miss the last packet
 
-	return 1;
+	return H_NEED_HELP;
 }
 
 int helper_cleanup_ipv4_frag(void *priv) {
@@ -313,10 +312,12 @@ int helper_cleanup_ipv4_frag(void *priv) {
 	
 	free(p);
 
-	return 1;
+	return H_OK;
 }
 
 int helper_cleanup_ipv4() {
+
+	(*hlp_functions->ptype_cleanup) (frag_timeout);
 
 	while (frags_head) {
 		struct helper_priv_ipv4 *p = frags_head;
@@ -325,6 +326,6 @@ int helper_cleanup_ipv4() {
 		helper_cleanup_ipv4_frag(frags_head);
 	}
 	
-	return 1;
+	return H_OK;
 }
 
