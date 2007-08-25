@@ -49,6 +49,7 @@ struct mgmt_connection {
 	int closed; // was the socket closed earlier ?
 	char cmd[MGMT_CMD_BUFF_LEN];
 	size_t cmdlen;
+	size_t cursor_pos; // position of the cursor on the line
 	struct mgmt_connection *prev;
 	struct mgmt_connection *next;
 	uint16_t win_x, win_y; // size of the remote window

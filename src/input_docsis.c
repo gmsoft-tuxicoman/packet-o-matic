@@ -609,7 +609,6 @@ int input_read_docsis(struct input *i, struct frame *f) {
 	bzero(mpeg_buff, MPEG_TS_LEN);
 
 	int dlen = 0; // len of the docsis MAC frame including headers
-	int new_start = 0;
 
 	// Copy leftover into current buffer
 	if (p->temp_buff_len > 0) {
@@ -619,7 +618,6 @@ int input_read_docsis(struct input *i, struct frame *f) {
 		// Skip stuff bytes
 		while (pos < p->temp_buff_len && p->temp_buff[pos] == 0xff)
 			pos++;
-
 
 		ndprint("Copying1 %u bytes into 0x%X-0x%X\n", p->temp_buff_len - pos, (unsigned) f->buff,  (unsigned) f->buff + p->temp_buff_len - pos);
 		memcpy(f->buff, p->temp_buff + pos, p->temp_buff_len - pos);
@@ -636,7 +634,7 @@ int input_read_docsis(struct input *i, struct frame *f) {
 	// This only works because we can only capture downstream frames
 	// Upstream can have REQ frame in which then len field correspond to service id
 	while (1) {
-		
+
 		if (packet_pos > sizeof(struct docsis_hdr)) {
 
 			dlen = ntohs(dhdr->len) + sizeof(struct docsis_hdr);
@@ -655,36 +653,44 @@ int input_read_docsis(struct input *i, struct frame *f) {
 
 		}
 
-		int res = input_docsis_read_mpeg_frame(mpeg_buff, p);
-
-		if (packet_pos == 0)
-			dlen = ntohs(dhdr->len) + sizeof(struct docsis_hdr);
-
-		if (res == -2) // Error while reading
-			return I_ERR;
-
-		p->last_seq = (p->last_seq + 1) & 0xF;
-		while (p->last_seq != (mpeg_buff[3] & 0xF)) {
-			p->last_seq = (p->last_seq + 1) & 0xF;
-			p->missed_packets++;
-			if (packet_pos + MPEG_TS_LEN - 4 >= f->bufflen) {
-				//  buffer overflow. Let's discard the whole thing
-				ndprint("Buffer overflow\n");
-				packet_pos = 0;
-				dlen = 0;
-				break;
-			}
-			ndprint("Filling1 %u bytes with 0xff at 0x%X-0x%X\n", MPEG_TS_LEN - 4,(unsigned) (f->buff + packet_pos), (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 4);
-			memset(f->buff + packet_pos, 0xff, MPEG_TS_LEN - 4); // Fill buffer with stuff byte
-			packet_pos += MPEG_TS_LEN - 4;
-		}
-
 		//  buffer overflow. Let's discard the whole thing
 		if (packet_pos + MPEG_TS_LEN - 4 >= f->bufflen) {
 			ndprint("buffer overflow2\n");
 			packet_pos = 0;
 			dlen = 0;
 		}
+
+		int res = input_docsis_read_mpeg_frame(mpeg_buff, p);
+
+		if (res == -2) // Error while reading
+			return I_ERR;
+
+
+		// Check if we missed some packets. If so, fill the gap with 0xff
+		p->last_seq = (p->last_seq + 1) & 0xF;
+		while (p->last_seq != (mpeg_buff[3] & 0xF)) {
+			p->last_seq = (p->last_seq + 1) & 0xF;
+			p->missed_packets++;
+			ndprint("Filling1 %u bytes with 0xff at 0x%X-0x%X\n", MPEG_TS_LEN - 4,(unsigned) (f->buff + packet_pos), (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 4);
+			memset(f->buff + packet_pos, 0xff, MPEG_TS_LEN - 4); // Fill buffer with stuff byte
+			packet_pos += MPEG_TS_LEN - 4;
+
+			if (packet_pos + MPEG_TS_LEN - 4 >= f->bufflen) {
+				//  buffer overflow. Let's discard the whole thing
+				ndprint("Buffer overflow\n");
+				packet_pos = 0;
+				dlen = 0;
+
+				if (p->last_seq < (mpeg_buff[3] & 0xF))
+					p->missed_packets += (mpeg_buff[3] & 0xF) - p->last_seq;
+				else
+					p->missed_packets += (mpeg_buff[3] & 0xF) + 0x10 - p->last_seq;
+
+				p->last_seq = mpeg_buff[3] & 0xF;
+				break;
+			}
+		}
+
 
 
 		switch (res) {
@@ -700,55 +706,42 @@ int input_read_docsis(struct input *i, struct frame *f) {
 				packet_pos += MPEG_TS_LEN - 4;
 				continue;
 
-			case 1:	// Packet is valid and contains the start of a PDU
+			case 1: { // Packet is valid and contains the start of a PDU
 
-				new_start = packet_pos + mpeg_buff[4];
+				unsigned int new_start = packet_pos + mpeg_buff[4];
 
-
-				if (mpeg_buff[4] == 0) {
-					ndprint("Start of new packet\n");
-					// The begining of the MAC frame is at the start of the MPEG payload
+				if (mpeg_buff[4] == 0 || new_start < sizeof(struct docsis_hdr) || dlen > new_start) {
+					// Either the begining of the MAC frame is at the start of the MPEG payload
+					// Either the current packet size can't contain even a docsis MAC header
+					// Either the current packet size calulated size doesn't fit the gap
+					// let's discard the previous frame then
 					if (packet_pos > 0) {
 						// We got some cruft left. Discard the current buffer
 						ndprint("cruft left\n");
 						packet_pos = 0;
 					}
 
-					ndprint("Copying3 %u bytes into 0x%X-0x%X\n", MPEG_TS_LEN - 5, (unsigned) f->buff + packet_pos, (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 5);
-					memcpy(f->buff + packet_pos, mpeg_buff + 5, MPEG_TS_LEN - 5);
-					packet_pos = MPEG_TS_LEN - 5;
+					// Skip possible stuff byte
+					for (new_start = mpeg_buff[4] + 5; new_start < MPEG_TS_LEN && mpeg_buff[new_start + 5] == 0xff; new_start++);
 
-					dlen = ntohs(dhdr->len) + sizeof(struct docsis_hdr);
+					ndprint("Copying3 %u bytes into 0x%X-0x%X\n", MPEG_TS_LEN - new_start, (unsigned) f->buff + packet_pos, (unsigned) f->buff + packet_pos + MPEG_TS_LEN - new_start);
+					memcpy(f->buff + packet_pos, mpeg_buff + new_start, MPEG_TS_LEN - new_start);
+					packet_pos = MPEG_TS_LEN - new_start;
 
 					continue;
-				}
-				
-				if (new_start < sizeof(struct docsis_hdr) || dlen > new_start) {
-					// Either the given size can't contain even a header
-					// Either the calulated size doesn't fit the gap
-					// let's discard the previous frame then
-					ndprint("discard previous frame\n");
-					packet_pos = MPEG_TS_LEN - 5 - mpeg_buff[4];
-					ndprint("Copying4 %u bytes into 0x%X-0x%X\n", packet_pos, (unsigned) f->buff, (unsigned) f->buff + packet_pos);
-					memcpy(f->buff, mpeg_buff + 5 + mpeg_buff[4], packet_pos);
-					continue;
-					
 				}
 				
 
 				// Se we got part of the last and new PDU here
-				// Let's split it up
+				// Let's copy everything, we'll later what is part of new PDU
 				
 				// last packet
-				ndprint("Copying5 %u bytes into 0x%X-0x%X\n", mpeg_buff[4], (unsigned) f->buff + packet_pos, (unsigned) f->buff + packet_pos + mpeg_buff[4]);
-				memcpy(f->buff + packet_pos, mpeg_buff + 5, mpeg_buff[4]);
-				packet_pos += mpeg_buff[4];
-
-				ndprint("Copying6 %u bytes into 0x%X-0x%X\n", MPEG_TS_LEN - 5 - mpeg_buff[4], (unsigned) p->temp_buff, (unsigned) p->temp_buff + MPEG_TS_LEN - 5 - mpeg_buff[4]);
-				memcpy(p->temp_buff, mpeg_buff + 5 + mpeg_buff[4], MPEG_TS_LEN - 5 - mpeg_buff[4]);
-				p->temp_buff_len += MPEG_TS_LEN - 5 - mpeg_buff[4];
+				ndprint("Copying5 %u bytes into 0x%X-0x%X\n", MPEG_TS_LEN - 5, (unsigned) f->buff + packet_pos, (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 5);
+				memcpy(f->buff + packet_pos, mpeg_buff + 5, MPEG_TS_LEN - 5);
+				packet_pos += MPEG_TS_LEN - 5;
 
 				continue;
+			}
 
 			default: // Should not be reached
 				return I_ERR;
@@ -761,8 +754,8 @@ int input_read_docsis(struct input *i, struct frame *f) {
 
 	if (dlen < packet_pos) { // Copy leftover if any
 		ndprint("Copying7 %u bytes into 0x%X-0x%X\n", packet_pos - dlen, (unsigned) p->temp_buff + p->temp_buff_len, (unsigned) p->temp_buff + p->temp_buff_len + packet_pos - dlen);
-		memcpy(p->temp_buff + p->temp_buff_len, f->buff + dlen, packet_pos - dlen);
-		p->temp_buff_len += packet_pos - dlen;
+		memcpy(p->temp_buff, f->buff + dlen, packet_pos - dlen);
+		p->temp_buff_len = packet_pos - dlen;
 	} 
 
 
@@ -792,7 +785,7 @@ int input_read_docsis(struct input *i, struct frame *f) {
 		}
 
 		dlen -= sizeof(struct docsis_hdr);
-		new_start = sizeof(struct docsis_hdr);
+		unsigned int new_start = sizeof(struct docsis_hdr);
 		
 		// fc_parm is len of ehdr if ehdr_on == 1
 		if (dhdr->ehdr_on) {

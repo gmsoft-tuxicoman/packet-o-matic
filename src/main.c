@@ -46,9 +46,6 @@
 #include <sys/time.h>
 #endif
 
-
-#define SNAPLEN 2000
-
 #define RINGBUFFER_SIZE 10000
 
 
@@ -187,13 +184,13 @@ void *input_thread_func(void *params) {
 				ringbuffer_usage--;
 				break;
 			} else {
-				dprint("Buffer is full. Waiting\n");
+				ndprint("Buffer is full. Waiting\n");
 				if(pthread_cond_wait(&ringbuffer_overflow_cond, &ringbuffer_mutex)) {
 					dprint("Failed to wait for buffer to empty out\n");
 					pthread_mutex_unlock(&ringbuffer_mutex);
 					pthread_exit(NULL);
 				}
-				dprint("waiting over\n");
+				ndprint("waiting over\n");
 			}
 		}
 

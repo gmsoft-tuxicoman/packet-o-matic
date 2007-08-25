@@ -267,7 +267,7 @@ int mgmtsrv_read_socket(struct mgmt_connection *c) {
 
 	
 	int res;
-	unsigned int len = 0, opt_len = 0;
+	unsigned int len = 0;
 	unsigned char buffer[READ_BUFF_LEN];
 	unsigned char telnet_opt[TELNET_SUBOPT_MAX];
 
@@ -288,11 +288,12 @@ int mgmtsrv_read_socket(struct mgmt_connection *c) {
 		return MGMT_OK;
 	}
 
-	int i, oob = 0; // oob is 1 when we are threating a out of band message (telnet opt)
+	int i, msg_type = 0; // msg_type is 1 when we are threating a out of band message (telnet opt), it's 2 when we are threating an escape sequence
 	for (i = 0; i < len; i++) {
 
-		if (oob) {
-			if (!opt_len) {
+		switch (msg_type) {
+
+			case 1:  // Handle telnet option
 				switch (buffer[i]) {
 
 					case DO:
@@ -303,12 +304,13 @@ int mgmtsrv_read_socket(struct mgmt_connection *c) {
 						memcpy(telnet_opt, buffer + i, 2);
 						mgmtsrv_process_telnet_option(c, telnet_opt, 2);
 						i++;
-						oob = 0;
+						msg_type = 0;
 						continue;
 
-					case SB:
+					case SB: {
+						unsigned int opt_len;
 						// Need to find the end of the suboption
-						for (; i < len + 1 && opt_len < TELNET_SUBOPT_MAX; i++) {
+						for (opt_len = 0; i < len && opt_len < TELNET_SUBOPT_MAX; i++) {
 							if (buffer[i] == IAC) { // Check if it's the end of the option or doubled IAC
 								if (buffer[i + 1] == IAC) { // It's doubled IAC
 									telnet_opt[opt_len] = IAC;
@@ -317,7 +319,7 @@ int mgmtsrv_read_socket(struct mgmt_connection *c) {
 								} else if (buffer[i + 1] == SE) { // End of suboption
 									mgmtsrv_process_telnet_option(c, telnet_opt, opt_len);
 									i++;
-									oob = 0;
+									msg_type = 0;
 									break;
 								} else {
 									dprint("Warning, unexpected value while reading telnet suboption : %hhu\n", buffer[i]);
@@ -330,24 +332,65 @@ int mgmtsrv_read_socket(struct mgmt_connection *c) {
 							opt_len++;
 						}
 						break;
+					}
 
 					case IAC: // This is a doubled IAC => interpret as a byte of value 255
 						mgmtsrv_process_key(c, buffer[i]);
 
 					default:
-						oob = 0;
+						msg_type = 0;
 						continue;
 				}
-			}
-		} else {
-			if (buffer[i] == IAC) {
-				
-				// this starts a new oob message
-				oob = 1;
-				continue;
+				break;
 
-			}
-			mgmtsrv_process_key(c, buffer[i]);
+			case 2: // Handle escape sequence
+				if (i + 1 > len || buffer[i] != '[') {
+					dprint("Invalid escape sequence\n");
+					msg_type = 0;
+					break;
+				}
+				i++;
+				switch (buffer[i]) {
+					case 'A': // up arrow
+						dprint("up arrow pressed\n");
+						break;
+					case 'B': // down arrow
+						dprint("down arrow pressed\n");
+						break;
+					case 'C': // right arrow
+						if (c->cursor_pos < c->cmdlen) {
+							char chr[2];
+							chr[0] = c->cmd[c->cursor_pos];
+							chr[1] = 0;
+							mgmtsrv_send(c, chr);
+							c->cursor_pos++;
+						}	
+						break;
+					case 'D': // left arrow
+						if (c->cursor_pos > 0) {
+							mgmtsrv_send(c, "\b");
+							c->cursor_pos--;
+						}
+						break;
+					default: // not handled
+						ndprint("Unknown escape sequence pressed : %c\n", buffer[i]);
+						
+					msg_type = 0;
+				}
+				break;
+
+			default: // Normal key is pressed
+				if (buffer[i] == IAC) {
+					
+					// this starts a new msg_type message
+					msg_type = 1;
+					continue;
+
+				} else if (buffer[i] == 0x1B)  { // 0x1B = ESC
+					msg_type = 2;
+					continue;
+				}
+				mgmtsrv_process_key(c, buffer[i]);
 		}
 
 
@@ -453,10 +496,10 @@ int mgmtsrv_process_key(struct mgmt_connection *c, unsigned char key) {
 			break;
 
 		case 3: { // Ctrl-C
-			char *newline_msg = "\r\n" MGMT_CMD_PROMPT;
-			send(c->fd, newline_msg, strlen(newline_msg), 0);
+			mgmtsrv_send(c, "\r\n" MGMT_CMD_PROMPT);
 			memset(c->cmd, 0, MGMT_CMD_BUFF_LEN);
 			c->cmdlen = 0;
+			c->cursor_pos = 0;
 			break;
 		}
 
@@ -466,42 +509,58 @@ int mgmtsrv_process_key(struct mgmt_connection *c, unsigned char key) {
 			break;
 
 		case '\b': { // backspace
-			if (c->cmdlen == 0)
+			if (c->cmdlen == 0 || c->cursor_pos == 0)
 				break;
-			char *backspace_msg = "\b \b";
-			send(c->fd, backspace_msg, strlen(backspace_msg), 0);
+
+			c->cursor_pos--;
+
+			int i;
+			for (i = c->cursor_pos; i < c->cmdlen; i++) {
+				c->cmd[i] = c->cmd[i + 1];
+			}
+			mgmtsrv_send(c, "\b");
+			mgmtsrv_send(c, c->cmd + c->cursor_pos);
+			mgmtsrv_send(c, " ");
+			for (i = c->cursor_pos; i < c->cmdlen; i++)
+				mgmtsrv_send(c, "\b");
+		
 			c->cmdlen--;
 			c->cmd[c->cmdlen] = 0;
 			break;
 		}
 
 		case '\r': { // carriage return
-			char *newline_msg = "\r\n" MGMT_CMD_PROMPT;
 			mgmtsrv_process_command(c);
-			send(c->fd, newline_msg, strlen(newline_msg), 0);
+			mgmtsrv_send(c,  "\r\n" MGMT_CMD_PROMPT);
 			memset(c->cmd, 0, MGMT_CMD_BUFF_LEN);
 			c->cmdlen = 0;
+			c->cursor_pos = 0;
 			break;
 		}
 
 		case '\t': // tab completion
 		case '?': { // completion
-			char *completion_msg = "\r\nCompletion not implemented (yet :)\r\n" MGMT_CMD_PROMPT;
-			send(c->fd, completion_msg, strlen(completion_msg), 0);
-			send(c->fd, c->cmd, c->cmdlen, 0);
+			mgmtsrv_send(c, "\r\nCompletion not implemented (yet :)\r\n" MGMT_CMD_PROMPT);
+			mgmtsrv_send(c, c->cmd);
+			c->cursor_pos = c->cmdlen;
 			break;
 		}
 
 		default: 
 			if (c->cmdlen >= MGMT_CMD_BUFF_LEN) {
-				char *error_msg = "\r\nCommand too long\r\n" MGMT_CMD_PROMPT;
-				send(c->fd, error_msg, strlen(error_msg), 0);
-				send(c->fd, c->cmd, c->cmdlen, 0);
+				mgmtsrv_send(c, "\r\nCommand too long\r\n" MGMT_CMD_PROMPT);
+				mgmtsrv_send(c, c->cmd);
 			} else {
 				ndprint("Got key 0x%x\n", key);
-				send(c->fd, &key, 1, 0);
-				c->cmd[c->cmdlen] = key;
+				int i;
+				for (i = c->cmdlen + 1; i > c->cursor_pos; i--)
+					c->cmd[i] = c->cmd[i - 1];
+				c->cmd[c->cursor_pos] = key;
+				mgmtsrv_send(c, c->cmd + c->cursor_pos);
+				for (i = c->cmdlen; i > c->cursor_pos; i--)
+					mgmtsrv_send(c, "\b");
 				c->cmdlen++;
+				c->cursor_pos++;
 
 			}
 	}
