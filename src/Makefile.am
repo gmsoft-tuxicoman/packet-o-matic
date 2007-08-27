@@ -1,7 +1,7 @@
 CFLAGS += -Wall -Werror -DDEBUG
 
 bin_PROGRAMS = packet-o-matic
-packet_o_matic_SOURCES = main.c main.h rules.c rules.h input.c input.h match.c match.h conntrack.c conntrack.h jhash.h target.c target.h timers.c timers.h helper.c helper.h conf.c conf.h common.c common.h layer.c layer.h mgmtsrv.c mgmtsrv.h mgmtcmd.c mgmtcmd.h ptype.c ptype.h
+packet_o_matic_SOURCES = main.c main.h rules.c rules.h input.c input.h match.c match.h conntrack.c conntrack.h jhash.h target.c target.h timers.c timers.h helper.c helper.h conf.c conf.h common.c common.h layer.c layer.h mgmtsrv.c mgmtsrv.h mgmtvty.c mgmtvty.h mgmtcmd.c mgmtcmd.h ptype.c ptype.h
 
 packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"'
 packet_o_matic_LDFLAGS = @LIBS@ @libxml2_LIBS@ -lpthread

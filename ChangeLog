@@ -1,3 +1,10 @@
+* 2007/08/27 Guy Martin <gmsoft@tuxicoman.be>
+Moved VTY handling code into mgmtvty.{ch}.
+
+* 2007/08/25 Guy Martin <gmsoft@tuxicoman.be>
+Added support for left and right arrow in the management console.
+Improved input_read_docsis() and fix possible memory corruption.
+
 * 2007/08/16 Guy Martin <gmsoft@tuxicoman.be>
 Use ptypes to store helper parameters.
 Use H_OK and H_ERR for helpers return value.
