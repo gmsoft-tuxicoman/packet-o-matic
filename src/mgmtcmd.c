@@ -29,28 +29,41 @@
 extern struct helper_reg *helpers[];
 
 
-#define MGMT_COMMANDS_NUM 3
+#define MGMT_COMMANDS_NUM 5
 
 struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
 	{
-		.words = {"exit", NULL},
+		.words = { "exit", NULL },
 		.help = "Exit the management console",
 		.callback_func = mgmtcmd_exit,
 	},
 
 	{
-		.words = { "show", "license", NULL},
+		.words = { "show", "license", NULL },
 		.help = "Display the license of this program",
 		.callback_func = mgmtcmd_show_license,
 	},
 
 	{
-		.words = { "show", "helpers", NULL},
+		.words = { "show", "helpers", NULL },
 		.help = "Display information about the loaded helpers",
 		.callback_func = mgmtcmd_show_helpers,
 	},
 
+	{
+		.words = { "load", "helper", NULL },
+		.help = "Load an helper into the system",
+		.usage = "load helper <helper_name>",
+		.callback_func = mgmtcmd_load_helper,
+	},
+
+	{
+		.words = { "set", "helper", "parameter", NULL},
+		.help = "Change the value of a helper parameter",
+		.usage = "set helper parameter <helper> <parameter_name> <parameter value>",
+		.callback_func = mgmtcmd_set_helper_param,
+	},
 };
 
 int mgmtcmd_register_all() {
@@ -66,7 +79,7 @@ int mgmtcmd_register_all() {
 }
 
 
-int mgmtcmd_exit(struct mgmt_connection *c) {
+int mgmtcmd_exit(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	char *bye_msg = "\r\nThanks for using packet-o-matic ! Bye !\r\n";
 	mgmtsrv_send(c, bye_msg);
@@ -78,7 +91,7 @@ int mgmtcmd_exit(struct mgmt_connection *c) {
 
 
 
-int mgmtcmd_show_license(struct mgmt_connection *c) {
+int mgmtcmd_show_license(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	char *license_msg = 
 		"This program is free software; you can redistribute it and/or modify\r\n" 
@@ -99,7 +112,7 @@ int mgmtcmd_show_license(struct mgmt_connection *c) {
 	return MGMT_OK;
 }
 
-int mgmtcmd_show_helpers(struct mgmt_connection *c) {
+int mgmtcmd_show_helpers(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	mgmtsrv_send(c, "Loaded helpers : \r\n");
 
@@ -132,4 +145,61 @@ int mgmtcmd_show_helpers(struct mgmt_connection *c) {
 				
 
 	return MGMT_OK;
+}
+
+
+
+int mgmtcmd_load_helper(struct mgmt_connection *c, int argc, char *argv[]) {
+
+
+	if (argc != 1)
+		return MGMT_USAGE;
+
+	int id = match_get_type(argv[0]);
+
+	if (id == -1) {
+		mgmtsrv_send(c, "Cannot load helper : corresponding match not loaded yet\r\n");
+		return MGMT_OK;
+	}
+
+	if (helpers[id]) {
+		mgmtsrv_send(c, "Helper already loaded\r\n");
+		return MGMT_OK;
+	}
+
+	if (helper_register(argv[0]) != H_ERR) {
+		mgmtsrv_send(c, "Helper registered successfully\r\n");
+	} else {
+		mgmtsrv_send(c, "Error while loading helper\r\n");
+	}
+	
+	return MGMT_OK;
+
+}
+
+
+int mgmtcmd_set_helper_param(struct mgmt_connection *c, int argc, char *argv[]) {
+	
+	if (argc != 3) 
+		return MGMT_USAGE;
+
+	int id = match_get_type(argv[0]);
+	if (!helpers[id]) {
+		mgmtsrv_send(c, "No helper with that name loaded\r\n");
+		return MGMT_OK;
+	}
+
+	struct helper_param *p = helper_get_param(id, argv[1]);
+	if (!p) {
+		mgmtsrv_send(c, "This parameter does not exists\r\n");
+		return MGMT_OK;
+	}
+
+	if (ptype_parse_val(p->value, argv[2]) != P_OK) {
+		mgmtsrv_send(c, "Invalid value given\r\n");
+		return MGMT_OK;
+	}
+
+	return MGMT_OK;
+
 }

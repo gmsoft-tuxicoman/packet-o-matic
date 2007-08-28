@@ -262,7 +262,7 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 
 		case 4: // Ctrl-D
 			if (c->cmdlen == 0)
-				mgmtcmd_exit(c);
+				mgmtcmd_exit(c, 0, NULL);
 			break;
 
 		case '\b': { // backspace
@@ -288,7 +288,7 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 
 		case '\r': { // carriage return
 			mgmtsrv_process_command(c);
-			mgmtsrv_send(c,  "\r\n" MGMT_CMD_PROMPT);
+			mgmtsrv_send(c, MGMT_CMD_PROMPT);
 			memset(c->cmd, 0, MGMT_CMD_BUFF_LEN);
 			c->cmdlen = 0;
 			c->cursor_pos = 0;
@@ -325,4 +325,23 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 
 	return MGMT_OK;
 
+}
+
+int mgmtvty_print_usage(struct mgmt_connection *c, struct mgmt_command *cmd) {
+
+	mgmtsrv_send(c, "Usage : ");
+	if (cmd->usage) {
+		mgmtsrv_send(c, cmd->usage);
+	} else {
+		int i;
+		for (i = 0; i < MGMT_MAX_CMD_WORDS && cmd->words[i]; i++) {
+			mgmtsrv_send(c, cmd->words[i]);
+			mgmtsrv_send(c, " ");
+		}
+			
+
+
+	}
+	mgmtsrv_send(c, " <cr>\r\n");
+	return MGMT_OK;
 }

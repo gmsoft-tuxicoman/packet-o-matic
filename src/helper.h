@@ -90,6 +90,7 @@ struct helper_functions {
 int helper_init();
 int helper_register(const char *name);
 int helper_register_param(int helper_type, char *name, char *defval, struct ptype *value);
+struct helper_param* helper_get_param(int helper_type, char* param_name);
 int helper_need_help(struct frame *f, unsigned int start, unsigned int len, struct layer *l);
 int helper_queue_frame(struct frame *f);
 int helper_flush_buffer(struct rule_list *list);

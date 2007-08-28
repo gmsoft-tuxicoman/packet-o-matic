@@ -36,6 +36,9 @@
 /// Return value on success
 #define MGMT_OK 0
 
+// Command functions return this value if it's needed to print the usage
+#define MGMT_USAGE -2
+
 // Maximum number of words in a command
 #define MGMT_MAX_CMD_WORDS 16
 
@@ -63,7 +66,7 @@ struct mgmt_command {
 	char *help;
 	char *usage;
 
-	int (*callback_func) (struct mgmt_connection *c);
+	int (*callback_func) (struct mgmt_connection *c, int argc, char *argv[]);
 
 	struct mgmt_command *next;
 

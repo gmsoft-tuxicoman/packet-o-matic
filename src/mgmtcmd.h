@@ -22,8 +22,10 @@
 #define __MGMTCMD_H__
 
 int mgmtcmd_register_all();
-int mgmtcmd_exit(struct mgmt_connection *c);
-int mgmtcmd_show_license(struct mgmt_connection *c);
-int mgmtcmd_show_helpers(struct mgmt_connection *c);
+int mgmtcmd_exit(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_show_license(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_show_helpers(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_load_helper(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_set_helper_param(struct mgmt_connection *c, int argc, char *argv[]);
 
 #endif

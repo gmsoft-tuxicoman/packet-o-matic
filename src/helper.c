@@ -129,6 +129,22 @@ int helper_register_param(int helper_type, char *name, char *defval, struct ptyp
 
 }
 
+struct helper_param* helper_get_param(int helper_type, char* param_name) {
+
+	if (!helpers[helper_type])
+		return NULL;
+
+	struct helper_param *p = helpers[helper_type]->params;
+
+	while (p) {
+		if (!strcmp(p->name, param_name))
+			return p;
+		p = p->next;
+	}
+
+	return NULL;
+}
+
 /**
  * Parameters :
  *  - f : the frame to be examined

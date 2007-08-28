@@ -1,3 +1,9 @@
+* 2007/08/28 Guy Martin <gmsoft@tuxicoman.be>
+Added "set helper parameter" and "load helper" command in management console.
+Management commands can now receive arguments.
+Make use of the usage field of the commands.
+Added helper_get_param() to quickly get a parameter.
+
 * 2007/08/27 Guy Martin <gmsoft@tuxicoman.be>
 Moved VTY handling code into mgmtvty.{ch}.
 

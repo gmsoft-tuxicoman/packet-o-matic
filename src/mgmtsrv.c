@@ -244,7 +244,7 @@ int mgmtsrv_accept_connection(struct mgmt_connection *c) {
 	dprint("Accepted management connection from %s\n", host);
 
 
-	return mgmtvty_init(c);
+	return mgmtvty_init(new_cc);
 
 }
 
@@ -309,6 +309,10 @@ int mgmtsrv_process_command(struct mgmt_connection *c) {
 		words[i] = 0;
 
 	for (str = c->cmd; ;str = NULL) {
+		if (words_count >= MGMT_MAX_CMD_WORDS) {
+			mgmtsrv_send(c, "\r\nToo many arguments\r\n");
+			return MGMT_OK;
+		}
 		token = strtok_r(str, " ", &saveptr);
 		if (token == NULL)
 			break;
@@ -318,25 +322,34 @@ int mgmtsrv_process_command(struct mgmt_connection *c) {
 		words_count++;
 	}
 
+	mgmtsrv_send(c, "\r\n");
+
 	if (words_count == 0)
 		return MGMT_OK;
 	
-	mgmtsrv_send(c, "\r\n");
-
 	struct mgmt_command *tmpcmd = cmds;
 
 	while (tmpcmd) {
-		for (i = 0; i < words_count; i++) {
+		for (i = 0; i < words_count && tmpcmd->words[i]; i++) {
 			if (strcmp(words[i], tmpcmd->words[i]))
 				break;	
 		}
-		if (i == words_count && tmpcmd->words[i] == NULL) {
-			return (*tmpcmd->callback_func) (c);
+		unsigned int cmd_words_count;
+		for (cmd_words_count = 0; tmpcmd->words[cmd_words_count] && cmd_words_count < MGMT_MAX_CMD_WORDS; cmd_words_count++);
+
+		if (words_count >= i && i == cmd_words_count) {
+			int res;
+			res = (*tmpcmd->callback_func) (c, words_count - cmd_words_count, words + cmd_words_count);
+
+			if (res == MGMT_USAGE)
+				return mgmtvty_print_usage(c, tmpcmd);
+			else
+				return res;
 		}
 		tmpcmd = tmpcmd->next;
 	}
 	
-	mgmtsrv_send(c, "No such command");
+	mgmtsrv_send(c, "No such command\r\n");
 
 	return MGMT_OK;
 
