@@ -1,3 +1,11 @@
+* 2007/08/30 Guy Martin <gmsoft@tuxicoman.be>
+Helper can now remove their priv stuff from conntrack.
+Modified helper_tcp to allow unloading on the fly.
+Added the possibility to unregister one helper at a time.
+Fixed small memory leak in helper ipv4.
+Added a mutex to the reader thread to allow unloading of modules or else.
+Added management function "unload helper".
+
 * 2007/08/28 Guy Martin <gmsoft@tuxicoman.be>
 Added "set helper parameter" and "load helper" command in management console.
 Management commands can now receive arguments.

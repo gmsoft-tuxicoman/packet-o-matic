@@ -56,6 +56,8 @@ pthread_cond_t ringbuffer_overflow_cond = PTHREAD_COND_INITIALIZER; ///< Conditi
 unsigned long ringbuffer_dropped_packets = 0; ///< Count the dropped packets
 unsigned long ringbuffer_total_packets = 0; ///< Count the total number of packet that went trough the buffer
 
+pthread_mutex_t reader_mutex = PTHREAD_MUTEX_INITIALIZER; ///< Mutex used to lock the reader thread if changes are made or modules are loaded/unloaded
+
 struct frame* ringbuffer[RINGBUFFER_SIZE];
 unsigned int ringbuffer_read_pos; // Where the process thread WILL read the packets
 unsigned int ringbuffer_write_pos; // Where the input thread is CURRENTLY writing
@@ -356,6 +358,11 @@ int main(int argc, char *argv[]) {
 
 		if (ic.is_live)
 			gettimeofday(&now, NULL);
+
+		if (pthread_mutex_lock(&reader_mutex)) {
+			dprint("Error while locking the reader mutex. Abording\n");
+			goto finish;
+		}
 	
 		timers_process(); // This is not real-time timers but we don't really need it
 		if (ringbuffer[ringbuffer_read_pos]->len > 0) // Need to queue that in the buffer
@@ -370,6 +377,10 @@ int main(int argc, char *argv[]) {
 		helper_process_queue(c->rules); // Process frames that needed some help
 
 
+		if (pthread_mutex_unlock(&reader_mutex)) {
+			dprint("Error while locking the reader mutex. Abording\n");
+			goto finish;
+		}
 
 
 		if (pthread_mutex_lock(&ringbuffer_mutex)) {
@@ -440,8 +451,10 @@ err:
 
 	config_cleanup(c);
 
-	conntrack_cleanup();
+	helper_unregister_all();
 	helper_cleanup();
+
+	conntrack_cleanup();
 	timers_cleanup();
 	target_cleanup();
 	match_cleanup();
@@ -451,7 +464,6 @@ err:
 	target_unregister_all();
 	match_unregister_all();
 	conntrack_unregister_all();
-	helper_unregister_all();
 	input_unregister_all();
 	ptype_unregister_all();
 
@@ -461,6 +473,13 @@ err:
 	return 0;
 }
 
+int reader_process_lock() {
+	return pthread_mutex_lock(&reader_mutex);
+}
+
+int reader_process_unlock() {
+	return pthread_mutex_unlock(&reader_mutex);
+}
 
 int get_current_input_time(struct timeval *cur_time) {
 

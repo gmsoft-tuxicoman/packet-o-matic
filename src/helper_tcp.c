@@ -29,6 +29,9 @@
 struct ptype *pkt_timeout;
 struct ptype *conn_buff;
 
+// Helps to track all the connections
+struct helper_priv_tcp *conn_head;
+
 struct helper_functions *hlp_functions;
 int helper_register_tcp(struct helper_reg *r, struct helper_functions *hlp_funcs) {
 	
@@ -46,6 +49,8 @@ int helper_register_tcp(struct helper_reg *r, struct helper_functions *hlp_funcs
 		(*hlp_funcs->ptype_cleanup) (pkt_timeout);
 		return H_ERR;
 	}
+
+	conn_head = NULL;
 
 	(*hlp_funcs->register_param) (r->type, "pkt_timeout", "30", pkt_timeout);
 	(*hlp_funcs->register_param) (r->type, "conn_buffer", "256", conn_buff);
@@ -77,6 +82,16 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 		// We don't know anything about this connection. let it go
 		cp = malloc(sizeof(struct helper_priv_tcp));
 		bzero(cp, sizeof(struct helper_priv_tcp));
+
+		cp->ce = f->ce;
+
+		if (!conn_head)
+			conn_head = cp;
+		else {
+			cp->next = conn_head;
+			cp->next->prev = cp;
+			conn_head = cp;
+		}
 
 		(*hlp_functions->conntrack_add_priv) (cp, l->type, f->ce, helper_flush_buffer_tcp, helper_cleanup_connection_tcp);
 	}
@@ -345,12 +360,16 @@ int helper_cleanup_connection_tcp(struct conntrack_entry *ce, void *conntrack_pr
 
 #ifdef DEBUG
 	if (cp->pkts[0] || cp->pkts[1]) {
-		dprint("helper_tcp : There should not be any remaining packet at this point !!!! seq of first pkt :");
-		if (cp->pkts[0])
-			dprint(" fwd %u", cp->pkts[0]->seq);
-		if (cp->pkts[1])
-			dprint(" rev %u", cp->pkts[0]->seq);
-		dprint("\n");	
+		dprint("helper_tcp : There should not be any remaining packet at this point !!!!\n");
+		int i;
+		for (i = 0; i < 2; i++)
+			while (cp->pkts[i]) {
+				struct helper_priv_tcp_packet *pkt = cp->pkts[i];
+				cp->pkts[i] = cp->pkts[i]->next;
+				free(pkt->f->buff);
+				free(pkt->f);
+				free(pkt);
+			}
 	}
 #endif
 
@@ -366,12 +385,27 @@ int helper_cleanup_connection_tcp(struct conntrack_entry *ce, void *conntrack_pr
 		cp->t[1] = NULL;
 	}
 
+
+	if (cp->prev)
+		cp->prev->next = cp->next;
+	else
+		conn_head = cp->next;
+
+	if (cp->next)
+		cp->next->prev = cp->prev;
 		
 	free(cp);
+
 	return H_OK;
 }
 
 int helper_cleanup_tcp() {
+
+	while (conn_head) {
+		(hlp_functions->conntrack_remove_priv) (conn_head, conn_head->ce);	
+		helper_cleanup_connection_tcp(conn_head->ce, conn_head);
+	}
+
 	(hlp_functions->ptype_cleanup) (pkt_timeout);
 	(hlp_functions->ptype_cleanup) (conn_buff);
 	return H_OK;

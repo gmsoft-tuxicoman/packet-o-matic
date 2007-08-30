@@ -43,6 +43,7 @@ int helper_init() {
 	hlp_funcs->conntrack_get_entry = conntrack_get_entry;
 	hlp_funcs->conntrack_add_priv = conntrack_add_helper_priv;
 	hlp_funcs->conntrack_get_priv = conntrack_get_helper_priv;
+	hlp_funcs->conntrack_remove_priv = conntrack_remove_helper_priv;
 	hlp_funcs->ptype_alloc = ptype_alloc;
 	hlp_funcs->ptype_cleanup = ptype_cleanup_module;
 
@@ -162,27 +163,40 @@ int helper_need_help(struct frame *f, unsigned int start, unsigned int len, stru
 
 }
 
+int helper_unregister(int helper_type) {
+
+	if (helpers[helper_type]) {
+		if (helpers[helper_type]->cleanup)
+			(*helpers[helper_type]->cleanup) ();
+		void *handle = helpers[helper_type]->dl_handle;
+		while (helpers[helper_type]->params) {
+			free(helpers[helper_type]->params->name);
+			free(helpers[helper_type]->params->defval);
+			struct helper_param *next = helpers[helper_type]->params->next;
+			free(helpers[helper_type]->params);
+			helpers[helper_type]->params = next;
+
+		}
+		free(helpers[helper_type]);
+		helpers[helper_type] = NULL;
+		if (dlclose(handle))
+			dprint("Error while closing library of target %s\n", match_get_name(helper_type));
+
+		dprint("Helper %s unregistered\n", match_get_name(helper_type));
+	} else
+		return H_ERR;
+
+	return H_OK;
+
+}
 
 int helper_unregister_all() {
 
 	int i;
 
 	for (i = 0; i < MAX_HELPER; i++) {
-		if (helpers[i]) {
-			if (dlclose(helpers[i]->dl_handle))
-				dprint("Error while closing library of target %s\n", match_get_name(i));
-			while (helpers[i]->params) {
-				free(helpers[i]->params->name);
-				free(helpers[i]->params->defval);
-				struct helper_param *next = helpers[i]->params->next;
-				free(helpers[i]->params);
-				helpers[i]->params = next;
-
-			}
-			free(helpers[i]);
-			helpers[i] = NULL;
-		}
-
+		if (helpers[i])
+			helper_unregister(i);
 	}
 
 	return H_OK;
@@ -192,14 +206,6 @@ int helper_unregister_all() {
 
 int helper_cleanup() {
 
-	int i;
-	
-	// Cleanup remaining helper's memory
-
-	for (i = 0; i < MAX_HELPER; i++) {
-		if (helpers[i] && helpers[i]->cleanup)
-			(*helpers[i]->cleanup) ();
-	}
 
 	free(hlp_funcs);
 

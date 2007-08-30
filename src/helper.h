@@ -78,6 +78,7 @@ struct helper_functions {
 	int (*conntrack_create_entry) (struct frame *f);
 	int (*conntrack_get_entry) (struct frame *f);
 	int (*conntrack_add_priv) (void *priv, int type, struct conntrack_entry *ce, int (*flush_buffer) (struct conntrack_entry *ce, void *priv), int (*cleanup_handler) (struct conntrack_entry *ce, void *priv));
+	int (*conntrack_remove_priv) (void *priv, struct conntrack_entry *ce);
 	void *(*conntrack_get_priv) (int type, struct conntrack_entry *ce);
 	struct ptype* (*ptype_alloc) (const char* type, char *descr, char* unit);
 	int (*ptype_cleanup) (struct ptype* p);
@@ -95,6 +96,7 @@ int helper_need_help(struct frame *f, unsigned int start, unsigned int len, stru
 int helper_queue_frame(struct frame *f);
 int helper_flush_buffer(struct rule_list *list);
 int helper_process_queue(struct rule_list *list);
+int helper_unregister(int helper_type);
 int helper_unregister_all();
 int helper_cleanup();
 

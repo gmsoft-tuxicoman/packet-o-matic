@@ -29,4 +29,7 @@ struct input_thread_params {
 
 int get_current_input_time(struct timeval *cur_time);
 
+int reader_process_lock();
+int reader_process_unlock();
+
 #endif

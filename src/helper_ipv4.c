@@ -93,6 +93,7 @@ int helper_ipv4_process_frags(struct helper_priv_ipv4 *p) {
 
 	(*hlp_functions->queue_frame) (f);
 
+	p->f = NULL;
 
 	helper_cleanup_ipv4_frag(p);
 
@@ -309,7 +310,11 @@ int helper_cleanup_ipv4_frag(void *priv) {
 
 	if (p->next)
 		p->next->prev = p->prev;
-	
+
+	if (p->f) {
+		free(p->f->buff);
+		free(p->f);
+	}
 	free(p);
 
 	return H_OK;
@@ -320,9 +325,9 @@ int helper_cleanup_ipv4() {
 	(*hlp_functions->ptype_cleanup) (frag_timeout);
 
 	while (frags_head) {
-		struct helper_priv_ipv4 *p = frags_head;
+/*		struct helper_priv_ipv4 *p = frags_head;
 		free(p->f->buff);
-		free(p->f);
+		free(p->f);*/
 		helper_cleanup_ipv4_frag(frags_head);
 	}
 	

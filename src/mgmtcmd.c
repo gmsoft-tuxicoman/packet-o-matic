@@ -22,6 +22,7 @@
 #include "common.h"
 #include "mgmtsrv.h"
 #include "mgmtcmd.h"
+#include "main.h"
 #include "helper.h"
 #include "match.h"
 #include "ptype.h"
@@ -29,7 +30,7 @@
 extern struct helper_reg *helpers[];
 
 
-#define MGMT_COMMANDS_NUM 5
+#define MGMT_COMMANDS_NUM 6
 
 struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
@@ -63,6 +64,13 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.help = "Change the value of a helper parameter",
 		.usage = "set helper parameter <helper> <parameter_name> <parameter value>",
 		.callback_func = mgmtcmd_set_helper_param,
+	},
+
+	{
+		.words = { "unload", "helper", NULL },
+		.help = "Unload an helper from the system",
+		.usage = "unload helper <helper_name>",
+		.callback_func = mgmtcmd_unload_helper,
 	},
 };
 
@@ -200,6 +208,30 @@ int mgmtcmd_set_helper_param(struct mgmt_connection *c, int argc, char *argv[]) 
 		return MGMT_OK;
 	}
 
+	return MGMT_OK;
+
+}
+
+int mgmtcmd_unload_helper(struct mgmt_connection *c, int argc, char *argv[]) {
+
+
+	if (argc != 1)
+		return MGMT_USAGE;
+
+	int id = match_get_type(argv[0]);
+
+	if (!helpers[id]) {
+		mgmtsrv_send(c, "Helper not loaded\r\n");
+		return MGMT_OK;
+	}
+	reader_process_lock();
+	if (helper_unregister(id) != H_ERR) {
+		mgmtsrv_send(c, "Helper unloaded successfully\r\n");
+	} else {
+		mgmtsrv_send(c, "Error while unloading helper\r\n");
+	}
+	reader_process_unlock();
+	
 	return MGMT_OK;
 
 }

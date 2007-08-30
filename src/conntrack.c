@@ -256,6 +256,39 @@ void *conntrack_get_helper_priv(int type, struct conntrack_entry *ce) {
 
 	return NULL;
 }
+
+int conntrack_remove_helper_priv(void* priv, struct conntrack_entry *ce) {
+
+	if (!ce)
+		return 0;
+	
+	struct conntrack_helper_priv *cp = ce->helper_privs;
+	
+	// Remove the first element if it match
+	if (cp->priv == priv) {
+		ce->helper_privs = cp->next;
+		free(cp);
+	} else {
+		struct conntrack_helper_priv *prev;
+		while (cp) {
+			prev = cp;
+			cp = cp->next;
+			if (cp->priv == priv) {
+				prev->next = cp->next;
+				free(cp);
+			}
+			break;
+		}
+	}
+
+	if (!ce->helper_privs && !ce->target_privs) {
+		// No relevant info attached to this conntrack. We can safely clean it up
+		conntrack_cleanup_connection(ce);
+	}
+
+	return 1;
+}
+
 void *conntrack_get_target_priv(struct target *t, struct conntrack_entry *ce) {
 
 
