@@ -1,3 +1,11 @@
+* 2007/09/10 Guy Martin <gmsoft@tuxicoman.be>
+Changed the match to use ptypes.
+Configuration of the match changed. See updated pom.xml.conf.example.
+Added node operation 'op', 'and' and inversion.
+Added comparison to ptypes.
+Added ptypes uint16, uint8, mac, ipv4 and ipv6.
+Now using POM_OK and POM_ERR for match.
+
 * 2007/08/30 Guy Martin <gmsoft@tuxicoman.be>
 Helper can now remove their priv stuff from conntrack.
 Modified helper_tcp to allow unloading on the fly.

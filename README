@@ -72,6 +72,8 @@ IMPORTANT : You'll have to specify the full header chain to match a packet. For 
 - linux_cooked : match linux cooked protocol used by pcap
 - ipv4 : match the IPv4 protocol commonly known as ip
 - ipv6 : match the IPv6 protocol
+- icmp : match the ICMP protocol
+- icmpv6 : match the ICMPv6 protocol
 - tcp : match the TCP protocol
 - udp : match the UDP protocol
 - rtp : match the RTP protocol used to carry real time voice and video

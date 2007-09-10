@@ -17,12 +17,12 @@
 	<!-- target_display display usefull information about the current packet on the screen -->
 	<target type="display"/>
 
-	<!-- we want to capture only ipv6 traffic -->
+	<!-- we want to capture only ipv4 traffic -->
 	<matches>
 		<!-- we first layer we'll have to match is ethernet -->
-		<match type="ethernet"/>
-		<!-- above ethernet we look for ipv6 packets -->
-		<match type="ipv6"/>
+		<match layer="ethernet"/>
+		<!-- above ethernet we look for ipv4 packets -->
+		<match layer="ipv4"/>
 	</matches>
 </rule>
 
@@ -38,24 +38,22 @@
 
 	<matches>
 		<!-- first layer will be ethernet -->
-		<match type="ethernet"/>
+		<match layer="ethernet"/>
 		<!-- we match either <a> or <b> -->
-		<or>
+		<node op="or">
 			<a>
 				<!-- either ipv4 -->
-				<match type="ipv4"/>
+				<match layer="ipv4"/>
 			</a>
 			<b>
 				<!-- or ipv6 in ipv4 aka ipv6 tunnels -->
-				<match type="ipv4"/>
-				<match type="ipv6"/>
+				<match layer="ipv4"/>
+				<match layer="ipv6"/>
 			</b>
 		</or>
 		<!-- after the network layer, we add the connection layer -->
-		<match type="tcp">
-			<!-- match only tcp packets which destination port 1234 -->
-			<param name="dport">1234</param>
-		</match>
+		<!-- match only tcp packets which destination port greater than 1234-->
+		<match layer="tcp" field="dport" op="gt">1234</match>
 	</matches>
 </rule>
 
@@ -68,16 +66,17 @@
 	</target>
 
 	<matches>
-		<match type="ethernet"/>
-		<match type="ipv4"/>
-		<match type="tcp">
-			<!-- match all the traffic to port 12345 -->
-			<param name="sport">12345</param>
+		<match layer="ethernet"/>
+		<match layer="ipv4"/>
+		<!-- match all the traffic to port 12345 and dport less or equal to 3333 -->
+		<node op="and">
+			<a><match layer="tcp" field="sport">12345</param></a>
+			<b><match layer="tcp" field="dport" op="le">3333</param></b>
 		</match>
 	</matches>
 </rule>
 
-<!-- rule to inject all ipv4 packet to lo interface -->
+<!-- rule to inject all ipv4 packet to lo interface excluding tcp port 1234 -->
 <rule>
         <target type="inject">
                 <!-- could be either ip or eth name -->
@@ -86,8 +85,9 @@
 
 	<!-- all ipv4 traffic -->
         <matches>
-                <match type="ethernet"/>
-                <match type="ipv4"/>
+                <match layer="ethernet"/>
+                <match layer="ipv4"/>
+		<match layer="tcp" field="dport" inv="yes">1234</match>
         </matches>
 </rule>
 
