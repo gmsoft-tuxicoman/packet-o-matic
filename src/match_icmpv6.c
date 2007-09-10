@@ -40,7 +40,7 @@ int match_register_icmpv6(struct match_reg *r, struct match_functions *m_funcs) 
 	match_type_info->snprintf = match_layer_info_snprintf_icmpv6;
 	match_code_info = (*m_funcs->layer_info_register) (r->type, "code", LAYER_INFO_TYPE_UINT32);
 
-	return 1;
+	return POM_OK;
 }
 
 int match_identify_icmpv6(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {

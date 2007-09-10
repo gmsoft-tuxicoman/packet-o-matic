@@ -52,6 +52,11 @@
 #define NAME_MAX 255
 #endif
 
+// Default return values
+#define POM_OK 0
+#define POM_ERR -1
+
+
 void *lib_get_register_func(const char *type, const char *name, void **handle);
 
 

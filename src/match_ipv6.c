@@ -23,32 +23,18 @@
 
 #include <sys/socket.h>
 
-#define PARAMS_NUM 5
-
-char *match_ipv6_params[PARAMS_NUM][3] = {
-
-	{ "saddr", "::", "source ip address" },
-	{ "snetmask", "0", "netmask of the source" },
-	{ "daddr", "::", "destination ip address" },
-	{ "dnetmask", "0", "netmask of the netmask" },
-	{ "flabel", "0/0", "Flow label"}, 
-
-};
+#include "ptype_uint32.h"
+#include "ptype_ipv6.h"
 
 int match_icmpv6_id, match_tcp_id, match_udp_id;
 struct match_functions *m_functions;
 struct layer_info *match_src_info, *match_dst_info, *match_fl_info, *match_hl_info;
 
+struct ptype *field_saddr, *field_daddr, *field_flabel;
+
 int match_register_ipv6(struct match_reg *r, struct match_functions *m_funcs) {
 
-	copy_params(r->params_name, match_ipv6_params, 0, PARAMS_NUM);
-	copy_params(r->params_help, match_ipv6_params, 2, PARAMS_NUM);
-	
-	r->init = match_init_ipv6;
-	r->reconfig = match_reconfig_ipv6;
 	r->identify = match_identify_ipv6;
-	r->eval = match_eval_ipv6;
-	r->cleanup = match_cleanup_ipv6;
 	r->unregister = match_unregister_ipv6;
 
 	m_functions = m_funcs;
@@ -67,61 +53,22 @@ int match_register_ipv6(struct match_reg *r, struct match_functions *m_funcs) {
 	match_hl_info = (*m_funcs->layer_info_register) (r->type, "hlim", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_ZERO);
 
 
-	return 1;
-}
-
-int match_unregister_ipv6(struct match_reg *r) {
-
-	free(match_src_info->val.c);
-	free(match_dst_info->val.c);
-
-	return 1;
-}
-
-int match_init_ipv6(struct match *m) {
-
-	copy_params(m->params_value, match_ipv6_params, 1, PARAMS_NUM);
-
-	return 1;
-
-}
-
-int match_reconfig_ipv6(struct match *m) {
-
-	if (!m->match_priv) {
-		m->match_priv = malloc(sizeof(struct match_priv_ipv6));
-		bzero(m->match_priv, sizeof(struct match_priv_ipv6));
+	field_saddr = (*m_funcs->ptype_alloc) ("ipv6", NULL);
+	field_daddr = (*m_funcs->ptype_alloc) ("ipv6", NULL);
+	field_flabel = (*m_funcs->ptype_alloc) ("uint32", NULL);
+	if (!field_saddr || !field_daddr || !field_flabel) {
+		match_unregister_ipv6(r);
+		return POM_ERR;
 	}
-	struct match_priv_ipv6 *p = m->match_priv;
 
-	int res=1, i;
-	unsigned char mask = 0;
+	(*m_funcs->register_param) (r->type, "saddr", field_saddr, "Source address");
+	(*m_funcs->register_param) (r->type, "daddr", field_daddr, "Destination address");
+	(*m_funcs->register_param) (r->type, "flabel", field_daddr, "Flow label");
 
-	res &= inet_pton(AF_INET6, m->params_value[0], &p->saddr) > 0;
-	res &= sscanf(m->params_value[1], "%hhu", &mask) > 0;
-	bzero(p->snetmask, 16);
-	for (i = 0; i < (mask / 8); i++)
-		p->snetmask[i] = 255;
-	if (mask % 8)
-		p->snetmask[i] = 2 << ((8 - (mask % 8)) - 1);
-	
-	res &= inet_pton(AF_INET6, m->params_value[2], &p->daddr) > 0;
-	res &= sscanf(m->params_value[3], "%hhu", &mask) > 0;
-	bzero(p->dnetmask, 16);
-	for (i = 0; i < (mask / 8); i++)
-		p->dnetmask[i] = 255;
-	if (mask % 8)
-		p->dnetmask[i] = 2 << ((8 - (mask % 8)) - 1);
-
-	// flowlabel
-	if (sscanf(m->params_value[4], "%5X/%5X", &p->flabel, &p->flabelmask) == 1)
-			p->flabelmask= 0xfffff;
-	else
-			res &= 0;
-
-	return res;
-	
+	return POM_OK;
 }
+
+
 
 int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
@@ -137,6 +84,10 @@ int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int start, un
 	unsigned int nhdr = hdr->ip6_nxt;
 	l->payload_size = ntohs(hdr->ip6_plen);
 	l->payload_start = start + hdrlen;
+
+	PTYPE_IPV6_SETADDR(field_saddr, hdr->ip6_src);
+	PTYPE_IPV6_SETADDR(field_daddr, hdr->ip6_dst);
+	PTYPE_UINT32_SETVAL(field_flabel, ntohl(hdr->ip6_flow) & 0xfffff);
 
 	while (hdrlen < len) {
 
@@ -177,34 +128,16 @@ int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int start, un
 
 }
 
-int match_eval_ipv6(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
-	
-	struct ip6_hdr* hdr = f->buff + start;
-	struct match_priv_ipv6 *mp;
-	mp = match->match_priv;
+int match_unregister_ipv6(struct match_reg *r) {
 
-	if (!mask_compare(mp->saddr.s6_addr, hdr->ip6_src.s6_addr, mp->snetmask, 16))
-		return 0;
-	
-	if (!mask_compare(mp->daddr.s6_addr, hdr->ip6_dst.s6_addr, mp->dnetmask, 16))
-		return 0;
-	
-	// flow label
-	if ((mp->flabel & mp->flabelmask) != (ntohl(hdr->ip6_flow) & mp->flabelmask))
-		return 0;
-	
-	return 1;
-}
+	free(match_src_info->val.c);
+	free(match_dst_info->val.c);
 
-int match_cleanup_ipv6(struct match *m) {
+	(*m_functions->ptype_cleanup) (field_saddr);
+	(*m_functions->ptype_cleanup) (field_daddr);
+	(*m_functions->ptype_cleanup) (field_flabel);
 
-	clean_params(m->params_value, PARAMS_NUM);
-
-	if (m->match_priv)
-		free(m->match_priv);
-
-	return 1;
-
+	return POM_OK;
 }
 
 int match_layer_info_snprintf_ipv6(char *buff, unsigned int len, struct layer_info *inf) {

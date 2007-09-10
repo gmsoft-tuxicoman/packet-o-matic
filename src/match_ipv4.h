@@ -26,21 +26,10 @@
 #include "modules_common.h"
 #include "match.h"
 
-struct match_priv_ipv4 {
-
-	struct in_addr saddr;
-	struct in_addr snetmask;
-	struct in_addr daddr;
-	struct in_addr dnetmask;
-};
-
 
 int match_register_ipv4();
-int match_init_ipv4(struct match *m);
-int match_reconfig_ipv4(struct match *m);
 int match_identify_ipv4(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
-int match_eval_ipv4(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l);
-int match_cleanup_ipv4(struct match *m);
+int match_unregister_ipv4(struct match_reg *r);
 
 int match_layer_info_snprintf_ipv4(char *buff, unsigned int len, struct layer_info *inf);
 

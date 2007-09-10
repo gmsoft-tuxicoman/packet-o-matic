@@ -26,23 +26,9 @@
 #include "modules_common.h"
 #include "match.h"
 
-
-struct match_priv_tcp {
-
-	unsigned short sport_min;
-	unsigned short sport_max;
-	unsigned short dport_min;
-	unsigned short dport_max;
-
-};
-
-
 int match_register_tcp(struct match_reg *r, struct match_functions *m_funcs);
-int match_init_tcp(struct match *m);
-int match_reconfig_tcp(struct match *m);
 int match_identify_tcp(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
-int match_eval_tcp(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l);
-int match_cleanup_tcp(struct match *m);
+int match_unregister_tcp(struct match_reg *r);
 
 int match_layer_info_snprintf_tcp(char *buff, unsigned int len, struct layer_info *inf);
 

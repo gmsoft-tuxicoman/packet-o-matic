@@ -50,6 +50,7 @@ struct helper_param {
 
 	char *name;
 	char *defval;
+	char *descr;
 	struct ptype *value;
 	struct helper_param *next;
 
@@ -68,7 +69,7 @@ struct helper_reg {
 };
 
 struct helper_functions {
-	int (*register_param) (int helper_type, char *name, char *defval, struct ptype *value);
+	int (*register_param) (int helper_type, char *name, char *defval, struct ptype *value, char *descr);
 	struct timer* (*alloc_timer) (void *priv, struct input *i, int (*handler) (void *));
 	int (*cleanup_timer) (struct timer *t);
 	int (*queue_timer) (struct timer *t, unsigned int expiry);
@@ -80,7 +81,7 @@ struct helper_functions {
 	int (*conntrack_add_priv) (void *priv, int type, struct conntrack_entry *ce, int (*flush_buffer) (struct conntrack_entry *ce, void *priv), int (*cleanup_handler) (struct conntrack_entry *ce, void *priv));
 	int (*conntrack_remove_priv) (void *priv, struct conntrack_entry *ce);
 	void *(*conntrack_get_priv) (int type, struct conntrack_entry *ce);
-	struct ptype* (*ptype_alloc) (const char* type, char *descr, char* unit);
+	struct ptype* (*ptype_alloc) (const char* type, char* unit);
 	int (*ptype_cleanup) (struct ptype* p);
 
 
@@ -90,7 +91,7 @@ struct helper_functions {
 
 int helper_init();
 int helper_register(const char *name);
-int helper_register_param(int helper_type, char *name, char *defval, struct ptype *value);
+int helper_register_param(int helper_type, char *name, char *defval, struct ptype *value, char *descr);
 struct helper_param* helper_get_param(int helper_type, char* param_name);
 int helper_need_help(struct frame *f, unsigned int start, unsigned int len, struct layer *l);
 int helper_queue_frame(struct frame *f);

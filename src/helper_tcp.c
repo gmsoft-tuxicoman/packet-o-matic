@@ -40,23 +40,25 @@ int helper_register_tcp(struct helper_reg *r, struct helper_functions *hlp_funcs
 
 	hlp_functions = hlp_funcs;
 
-	pkt_timeout = (*hlp_funcs->ptype_alloc) ("uint32", "Number of seconds to wait for out of order packets", "seconds");
-	if (!pkt_timeout)
-		return H_ERR;
-	
-	conn_buff = (*hlp_funcs->ptype_alloc) ("uint32", "Maximum KBytes of buffer per connection", "KBytes");
-	if (!conn_buff) {
-		(*hlp_funcs->ptype_cleanup) (pkt_timeout);
-		return H_ERR;
-	}
+	pkt_timeout = (*hlp_funcs->ptype_alloc) ("uint32", "seconds");
+	conn_buff = (*hlp_funcs->ptype_alloc) ("uint32", "KBytes");
+
+	if (!pkt_timeout || !conn_buff)
+		goto err;
+
+	(*hlp_funcs->register_param) (r->type, "pkt_timeout", "30", pkt_timeout, "Number of seconds to wait for out of order packets");
+	(*hlp_funcs->register_param) (r->type, "conn_buffer", "256", conn_buff, "Maximum KBytes of buffer per connection");
 
 	conn_head = NULL;
 
-	(*hlp_funcs->register_param) (r->type, "pkt_timeout", "30", pkt_timeout);
-	(*hlp_funcs->register_param) (r->type, "conn_buffer", "256", conn_buff);
-
-
 	return H_OK;
+
+err:
+
+	(hlp_functions->ptype_cleanup) (pkt_timeout);
+	(hlp_functions->ptype_cleanup) (conn_buff);
+	return H_ERR;
+
 }
 
 int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, struct layer *l) {

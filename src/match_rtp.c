@@ -21,29 +21,19 @@
 
 
 #include "match_rtp.h"
-
-#define PARAMS_NUM 1
-
-char *match_rtp_params[PARAMS_NUM][3] = {
-
-	{ "payload", "0", "payload type to match (see RFC 1890)" },
-
-};
+#include "ptype_uint8.h"
+#include "ptype_uint32.h"
 
 int match_undefined_id;
 struct match_functions *m_functions;
 struct layer_info *match_payload_info, *match_seq_info, *match_timestamp_info, *match_ssrc_info;
 
+struct ptype *field_payload, *field_ssrc;
+
 int match_register_rtp(struct match_reg *r, struct match_functions *m_funcs) {
 
-	copy_params(r->params_name, match_rtp_params, 0, PARAMS_NUM);
-	copy_params(r->params_help, match_rtp_params, 2, PARAMS_NUM);
-
-	r->init = match_init_rtp;
-	r->reconfig = match_reconfig_rtp;
 	r->identify = match_identify_rtp;
-	r->eval = match_eval_rtp;
-	r->cleanup = match_cleanup_rtp;
+	r->unregister = match_unregister_rtp;
 
 	m_functions = m_funcs;
 
@@ -54,28 +44,19 @@ int match_register_rtp(struct match_reg *r, struct match_functions *m_funcs) {
 	match_timestamp_info = (*m_funcs->layer_info_register) (r->type, "timestamp", LAYER_INFO_TYPE_UINT32);
 	match_ssrc_info = (*m_funcs->layer_info_register) (r->type, "ssrc", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
 
-	return 1;
+	field_payload = (*m_funcs->ptype_alloc) ("uint8", NULL);
+	field_ssrc = (*m_funcs->ptype_alloc) ("uint32", NULL);
 
-}
-
-int match_init_rtp(struct match *m) {
-
-	copy_params(m->params_value, match_rtp_params, 1, PARAMS_NUM);
-	return 1;
-
-}
-
-int match_reconfig_rtp(struct match *m) {
-
-	if (!m->match_priv) {
-		m->match_priv = malloc(sizeof(struct match_priv_rtp));
-		bzero(m->match_priv, sizeof(struct match_priv_rtp));
+	if (!field_payload || !field_ssrc) {
+		match_unregister_rtp(r);
+		return POM_ERR;
 	}
 
-	struct match_priv_rtp *p = m->match_priv;
+	(*m_funcs->register_param) (r->type, "payload_type", field_payload, "Payload type");
+	(*m_funcs->register_param) (r->type, "ssrc", field_ssrc, "Syncronization source");
 
+	return POM_OK;
 
-	return sscanf(m->params_value[0], "%hhu", &(p->payload_type));
 }
 
 int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
@@ -89,6 +70,9 @@ int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, uns
 		ndprint("Invalid size for RTP packet\n");
 		return -1;
 	}
+
+	PTYPE_UINT8_SETVAL(field_payload, hdr->payload_type);
+	PTYPE_UINT32_SETVAL(field_ssrc, hdr->ssrc);
 
 	match_payload_info->val.ui32 =  hdr->payload_type;
 	match_seq_info->val.ui32 = ntohs(hdr->seq_num);
@@ -116,26 +100,8 @@ int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, uns
 
 }
 	
-int match_eval_rtp(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
-
-	struct rtphdr *hdr = f->buff + start;
-	struct match_priv_rtp *mp = match->match_priv;
-
-	if (hdr->payload_type != mp->payload_type)
-		return 0;
-	
-	return 1;
-
-
-}
-
-int match_cleanup_rtp(struct match *m) {
-
-	clean_params(m->params_value, PARAMS_NUM);
-
-	if (m->match_priv)
-		free(m->match_priv);
-
-	return 1;
-
+int match_unregister_rtp(struct match_reg *r) {
+	(*m_functions->ptype_cleanup) (field_payload);
+	(*m_functions->ptype_cleanup) (field_ssrc);
+	return POM_OK;
 }

@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,13 +18,28 @@
  *
  */
 
-
-#ifndef __MATCH_UNDEFINED_H__
-#define __MATCH_UNDEFINED_H__
+#ifndef __PTYPE_UINT8_H__
+#define __PTYPE_UINT8_H__
 
 #include "modules_common.h"
-#include "match.h"
+#include "ptype.h"
 
-int match_register_undefined(struct match_reg *r, struct match_functions *m_funcs);
+/// x the struct ptype
+#define PTYPE_UINT8_GETVAL(x) 			\
+	(uint8_t) *((uint8_t*) (x)->value)
+
+/// x the struct ptype, y is the value
+#define PTYPE_UINT8_SETVAL(x, y) {	\
+	uint8_t *v = (x)->value;	\
+	*v = (y);			\
+}
+
+
+int ptype_register_uint8(struct ptype_reg *r);
+int ptype_alloc_uint8(struct ptype* p);
+int ptype_cleanup_uint8(struct ptype *p);
+int ptype_parse_uint8(struct ptype *p, char *val);
+int ptype_print_uint8(struct ptype *pt, char *val, size_t size);
+int ptype_compare_uint8(int op, void *val_a, void* val_b);
 
 #endif

@@ -20,16 +20,16 @@
 
 
 
-#include "ptype_uint32.h"
+#include "ptype_uint8.h"
 
 
-int ptype_register_uint32(struct ptype_reg *r) {
+int ptype_register_uint8(struct ptype_reg *r) {
 
-	r->alloc = ptype_alloc_uint32;
-	r->cleanup = ptype_cleanup_uint32;
-	r->parse_val = ptype_parse_uint32;
-	r->print_val = ptype_print_uint32;
-	r->compare_val = ptype_compare_uint32;
+	r->alloc = ptype_alloc_uint8;
+	r->cleanup = ptype_cleanup_uint8;
+	r->parse_val = ptype_parse_uint8;
+	r->print_val = ptype_print_uint8;
+	r->compare_val = ptype_compare_uint8;
 	
 	r->ops = PTYPE_OP_ALL;
 
@@ -37,10 +37,10 @@ int ptype_register_uint32(struct ptype_reg *r) {
 
 }
 
-int ptype_alloc_uint32(struct ptype* p) {
+int ptype_alloc_uint8(struct ptype* p) {
 
-	p->value = malloc(sizeof(uint32_t));
-	uint32_t *v = p->value;
+	p->value = malloc(sizeof(uint8_t));
+	uint8_t *v = p->value;
 	*v = 0;
 
 	return P_OK;
@@ -48,35 +48,35 @@ int ptype_alloc_uint32(struct ptype* p) {
 }
 
 
-int ptype_cleanup_uint32(struct ptype *p) {
+int ptype_cleanup_uint8(struct ptype *p) {
 
 	free(p->value);
 	return P_OK;
 }
 
 
-int ptype_parse_uint32(struct ptype *p, char *val) {
+int ptype_parse_uint8(struct ptype *p, char *val) {
 
 
-	uint32_t *v = p->value;
-	if(sscanf(val, "%u", v) == 1)
+	uint8_t *v = p->value;
+	if(sscanf(val, "%hhu", v) == 1)
 		return P_OK;
 
 	return P_ERR;
 
 };
 
-int ptype_print_uint32(struct ptype *p, char *val, size_t size) {
+int ptype_print_uint8(struct ptype *p, char *val, size_t size) {
 
-	uint32_t *v = p->value;
+	uint8_t *v = p->value;
 	return snprintf(val, size, "%u", *v);
 
 }
 
-int ptype_compare_uint32(int op, void *val_a, void* val_b) {
+int ptype_compare_uint8(int op, void *val_a, void* val_b) {
 
-	uint32_t *a = val_a;
-	uint32_t *b = val_b;
+	uint8_t *a = val_a;
+	uint8_t *b = val_b;
 
 	switch (op) {
 		case PTYPE_OP_EQUALS:

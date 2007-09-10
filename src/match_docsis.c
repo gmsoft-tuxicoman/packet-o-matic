@@ -19,29 +19,18 @@
  */
 
 #include "match_docsis.h"
-
-#define PARAMS_NUM 1
-
-char *match_docsis_params[PARAMS_NUM][3] = {
-	{ "fc_type", "0/0", "FC_TYPE to match. default : 0/0" },
-};
-
-
+#include "ptype_uint8.h"
 
 int match_atm_id, match_ethernet_id;
 struct match_functions *m_functions;
 struct layer_info *match_fc_type_info, *match_ehdr_on_info, *match_fc_parm_info;
 
+struct ptype *field_fc_type;
+
 int match_register_docsis(struct match_reg *r, struct match_functions *m_funcs) {
 
-	copy_params(r->params_name, match_docsis_params, 0, PARAMS_NUM);
-	copy_params(r->params_help, match_docsis_params, 2, PARAMS_NUM);
-
 	r->identify = match_identify_docsis;
-	r->init = match_init_docsis;
-	r->eval = match_eval_docsis;
-	r->reconfig = match_reconfig_docsis;
-	r->cleanup = match_cleanup_docsis;
+	r->unregister = match_unregister_docsis;
 
 	m_functions = m_funcs;
 	
@@ -52,36 +41,15 @@ int match_register_docsis(struct match_reg *r, struct match_functions *m_funcs) 
 	match_fc_parm_info = (*m_funcs->layer_info_register) (r->type, "fc_parm", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_ZERO);
 	match_ehdr_on_info = (*m_funcs->layer_info_register) (r->type, "ehdr_on", LAYER_INFO_TYPE_UINT32);
 
+	field_fc_type = (*m_funcs->ptype_alloc) ("uint8", NULL);
+	if (!field_fc_type)
+		return POM_ERR;
 
-	return 1;
+	(*m_funcs->register_param) (r->type, "fc_type", field_fc_type, "Frame control type");
+
+	return POM_OK;
 }
 
-int match_init_docsis(struct match *m) {
-
-	copy_params(m->params_value, match_docsis_params, 1, PARAMS_NUM);
-	return 1;
-}
-
-int match_reconfig_docsis(struct match *m) {
-
-	if (!m->match_priv) {
-		m->match_priv = malloc(sizeof(struct match_priv_docsis));
-		bzero(m->match_priv, sizeof(struct match_priv_docsis));
-	}
-
-	struct match_priv_docsis *p = m->match_priv;
-
-	if (sscanf(m->params_value[0], "%hhu/%hhu", &p->fc_type, &p->fc_type_mask) != 2) {
-		if (sscanf(m->params_value[0], "%hhu", &p->fc_type)) {
-			p->fc_type_mask = 0xff;
-		} else
-			return 0;
-	}
-	p->fc_type &= 0x3;
-	p->fc_type_mask &= 0x3;
-				
-	return 1;
-}
 
 int match_identify_docsis(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
@@ -103,6 +71,8 @@ int match_identify_docsis(struct frame *f, struct layer* l, unsigned int start, 
 
 		// TODO : process the ehdr
 	}
+
+	PTYPE_UINT8_SETVAL(field_fc_type, dhdr->fc_type);
 
 	switch (dhdr->fc_type) {
 		case FC_TYPE_PKT_MAC:
@@ -129,23 +99,8 @@ int match_identify_docsis(struct frame *f, struct layer* l, unsigned int start, 
 	return -1;
 }
 
-int match_eval_docsis(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
+int match_unregister_docsis(struct match_reg *r) {
 
-	
-	struct docsis_hdr *dhdr = f->buff + start;
-
-	struct match_priv_docsis *p =  match->match_priv;
-
-	return !((dhdr->fc_type & p->fc_type_mask) == (p->fc_type & p->fc_type_mask));
-}
-
-int match_cleanup_docsis(struct match *m) {
-
-	clean_params(m->params_value, PARAMS_NUM);
-
-	if (m->match_priv)
-		free(m->match_priv);
-
-
-	return 1;
+	(*m_functions->ptype_cleanup) (field_fc_type);
+	return POM_OK;
 }

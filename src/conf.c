@@ -27,6 +27,7 @@
 #include "match.h"
 #include "conntrack.h"
 #include "helper.h"
+#include "ptype.h"
 
 struct conf *config_alloc() {
 
@@ -151,52 +152,71 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 		if (!xmlStrcmp(cur->name, (const xmlChar *) "match")) {
 			
 			
-			char *match_type = (char *) xmlGetProp(cur, (const xmlChar*) "type");
-			if (!match_type) {
-				dprint("No type given in the match tag\n");
+			char *layer = (char *) xmlGetProp(cur, (const xmlChar*) "layer");
+			if (!layer) {
+				dprint("No layer given in the match tag\n");
 				return NULL;
 			}
-			ndprint("Parsing match of type %s\n", match_type);
-			int mt = match_register(match_type);
+			ndprint("Parsing match of layer %s\n", match_type);
+			int mt = match_register(layer);
 			if (mt == -1) {
-				dprint("Could not load match %s !\n", match_type);
-				xmlFree(match_type);
+				dprint("Could not load match %s !\n", layer);
+				xmlFree(layer);
 				return NULL;
 			}
-			struct match *mp = match_alloc(mt);
 
 			n = malloc(sizeof(struct rule_node));
 			bzero(n, sizeof(struct rule_node));
 			ndprint("Creating new rule_node\n");
+			n->layer = mt;
 
-			n->match = mp;
+			char *field = (char *) xmlGetProp(cur, (const xmlChar*) "field");
+			if (field) {
 
-			xmlNodePtr pcur = cur->xmlChildrenNode;
-			while (pcur) {
-				if (!xmlStrcmp(pcur->name, (const xmlChar*) "param")) {
-					char *param_type = (char *) xmlGetProp(pcur, (const xmlChar*) "name");
-					if (!param_type)
-						continue;
-					char *value = (char *) xmlNodeListGetString(doc, pcur->xmlChildrenNode, 1);
-					if (!value) {
-						xmlFree(param_type);
-						continue;
+				char *value = (char *) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+				if (!value) {
+					dprint("Field specified for match %s but no value given\n", layer);
+					xmlFree(field);
+				} else {
+					struct match_param *mp = match_alloc_param(mt, field);
+					if (ptype_parse_val(mp->value, value) == POM_ERR) {
+						dprint("Unable to parse value \"%s\" for field %s and match %s\n", value, field, layer);
+					} else {
+						n->match = mp;
+						char *op = (char*) xmlGetProp(cur, (const xmlChar*) "op");
+						if (!op)
+							mp->op = ptype_get_op(mp->value, "==");
+						else
+							mp->op = ptype_get_op(mp->value, op);
+						if (mp->op == P_ERR) {
+							dprint("Invalid operation %s for field %s and layer %s\n", op, field, layer);
+							free(mp);
+							n->match = NULL;
+						}
+						xmlFree(op);
+
 					}
-					if (!match_set_param(mp, param_type, value))
-						dprint("No parameter %s for match %s\n", param_type, match_type);
-
-					xmlFree(param_type);
 					xmlFree(value);
-
+					xmlFree(field);
 				}
-				pcur = pcur->next;
 			}
 
-			// Try to register corresponding conntrack and helper
-			conntrack_register(match_type);
-			helper_register(match_type);
+			char *inv = (char *) xmlGetProp(cur, (const xmlChar *)"inv");
+			if (inv) {
+				if (!strcmp(inv, "yes"))
+					n->op |= RULE_OP_NOT;
+				else if (strcmp(inv, "no"))
+					dprint("Invalid value for 'inv'. Should be either 'yes' or 'no'.\n");
 
-			xmlFree(match_type);
+			}
+					
+			xmlFree(inv);
+
+			// Try to register corresponding conntrack and helper
+			conntrack_register(layer);
+			helper_register(layer);
+
+			xmlFree(layer);
 			// Add the new node at the right place
 			if (!head)
 				head = n;
@@ -208,14 +228,40 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 			}
 
 
-		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "or")) {
+		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "node")) {
 			// This match the following
-			// <or><a>some match</a><b>some match</b></or>
+			// <node op="someop" inv="yes"><a>some match</a><b>some match</b></node>
 
 
 			n = malloc(sizeof(struct rule_node));
 			bzero(n, sizeof(struct rule_node));
 			ndprint("Creating new rule_node\n");
+
+			char *op =(char *)  xmlGetProp(cur, (const xmlChar *)"op");
+			if (op) {
+				if (!strcmp(op, "and"))
+					n->op = RULE_OP_AND;
+				else if (!strcmp(op, "or"))
+					n->op = RULE_OP_OR;
+				else {
+					dprint("Invalid operation %s for node.\n", op);
+					xmlFree(op);
+					return NULL;
+				}
+				xmlFree(op);
+			}
+
+			char *inv = (char *) xmlGetProp(cur, (const xmlChar *)"inv");
+			if (inv) {
+				if (!strcmp(inv, "yes"))
+					n->op |= RULE_OP_NOT;
+				else if (strcmp(inv, "no")) 
+					dprint("Invalid 'inv' value. Either 'yes' or 'no'\n");
+				
+					
+			}
+					
+			xmlFree(inv);
 
 			xmlNodePtr pcur = cur->xmlChildrenNode;
 

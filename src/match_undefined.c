@@ -23,7 +23,7 @@
 
 int match_register_undefined(struct match_reg *r, struct match_functions *m_funcs) {
 
-	return 1;
+	return POM_OK;
 
 }
 

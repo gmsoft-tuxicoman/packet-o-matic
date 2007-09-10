@@ -61,10 +61,6 @@ struct docsis_ehdr {
 
 };
 
-struct match_priv_docsis {
-	unsigned char fc_type;
-	unsigned char fc_type_mask;
-};
 
 // Definition of the standard types
 
@@ -82,10 +78,7 @@ struct match_priv_docsis {
 
 
 int match_register_docsis(struct match_reg *r, struct match_functions *m_funcs);
-int match_init_docsis(struct match *m);
 int match_identify_docsis(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
-int match_reconfig_docsis(struct match *m);
-int match_eval_docsis(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l);
-int match_cleanup_docsis(struct match *m);
+int match_unregister_docsis(struct match_reg *r);
 
 #endif

@@ -457,12 +457,14 @@ err:
 	conntrack_cleanup();
 	timers_cleanup();
 	target_cleanup();
-	match_cleanup();
 
 	mgmtsrv_cleanup();
 
 	target_unregister_all();
+	
 	match_unregister_all();
+	match_cleanup();
+
 	conntrack_unregister_all();
 	input_unregister_all();
 	ptype_unregister_all();

@@ -28,24 +28,8 @@
 #include <netinet/in.h>
 #include <netinet/ip6.h>
 
-
-struct match_priv_ipv6 {
-
-	struct in6_addr saddr;
-	unsigned char snetmask[16];
-	struct in6_addr daddr;
-	unsigned char dnetmask[16];
-	unsigned int flabel;
-	unsigned int flabelmask;
-};
-
-
 int match_register_ipv6(struct match_reg *r, struct match_functions *m_funcs);
-int match_init_ipv6(struct match *m);
-int match_reconfig_ipv6(struct match *m);
 int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
-int match_eval_ipv6(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l);
-int match_cleanup_ipv6(struct match *m);
 int match_unregister_ipv6(struct match_reg *r);
 
 int match_layer_info_snprintf_ipv6(char *buff, unsigned int len, struct layer_info *inf);

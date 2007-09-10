@@ -175,11 +175,13 @@ int mgmtcmd_load_helper(struct mgmt_connection *c, int argc, char *argv[]) {
 		return MGMT_OK;
 	}
 
+	reader_process_lock();
 	if (helper_register(argv[0]) != H_ERR) {
 		mgmtsrv_send(c, "Helper registered successfully\r\n");
 	} else {
 		mgmtsrv_send(c, "Error while loading helper\r\n");
 	}
+	reader_process_unlock();
 	
 	return MGMT_OK;
 

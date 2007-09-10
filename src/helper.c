@@ -99,7 +99,7 @@ int helper_register(const char *helper_name) {
 
 }
 
-int helper_register_param(int helper_type, char *name, char *defval, struct ptype *value) {
+int helper_register_param(int helper_type, char *name, char *defval, struct ptype *value, char *descr) {
 
 	if (!helpers[helper_type])
 		return H_ERR;
@@ -110,6 +110,8 @@ int helper_register_param(int helper_type, char *name, char *defval, struct ptyp
 	strcpy(p->name, name);
 	p->defval = malloc(strlen(defval) + 1);
 	strcpy(p->defval, defval);
+	p->descr = malloc(strlen(descr) + 1);
+	strcpy(p->descr, descr);
 	p->value = value;
 
 	// Store the default value in the ptype
@@ -172,6 +174,7 @@ int helper_unregister(int helper_type) {
 		while (helpers[helper_type]->params) {
 			free(helpers[helper_type]->params->name);
 			free(helpers[helper_type]->params->defval);
+			free(helpers[helper_type]->params->descr);
 			struct helper_param *next = helpers[helper_type]->params->next;
 			free(helpers[helper_type]->params);
 			helpers[helper_type]->params = next;

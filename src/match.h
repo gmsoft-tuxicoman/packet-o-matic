@@ -35,39 +35,53 @@ struct match {
 	char **params_value; ///< values of the parameters
 };
 
+/// Contains info about the possible parameters for this match
+struct match_param_reg {
+	char *name; ///< name of the parameter
+	struct ptype *value; ///< value against which we must compare
+	char *descr; ///< description of the parameter
+	struct match_param_reg *next;
+
+};
+
 /// save infos about a registered match
 struct match_reg {
 
 	char *name; ///< name of the match
 	unsigned int type; ///< type of the match
+	struct match_param_reg *params; ///< possible parameters for the match
 	void *dl_handle; ///< handle of the library
-	char **params_name; ///< parameter names
-	char **params_help; ///< parameter help string
-	int (*init) (struct match *m); ///< called when creating a new match
-	int (*reconfig) (struct match *m); ///< called when parameters were updated
 	int (*identify) (struct frame *f, struct layer*, unsigned int, unsigned int); ///< callled to identify the next layer of a packet
-	int (*eval) (struct match*, struct frame*, unsigned int, unsigned int, struct layer*); ///< called to check if the packet match what we want
-	int (*cleanup) (struct match *m); ///< called when cleaning up the memory of the match
 	int (*unregister) (struct match_reg *r); ///< called when unregistering the match
+
+};
+
+/// save info about a parameter
+struct match_param {
+	struct match_param_reg* field; ///< Field against which we should compare
+	struct ptype *value; ///< Value that we should compare with
+	int op; ///< Operator on the value
 
 };
 
 /// provide usefull fonction pointers to the inputs
 struct match_functions {
 	int (*match_register) (const char *); ///< register a match
+	int (*register_param) (int match_type, char *name, struct ptype *value, char *descr); ///< register a parameter for this match
+	struct ptype* (*ptype_alloc) (const char* type, char* unit);
+	int (*ptype_cleanup) (struct ptype* p);
 	struct layer_info* (*layer_info_register) (unsigned int match_type, char *name, unsigned int flags); ///< add an info to a layer
 };
 
 int match_init();
 int match_register(const char *match_name);
+int match_register_param(int match_type, char *name, struct ptype *value, char *descr);
+struct match_param *match_alloc_param(int match_type, char *param_type);
+int match_cleanup_param(struct match_param *p);
 int match_get_type(const char *match_name);
 char *match_get_name(int match_type);
-struct match *match_alloc(int match_type);
-int match_set_param(struct match *m, char *name, char *value);
 int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigned int len);
-/// Evaluate the packet against the current match
-int match_eval(struct match* m, struct frame *f, unsigned int start, unsigned int len, struct layer *l);
-int match_cleanup_module(struct match *m);
+int match_eval(struct match_param *mp);
 int match_cleanup();
 int match_unregister(unsigned int match_type);
 int match_unregister_all();

@@ -28,10 +28,10 @@
 #define PTYPE_UINT32_GETVAL(x) 			\
 	(uint32_t) *((uint32_t*) (x)->value)
 
-/// x is the value, y the struct ptype
+/// x is the struct ptype, y the value
 #define PTYPE_UINT32_SETVAL(x, y) {	\
-	uint32_t *v = (y)->value;	\
-	*v = (x);			\
+	uint32_t *v = (x)->value;	\
+	*v = (y);			\
 }
 
 
@@ -40,6 +40,7 @@ int ptype_alloc_uint32(struct ptype* p);
 int ptype_cleanup_uint32(struct ptype *p);
 int ptype_parse_uint32(struct ptype *p, char *val);
 int ptype_print_uint32(struct ptype *pt, char *val, size_t size);
+int ptype_compare_uint32(int op, void *val_a, void* val_b);
 
 
 #endif

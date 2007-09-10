@@ -22,31 +22,18 @@
 #include "match_tcp.h"
 #include <netinet/tcp.h>
 
-
-#define PARAMS_NUM 2
-
-char *match_tcp_params[PARAMS_NUM][3] = {
-
-	{ "sport", "1:65535", "source port or port range"},
-	{ "dport", "1:65535", "destination port or port range"},
-
-};
-
+#include "ptype_uint16.h"
 
 int match_undefined_id;
 struct match_functions *m_functions;
 struct layer_info *match_sport_info, *match_dport_info, *match_flags_info, *match_seq_info, *match_ack_info, *match_win_info;
 
+struct ptype *field_sport, *field_dport;
+
 int match_register_tcp(struct match_reg *r, struct match_functions *m_funcs) {
 
-	copy_params(r->params_name, match_tcp_params, 0, PARAMS_NUM);
-	copy_params(r->params_help, match_tcp_params, 2, PARAMS_NUM);
-
-	r->init = match_init_tcp;
-	r->reconfig = match_reconfig_tcp;
 	r->identify = match_identify_tcp;
-	r->eval = match_eval_tcp;
-	r->cleanup = match_cleanup_tcp;
+	r->unregister = match_unregister_tcp;
 
 	m_functions = m_funcs;
 
@@ -60,41 +47,20 @@ int match_register_tcp(struct match_reg *r, struct match_functions *m_funcs) {
 	match_ack_info = (*m_funcs->layer_info_register) (r->type, "ack", LAYER_INFO_TYPE_UINT32);
 	match_win_info = (*m_funcs->layer_info_register) (r->type, "win", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_ZERO);
 
-	return 1;
+	field_sport = (*m_funcs->ptype_alloc) ("uint16", NULL);
+	field_dport = (*m_funcs->ptype_alloc) ("uint16", NULL);
+	if (!field_sport || !field_dport) {
+		match_unregister_tcp(r);
+		return POM_ERR;
+	}
+
+	(*m_funcs->register_param) (r->type, "sport", field_sport, "Source port");
+	(*m_funcs->register_param) (r->type, "dport", field_dport, "Destination port");
+
+	return POM_OK;
 
 }
 
-int match_init_tcp(struct match *m) {
-
-	copy_params(m->params_value, match_tcp_params, 1, PARAMS_NUM);
-	return 1;
-
-}
-
-int match_reconfig_tcp(struct match *m) {
-
-	if (!m->match_priv) {
-		m->match_priv = malloc(sizeof(struct match_priv_tcp));
-		bzero(m->match_priv, sizeof(struct match_priv_tcp));
-	}
-
-	struct match_priv_tcp *p = m->match_priv;
-	if (sscanf(m->params_value[0], "%hu:%hu", &p->sport_min, &p->sport_max) != 2) {
-		if (sscanf(m->params_value[0], "%hu", &p->sport_min)) {
-			p->sport_max = p->sport_min;
-		} else
-			return 0;
-	}
-	if (sscanf(m->params_value[1], "%hu:%hu", &p->dport_min, &p->dport_max) != 2) {
-		if (sscanf(m->params_value[1], "%hu", &p->dport_min)) {
-			p->dport_max = p->dport_min;
-		} else
-			return 0;
-	}
-
-
-	return 1;
-}
 
 int match_identify_tcp(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
@@ -111,41 +77,10 @@ int match_identify_tcp(struct frame *f, struct layer* l, unsigned int start, uns
 	match_ack_info->val.ui32 = ntohl(hdr->th_ack);
 	match_win_info->val.ui32 = ntohs(hdr->th_win);
 
+	PTYPE_UINT16_SETVAL(field_sport, ntohs(hdr->th_sport));
+	PTYPE_UINT16_SETVAL(field_dport, ntohs(hdr->th_dport));
+
 	return match_undefined_id;
-
-}
-
-int match_eval_tcp(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
-	
-	struct tcphdr* hdr = f->buff + start;
-	
-	unsigned short sport = ntohs(hdr->th_sport);
-	unsigned short dport = ntohs(hdr->th_dport);
-
-	struct match_priv_tcp *mp = match->match_priv;
-
-	ndprint("sport : min-max, value : %u-%u, %u\n", mp->sport_min, mp->sport_max, sport);
-	if (sport < mp->sport_min || sport > mp->sport_max)
-		return 0;
-
-	ndprint("dport : min-max, value : %u-%u, %u\n", mp->dport_min, mp->dport_max, dport);
-	if (dport < mp->dport_min || dport > mp->dport_max)
-		return 0;
-
-	
-	return 1;
-
-
-}
-
-int match_cleanup_tcp(struct match *m) {
-
-	clean_params(m->params_value, PARAMS_NUM);
-
-	if (m->match_priv)
-		free(m->match_priv);
-
-	return 1;
 
 }
 
@@ -193,4 +128,10 @@ int match_layer_info_snprintf_tcp(char *buff, unsigned int len, struct layer_inf
 	return strlen(buff);
 }
 
+int match_unregister_tcp(struct match_reg *r) {
 
+	(*m_functions->ptype_cleanup) (field_sport);
+	(*m_functions->ptype_cleanup) (field_dport);
+	return POM_OK;
+
+}

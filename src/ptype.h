@@ -18,6 +18,8 @@
  *
  */
 
+#ifndef __PTYPE_H__
+#define __PTYPE_H__
 
 #include <unistd.h>
 
@@ -25,28 +27,28 @@
 
 #define P_ERR -1
 
-struct ptype_predef_vals {
 
-	char *value;
-	struct ptype_predef_vals *next;
+#define PTYPE_OP_EQUALS	0x01
+#define PTYPE_OP_GT	0x02
+#define PTYPE_OP_GE	0x04
+#define PTYPE_OP_LT	0x08
+#define PTYPE_OP_LE	0x10
 
-};
+#define PTYPE_OP_ALL	0x1f
 
-#define PTYPE_MAX_DESCR 254
-#define PTYPE_MAX_UNIT 30
+#define PTYPE_MAX_UNIT 15
 
 
 struct ptype {
 	int type;
-	char descr[PTYPE_MAX_DESCR + 1];
 	char unit[PTYPE_MAX_UNIT + 1];
-	struct ptype_predef_vals predefs;
 	void *value;
 };
 
 struct ptype_reg {
 
 	char *name;
+	int ops; ///< operation handled by this ptype
 	void *dl_handle; ///< handle of the library
 	int (*alloc) (struct ptype*);
 	int (*cleanup) (struct ptype*);
@@ -54,14 +56,18 @@ struct ptype_reg {
 	int (*parse_val) (struct ptype *pt, char *val);
 	int (*print_val) (struct ptype *pt, char *val, size_t size);
 
+	int (*compare_val) (int op, void* val_a, void* val_b);
 };
 
 int ptype_init(void);
 int ptype_register(const char *ptype_name);
-struct ptype* ptype_alloc(const char* type, char *descr, char* unit);
+struct ptype* ptype_alloc(const char* type, char* unit);
+struct ptype* ptype_alloc_from(struct ptype *pt);
 int ptype_parse_val(struct ptype *pt, char *val);
 int ptype_print_val(struct ptype *pt, char *val, size_t size);
+int ptype_get_op(struct ptype *pt, char *op);
+int ptype_compare_val(int op, struct ptype *a, struct ptype *b);
 int ptype_cleanup_module(struct ptype* p);
 int ptype_unregister_all(void);
 
-
+#endif

@@ -23,12 +23,17 @@
 #ifndef __RULES_H__
 #define __RULES_H__
 
+#define RULE_OP_AND	0x1
+#define RULE_OP_OR	0x2
+#define RULE_OP_NOT	0x4
 
 /// a rule_node containes two next node and a possible match
 struct rule_node {
 	struct rule_node *a; ///< next rule to match
 	struct rule_node *b; ///< possible other rule to match
-	struct match *match; ///< how to match the current rule
+	unsigned int op; ///< operator (and, or, not)
+	unsigned int layer; ///< ignore if op != 0
+	struct match_param *match; ///< how to match the current rule
 
 };
 

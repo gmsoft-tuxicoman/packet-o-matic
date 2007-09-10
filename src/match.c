@@ -21,7 +21,7 @@
 
 #include "common.h"
 #include "match.h"
-
+#include "ptype.h"
 
 struct match_reg *matchs[MAX_MATCH];
 static struct match_functions *m_funcs;
@@ -45,7 +45,7 @@ int match_register(const char *match_name) {
 			register_my_match = lib_get_register_func("match", match_name, &handle);
 			
 			if (!register_my_match) {
-				return -1;
+				return POM_ERR;
 			}
 
 			struct match_reg *my_match = malloc(sizeof(struct match_reg));
@@ -58,12 +58,12 @@ int match_register(const char *match_name) {
 
 			my_match->type = i; // Allow the match to know it's number at registration time
 
-			if (!(*register_my_match) (my_match, m_funcs)) {
+			if ((*register_my_match) (my_match, m_funcs) != POM_OK) {
 				dprint("Error while loading match %s. Could not register match !\n", match_name);
 				free(my_match->name);
 				free(my_match);
 				matchs[i] = NULL;
-				return -1;
+				return POM_ERR;
 			}
 
 			matchs[i]->dl_handle = handle;
@@ -77,8 +77,68 @@ int match_register(const char *match_name) {
 
 	}
 
-	return -1;
+	return POM_ERR;
 
+}
+
+int match_register_param(int match_type, char *name, struct ptype *value, char *descr) {
+
+	if (!matchs[match_type])
+		return POM_ERR;
+
+	struct match_param_reg *p = malloc(sizeof(struct match_param_reg));
+	bzero(p, sizeof(struct match_param_reg));
+	p->value = value;
+
+	p->name = malloc(strlen(name) + 1);
+	strcpy(p->name, name);
+	p->descr = malloc(strlen(descr) + 1);
+	strcpy(p->descr, descr);
+
+	p->next = matchs[match_type]->params;
+	matchs[match_type]->params = p;
+
+	return POM_OK;
+
+}
+
+struct match_param *match_alloc_param(int match_type, char *param_type) {
+
+
+	if (!matchs[match_type])
+		return NULL;
+
+	struct match_param_reg *p = matchs[match_type]->params;
+	while (p) {
+		if (!strcmp(p->name, param_type))
+			break;
+		p = p->next;
+	}
+
+	if (!p)
+		return NULL;
+	
+	struct match_param *ret;
+	ret = malloc(sizeof(struct match_param));
+	bzero(ret, sizeof(struct match_param));
+
+
+	ret->value = ptype_alloc_from(p->value);
+	if (!ret->value) {
+		free(ret);
+		return NULL;
+	}
+
+	ret->field = p;
+	return ret;
+}
+
+int match_cleanup_param(struct match_param *p) {
+
+	ptype_cleanup_module(p->value);
+	free(p);
+
+	return POM_OK;
 }
 
 int match_init() {
@@ -88,8 +148,11 @@ int match_init() {
 	m_funcs = malloc(sizeof(struct match_functions));
 	m_funcs->match_register = match_register;
 	m_funcs->layer_info_register = layer_info_register;
+	m_funcs->register_param = match_register_param;
+	m_funcs->ptype_alloc = ptype_alloc;
+	m_funcs->ptype_cleanup = ptype_cleanup_module;
 
-	return 1;
+	return POM_OK;
 }
 
 char *match_get_name(int match_type) {
@@ -110,56 +173,13 @@ int match_get_type(const char *match_name) {
 			return i;
 	}
 
-	return -1;
+	return POM_ERR;
 }
 
-struct match *match_alloc(int match_type) {
-
-
-	if (!matchs[match_type]) {
-		dprint("Match type %u is not registered\n", match_type);
-		return NULL;
-	}
-
-	struct match *m = malloc(sizeof(struct match));
-	bzero(m, sizeof(struct match));
-
-	m->type = match_type;
-	
-	if (matchs[match_type]->init)
-		if (!(*matchs[match_type]->init) (m)) {
-			free(m);
-			return NULL;
-		}
-	return m;
-}
-
-int match_set_param(struct match *m, char *name, char *value) {
-
-	if (!matchs[m->type]->params_name)
-		return 0;
-
-	int i;
-	for (i = 0; matchs[m->type]->params_name[i]; i++) {
-		if (!strcmp(matchs[m->type]->params_name[i], name)) {
-			free(m->params_value[i]);
-			m->params_value[i] = malloc(strlen(value) + 1);
-			strcpy(m->params_value[i], value);
-			if(matchs[m->type]->reconfig) {
-				if (!(*matchs[m->type]->reconfig) (m)) {
-					dprint("Unable to parse parameter %s (%s) for match %s\n", matchs[m->type]->params_name[i], m->params_value[i], matchs[m->type]->name);
-					return 0;
-				}	
-			}
-			return 1;
-		}
-	}
-
-	dprint("No parameter %s for match %s\n", matchs[m->type]->params_name[i], matchs[m->type]->name);
-
-	return 0;
-
-}
+/**
+ * Identify the next layer of this frame.
+ * Returns the next layer that has been identified.
+ **/
 
 int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigned int len) {
 	
@@ -171,39 +191,16 @@ int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigne
 }
 
 /**
- * Parameters :
- *  - m : the match to compare with
- *  - f : the packet and it's corresponding info
- *  - start : the position of the current match header start in the packet
- *  - len : the lenght of the current match header and it's payload
- *  - l : the current layer
+ * Evaluate a parameter to match a packet.
+ * This must be used after match_identify() identified the whole packet
  **/
 
-int match_eval(struct match *m, struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
+int match_eval(struct match_param *mp) {
 
-	if (matchs[m->type]->eval)
-		return (*matchs[m->type]->eval) (m, f, start, len, l);
-	else
-		return 1;
-
-}
-
-
-int match_cleanup_module(struct match *m) {
-
-	if (!m)
-		return 0;
-
-	if (matchs[m->type] && matchs[m->type]->cleanup)
-		(*matchs[m->type]->cleanup) (m);
+	return ptype_compare_val(mp->op, mp->field->value, mp->value);
 	
-
-	free(m);
-
-
-	return 1;
-
 }
+
 
 int match_cleanup() {
 
@@ -211,7 +208,7 @@ int match_cleanup() {
 		free(m_funcs);
 	m_funcs = NULL;
 
-	return 1;
+	return POM_OK;
 }
 
 
@@ -220,20 +217,20 @@ int match_unregister(unsigned int match_type) {
 	struct match_reg *r = matchs[match_type];
 
 	if (!r)
-		return 0;
+		return POM_ERR;
+
+	while (r->params) {
+		struct match_param_reg *tmp = r->params;
+		free(tmp->name);
+		free(tmp->descr);
+		r->params = tmp->next;
+		free(tmp);
+
+	}
 
 	if (r->unregister)
 		(*r->unregister) (r);
 	
-	if (r->params_name) {
-		int i;
-		for (i = 0; r->params_name[i]; i++) {
-			free(r->params_name[i]);
-			free(r->params_help[i]);
-		}
-		free(r->params_name);
-		free(r->params_help);
-	}
 	if (dlclose(r->dl_handle))
 		dprint("Error while closing library of match %s\n", r->name);
 	free(r->name);
@@ -241,7 +238,7 @@ int match_unregister(unsigned int match_type) {
 
 	matchs[match_type] = NULL;
 
-	return 1;
+	return POM_OK;
 }
 
 int match_unregister_all() {
@@ -251,24 +248,28 @@ int match_unregister_all() {
 	for (; i < MAX_MATCH && matchs[i]; i++)
 		match_unregister(i);
 
-	return 1;
+	return POM_OK;
 
 }
 
 void match_print_help() {
 
-	int i, j;
+	int i;
 
 
 	for (i = 0; matchs[i]; i++) {
 		printf("* MATCH %s *\n", matchs[i]->name);
-
-		if (!matchs[i]->params_name) 
+		
+		if (!matchs[i]->params)
 			printf("No parameter for this match\n");
-		else
-			for (j = 0; matchs[i]->params_name[j]; j++)
-				printf("%s : %s\n", matchs[i]->params_name[j], matchs[i]->params_help[j]);
-
+		else {
+			struct match_param_reg *p;
+			p = matchs[i]->params;
+			while (p) {
+				printf("%s : %s\n", p->name, p->descr);
+				p = p->next;
+			}
+		}
 		printf("\n");
 	}
 }

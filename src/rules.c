@@ -63,13 +63,11 @@ int node_match(struct frame *f, struct rule_node *n, struct layer *l) {
 	if (!l)
 		return 0;
 
-	struct match *m = n->match;
-
 	int result = 1;
 
 	struct layer *next_layer = l->next;
 
-	if (m) {
+	if ((n->op & ~RULE_OP_NOT) == 0) {
 
 		// The current layer is not identified. Let's see if we can match with the current match type
 		if (l->type == match_undefined_id) {
@@ -78,7 +76,7 @@ int node_match(struct frame *f, struct rule_node *n, struct layer *l) {
 				return 0;
 			}
 			unsigned int next_layer;
-			l->type = m->type;
+			l->type = n->layer;
 			next_layer = match_identify(f, l, l->prev->payload_start, l->prev->payload_size);
 			if (next_layer < 0) {
 				// restore the original value
@@ -107,17 +105,18 @@ int node_match(struct frame *f, struct rule_node *n, struct layer *l) {
 
 
 		// Check if the rule correspond to what we identified
-		if (l->type != m->type)
-			return 0;
-
-		if (m->match_priv) {
-			if (l->prev)
-				result = match_eval(m, f, l->prev->payload_start, l->prev->payload_size, l);
-			else
-				result = match_eval(m, f, 0 , f->len, l);
+		if (l->type != n->layer) {
+			// if there is a field to match, we apply the not operation on the field and not on the type
+			if (n->match)
+				return 0;
+			return (n->op & RULE_OP_NOT);
 		}
 
-	} else { // If there is no match, it means this node is a 'or' operation
+		if (n->match) {
+			result = match_eval(n->match);
+		}
+
+	} else { // If there is an operation specified, it means this node is a 'or' or 'and' operation
 		next_layer = l;
 	}
 
@@ -125,18 +124,33 @@ int node_match(struct frame *f, struct rule_node *n, struct layer *l) {
 		return 0; // It doesn't match
 
 	if (!n->a)
-		return 1; // There is nothing else to match
+		return !(n->op & RULE_OP_NOT); // There is nothing else to match
 
 
 
 
-	if (!n->b) // There is only one next node
-		return node_match(f, n->a, next_layer);
+	if (!n->b) { // There is only one next node
+		if (n->op & RULE_OP_NOT)
+			return !node_match(f, n->a, next_layer);
+		else
+			return node_match(f, n->a, next_layer);
+	}
 
 
 	// there is two node, let's see if we match one of them
-	return node_match(f, n->a, next_layer) && node_match(f, n->b, next_layer);
+	if (n->op & RULE_OP_OR)
+		result = node_match(f, n->a, next_layer) || node_match(f, n->b, next_layer);
+	else if (n->op & RULE_OP_AND)
+		result = node_match(f, n->a, next_layer) && node_match(f, n->b, next_layer);
+	else {
+		dprint("Invalid rule specified for node with two subnodes.\n");
+		return 0;
+	}
 
+	if (n->op & RULE_OP_NOT)
+		return !result;
+
+	return result;
 }
 
 int do_rules(struct frame *f, struct rule_list *rules) {
@@ -273,7 +287,7 @@ int node_destroy(struct rule_node *node, int sub) {
 
 	// We have to check for both nodes
 
-	if (node->a && !node->a->match && !node->a->b) {
+	if (node->a && node->a->op == 0 && !node->a->b) {
 		int i = 0;
 		for (i = 0; i < done; i++)
 			if (done_stack[i] == node->a)
@@ -281,7 +295,7 @@ int node_destroy(struct rule_node *node, int sub) {
 
 	}
 
-	if (node->b && !node->b->match && !node->b->b) {
+	if (node->b && node->b->op == 0 && !node->b->b) {
 		int i = 0;
 		for (i = 0; i < done; i++)
 			if (done_stack[i] == node->b)
@@ -289,9 +303,7 @@ int node_destroy(struct rule_node *node, int sub) {
 
 	}
 
-	if (node->match)
-		match_cleanup_module(node->match);
-	else {
+	if (node->op == 0) {
 		done_stack = realloc(done_stack, sizeof(struct rule_node*) * (done + 1));
 		done_stack[done] = node;
 		done++;
@@ -303,7 +315,9 @@ int node_destroy(struct rule_node *node, int sub) {
 
 	if (node->b)
 		node_destroy(node->b, 1);
-	
+
+	if (node->match)
+		match_cleanup_param(node->match);
 	free(node);
 
 	if (!sub && done_stack) {

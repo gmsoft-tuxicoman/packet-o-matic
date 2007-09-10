@@ -55,7 +55,7 @@ int ptype_register(const char *ptype_name) {
 			register_my_ptype = lib_get_register_func("ptype", ptype_name, &handle);
 
 			if (!register_my_ptype) {
-				return -1;
+				return P_ERR;
 			}
 
 			struct ptype_reg *my_ptype = malloc(sizeof(struct ptype_reg));
@@ -64,7 +64,7 @@ int ptype_register(const char *ptype_name) {
 			
 			if ((*register_my_ptype) (my_ptype) != P_OK) {
 				dprint("Error while loading ptype %s. could not register ptype !\n", ptype_name);
-				return -1;
+				return P_ERR;
 			}
 
 
@@ -84,7 +84,7 @@ int ptype_register(const char *ptype_name) {
 }
 
 
-struct ptype* ptype_alloc(const char* type, char *descr, char* unit) {
+struct ptype* ptype_alloc(const char* type, char* unit) {
 
 	int idx = ptype_register(type);
 
@@ -98,10 +98,27 @@ struct ptype* ptype_alloc(const char* type, char *descr, char* unit) {
 	ret->type = idx;
 	ptypes[idx]->alloc(ret);
 
-	strncpy(ret->descr, descr, PTYPE_MAX_DESCR);
-	strncpy(ret->unit, unit, PTYPE_MAX_UNIT);
+	if (unit)
+		strncpy(ret->unit, unit, PTYPE_MAX_UNIT);
 
 	return ret;
+}
+
+struct ptype* ptype_alloc_from(struct ptype *pt) {
+
+	if (!ptypes[pt->type])
+		return NULL;
+
+	struct ptype *ret = malloc(sizeof(struct ptype));
+	bzero(ret, sizeof(struct ptype));
+	ret->type = pt->type;
+	ptypes[pt->type]->alloc(ret);
+
+	if (pt->unit)
+		strncpy(ret->unit, pt->unit, PTYPE_MAX_UNIT);
+
+	return ret;
+
 }
 
 int ptype_parse_val(struct ptype *pt, char *val) {
@@ -112,6 +129,38 @@ int ptype_parse_val(struct ptype *pt, char *val) {
 int ptype_print_val(struct ptype *pt, char *val, size_t size) {
 
 	return ptypes[pt->type]->print_val(pt, val, size);
+}
+
+int ptype_get_op(struct ptype *pt, char *op) {
+
+	int o = 0;
+
+	if (!strcmp(op, "eq") || !strcmp(op, "==") || !strcmp(op, "equals"))
+		o = PTYPE_OP_EQUALS;
+	else if (!strcmp(op, "gt") || !strcmp(op, ">")) 
+		o = PTYPE_OP_GT;
+	else if (!strcmp(op, "ge") || !strcmp(op, ">=")) 
+		o = PTYPE_OP_GE;
+	else if (!strcmp(op, "lt") || !strcmp(op, "<")) 
+		o = PTYPE_OP_LT;
+	else if (!strcmp(op, "le") || !strcmp(op, "<=")) 
+		o = PTYPE_OP_LE;
+
+	if (ptypes[pt->type]->ops & o)
+		return o;
+
+	dprint("Invalid operation %s for ptype %s.\n", op, ptypes[pt->type]->name);
+	return P_ERR;
+}
+
+int ptype_compare_val(int op, struct ptype *a, struct ptype *b) {
+	
+	if (a->type != b->type) {
+		dprint("Cannot compare ptypes, type differs. What about you try not to compare pears with apples ...\n");
+		return 0; // false
+	}
+	return (*ptypes[a->type]->compare_val) (op, a->value, b->value);
+
 }
 
 

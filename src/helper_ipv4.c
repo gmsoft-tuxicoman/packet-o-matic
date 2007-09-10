@@ -48,11 +48,10 @@ int helper_register_ipv4(struct helper_reg *r, struct helper_functions *hlp_func
 	hlp_functions = hlp_funcs;
 	frags_head = NULL;
 
-	frag_timeout = (*hlp_funcs->ptype_alloc) ("uint32", "Number of seconds to wait for subsequent packets", "seconds");
+	frag_timeout = (*hlp_funcs->ptype_alloc) ("uint32", "seconds");
 	if (!frag_timeout)
 		return H_ERR;
-
-	(*hlp_funcs->register_param) (r->type, "frag_timeout", "60", frag_timeout);
+	(*hlp_funcs->register_param) (r->type, "frag_timeout", "60", frag_timeout, "Number of seconds to wait for subsequent packets");
 
 	return H_OK;
 }

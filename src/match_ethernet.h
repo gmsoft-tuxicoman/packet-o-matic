@@ -26,23 +26,8 @@
 #include "modules_common.h"
 #include "match.h"
 
-struct match_priv_ethernet {
-
-	unsigned char smac[6];
-	unsigned char smac_mask[6];
-	unsigned char dmac[6];
-	unsigned char dmac_mask[6];
-	unsigned char proto[2];
-	unsigned char proto_mask[2];
-	
-};
-
 int match_register_ethernet(struct match_reg *r, struct match_functions *m_funcs);
-int match_init_ethernet(struct match *m);
-int match_reconfig_ethernet(struct match *m);
 int match_identify_ethernet(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
-int match_eval_ethernet(struct match* match, struct frame *f, unsigned int start, unsigned int len, struct layer *l);
-int match_cleanup_ethernet(struct match *m);
 int match_unregister_ethernet(struct match_reg *r);
 
 int match_layer_info_snprintf_ethernet(char *buff, unsigned int len, struct layer_info *inf);
