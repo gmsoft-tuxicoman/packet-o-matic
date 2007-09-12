@@ -281,6 +281,7 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 			struct rule_node *tmpn, *nextn;
 			nextn = malloc(sizeof(struct rule_node));
 			bzero(nextn, sizeof(struct rule_node));
+			nextn->op = RULE_OP_TAIL;
 
 			if (n->a && n->b) {  // both matched
 				tmpn = n->a;

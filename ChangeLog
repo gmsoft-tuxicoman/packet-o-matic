@@ -1,3 +1,9 @@
+* 2007/09/12 Guy Martin <gmsoft@tuxicoman.be>
+Added RULE_OP_TAIL to find easily when two branch of 'or' or 'and' merge.
+Added ptype_get_op_name() to return a string representation of the comparison operation.
+Added command "help" and "show rules" in the management interface.
+Fixed example config.
+
 * 2007/09/10 Guy Martin <gmsoft@tuxicoman.be>
 Changed the match to use ptypes.
 Configuration of the match changed. See updated pom.xml.conf.example.

@@ -29,6 +29,8 @@
 
 #include <errno.h>
 
+struct mgmt_command *cmds;
+
 
 /// Return value in case of error
 #define MGMT_ERR -1

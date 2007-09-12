@@ -35,8 +35,6 @@
 struct mgmt_connection *conn_head;
 struct mgmt_connection *conn_tail;
 
-struct mgmt_command *cmds;
-
 int mgmtsrv_init() {
 
 

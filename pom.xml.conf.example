@@ -50,7 +50,7 @@
 				<match layer="ipv4"/>
 				<match layer="ipv6"/>
 			</b>
-		</or>
+		</node>
 		<!-- after the network layer, we add the connection layer -->
 		<!-- match only tcp packets which destination port greater than 1234-->
 		<match layer="tcp" field="dport" op="gt">1234</match>
@@ -70,9 +70,9 @@
 		<match layer="ipv4"/>
 		<!-- match all the traffic to port 12345 and dport less or equal to 3333 -->
 		<node op="and">
-			<a><match layer="tcp" field="sport">12345</param></a>
-			<b><match layer="tcp" field="dport" op="le">3333</param></b>
-		</match>
+			<a><match layer="tcp" field="sport">12345</match></a>
+			<b><match layer="tcp" field="dport" op="le">3333</match></b>
+		</node>
 	</matches>
 </rule>
 

@@ -153,6 +153,23 @@ int ptype_get_op(struct ptype *pt, char *op) {
 	return P_ERR;
 }
 
+char *ptype_get_op_name(int op) {
+	switch (op) {
+		case PTYPE_OP_EQUALS:
+			return "==";
+		case PTYPE_OP_GT:
+			return ">";
+		case PTYPE_OP_GE:
+			return ">=";
+		case PTYPE_OP_LT:
+			return "<";
+		case PTYPE_OP_LE:
+			return "<=";
+
+	}
+	return NULL;
+}
+
 int ptype_compare_val(int op, struct ptype *a, struct ptype *b) {
 	
 	if (a->type != b->type) {

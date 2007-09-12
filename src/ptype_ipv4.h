@@ -18,17 +18,36 @@
  *
  */
 
-#ifndef __MGMTCMD_H__
-#define __MGMTCMD_H__
+#ifndef __PTYPE_IPV4_H__
+#define __PTYPE_IPV4_H__
 
-int mgmtcmd_register_all();
-int mgmtcmd_exit(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_help(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_show_license(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_show_helpers(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_load_helper(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_set_helper_param(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_unload_helper(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]);
+#include "modules_common.h"
+#include "ptype.h"
+
+
+struct ptype_ipv4_val {
+	struct in_addr addr;
+	unsigned char mask;
+};
+
+
+/// x is the struct ptype
+#define PTYPE_IPV4_GETADDR(x) \
+	((struct ptype_ipv4_val*) x)->addr
+
+/// x is the struct ptype, y the ipv4
+#define PTYPE_IPV4_SETADDR(x, y) { \
+	struct ptype_ipv4_val *v = (x)->value; \
+	memcpy(&v->addr, &y, sizeof(struct in_addr)); \
+}
+
+
+
+int ptype_register_ipv4(struct ptype_reg *r);
+int ptype_alloc_ipv4(struct ptype* p);
+int ptype_cleanup_ipv4(struct ptype *p);
+int ptype_parse_ipv4(struct ptype *p, char *val);
+int ptype_print_ipv4(struct ptype *pt, char *val, size_t size);
+int ptype_compare_ipv4(int op, void *val_a, void *val_b);
 
 #endif

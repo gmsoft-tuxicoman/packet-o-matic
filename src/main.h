@@ -22,6 +22,10 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__
 
+#include "conf.h"
+
+struct conf *main_config;
+
 struct input_thread_params {
 	struct input *i; ///< The input we want to read from
 	int input_is_live; ///< If the input isn't live, we don't need to drop packets in case of overflow in buffer

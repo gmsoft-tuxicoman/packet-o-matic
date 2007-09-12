@@ -253,9 +253,9 @@ int main(int argc, char *argv[]) {
 	ptype_init();
 
 
-	struct conf *c = config_alloc();
+	main_config = config_alloc();
 
-	if (!config_parse(c, cfgfile)) {
+	if (!config_parse(main_config, cfgfile)) {
 		dprint("Error while parsing config\n");
 		goto err;
 	}
@@ -264,7 +264,7 @@ int main(int argc, char *argv[]) {
 		dprint("Error when initializing the management console. Abording\n");
 		goto err;
 	}
-	int fd = input_open(c->input);
+	int fd = input_open(main_config->input);
 
 	if (fd == I_ERR) {
 		dprint("Error while opening input\n");
@@ -272,7 +272,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	struct input_caps ic;
-	if (input_getcaps(c->input, &ic) == I_ERR) {
+	if (input_getcaps(main_config->input, &ic) == I_ERR) {
 		dprint("Error while getting input capabilities\n");
 		goto err;
 	}
@@ -289,14 +289,14 @@ int main(int argc, char *argv[]) {
 		bzero(ringbuffer[i], sizeof(struct frame));
 		ringbuffer[i]->buff = malloc(ic.snaplen);
 		ringbuffer[i]->bufflen = ic.snaplen;
-		ringbuffer[i]->input = c->input;
+		ringbuffer[i]->input = main_config->input;
 
 	}
 	ringbuffer_read_pos = RINGBUFFER_SIZE - 1;
 	ringbuffer_write_pos = 0;
 
 	struct input_thread_params itp;
-	itp.i = c->input;
+	itp.i = main_config->input;
 	itp.input_is_live = ic.is_live;
 
 	pthread_t input_thread;
@@ -366,7 +366,7 @@ int main(int argc, char *argv[]) {
 	
 		timers_process(); // This is not real-time timers but we don't really need it
 		if (ringbuffer[ringbuffer_read_pos]->len > 0) // Need to queue that in the buffer
-			do_rules(ringbuffer[ringbuffer_read_pos], c->rules);
+			do_rules(ringbuffer[ringbuffer_read_pos], main_config->rules);
 
 		if (!ic.is_live) {
 			memcpy(&now, &ringbuffer[ringbuffer_read_pos]->tv, sizeof(struct timeval));
@@ -374,7 +374,7 @@ int main(int argc, char *argv[]) {
 		}
 
 
-		helper_process_queue(c->rules); // Process frames that needed some help
+		helper_process_queue(main_config->rules); // Process frames that needed some help
 
 
 		if (pthread_mutex_unlock(&reader_mutex)) {
@@ -438,9 +438,9 @@ finish:
 	dprint("Total packets read : %lu, dropped %lu (%.2f%%)\n", ringbuffer_total_packets, ringbuffer_dropped_packets, 100.0 / ringbuffer_total_packets * ringbuffer_dropped_packets);
 
 	// Process remaining queued frames
-	conntrack_close_connections(c->rules);
+	conntrack_close_connections(main_config->rules);
 
-	input_close(c->input);
+	input_close(main_config->input);
 
 	for (i = 0; i < RINGBUFFER_SIZE; i++) {
 		free(ringbuffer[i]->buff);
@@ -449,7 +449,7 @@ finish:
 	}
 err:
 
-	config_cleanup(c);
+	config_cleanup(main_config);
 
 	helper_unregister_all();
 	helper_cleanup();

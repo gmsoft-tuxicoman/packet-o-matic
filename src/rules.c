@@ -287,7 +287,7 @@ int node_destroy(struct rule_node *node, int sub) {
 
 	// We have to check for both nodes
 
-	if (node->a && node->a->op == 0 && !node->a->b) {
+	if (node->a && node->a->op == RULE_OP_TAIL) {
 		int i = 0;
 		for (i = 0; i < done; i++)
 			if (done_stack[i] == node->a)
@@ -295,7 +295,7 @@ int node_destroy(struct rule_node *node, int sub) {
 
 	}
 
-	if (node->b && node->b->op == 0 && !node->b->b) {
+	if (node->b && node->b->op == RULE_OP_TAIL) {
 		int i = 0;
 		for (i = 0; i < done; i++)
 			if (done_stack[i] == node->b)
@@ -303,7 +303,7 @@ int node_destroy(struct rule_node *node, int sub) {
 
 	}
 
-	if (node->op == 0) {
+	if (node->op == RULE_OP_TAIL) {
 		done_stack = realloc(done_stack, sizeof(struct rule_node*) * (done + 1));
 		done_stack[done] = node;
 		done++;

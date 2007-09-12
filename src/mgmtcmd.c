@@ -26,11 +26,12 @@
 #include "helper.h"
 #include "match.h"
 #include "ptype.h"
+#include "main.h"
 
 extern struct helper_reg *helpers[];
 
 
-#define MGMT_COMMANDS_NUM 6
+#define MGMT_COMMANDS_NUM 8
 
 struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
@@ -38,6 +39,12 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.words = { "exit", NULL },
 		.help = "Exit the management console",
 		.callback_func = mgmtcmd_exit,
+	},
+	
+	{
+		.words = { "help", NULL },
+		.help = "Display the help",
+		.callback_func = mgmtcmd_help,
 	},
 
 	{
@@ -72,6 +79,13 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.usage = "unload helper <helper_name>",
 		.callback_func = mgmtcmd_unload_helper,
 	},
+
+	{
+		.words = { "show", "rules", NULL },
+		.help = "Display all the configured rules",
+		.callback_func = mgmtcmd_show_rules,
+	},
+
 };
 
 int mgmtcmd_register_all() {
@@ -84,6 +98,51 @@ int mgmtcmd_register_all() {
 	}
 
 	return MGMT_OK;
+}
+
+
+int mgmtcmd_help(struct mgmt_connection *c, int argc, char *argv[]) {
+	
+	int i, wordslen, wordslenmax=0;
+
+	struct mgmt_command *tmp = cmds;
+	while (tmp) {
+		wordslen=0;
+		for (i = 0; tmp->words[i] ;i++) {
+			wordslen += strlen(tmp->words[i]) + 1;
+		}
+		
+		if (wordslenmax < wordslen) {
+			wordslenmax = wordslen;
+		}
+		
+		tmp = tmp->next;
+	}
+
+	tmp = cmds;
+
+	while (tmp) {
+		wordslen=0;
+		for (i = 0; tmp->words[i] ;i++) {
+			mgmtsrv_send(c, tmp->words[i]); 
+			mgmtsrv_send(c, " "); 
+			wordslen += strlen(tmp->words[i]) + 1;
+		}
+
+		for (i = wordslen; i <= wordslenmax; i++) {
+			mgmtsrv_send(c, " ");
+		}
+
+		mgmtsrv_send(c, ": ");
+		mgmtsrv_send(c, tmp->help);
+		mgmtsrv_send(c, "\r\n");
+
+		tmp = tmp->next;
+	}
+
+
+	return MGMT_OK;
+
 }
 
 
@@ -236,4 +295,110 @@ int mgmtcmd_unload_helper(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	return MGMT_OK;
 
+}
+
+int mgmtcmd_show_rule_print_node(struct mgmt_connection *c, struct rule_node *n, struct rule_node *last, char *prepend) {
+
+	if (n == last)
+		return 0;
+
+
+	while (n != last) {
+
+		if (!n->b) {
+			if (n->op != RULE_OP_TAIL) {
+				if (n->op & RULE_OP_NOT)
+					mgmtsrv_send(c, "!");
+				mgmtsrv_send(c, match_get_name(n->layer));
+				if (n->match) {
+					mgmtsrv_send(c, ".");
+					mgmtsrv_send(c, n->match->field->name);
+					mgmtsrv_send(c, " ");
+					mgmtsrv_send(c, ptype_get_op_name(n->match->op));
+					mgmtsrv_send(c, " ");
+					const int bufflen = 256;
+					char buff[bufflen];
+					ptype_print_val(n->match->value, buff, bufflen);
+					mgmtsrv_send(c, buff);
+
+				}
+				mgmtsrv_send(c, "\r\n");
+			}
+			n = n->a;
+
+		} else {
+			// fin the last one that needs to be processed
+			struct rule_node *new_last = NULL, *rn = n;
+			while (rn && rn != last) {
+				if (rn->op == RULE_OP_TAIL)
+					new_last = rn;
+				rn = rn->a;
+			}
+			if (n->op & RULE_OP_NOT) {
+				if (n->op & RULE_OP_OR)
+					mgmtsrv_send(c, "!or -- ");
+				else if (n->op & RULE_OP_AND)
+					mgmtsrv_send(c, "!and - ");
+			} else {
+				if (n->op & RULE_OP_OR)
+					mgmtsrv_send(c, "or --- ");
+				else if (n->op & RULE_OP_AND)
+					mgmtsrv_send(c, "and -- ");
+			}
+			
+			char *prepend_a = " |     ";
+			char *prepend_b = "       ";
+
+			char *my_prepend = malloc(strlen(prepend) + strlen(prepend_a) + 1);
+			strcpy(my_prepend, prepend);
+			strcat(my_prepend, prepend_a);
+			mgmtcmd_show_rule_print_node(c, n->a, new_last, my_prepend);
+
+			mgmtsrv_send(c, prepend);
+			mgmtsrv_send(c, " `---- ");
+			strcpy(my_prepend, prepend);
+			strcat(my_prepend, prepend_b);
+			mgmtcmd_show_rule_print_node(c, n->b, new_last, my_prepend);
+			free(my_prepend);
+			n = new_last;
+		}
+		if (n && n->op != RULE_OP_TAIL) {
+			mgmtsrv_send(c, prepend);
+		}
+	}
+
+	return 0;
+}
+
+int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]) {
+	
+	struct rule_list *rl = main_config->rules;
+
+	unsigned int rule_num = 0;
+	char buff[256];
+
+	while (rl) {
+		sprintf(buff, "%u", rule_num);
+		mgmtsrv_send(c, "Rule ");
+		mgmtsrv_send(c, buff);
+		mgmtsrv_send(c, " : \r\n");
+
+		struct rule_node *last, *rn = rl->node;
+		while (rn){
+			if (rn->op == RULE_OP_TAIL)
+				last = rn;
+			rn = rn->a;
+		}
+
+		char *prepend = "  ";
+		mgmtsrv_send(c, prepend);
+		mgmtcmd_show_rule_print_node(c, rl->node, NULL, prepend);
+
+		mgmtsrv_send(c, "\r\n");
+
+		rl = rl->next;
+		rule_num++;
+	}
+
+	return MGMT_OK;
 }
