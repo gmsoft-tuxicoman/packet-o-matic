@@ -1,3 +1,8 @@
+* 2007/09/13 Guy Martin <gmsoft@tuxicoman.be>
+Added support for masks in ptype_ipv4 and ptype_ipv6.
+The command "help" now shows the full usage.
+Added the option to see the rules in a "flat" way with "show rules".
+
 * 2007/09/12 Guy Martin <gmsoft@tuxicoman.be>
 Added RULE_OP_TAIL to find easily when two branch of 'or' or 'and' merge.
 Added ptype_get_op_name() to return a string representation of the comparison operation.

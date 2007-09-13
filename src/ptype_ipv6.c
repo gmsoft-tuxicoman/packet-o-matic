@@ -42,6 +42,7 @@ int ptype_alloc_ipv6(struct ptype* p) {
 	p->value = malloc(sizeof(struct ptype_ipv6_val));
 	struct ptype_ipv6_val *v = p->value;
 	bzero(v, sizeof(struct ptype_ipv6_val));
+	v->mask = 128;
 
 	return P_OK;
 
@@ -57,11 +58,34 @@ int ptype_cleanup_ipv6(struct ptype *p) {
 
 int ptype_parse_ipv6(struct ptype *p, char *val) {
 
-	// TODO : HANDLE MASK
-
 	struct ptype_ipv6_val *v = p->value;
+
+	// Let's see first if there is a /
+	int i;
+	for (i = 0; i < strlen(val); i++) {
+		if (val[i] == '/') {
+			char ip[INET6_ADDRSTRLEN];
+			bzero(ip, INET6_ADDRSTRLEN);
+			strncpy(ip, val, i);
+			unsigned char mask;
+			if (sscanf(val + i + 1, "%hhu", &mask) != 1)
+				return P_ERR;
+			if (mask > 128)
+				return P_ERR;
+			v->mask = mask;
+			if (inet_pton(AF_INET6, ip, &v->addr) <= 0)
+				return P_ERR;
+
+			return P_OK;
+		}
+	}
+
+	// Looks like there are no /
+
+
 	if (inet_pton(AF_INET6, val, &v->addr) <= 0)
 		return P_ERR;
+	v->mask = 128;
 
 	return P_OK;
 
@@ -69,27 +93,55 @@ int ptype_parse_ipv6(struct ptype *p, char *val) {
 
 int ptype_print_ipv6(struct ptype *p, char *val, size_t size) {
 
-	// TODO : HANDLE MASK
-
 	struct ptype_ipv6_val *v = p->value;
 	inet_ntop(AF_INET6, &v->addr, val, size);
+	size -= strlen(val);
+	if (v->mask < 128 && size >= 4) {
+		strcat(val, "/");
+		sprintf(val + strlen(val), "%hhu", v->mask);
+	}
 	return strlen(val);
 }
 
 int ptype_compare_ipv6(int op, void *val_a, void *val_b) {
 
-	// TODO : HANDLE MASK
-
 	struct ptype_ipv6_val *a = val_a;
 	struct ptype_ipv6_val *b = val_b;
+
+	int minmask = a->mask;
+	if (b->mask < minmask)
+		minmask = b->mask;
+	
+	uint32_t mask[4];
+	if (minmask <= 32) {
+		mask[0] = (0xffffffff << (32 - minmask));
+		mask[1] = 0;
+		mask[2] = 0;
+		mask[3] = 0;
+	} else if (minmask <= 64) {
+		mask[0] = 0xffffffff;
+		mask[1] = (0xffffffff << (64 - minmask));
+		mask[2] = 0;
+		mask[3] = 0;
+	} else if (minmask <= 96) {
+		mask[0] = 0xffffffff;
+		mask[1] = 0xffffffff;
+		mask[2] = (0xffffffff << (96 - minmask));
+		mask[3] = 0;
+	} else {
+		mask[0] = 0xffffffff;
+		mask[1] = 0xffffffff;
+		mask[2] = 0xffffffff;
+		mask[3] = (0xffffffff << (128 - minmask));
+	}
 	
 	
 	switch (op) {
 		case PTYPE_OP_EQUALS:
-			return (a->addr.s6_addr32[0] == b->addr.s6_addr32[0]
-				&& a->addr.s6_addr32[1] == b->addr.s6_addr32[1]
-				&& a->addr.s6_addr32[2] == b->addr.s6_addr32[2]
-				&& a->addr.s6_addr32[3] == b->addr.s6_addr32[3]);
+			return ((a->addr.s6_addr32[0] & mask[0]) == (b->addr.s6_addr32[0] & mask[0])
+				&& (a->addr.s6_addr32[1] & mask[1]) == (b->addr.s6_addr32[1] & mask[1])
+				&& (a->addr.s6_addr32[2] & mask[2]) == (b->addr.s6_addr32[2] & mask[2])
+				&& (a->addr.s6_addr32[3] & mask[3]) == (b->addr.s6_addr32[3] & mask[3]));
 		default:
 			dprint("Unkown operation %c\n", op);
 

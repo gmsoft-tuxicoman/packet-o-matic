@@ -42,6 +42,7 @@ int ptype_alloc_ipv4(struct ptype* p) {
 	p->value = malloc(sizeof(struct ptype_ipv4_val));
 	struct ptype_ipv4_val *v = p->value;
 	bzero(v, sizeof(struct ptype_ipv4_val));
+	v->mask = 32;
 
 	return P_OK;
 
@@ -57,11 +58,35 @@ int ptype_cleanup_ipv4(struct ptype *p) {
 
 int ptype_parse_ipv4(struct ptype *p, char *val) {
 
-	// TODO : HANDLE MASK
-
 	struct ptype_ipv4_val *v = p->value;
+
+	
+	// Let's see first if there is a /
+	int i;
+	for (i = 0; i < strlen(val); i++) {
+		if (val[i] == '/') {
+			char ip[INET_ADDRSTRLEN];
+			bzero(ip, INET_ADDRSTRLEN);
+			strncpy(ip, val, i);
+			unsigned char mask;
+			if (sscanf(val + i + 1, "%hhu", &mask) != 1)
+				return P_ERR;
+			if (mask > 32)
+				return P_ERR;
+			v->mask = mask;
+			if (inet_pton(AF_INET, ip, &v->addr) <= 0)
+				return P_ERR;
+
+			return P_OK;
+		}
+	}
+
+	// Looks like there are no /
+
+
 	if (inet_pton(AF_INET, val, &v->addr) <= 0)
 		return P_ERR;
+	v->mask = 32;
 
 	return P_OK;
 
@@ -74,7 +99,7 @@ int ptype_print_ipv4(struct ptype *p, char *val, size_t size) {
 	size -= strlen(val);
 	if (v->mask < 32 && size >= 3) {
 		strcat(val, "/");
-		sprintf(val + strlen(val), "%u", v->mask);
+		sprintf(val + strlen(val), "%hhu", v->mask);
 	}
 
 	return strlen(val);
@@ -88,10 +113,13 @@ int ptype_compare_ipv4(int op, void *val_a, void *val_b) {
 	switch (op) {
 		case PTYPE_OP_EQUALS: {
 			uint32_t masked_addr_a, masked_addr_b;
+			int mask = a->mask;
+			if (b->mask < mask)
+				mask = b->mask;
 			masked_addr_a = ntohl(a->addr.s_addr);
 			masked_addr_b = ntohl(b->addr.s_addr);
-			masked_addr_a &= (0xffffffff << (32 - a->mask));
-			masked_addr_b &= (0xffffffff << (32 - b->mask));
+			masked_addr_a &= (0xffffffff << (32 - mask));
+			masked_addr_b &= (0xffffffff << (32 - mask));
 			return (masked_addr_a == masked_addr_b);
 
 		}

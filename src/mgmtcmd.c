@@ -69,14 +69,14 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 	{
 		.words = { "set", "helper", "parameter", NULL},
 		.help = "Change the value of a helper parameter",
-		.usage = "set helper parameter <helper> <parameter_name> <parameter value>",
+		.usage = "set helper parameter <helper> <parameter> <value>",
 		.callback_func = mgmtcmd_set_helper_param,
 	},
 
 	{
 		.words = { "unload", "helper", NULL },
 		.help = "Unload an helper from the system",
-		.usage = "unload helper <helper_name>",
+		.usage = "unload helper <helper>",
 		.callback_func = mgmtcmd_unload_helper,
 	},
 
@@ -84,6 +84,7 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.words = { "show", "rules", NULL },
 		.help = "Display all the configured rules",
 		.callback_func = mgmtcmd_show_rules,
+		.usage = "show rules [tree | flat]",
 	},
 
 };
@@ -103,13 +104,17 @@ int mgmtcmd_register_all() {
 
 int mgmtcmd_help(struct mgmt_connection *c, int argc, char *argv[]) {
 	
-	int i, wordslen, wordslenmax=0;
+	int i, wordslen, wordslenmax = 0;
 
 	struct mgmt_command *tmp = cmds;
 	while (tmp) {
-		wordslen=0;
-		for (i = 0; tmp->words[i] ;i++) {
-			wordslen += strlen(tmp->words[i]) + 1;
+		if (tmp->usage) {
+			wordslen = strlen(tmp->usage) + 1;
+		} else {
+			wordslen = 0;
+			for (i = 0; tmp->words[i] ;i++) {
+				wordslen += strlen(tmp->words[i]) + 1;
+			}
 		}
 		
 		if (wordslenmax < wordslen) {
@@ -122,14 +127,19 @@ int mgmtcmd_help(struct mgmt_connection *c, int argc, char *argv[]) {
 	tmp = cmds;
 
 	while (tmp) {
-		wordslen=0;
-		for (i = 0; tmp->words[i] ;i++) {
-			mgmtsrv_send(c, tmp->words[i]); 
-			mgmtsrv_send(c, " "); 
-			wordslen += strlen(tmp->words[i]) + 1;
+		if (tmp->usage) {
+			mgmtsrv_send(c, tmp->usage);
+			wordslen = strlen(tmp->usage) ;
+		} else {
+			wordslen = 0;
+			for (i = 0; tmp->words[i] ;i++) {
+				mgmtsrv_send(c, tmp->words[i]); 
+				mgmtsrv_send(c, " "); 
+				wordslen += strlen(tmp->words[i]) + 1;
+			}
 		}
 
-		for (i = wordslen; i <= wordslenmax; i++) {
+		for (i = wordslen; i < wordslenmax; i++) {
 			mgmtsrv_send(c, " ");
 		}
 
@@ -297,7 +307,65 @@ int mgmtcmd_unload_helper(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-int mgmtcmd_show_rule_print_node(struct mgmt_connection *c, struct rule_node *n, struct rule_node *last, char *prepend) {
+int mgmtcmd_show_rule_print_node_flat(struct mgmt_connection *c, struct rule_node *n, struct rule_node *last) {
+
+	if (n == last)
+		return 0;
+
+
+	while (n != last) {
+
+		if (!n->b) {
+			if (n->op != RULE_OP_TAIL) {
+				if (n->op & RULE_OP_NOT)
+					mgmtsrv_send(c, "!");
+				mgmtsrv_send(c, match_get_name(n->layer));
+				if (n->match) {
+					mgmtsrv_send(c, ".");
+					mgmtsrv_send(c, n->match->field->name);
+					mgmtsrv_send(c, " ");
+					mgmtsrv_send(c, ptype_get_op_name(n->match->op));
+					mgmtsrv_send(c, " ");
+					const int bufflen = 256;
+					char buff[bufflen];
+					ptype_print_val(n->match->value, buff, bufflen);
+					mgmtsrv_send(c, buff);
+
+				}
+			}
+			n = n->a;
+
+		} else {
+			// fin the last one that needs to be processed
+			struct rule_node *new_last = NULL, *rn = n;
+			while (rn && rn != last) {
+				if (rn->op == RULE_OP_TAIL)
+					new_last = rn;
+				rn = rn->a;
+			}
+			//if (n->op & RULE_OP_NOT) 
+			//	mgmtsrv_send(c, "!");
+
+
+			mgmtsrv_send(c, "(");
+			mgmtcmd_show_rule_print_node_flat(c, n->a, new_last);
+			if (n->op & RULE_OP_OR)
+				mgmtsrv_send(c, " or ");
+			else if (n->op & RULE_OP_AND)
+				mgmtsrv_send(c, " and ");
+
+			mgmtcmd_show_rule_print_node_flat(c, n->b, new_last);
+			mgmtsrv_send(c, ")");
+			n = new_last;
+		}
+		if (n && n->op != RULE_OP_TAIL) {
+			mgmtsrv_send(c, " | ");
+		}
+	}
+
+	return 0;
+}
+int mgmtcmd_show_rule_print_node_tree(struct mgmt_connection *c, struct rule_node *n, struct rule_node *last, char *prepend) {
 
 	if (n == last)
 		return 0;
@@ -352,13 +420,13 @@ int mgmtcmd_show_rule_print_node(struct mgmt_connection *c, struct rule_node *n,
 			char *my_prepend = malloc(strlen(prepend) + strlen(prepend_a) + 1);
 			strcpy(my_prepend, prepend);
 			strcat(my_prepend, prepend_a);
-			mgmtcmd_show_rule_print_node(c, n->a, new_last, my_prepend);
+			mgmtcmd_show_rule_print_node_tree(c, n->a, new_last, my_prepend);
 
 			mgmtsrv_send(c, prepend);
 			mgmtsrv_send(c, " `---- ");
 			strcpy(my_prepend, prepend);
 			strcat(my_prepend, prepend_b);
-			mgmtcmd_show_rule_print_node(c, n->b, new_last, my_prepend);
+			mgmtcmd_show_rule_print_node_tree(c, n->b, new_last, my_prepend);
 			free(my_prepend);
 			n = new_last;
 		}
@@ -392,7 +460,16 @@ int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]) {
 
 		char *prepend = "  ";
 		mgmtsrv_send(c, prepend);
-		mgmtcmd_show_rule_print_node(c, rl->node, NULL, prepend);
+		if (argc > 0) {
+			if (!strcmp(argv[0], "tree")) {
+				mgmtcmd_show_rule_print_node_tree(c, rl->node, NULL, prepend);
+			} else if (!strcmp(argv[0], "flat")) {
+				mgmtcmd_show_rule_print_node_flat(c, rl->node, NULL);
+				mgmtsrv_send(c, "\r\n");
+			} else
+				return MGMT_USAGE;
+		} else
+			mgmtcmd_show_rule_print_node_tree(c, rl->node, NULL, prepend);
 
 		mgmtsrv_send(c, "\r\n");
 
