@@ -29,7 +29,6 @@
 #define TELOPTS 1 // will populate the table telopts
 #include <arpa/telnet.h>
 
-
 int mgmtvty_init(struct mgmt_connection *c) {
 
 	mgmtsrv_send(c, "\nThis is packet-o-matic. \nCopyright Guy Martin 2006-2007\n\n" MGMT_CMD_PROMPT);
@@ -108,6 +107,13 @@ int mgmtvty_process(struct mgmt_connection *c, unsigned char *buffer, unsigned i
 				}
 				i++;
 				switch (buffer[i]) {
+					case '3': // delete (complete escape seq is 0x3 0x7e)
+						i++;
+						// same as Ctrl-D if there is something in the buffer
+						if (c->cmdlen > 0)
+							mgmtvty_process_key(c, 0x4);
+						break;
+						
 					case 'A': // up arrow
 						dprint("up arrow pressed\n");
 						break;
@@ -128,6 +134,14 @@ int mgmtvty_process(struct mgmt_connection *c, unsigned char *buffer, unsigned i
 							mgmtsrv_send(c, "\b");
 							c->cursor_pos--;
 						}
+						break;
+					case 'F': // end
+						// same as Ctrl-E
+						mgmtvty_process_key(c, 0x5);
+						break;
+					case 'H': // home
+						//sameas Ctr-A
+						mgmtvty_process_key(c, 0x1);
 						break;
 					default: // not handled
 						ndprint("Unknown escape sequence pressed : %c\n", buffer[i]);
@@ -252,7 +266,23 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 		case 0: // ignore this one
 			break;
 
-		case 3: { // Ctrl-C
+		case 0x1: { // Ctrl-A
+			while (c->cursor_pos > 0) {
+				mgmtsrv_send(c, "\b");
+				c->cursor_pos--;
+			}
+			break;
+		}
+
+		case 0x2: { // Ctrl-B
+			if (c->cursor_pos > 0) {
+				mgmtsrv_send(c, "\b");
+				c->cursor_pos--;
+			}
+			break;
+		}
+
+		case 0x3: { // Ctrl-C
 			mgmtsrv_send(c, "\r\n" MGMT_CMD_PROMPT);
 			memset(c->cmd, 0, MGMT_CMD_BUFF_LEN);
 			c->cmdlen = 0;
@@ -260,10 +290,32 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 			break;
 		}
 
-		case 4: // Ctrl-D
+		case 0x4: { // Ctrl-D
 			if (c->cmdlen == 0)
 				mgmtcmd_exit(c, 0, NULL);
+			else {
+				if (c->cursor_pos < c->cmdlen) {
+					memmove(c->cmd + c->cursor_pos, c->cmd + c->cursor_pos + 1, c->cmdlen - c->cursor_pos);
+					c->cmdlen--;
+					mgmtsrv_send(c, c->cmd + c->cursor_pos);
+					mgmtsrv_send(c, " ");
+					int i;
+					for (i = c->cmdlen; i >= c->cursor_pos; i--)
+						mgmtsrv_send(c, "\b");
+
+				}
+			
+			}
 			break;
+		}
+
+		case 0x5: { // Ctrl-E
+			while (c->cursor_pos < c->cmdlen) {
+				mgmtsrv_send(c, c->cmd +c->cursor_pos);
+				c->cursor_pos = c->cmdlen;
+			}
+			break;
+		}
 
 		case '\b': { // backspace
 			if (c->cmdlen == 0 || c->cursor_pos == 0)
@@ -286,6 +338,20 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 			break;
 		}
 
+		case 0x15: { // Ctrl-U
+			int i;
+			for (i = c->cursor_pos; i > 0; i--)
+				mgmtsrv_send(c, "\b");
+			for (i = 0; i < c->cmdlen; i++)
+				mgmtsrv_send(c, " ");
+			for (i = 0; i < c->cmdlen; i++)
+				mgmtsrv_send(c, "\b");
+			memset(c->cmd, 0 , MGMT_CMD_BUFF_LEN);
+			c->cmdlen = 0;
+			c->cursor_pos = 0;
+			break;
+		}
+
 		case '\r': { // carriage return
 			mgmtsrv_process_command(c);
 			mgmtsrv_send(c, MGMT_CMD_PROMPT);
@@ -304,7 +370,7 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 		}
 
 		default: 
-			if (c->cmdlen >= MGMT_CMD_BUFF_LEN) {
+			if (c->cmdlen >= MGMT_CMD_BUFF_LEN - 1) {
 				mgmtsrv_send(c, "\r\nCommand too long\r\n" MGMT_CMD_PROMPT);
 				mgmtsrv_send(c, c->cmd);
 			} else {

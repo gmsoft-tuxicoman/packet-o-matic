@@ -1,3 +1,6 @@
+* 2007/09/14 Guy Martin <gmsoft@tuxicoman.be>
+Added suport for some more bindings in the management console.
+
 * 2007/09/13 Guy Martin <gmsoft@tuxicoman.be>
 Added support for masks in ptype_ipv4 and ptype_ipv6.
 The command "help" now shows the full usage.
