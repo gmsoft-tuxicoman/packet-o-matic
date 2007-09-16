@@ -41,8 +41,11 @@ struct mgmt_command *cmds;
 // Command functions return this value if it's needed to print the usage
 #define MGMT_USAGE -2
 
-// Maximum number of words in a command
+// Maximum number of words in a command declaration
 #define MGMT_MAX_CMD_WORDS 16
+
+// Maximum number of words in a command entered in the console
+#define MGMT_MAX_CMD_WORDS_ARGS 2048
 
 #define MGMT_CMD_BUFF_LEN 2048
 

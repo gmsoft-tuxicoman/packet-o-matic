@@ -29,11 +29,10 @@
 #include "layer.h"
 
 /// save infos about a match instance
-struct match {
-	unsigned int type; ///< type of match
-	void *match_priv; ///< internal memory of the match
-	char **params_value; ///< values of the parameters
-};
+//struct match {
+//	unsigned int type; ///< type of match
+//	void *match_priv; ///< internal memory of the match
+//};
 
 /// Contains info about the possible parameters for this match
 struct match_param_reg {

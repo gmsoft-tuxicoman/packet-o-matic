@@ -31,7 +31,7 @@
 extern struct helper_reg *helpers[];
 
 
-#define MGMT_COMMANDS_NUM 8
+#define MGMT_COMMANDS_NUM 9
 
 struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
@@ -85,6 +85,13 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.help = "Display all the configured rules",
 		.callback_func = mgmtcmd_show_rules,
 		.usage = "show rules [tree | flat]",
+	},
+	
+	{
+		.words = { "set", "rule", NULL },
+		.help = "Change a rule",
+		.callback_func = mgmtcmd_set_rule,
+		.usage = "set rule <rule id> <rule>",
 	},
 
 };
@@ -313,6 +320,22 @@ int mgmtcmd_show_rule_print_node_flat(struct mgmt_connection *c, struct rule_nod
 		return 0;
 
 
+	int display_parenthesis = 0;
+
+	if (last != NULL && n->a && n->a->op != RULE_OP_TAIL)
+		display_parenthesis = 1;
+
+
+	if (n->op & RULE_OP_NOT) {
+		mgmtsrv_send(c, "!");
+		display_parenthesis = 1;
+	}
+
+
+
+	if (display_parenthesis)
+		mgmtsrv_send(c, "(");
+
 	while (n != last) {
 
 		if (!n->b) {
@@ -343,11 +366,10 @@ int mgmtcmd_show_rule_print_node_flat(struct mgmt_connection *c, struct rule_nod
 					new_last = rn;
 				rn = rn->a;
 			}
-			//if (n->op & RULE_OP_NOT) 
-			//	mgmtsrv_send(c, "!");
 
+			if (n->op & RULE_OP_NOT)
+				mgmtsrv_send(c, "!(");
 
-			mgmtsrv_send(c, "(");
 			mgmtcmd_show_rule_print_node_flat(c, n->a, new_last);
 			if (n->op & RULE_OP_OR)
 				mgmtsrv_send(c, " or ");
@@ -355,16 +377,20 @@ int mgmtcmd_show_rule_print_node_flat(struct mgmt_connection *c, struct rule_nod
 				mgmtsrv_send(c, " and ");
 
 			mgmtcmd_show_rule_print_node_flat(c, n->b, new_last);
-			mgmtsrv_send(c, ")");
+			if (n->op & RULE_OP_NOT)
+				mgmtsrv_send(c, ")");
+
 			n = new_last;
 		}
 		if (n && n->op != RULE_OP_TAIL) {
 			mgmtsrv_send(c, " | ");
 		}
 	}
-
-	return 0;
+	if (display_parenthesis)
+		mgmtsrv_send(c, ")");
+	return MGMT_OK;
 }
+
 int mgmtcmd_show_rule_print_node_tree(struct mgmt_connection *c, struct rule_node *n, struct rule_node *last, char *prepend) {
 
 	if (n == last)
@@ -435,7 +461,7 @@ int mgmtcmd_show_rule_print_node_tree(struct mgmt_connection *c, struct rule_nod
 		}
 	}
 
-	return 0;
+	return MGMT_OK;
 }
 
 int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]) {
@@ -476,6 +502,345 @@ int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]) {
 		rl = rl->next;
 		rule_num++;
 	}
+
+	return MGMT_OK;
+}
+
+struct rule_node *mgmtcmd_set_rule_parse_block(struct mgmt_connection *c, char *expr) {
+
+	char *words[3];
+	int wordcount = 0;
+
+	char *str, *saveptr, *token;
+
+	for (str = expr; ; str = NULL) {
+		token = strtok_r(str, " ", &saveptr);
+		if (token == NULL)
+			break;
+		if (strlen(token) == 0)
+			continue;
+		
+		// there should not be more than 3 words
+		if (wordcount >= 3) {
+			mgmtsrv_send(c, "Could not parse \"");
+			mgmtsrv_send(c, expr);
+			mgmtsrv_send(c, "\"\r\n");
+			return NULL;
+		}
+
+		words[wordcount] = token;
+		wordcount++;
+		
+	}
+
+	if (wordcount == 2) {
+		mgmtsrv_send(c, "Could not parse \"");
+		mgmtsrv_send(c, expr);
+		mgmtsrv_send(c, "\"\r\n");
+		return NULL;
+	}
+
+	if (wordcount == 1) {
+		int layer = match_get_type(words[0]);
+		if (layer == MGMT_ERR) 
+			layer = match_register(words[0]);
+		if (layer == MGMT_ERR) {
+			mgmtsrv_send(c, "Unknown match \"");
+			mgmtsrv_send(c, words[0]);
+			mgmtsrv_send(c, "\"\r\n");
+			return NULL;
+		}
+		struct rule_node *rn = malloc(sizeof(struct rule_node));
+		bzero(rn, sizeof(struct rule_node));
+
+		rn->layer = layer;
+		return rn;
+	}
+	
+
+	// wordcount is supposed to be 3 now
+	char *field = strchr(words[0], '.');
+	if (!field) {
+		mgmtsrv_send(c, "Expression \"");
+		mgmtsrv_send(c, words[0]);
+		mgmtsrv_send(c, "\" doesn't not contain a field specifier\r\n");
+		return NULL;
+	}
+
+	*field = 0;
+	field++;
+	int layer = match_get_type(words[0]);
+	if (layer == MGMT_ERR)
+		layer = match_register(words[0]);
+	if (layer == MGMT_ERR) {
+		mgmtsrv_send(c, "Unknown match \"");
+		mgmtsrv_send(c, words[0]);
+		mgmtsrv_send(c, "\"\r\n");
+		return NULL;
+	}
+	
+	struct match_param *param;
+	param = match_alloc_param(layer, field);
+	if (param == NULL) {
+		mgmtsrv_send(c, "Unknown field \"");
+		mgmtsrv_send(c, field);
+		mgmtsrv_send(c, "\" for match \"");
+		mgmtsrv_send(c, words[0]);
+		mgmtsrv_send(c, "\"\r\n");
+		return NULL;
+	}
+
+	param->op = ptype_get_op(param->value, words[1]);
+	if (param->op == P_ERR) {
+		mgmtsrv_send(c, "Unknown or unsuported operation \"");
+		mgmtsrv_send(c, words[1]);
+		mgmtsrv_send(c, "\" for field \"");
+		mgmtsrv_send(c, field);
+		mgmtsrv_send(c, "\" and match \"");
+		mgmtsrv_send(c, words[0]);
+		mgmtsrv_send(c, "\"\r\n");
+		free(param);
+		return NULL;
+	}
+
+	if (ptype_parse_val(param->value, words[2]) == P_ERR) {
+		mgmtsrv_send(c, "Unable to parse \"");
+		mgmtsrv_send(c, words[2]);
+		mgmtsrv_send(c, "\" for field \"");
+		mgmtsrv_send(c, field);
+		mgmtsrv_send(c, "\" and match \"");
+		mgmtsrv_send(c, words[0]);
+		mgmtsrv_send(c, "\"\r\n");
+		free(param);
+		return NULL;
+	}
+
+	struct rule_node *rn = malloc(sizeof(struct rule_node));
+	bzero(rn, sizeof(struct rule_node));
+	rn->layer = layer;
+	rn->match = param;
+	return rn;
+
+}
+
+int mgmtcmd_set_rule_parse_branch(struct mgmt_connection *c, char *expr, struct rule_node **start, struct rule_node **end) {
+
+	int stack_size = 0;
+	int i, len;
+	len = strlen(expr);
+	
+	int found = 0; // what operation was found
+	int found_len = 0; // lenght of the string matched
+
+	// let's see if there is a branch
+	for (i = 0; i < len - 2; i++) {
+		if (stack_size == 0 && expr[i] == 'o' && expr[i + 1] == 'r') {
+			found = RULE_OP_OR;
+			found_len = 2;
+		}
+		if (stack_size == 0 && expr[i] == 'a' && expr[i + 1] == 'n' && expr[i + 2] == 'd') {
+			found = RULE_OP_AND;
+			found_len = 3;
+		}
+
+		if (found) {
+			if (i < 1 || i > len - found_len) {
+				found = 0;
+				continue;
+			}
+			if (expr[i - 1] != ')' && expr[i - 1] != ' ') {
+				found = 0;
+				continue;
+			}
+
+			if (expr[i + found_len] != ' ' && expr[i + found_len] != '(' && expr[i + found_len] != '!') {
+				found = 0;
+				continue;
+			}
+
+			expr[i] = 0;
+
+			struct rule_node *my_start = malloc(sizeof(struct rule_node));
+			bzero(my_start, sizeof(struct rule_node));
+
+			struct rule_node *my_end = malloc(sizeof(struct rule_node));
+			bzero(my_end, sizeof(struct rule_node));
+			my_start->op = found;
+			my_end->op = RULE_OP_TAIL;
+
+			*start = my_start;
+			*end = my_end;
+
+			struct rule_node *the_end = NULL;
+			mgmtcmd_set_rule_split(c, expr, &my_start->a, &the_end);
+			the_end->a = my_end;
+			mgmtcmd_set_rule_split(c, expr + i + found_len, &my_start->b, &the_end);
+			the_end->a = my_end;
+
+			return MGMT_OK;
+		}
+				
+
+		if (expr[i] == '(') {
+			stack_size++;
+			continue;
+		}
+
+		if (expr[i] == ')') {
+			stack_size--;
+			if (stack_size < 0) {
+				mgmtsrv_send(c, "Unmatched )\r\n");
+				return MGMT_ERR;
+			}
+		}
+
+
+	}
+
+
+
+	int inv = 0; // should this match be inverted
+	// first, trim this expr
+	while(*expr == ' ')
+		expr++;
+	while (strlen(expr) > 0 && expr[strlen(expr) - 1] == ' ')
+		expr[strlen(expr) - 1] = 0;
+
+	if (expr[0] == '!') {
+		inv = 1;
+		expr++;
+		while(*expr == ' ')
+			expr++;
+	}
+	if (expr[0] == '(' && strlen(expr) > 0 && expr[strlen(expr) - 1] == ')') { // parenthesis at begining and end of block
+		expr++;
+		expr[strlen(expr) - 1] = 0;
+		if (mgmtcmd_set_rule_split(c, expr, start, end) == MGMT_ERR)
+			return MGMT_ERR;
+
+		if (inv) {
+			if ((*start)->op == 0) {
+				mgmtsrv_send(c, "Unexpected \"!\"\r\n");
+				return MGMT_ERR;
+			}
+			(*start)->op |= RULE_OP_NOT;
+		}
+		return MGMT_OK;
+	}
+
+	*start = mgmtcmd_set_rule_parse_block(c, expr);
+	if (!*start)
+		return MGMT_ERR;
+	*end = *start;
+
+	if (inv)
+		(*start)->op |= RULE_OP_NOT;
+
+	return MGMT_OK;
+}
+
+
+int mgmtcmd_set_rule_split(struct mgmt_connection *c, char *expr, struct rule_node **start, struct rule_node **end) {
+
+	int pstart = 0;
+	int stack_size = 0;
+	int i, len;
+
+	struct rule_node *my_start, **my_start_addr;
+	my_start_addr = &my_start;
+
+	*start = NULL;
+
+	len = strlen(expr);
+	for (i = 0; i < len; i++) {
+		if (stack_size == 0 && expr[i] == '|') {
+			expr[i] = 0;
+			if (mgmtcmd_set_rule_parse_branch(c, expr + pstart, my_start_addr, end) == P_ERR)
+				return MGMT_ERR;
+			if (!*start)
+				*start = *my_start_addr;
+			my_start_addr = &(*end)->a;
+
+			pstart = i + 1;
+		}
+		if (expr[i] == '(') {
+			stack_size++;
+			continue;
+		}
+		
+		if (expr[i] == ')') {
+			stack_size--;
+			if (stack_size < 0) {
+				mgmtsrv_send(c, "Unmatched )\r\n");
+				return MGMT_ERR;
+			}
+		}
+	}
+
+	if (stack_size > 0) {
+		mgmtsrv_send(c, "Unmatched (\r\n");
+		return MGMT_ERR;
+	}
+
+	// parse the last block
+	if (mgmtcmd_set_rule_parse_branch(c, expr + pstart, my_start_addr, end))
+		return MGMT_ERR;
+	if (!*start)
+		*start = *my_start_addr;
+
+
+	return MGMT_OK;
+}
+
+int mgmtcmd_set_rule(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	if (argc < 2)
+		return MGMT_USAGE;
+
+	int rule_id;
+	if (sscanf(argv[0], "%u", &rule_id) < 1)
+		return MGMT_USAGE;
+
+	struct rule_list *rl = main_config->rules;
+
+	int i;
+	for (i = 0; i < rule_id && rl; i++)
+		rl = rl->next;
+
+	if (!rl) {
+		mgmtsrv_send(c, "Rule not found\r\n");
+		return MGMT_OK;
+	}
+
+	// first, let's reconstruct the whole rule
+	int rule_len = 0;
+	for (i = 1; i < argc; i++) {
+		rule_len += strlen(argv[i]) + 1;
+	}
+	char *rule_str = malloc(rule_len + 1);
+	bzero(rule_str, rule_len + 1);
+	for (i = 1; i < argc; i++) {
+		strcat(rule_str, argv[i]);
+		strcat(rule_str, " ");
+	}
+
+	struct rule_node *start, *end;
+	if (mgmtcmd_set_rule_split(c, rule_str, &start, &end) == P_ERR) {
+		node_destroy(start, 0);
+		free(rule_str);
+		return MGMT_OK;
+	}
+
+	free(rule_str);
+
+	// rule parsed, let's replace it
+	rl = main_config->rules;
+	for (i = 0; i < rule_id && rl; i++)
+		rl = rl->next;
+	reader_process_lock();
+	node_destroy(rl->node, 0);
+	rl->node = start;
+	reader_process_unlock();
 
 	return MGMT_OK;
 }

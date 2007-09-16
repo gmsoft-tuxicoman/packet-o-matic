@@ -299,15 +299,15 @@ int mgmtsrv_register_command(struct mgmt_command *cmd) {
 int mgmtsrv_process_command(struct mgmt_connection *c) {
 
 	// Let's start by splitting this line
-	char *words[MGMT_MAX_CMD_WORDS];
+	char *words[MGMT_MAX_CMD_WORDS_ARGS];
 	unsigned int words_count = 0, i;
 	char *str, *saveptr, *token;
 
-	for (i = 0; i < MGMT_MAX_CMD_WORDS; i++)
+	for (i = 0; i < MGMT_MAX_CMD_WORDS_ARGS; i++)
 		words[i] = 0;
 
 	for (str = c->cmd; ;str = NULL) {
-		if (words_count >= MGMT_MAX_CMD_WORDS) {
+		if (words_count >= MGMT_MAX_CMD_WORDS_ARGS) {
 			mgmtsrv_send(c, "\r\nToo many arguments\r\n");
 			return MGMT_OK;
 		}
