@@ -1,3 +1,12 @@
+* 2007/09/18 Guy Martin <gmsoft@tuxicoman.be>
+Inputs now use ptypes to save the parameters.
+Added the notion of input mode and reflected changes in the config accordingly.
+Added ptype bool and ptype string.
+Added the "show input" command in the management console.
+Fixed invalid read in node_destroy.
+Fixed match_linux_cooked to return the right value on register.
+Removed last remains of struct match.
+
 * 2007/09/16 Guy Martin <gmsoft@tuxicoman.be>
 Allow 2048 words when issuing a command in the management console.
 Added command "set rule" to change a rule definition.

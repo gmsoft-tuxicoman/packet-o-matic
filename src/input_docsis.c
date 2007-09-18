@@ -37,32 +37,23 @@
 #include "input_docsis.h"
 #include "match_docsis.h" // For docsis header definition
 
+#include "ptype_string.h"
+#include "ptype_bool.h"
+#include "ptype_uint32.h"
+
 
 /// We use a bigger buffer size of the demux interface. This way we can cope with some burst.
 #define DEMUX_BUFFER_SIZE 2097152 // 2Megs
 
-#define PARAMS_NUM 9
-
-char *input_docsis_params[PARAMS_NUM][3] = {
-	{ "eurodocsis", "1", "DOCSIS specification to use. 1 for eurodocsis else 0" },
-	{ "frequency", "0", "frequency to scan to in Hz. if 0, a scan will be performed" },
-	{ "modulation", "QAM256", "the modulation to use. either QAM64 or QAM256" },
-	{ "adapter", "0", "DVB adapter to use" },
-	{ "frontend", "0", "DVB frontend to use" },
-	{ "outlayer", "ethernet", "choose output layer : ethernet, atm or docsis" },
-	{ "scanstart", "0", "start docsis scan at this frequency (in Hz)" },
-	{ "frontend_reinit", "0", "set to 1 if frontend needs to be closed and reopened between each scan" },
-	{ "tuning_timeout", "10", "seconds we'll wait for a lock" },
-};
-
 int match_ethernet_id, match_docsis_id, match_atm_id;
+
+struct input_mode *mode_normal, *mode_scan;
+struct ptype *p_eurodocsis, *p_frequency, *p_modulation, *p_adapter, *p_frontend, *p_outlayer, *p_startfreq, *p_frontend_reinit, *p_tuning_timeout;
+
+struct input_functions *i_functions;
 
 /// Register input_docsis
 int input_register_docsis(struct input_reg *r, struct input_functions *i_funcs) {
-
-
-	copy_params(r->params_name, input_docsis_params, 0, PARAMS_NUM);
-	copy_params(r->params_help, input_docsis_params, 2, PARAMS_NUM);
 
 
 	r->init = input_init_docsis;
@@ -71,10 +62,54 @@ int input_register_docsis(struct input_reg *r, struct input_functions *i_funcs) 
 	r->read = input_read_docsis;
 	r->close = input_close_docsis;
 	r->cleanup = input_cleanup_docsis;
+	r->unregister = input_unregister_docsis;
+
+	i_functions = i_funcs;
 
 	match_ethernet_id = (*i_funcs->match_register) ("ethernet");
 	match_atm_id = (*i_funcs->match_register) ("atm");
 	match_docsis_id = (*i_funcs->match_register) ("docsis");
+
+	mode_normal = (*i_funcs->register_mode) (r->type, "normal", "Tune to a given frequency");
+	mode_scan = (*i_funcs->register_mode) (r->type, "scan", "Scan for possible internet frequency");
+
+	if (!mode_normal || !mode_scan)
+		return I_ERR;
+
+	p_eurodocsis = (*i_funcs->ptype_alloc) ("bool", NULL);
+	p_frequency = (*i_funcs->ptype_alloc) ("uint32", "Hz");
+	p_modulation = (*i_funcs->ptype_alloc) ("string", NULL);
+	p_adapter = (*i_funcs->ptype_alloc) ("uint16", NULL);
+	p_frontend = (*i_funcs->ptype_alloc) ("uint16", NULL);
+	p_outlayer = (*i_funcs->ptype_alloc) ("string", NULL);
+	p_startfreq = (*i_funcs->ptype_alloc) ("uint32", "Hz");
+	p_frontend_reinit = (*i_funcs->ptype_alloc) ("bool", NULL);
+	p_tuning_timeout = (*i_funcs->ptype_alloc) ("uint32", "seconds");
+	
+	if (!p_eurodocsis || !p_frequency || !p_modulation || !p_adapter || !p_frontend || !p_outlayer || !p_startfreq || !p_frontend_reinit || !p_tuning_timeout) {
+		input_unregister_docsis(r);
+		return I_ERR;
+	}
+	
+	(*i_funcs->register_param) (mode_normal, "eurodocsis", "yes", p_eurodocsis, "Use EuroDOCSIS specification instead of normal DOCSIS specification");
+	(*i_funcs->register_param) (mode_normal, "frequency", "440000000", p_frequency, "Frequency of the DOCSIS stream in Hz");
+	(*i_funcs->register_param) (mode_normal, "modulation", "QAM216", p_modulation, "Modulation of the DOCSIS stream");
+	(*i_funcs->register_param) (mode_normal, "adapter", "0", p_adapter, "ID of the DVB adapter to use");
+	(*i_funcs->register_param) (mode_normal, "frontend", "0", p_frontend, "ID of the DVB frontend to use for the specified adapter");
+	(*i_funcs->register_param) (mode_normal, "tuning_timeout", "3", p_tuning_timeout, "Timeout to wait until giving up when waiting for a lock");
+	(*i_funcs->register_param) (mode_normal, "outlayer", "ethernet", p_outlayer, "Type of the output layer wanted");
+
+	(*i_funcs->register_param) (mode_scan, "eurodocsis", "yes", p_eurodocsis, "Use EuroDOCSIS specification instead of normal DOCSIS specification");
+	(*i_funcs->register_param) (mode_scan, "frequency", "440000000", p_frequency, "Frequency of the DOCSIS stream in Hz");
+	(*i_funcs->register_param) (mode_scan, "startfreq", "0", p_startfreq, "Starting frequency. Will use the default of the specification if 0");
+	(*i_funcs->register_param) (mode_scan, "modulation", "QAM216", p_modulation, "Modulation of the DOCSIS stream");
+	(*i_funcs->register_param) (mode_scan, "adapter", "0", p_adapter, "ID of the DVB adapter to use");
+	(*i_funcs->register_param) (mode_scan, "frontend", "0", p_frontend, "ID of the DVB frontend to use for the specified adapter");
+	(*i_funcs->register_param) (mode_scan, "frontend_reinit", "no", p_frontend_reinit, "Set to yes if the frontend needs to be closed and reopened between each scan");
+	(*i_funcs->register_param) (mode_scan, "tuning_timeout", "3", p_tuning_timeout, "Timeout to wait until giving up when waiting for a lock");
+	(*i_funcs->register_param) (mode_scan, "outlayer", "ethernet", p_outlayer, "Type of the output layer wanted");
+
+
 
 	return I_OK;
 }
@@ -90,8 +125,6 @@ int input_init_docsis(struct input *i) {
 	memset(p->temp_buff, 0xff, TEMP_BUFF_LEN);
 	ndprint("Temp buff is 0x%X-0x%X\n", (unsigned) p->temp_buff, (unsigned) p->temp_buff + TEMP_BUFF_LEN);
 
-	copy_params(i->params_value, input_docsis_params, 1, PARAMS_NUM);
-
 	return I_OK;
 
 }
@@ -99,15 +132,28 @@ int input_init_docsis(struct input *i) {
 /** Always returns I_OK */
 int input_cleanup_docsis(struct input *i) {
 
-	clean_params(i->params_value, PARAMS_NUM);
-
 	struct input_priv_docsis *p = i->input_priv;
 	free(p->temp_buff);
 	free(i->input_priv);
 
 	return I_OK;
 
-};
+}
+
+int input_unregister_docsis(struct input_reg *r) {
+
+	(*i_functions->ptype_cleanup) (p_eurodocsis);
+	(*i_functions->ptype_cleanup) (p_frequency);
+	(*i_functions->ptype_cleanup) (p_modulation);
+	(*i_functions->ptype_cleanup) (p_adapter);
+	(*i_functions->ptype_cleanup) (p_frontend);
+	(*i_functions->ptype_cleanup) (p_outlayer);
+	(*i_functions->ptype_cleanup) (p_startfreq);
+	(*i_functions->ptype_cleanup) (p_frontend_reinit);
+	(*i_functions->ptype_cleanup) (p_tuning_timeout);
+
+	return I_OK;
+}
 
 /**
  * If a frequency is not specified, it will scan for a tuneable freq.
@@ -120,27 +166,26 @@ int input_open_docsis(struct input *i) {
 
 
 	// Select the output type
-	if (!strcmp(i->params_value[5], "ethernet")) {
+	if (!strcmp(PTYPE_STRING_GETVAL(p_outlayer), "ethernet")) {
 		p->output_layer = match_ethernet_id;
-	} else if (!strcmp(i->params_value[5], "atm")) {
+	} else if (!strcmp(PTYPE_STRING_GETVAL(p_outlayer), "atm")) {
 		p->output_layer = match_atm_id;
-	} else if (!strcmp(i->params_value[5], "docsis")) {
+	} else if (!strcmp(PTYPE_STRING_GETVAL(p_outlayer), "docsis")) {
 		p->output_layer = match_docsis_id;
 	} else {
-		dprint("Invalid output layer :%s\n", i->params_value[5]);
+		dprint("Invalid output layer :%s\n", PTYPE_STRING_GETVAL(p_outlayer));
 		return I_ERR;
 	}
 
 
 	// Parse eurodocsis and frequency
-	int eurodocsis, frequency;
-	sscanf(i->params_value[0], "%u", &eurodocsis);
-	sscanf(i->params_value[1], "%u", &frequency);
+	int eurodocsis = PTYPE_BOOL_GETVAL(p_eurodocsis);
+	unsigned int frequency = PTYPE_UINT32_GETVAL(p_frequency);
 
 	fe_modulation_t modulation;
-	if (!strcmp(i->params_value[2], "QAM64"))
+	if (!strcmp(PTYPE_STRING_GETVAL(p_modulation), "QAM64"))
 		modulation = QAM_64;
-	else if (!strcmp(i->params_value[2], "QAM256"))
+	else if (!strcmp(PTYPE_STRING_GETVAL(p_modulation), "QAM256"))
 		modulation = QAM_256;
 	else {
 		dprint("Invalid modulation. Valid modulation are QAM64 or QAM256\n");
@@ -151,16 +196,16 @@ int input_open_docsis(struct input *i) {
 	char adapter[NAME_MAX];
 	bzero(adapter, NAME_MAX);
 	strcpy(adapter, "/dev/dvb/adapter");
-	strcat(adapter, i->params_value[3]);
+	(*i_functions->ptype_snprintf) (p_adapter, adapter + strlen(adapter), NAME_MAX - strlen(adapter));
 
 	char frontend[NAME_MAX];
 	strcpy(frontend, adapter);
 	strcat(frontend, "/frontend");
-	strcat(frontend, i->params_value[4]);
+	(*i_functions->ptype_snprintf) (p_frontend, frontend + strlen(frontend), NAME_MAX - strlen(frontend));
 
 	p->frontend_fd = open(frontend, O_RDWR);
 	if (p->frontend_fd == -1) {
-		dprint("Unable to open frontend\n");
+		dprint("Unable to open frontend %s\n", frontend);
 		return I_ERR;
 	}
 
@@ -233,7 +278,7 @@ int input_open_docsis(struct input *i) {
 	int tuned = 0;
 
 	// Frequency and modulation supplied. Tuning to that
-	if (frequency != 0) {
+	if (i->mode == mode_normal) {
 		int try;
 		for (try = 0; try < 3; try++) {
 			tuned = input_docsis_tune(i, frequency, symbolRate, modulation);
@@ -250,7 +295,7 @@ int input_open_docsis(struct input *i) {
 			return I_ERR;
 		}
 
-	} else  { // No frequency supplied. Scanning for downstream
+	} else if (i->mode == mode_scan) { // No frequency supplied. Scanning for downstream
 
 
 		unsigned int start, end, step;
@@ -266,14 +311,11 @@ int input_open_docsis(struct input *i) {
 			step = 1000000;
 		}
 
-		unsigned int scanstart;
-
-		sscanf(i->params_value[6], "%u", &scanstart);
-		if (scanstart > start && scanstart < end)
+		unsigned int scanstart = PTYPE_UINT32_GETVAL(p_startfreq);
+		if (scanstart)
 			start = scanstart;
 
-		unsigned int need_reinit;
-		sscanf(i->params_value[7], "%u", &need_reinit);
+		unsigned int need_reinit = PTYPE_BOOL_GETVAL(p_frontend_reinit);
 
 
 		dprint("No frequency specified. starting a scan from %uMhz to %uMhz\n", start / 1000000, end / 1000000);
@@ -313,9 +355,15 @@ int input_open_docsis(struct input *i) {
 			else if(modulation == QAM_256)
 				dprint("QAM256");
 			dprint("\n");
+
+			PTYPE_UINT32_SETVAL(p_frequency, j);
+
 			break;
 
 		}
+	} else {
+		dprint("Invalid input mode");
+		return I_ERR;
 	}
 
 	if (!tuned) {
@@ -464,8 +512,7 @@ int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symbolRate, 
 
 	int try = 0;
 
-	int tune_timeout;
-	sscanf(i->params_value[8], "%u", &tune_timeout);
+	int tune_timeout = PTYPE_UINT32_GETVAL(p_tuning_timeout);
 
 	while (try < tune_timeout) {
 		if (poll(pfd, 1, 1000)){

@@ -2,7 +2,7 @@
 <config>
 
 <!-- use the input_pcap module and tell it to sniff to eth0 (you need root privileges for this) -->
-<input type="pcap">
+<input type="pcap" mode="interface">
 	<param name="interface">eth0</param>
 </input>
 

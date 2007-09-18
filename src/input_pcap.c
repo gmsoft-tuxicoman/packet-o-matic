@@ -20,23 +20,16 @@
 
 
 #include "input_pcap.h"
-
-#define PARAMS_NUM 4
-
-char *input_pcap_params[PARAMS_NUM][3] = {
-	{ "filename", "", "filename to read packets from. reads from an interface if empty" },
-	{ "interface", "eth0", "interface to read from" },
-	{ "snaplen", "1522", "snaplen if reading from an iface" },
-	{ "promisc", "0", "set the interface in promisc mode if != 0" },
-};
+#include "ptype_string.h"
+#include "ptype_bool.h"
+#include "ptype_uint16.h"
 
 struct input_functions *i_functions;
 
+struct input_mode *mode_interface, *mode_file;
+struct ptype *p_filename, *p_interface, *p_snaplen, *p_promisc;
 
 int input_register_pcap(struct input_reg *r, struct input_functions *i_funcs) {
-
-	copy_params(r->params_name, input_pcap_params, 0, PARAMS_NUM);
-	copy_params(r->params_help, input_pcap_params, 2, PARAMS_NUM);
 
 	i_functions = i_funcs;
 
@@ -46,6 +39,29 @@ int input_register_pcap(struct input_reg *r, struct input_functions *i_funcs) {
 	r->close = input_close_pcap;
 	r->cleanup = input_cleanup_pcap;
 	r->getcaps = input_getcaps_pcap;
+	r->unregister = input_unregister_pcap;
+
+	mode_interface = (*i_funcs->register_mode) (r->type, "interface", "Read packets from an interface");
+	mode_file = (*i_funcs->register_mode) (r->type, "file", "Read packets from a pcap file");
+
+	if (!mode_interface || !mode_file)
+		return I_ERR;
+	
+	p_filename = (*i_funcs->ptype_alloc) ("string", NULL);
+	p_interface = (*i_funcs->ptype_alloc) ("string", NULL);
+	p_snaplen = (*i_funcs->ptype_alloc) ("uint16", "bytes");
+	p_promisc = (*i_funcs->ptype_alloc) ("bool", NULL);
+
+	if (!p_filename || !p_interface || !p_snaplen || !p_promisc) {
+		input_unregister_pcap(r);
+		return I_ERR;
+	}
+
+	(*i_funcs->register_param) (mode_interface, "interface", "eth0", p_interface, "Interface to listen from");
+	(*i_funcs->register_param) (mode_interface, "snaplen", "1522", p_snaplen, "Snaplen");
+	(*i_funcs->register_param) (mode_interface, "promisc", "0", p_promisc, "Promiscuous");
+
+	(*i_funcs->register_param) (mode_file, "file", "", p_filename, "PCAP file");
 
 	return I_OK;
 }
@@ -56,22 +72,27 @@ int input_init_pcap(struct input *i) {
 	i->input_priv = malloc(sizeof(struct input_priv_pcap));
 	bzero(i->input_priv, sizeof(struct input_priv_pcap));
 
-	copy_params(i->params_value, input_pcap_params, 1, PARAMS_NUM);
-
 	return I_OK;
 
 }
 
 int input_cleanup_pcap(struct input *i) {
 
-	clean_params(i->params_value, PARAMS_NUM);
-
 	if (i->input_priv)
 		free(i->input_priv);
 
 	return I_OK;
 
-};
+}
+
+int input_unregister_pcap(struct input_reg *r) {
+
+	(*i_functions->ptype_cleanup) (p_interface);
+	(*i_functions->ptype_cleanup) (p_snaplen);
+	(*i_functions->ptype_cleanup) (p_promisc);
+	(*i_functions->ptype_cleanup) (p_filename);
+	return I_OK;
+}
 
 int input_open_pcap(struct input *i) {
 
@@ -81,26 +102,17 @@ int input_open_pcap(struct input *i) {
 	char errbuf[PCAP_ERRBUF_SIZE];
 	errbuf[0] = 0;
 
-	char filename[256];
-	bzero(filename, 256);
-	sscanf(i->params_value[0], "%255s", filename);
-	
-	if (strlen(filename) > 0) {
+	if (i->mode == mode_file) {
+		char *filename = PTYPE_STRING_GETVAL(p_filename);
 		p->p = pcap_open_offline(filename, errbuf);
 		if (!p->p) {
 			dprint("Error opening file %s for reading\n", filename);
 			return I_ERR;
 		}
-	} else {
-		char interface[256];
-		bzero(interface, 256);
-		sscanf(i->params_value[1], "%255s", interface);
-
-		int snaplen;
-		sscanf(i->params_value[2], "%u", &snaplen);
-
-		int promisc;
-		sscanf(i->params_value[3], "%u", &promisc);
+	} else if (i->mode == mode_interface) {
+		char *interface = PTYPE_STRING_GETVAL(p_interface);
+		int snaplen = PTYPE_UINT16_GETVAL(p_snaplen);
+		int promisc = PTYPE_BOOL_GETVAL(p_promisc);
 		if (snaplen < 64)
 			snaplen = 64;
 		dprint("Opening interface %s with a snaplen of %u\n", interface, snaplen);
@@ -109,6 +121,9 @@ int input_open_pcap(struct input *i) {
 			dprint("Error when opening interface %s : %s\n", interface, errbuf);
 			return I_ERR;
 		}
+	} else {
+		dprint("Invalid input mode\n");
+		return I_ERR;
 	}
 
 	switch (pcap_datalink(p->p)) {
@@ -210,7 +225,7 @@ int input_getcaps_pcap(struct input *i, struct input_caps *ic) {
 		return I_ERR;
 
 	ic->snaplen = pcap_snapshot(p->p);
-	if (strlen(i->params_value[0]) > 0) 
+	if (i->mode == mode_file) 
 		ic->is_live = 0;
 	else
 		ic->is_live = 1;

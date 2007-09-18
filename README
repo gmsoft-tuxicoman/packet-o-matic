@@ -56,6 +56,7 @@ See pom.xml.conf.example for an example. See `packet-o-matic -h` for parameter l
 The inputs :
 ------------
 The input modules read packet from a certain source and give the packets to the rule processor.
+A input has one or multiple mode. Each mode has its own set of parameters.
 
 - pcap : allow you to read from one or all network device or from a pcap file saved by tcpdump or ethereal for example
 - docsis : allow you to read fron a docsis stream using a dvb-c card and the linux-dvb api

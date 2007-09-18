@@ -23,6 +23,7 @@
 #include "input.h"
 #include "match.h"
 #include "timers.h"
+#include "ptype.h"
 
 struct input_reg *inputs[MAX_INPUT]; ///< Global variable which contains all the input registered in a table.
 static struct input_functions i_funcs; ///< Variable to hold the function pointers passed to the input.
@@ -41,7 +42,7 @@ int input_register(const char *input_name) {
 
 	for (i = 0; i < MAX_INPUT; i++) {
 		if (inputs[i] != NULL) {
-			if (strcmp(inputs[i]->input_name, input_name) == 0) {
+			if (strcmp(inputs[i]->name, input_name) == 0) {
 				return i;
 			}
 		} else {
@@ -58,17 +59,27 @@ int input_register(const char *input_name) {
 
 			struct input_reg *my_input = malloc(sizeof(struct input_reg));
 			bzero(my_input, sizeof(struct input_reg));
+			my_input->type = i;
+			inputs[i] = my_input;
+			inputs[i]->dl_handle = handle;
 
 			i_funcs.match_register = match_register;
+			i_funcs.register_mode = input_register_mode;
+			i_funcs.register_param = input_register_param;
+			i_funcs.ptype_alloc = ptype_alloc;
+			i_funcs.ptype_cleanup = ptype_cleanup_module;
+			i_funcs.ptype_snprintf = ptype_print_val;
 			
 			if ((*register_my_input) (my_input, &i_funcs) != I_OK) {
 				dprint("Error while loading input %s. Could not register input !\n", input_name);
+				inputs[i] = NULL;
+				free(my_input);
 				return I_ERR;
 			}
 
 			inputs[i] = my_input;
-			inputs[i]->input_name = malloc(strlen(input_name) + 1);
-			strcpy(inputs[i]->input_name, input_name);
+			inputs[i]->name = malloc(strlen(input_name) + 1);
+			strcpy(inputs[i]->name, input_name);
 			inputs[i]->dl_handle = handle;
 
 			dprint("Input %s registered\n", input_name);
@@ -82,6 +93,103 @@ int input_register(const char *input_name) {
 
 	return I_ERR;
 
+}
+
+/**
+ * Allocate a mode to an input and associate it with it.
+ * The first registered mode will be the default mode.
+ * Return the allocated mode for reference. On failure returns NULL.
+ **/
+
+struct input_mode *input_register_mode(int input_type, const char *name, const char *descr) {
+
+	if (!inputs[input_type])
+		return NULL;
+	
+	struct input_mode *mode = malloc(sizeof(struct input_mode));
+	bzero(mode, sizeof(struct input_mode));
+	
+	mode->name = malloc(strlen(name) + 1);
+	strcpy(mode->name, name);
+	mode->descr = malloc(strlen(descr) + 1);
+	strcpy(mode->descr, descr);
+
+	mode->next = inputs[input_type]->modes;
+	inputs[input_type]->modes = mode;
+
+	if (!inputs[input_type]->default_mode)
+		inputs[input_type]->default_mode = mode;
+
+	return mode;
+
+}
+
+/**
+ * Set the current input mode.
+ * Return I_ERR if the mode doesn't exists or if the input is already running
+ **/
+
+int input_set_mode(struct input *i, char *mode_name) {
+	if (!i)
+		return I_ERR;
+	if (i->running)
+		return I_ERR;
+	struct input_mode *mode = inputs[i->type]->modes;
+	while (mode) {
+		if (!strcmp(mode->name, mode_name)) {
+			i->mode = mode;
+			return I_OK;
+		}
+		mode = mode->next;
+	}
+
+	return I_ERR;
+
+ }
+
+/**
+ * Register a parameter for a specific input mode.
+ * Returns I_ERR on failure, I_OK on success.
+ **/
+int input_register_param(struct input_mode *mode, char *name, char *defval, struct ptype *value, char *descr) {
+
+	if (!mode)
+		return I_ERR;
+
+	struct input_param *param = malloc(sizeof(struct input_param));
+	bzero(param, sizeof(struct input_param));
+
+	param->name = malloc(strlen(name) + 1);
+	strcpy(param->name, name);
+	param->defval = malloc(strlen(name) + 1);
+	strcpy(param->defval, defval);
+	param->descr = malloc(strlen(descr) + 1);
+	strcpy(param->descr, descr);
+	param->value = value;
+
+	if (ptype_parse_val(param->value, defval) == P_ERR)
+		return I_ERR;
+
+	if (!mode->params) {
+		mode->params = param;
+	} else {
+		struct input_param *tmp = mode->params;
+		while (tmp->next)
+			tmp = tmp->next;
+		tmp->next = param;
+	}
+
+	return I_OK;
+}
+
+/**
+ * Return the name of the input.
+ **/
+char *input_get_name(int input_type) {
+	if (!inputs[input_type])
+		return NULL;
+	
+	return inputs[input_type]->name;
 }
 
 /**
@@ -111,30 +219,6 @@ struct input *input_alloc(int input_type) {
 }
 
 /**
- * It updates the value in the input structure. It will be parsed usually when opening the input.
- * Returns I_OK on success and I_ERR on failure.
- **/
-int input_set_param(struct input *i, char *name, char* value) {
-
-	if (!inputs[i->type]->params_name)
-		return I_ERR;
-
-	int j;
-	for (j = 0; inputs[i->type]->params_name[j]; j++) {
-		if (!strcmp(inputs[i->type]->params_name[j], name)) {
-			free(i->params_value[j]);
-			i->params_value[j] = malloc(strlen(value) + 1);
-			strcpy(i->params_value[j], value);
-			return I_OK;
-		}
-	}
-
-
-	return I_ERR;
-
-}
-
-/**
  * Returns a selectable file descriptor
  * or returns I_ERR on failure.
  **/
@@ -143,20 +227,31 @@ int input_open(struct input *i) {
 	if (!i)
 		return I_ERR;
 
-	if (inputs[i->type] && inputs[i->type]->open)
-		return (*inputs[i->type]->open) (i);
-	return I_ERR;
+	if (i->running)
+		return I_ERR;
 
+	if (inputs[i->type] && inputs[i->type]->open) {
+		int res = (*inputs[i->type]->open) (i);
+		if (res == I_ERR)
+			return I_ERR;
+	}
+
+	i->running = 1;
+	return I_OK;
 }
 
 /**
- * The buffer used should be at least 1528 bytes for ethernet and 802.1q marking. The argument bufflen is the length of the buffer.
+ * The buffer used should be at least the size of the snaplen returned by input_get_caps. The argument bufflen is the length of the buffer.
  * Returns the number of bytes copied. Returns 0 if nothing was read and I_ERR in case of fatal error.
  **/
 int input_read(struct input *i, struct frame *f) {
 
-	return (*inputs[i->type]->read) (i, f);
-
+	int res = (*inputs[i->type]->read) (i, f);
+	if (res == I_ERR) {
+		input_close(i);
+		return I_ERR;
+	}
+	return res;
 }
 
 /**
@@ -166,8 +261,13 @@ int input_close(struct input *i) {
 
 	if (!i)
 		return I_ERR;
+	
+	if (!i->running)
+		return I_ERR;
+	
+	i->running = 0;
 
-	if (inputs[i->type] && inputs[i->type]->close)
+	if (inputs[i->type] && inputs[i->type]->close) 
 		return (*inputs[i->type]->close) (i);
 
 	return I_ERR;
@@ -193,6 +293,43 @@ int input_cleanup(struct input *i) {
 }
 
 /**
+ * Return I_ERR on failure.
+ **/
+
+int input_unregister(int input_type) {
+	
+	if (!inputs[input_type])
+		return I_ERR;
+
+	if (inputs[input_type]->unregister)
+		(*inputs[input_type]->unregister) (inputs[input_type]);
+	
+	struct input_mode *m = inputs[input_type]->modes;
+	while (m) {
+		struct input_param *p = m->params;
+		while (p) {
+			free(p->name);
+			free(p->defval);
+			free(p->descr);
+			p = p->next;
+			free(m->params);
+			m->params = p;
+		}
+		free(m->name);
+		free(m->descr);
+		m = m->next;
+		free(inputs[input_type]->modes);
+		inputs[input_type]->modes = m;
+	}
+	if (dlclose(inputs[input_type]->dl_handle))
+		dprint("Error while closing library of input %s\n", inputs[input_type]->name);
+	free(inputs[input_type]->name);
+	free(inputs[input_type]);
+	inputs[input_type] = NULL;
+	return I_OK;
+}
+
+/**
  * This function makes sure that all the memory of the input is remove.
  * However it doesn't call the cleanup() functions of the input.
  * Returns I_ERR on failure.
@@ -201,24 +338,8 @@ int input_unregister_all() {
 
 	int i = 0;
 
-	for (; i < MAX_INPUT && inputs[i]; i++) {
-		if (inputs[i]->params_name) {
-			int j;
-			for (j = 0; inputs[i]->params_name[j]; j++) {
-				free(inputs[i]->params_name[j]);
-				free(inputs[i]->params_help[j]);
-			}
-			free(inputs[i]->params_name);
-			free(inputs[i]->params_help);
-		}
-		if (dlclose(inputs[i]->dl_handle))
-			dprint("Error while closing library of input %s\n", inputs[i]->input_name);
-		free(inputs[i]->input_name);
-		free(inputs[i]);
-		inputs[i] = NULL;
-
-	}
-
+	for (; i < MAX_INPUT && inputs[i]; i++) 
+		input_unregister(i);
 	return I_OK;
 
 }
@@ -236,17 +357,34 @@ int input_getcaps(struct input *i, struct input_caps *ic) {
 
 void input_print_help() {
 
-	int i, j;
+	int i;
 
 
 	for (i = 0; inputs[i]; i++) {
-		printf("* INPUT %s *\n", inputs[i]->input_name);
+		printf("* INPUT %s *\n", inputs[i]->name);
 
-		if (!inputs[i]->params_name) 
+		if (!inputs[i]->modes) {
 			printf("No parameter for this input\n");
-		else
-			for (j = 0; inputs[i]->params_name[j]; j++)
-				printf("%s : %s\n", inputs[i]->params_name[j], inputs[i]->params_help[j]);
+		} else {
+			struct input_mode *m = inputs[i]->modes;
+			if (!m) {
+				printf("No parameter for this input\n");
+			} else {
+				while (m) {
+					printf("Mode %s : %s\n", m->name, m->descr);
+					struct input_param *p = m->params;
+					if (!p) {
+						printf("No parameter for this mode\n");
+					} else {
+						while (p) {
+							printf("  %s : %s\n", p->name, p->descr);
+							p = p->next;
+						}
+					}
+					m = m->next;
+				}
+			}
+		}
 
 		printf("\n");
 	}

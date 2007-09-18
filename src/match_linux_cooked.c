@@ -37,7 +37,7 @@ int match_register_linux_cooked(struct match_reg *r, struct match_functions *m_f
 	match_dev_type_info = (*m_funcs->layer_info_register) (r->type, "dev_type", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
 	match_saddr_info = (*m_funcs->layer_info_register) (r->type, "saddr", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
 
-	return 1;
+	return POM_OK;
 }
 
 int match_identify_linux_cooked(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {

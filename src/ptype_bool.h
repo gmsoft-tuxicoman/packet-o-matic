@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,36 +18,25 @@
  *
  */
 
-
-
-#ifndef __INPUT_PCAP_H__
-#define __INPUT_PCAP_H__
-
-
-#include <pcap.h>
+#ifndef __PTYPE_UINT8_H__
+#define __PTYPE_UINT8_H__
 
 #include "modules_common.h"
+#include "ptype.h"
 
-#include "input.h"
+/// x the struct ptype
+#define PTYPE_BOOL_GETVAL(x) 			\
+	(int) ((x)->value)
 
-/// Private structure of the pcap input.
-struct input_priv_pcap {
-
-	pcap_t *p; ///< Pcap instance
-	int output_layer; ///< Layer type to use
-	struct timeval tv; ///< Store the time to return if we use file clock source
-
-};
+/// x the struct ptype, y is the value
+#define PTYPE_BOOL_SETVAL(x, y) {	\
+	(int) (x)->value = (y);		\
+}
 
 
-int input_init_pcap(struct input *i);
-int input_open_pcap(struct input *i);
-int input_read_pcap(struct input *i, struct frame *f);
-int input_unregister_pcap(struct input_reg *r);
-int input_close_pcap(struct input *i);
-int input_cleanup_pcap(struct input *i);
-int input_getcaps_pcap(struct input *i, struct input_caps *ic);
-
+int ptype_register_bool(struct ptype_reg *r);
+int ptype_parse_bool(struct ptype *p, char *val);
+int ptype_print_bool(struct ptype *pt, char *val, size_t size);
+int ptype_compare_bool(int op, void *val_a, void* val_b);
 
 #endif
-

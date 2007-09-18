@@ -11,7 +11,7 @@ MATCH_OBJS = match_docsis.la match_ethernet.la match_ipv4.la match_icmp.la match
 CONNTRACK_OBJS = conntrack_ipv4.la conntrack_ipv6.la conntrack_rtp.la conntrack_tcp.la conntrack_udp.la
 HELPER_OBJS = helper_ipv4.la helper_tcp.la
 TARGET_OBJS = target_display.la target_dump_payload.la target_http.la target_wave.la target_null.la @TARGET_OBJS@
-PTYPES_OBJS = ptype_uint8.la ptype_uint16.la ptype_uint32.la ptype_mac.la ptype_ipv4.la ptype_ipv6.la
+PTYPES_OBJS = ptype_bool.la ptype_uint8.la ptype_uint16.la ptype_uint32.la ptype_mac.la ptype_ipv4.la ptype_ipv6.la ptype_string.la
 
 
 lib_LTLIBRARIES = $(INPUT_OBJS) $(MATCH_OBJS) $(CONNTRACK_OBJS) $(HELPER_OBJS) $(TARGET_OBJS) $(PTYPES_OBJS)
@@ -82,6 +82,8 @@ target_wave_la_LDFLAGS = -module -avoid-version
 target_null_la_SOURCES = target_null.c target_null.h modules_common.h
 target_null_la_LDFLAGS = -module -avoid-version
 
+ptype_bool_la_SOURCES = ptype_bool.c ptype_bool.h modules_common.h
+ptype_bool_la_LDFLAGS = -module -avoid-version
 ptype_uint8_la_SOURCES = ptype_uint8.c ptype_uint8.h modules_common.h
 ptype_uint8_la_LDFLAGS = -module -avoid-version
 ptype_uint16_la_SOURCES = ptype_uint16.c ptype_uint16.h modules_common.h
@@ -94,3 +96,5 @@ ptype_ipv4_la_SOURCES = ptype_ipv4.c ptype_ipv4.h modules_common.h
 ptype_ipv4_la_LDFLAGS = -module -avoid-version
 ptype_ipv6_la_SOURCES = ptype_ipv6.c ptype_ipv6.h modules_common.h
 ptype_ipv6_la_LDFLAGS = -module -avoid-version
+ptype_string_la_SOURCES = ptype_string.c ptype_string.h modules_common.h
+ptype_string_la_LDFLAGS = -module -avoid-version

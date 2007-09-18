@@ -32,8 +32,8 @@ int mgmtcmd_load_helper(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_helper_param(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_unload_helper(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]);
-
 int mgmtcmd_set_rule_split(struct mgmt_connection *c, char *expr, struct rule_node **start, struct rule_node **end);
 int mgmtcmd_set_rule(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_show_input(struct mgmt_connection *c, int argc, char *argv[]);
 
 #endif

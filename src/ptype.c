@@ -96,7 +96,8 @@ struct ptype* ptype_alloc(const char* type, char* unit) {
 	struct ptype *ret = malloc(sizeof(struct ptype));
 	bzero(ret, sizeof(struct ptype));
 	ret->type = idx;
-	ptypes[idx]->alloc(ret);
+	if (ptypes[idx]->alloc)
+		ptypes[idx]->alloc(ret);
 
 	if (unit)
 		strncpy(ret->unit, unit, PTYPE_MAX_UNIT);

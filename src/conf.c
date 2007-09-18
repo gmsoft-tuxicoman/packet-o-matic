@@ -62,6 +62,20 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 		return NULL;
 	}
 	struct input *ip = input_alloc(it);
+	char *input_mode;
+	input_mode = (char *) xmlGetProp(cur, (const xmlChar*) "mode");
+	if (!input_mode)
+		dprint("Warning, no mode specified in the input tag. Will use the default\n");
+	else {
+		if (input_set_mode(ip, input_mode) != I_OK) {
+			dprint("Unable to set mode %s for input %s\n", input_type, input_mode);
+			free(ip);
+			xmlFree(input_type);
+			xmlFree(input_mode);
+			return NULL;
+		}
+	}
+
 	xmlNodePtr pcur = cur->xmlChildrenNode;
 	while (pcur) {
 		if (!xmlStrcmp(pcur->name, (const xmlChar*) "param")) {
@@ -73,8 +87,18 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 				xmlFree(param_type);
 				continue;
 			}
-			if (input_set_param(ip, param_type, value) == I_ERR)
-				dprint("No parameter %s for input %s\n", param_type, input_type);
+			struct input_param *param = ip->mode->params;
+			while (param) {
+				if (!strcmp(param->name, param_type)) {
+					if (ptype_parse_val(param->value, value) == P_ERR) {
+						dprint("Unable to parse \"%s\" for parameter %s of input %s\n", value, param_type, input_type);
+					}
+					break;
+				}
+				param = param->next;
+			}
+			if (!param)
+				dprint("No parameter %s for input %s and mode %s\n", param_type, input_type, input_mode);
 
 			xmlFree(param_type);
 			xmlFree(value);
@@ -82,6 +106,7 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 		}
 		pcur = pcur->next;
 	}
+	xmlFree(input_mode);
 	xmlFree(input_type);
 
 	return ip;

@@ -33,14 +33,6 @@
 /// Return value on success
 #define I_OK 0
 
-
-/// This structure saves infos about an input instances
-struct input {
-	int type; ///< Unique number assigned to this type of input.
-	char **params_value; ///< Values of the parametres.
-	void *input_priv; ///< Private stuff, place to store a struct used by the input internaly.
-};
-
 /// This structure is used to retreive the capabilities of the current opened input
 struct input_caps {
 
@@ -49,12 +41,37 @@ struct input_caps {
 
 };
 
+/// This structure retains info about the different parameters for an input
+struct input_param {
+
+	char *name; ///< Name of the parameter
+	char *defval; ///< Default value
+	char *descr; ///< Description 
+	struct ptype *value; ///< User modifiable value
+	struct input_param *next; ///< Used for linking
+};
+
+/// This structure will save the possible modes for the input
+struct input_mode {
+	char *name; ///< Mode name
+	char *descr; ///< Description of what it's used for
+	struct input_param *params; ///< Pointer to parameters associated with this mode
+	struct input_mode *next; ///< Used for linking
+};
+
+/// This structure saves infos about an input instances
+struct input {
+	int type; ///< Unique number assigned to this type of input
+	void *input_priv; ///< Private stuff, place to store a struct used by the input internaly
+	struct input_mode *mode; ///< Current input mode
+	int running; ///< Set to 1 if the input is running or 0 if not
+};
+
+
 
 /// This structure saves infos about a registered input
 /**
  * When the register function of an input is called, it must fill the following fields :
- * - params_name
- * - params_help
  * - init
  * - open
  * - read
@@ -63,10 +80,9 @@ struct input_caps {
  **/
 struct input_reg {
 
-	char *input_name; ///< Name of the input
+	char *name; ///< Name of the input
+	int type; ///< Unique ID of the input
 	void *dl_handle; ///< Handle of the library
-	char **params_name; ///< Parameter names
-	char **params_help; ///< Parameter help strings
 
 	/// Pointer to the initialization function of the input
 	/**
@@ -104,6 +120,12 @@ struct input_reg {
 	 **/
 	int (*cleanup) (struct input *i);
 
+	/// Pointer to the unregister function
+	/**
+	 * Free the memory allocated at registration time.
+	 * Returns I_OK on success and I_ERR on failure.
+	 **/
+	 int (*unregister) (struct input_reg *r);
 
 	/// Pointer to the fonction to provide the capabilities of an input
 	/**
@@ -114,21 +136,41 @@ struct input_reg {
 
 	int (*getcaps) (struct input *i, struct input_caps *ic);
 
+	/// Pointer to the different possible modes.
+	struct input_mode *modes;
+
+	/// Default mode of this input.
+	struct input_mode *default_mode;
+
 };
 
 /// This structure provides usefull fonction pointers for the inputs
 struct input_functions {
 	int (*match_register) (const char *); ///< Register a match
+	struct input_mode *(*register_mode) (int, const char *, const char *); ///< Register a mode for the current input
+	int (*register_param) (struct input_mode *, char *, char *, struct ptype*, char *); ///< Register a parameter for a specific mode
+	struct ptype* (*ptype_alloc) (const char* , char*); ///< Allocate a struct ptype
+	int (*ptype_cleanup) (struct ptype* p); ///< Cleanup the allocated struct
+	int (*ptype_snprintf) (struct ptype*, char*, size_t);
 };
 
 /// Registers a new input by it's name.
 int input_register(const char *input_name);
 
+/// Register a mode for an input
+struct input_mode *input_register_mode(int input_type, const char *name, const char *descr);
+
+/// Set the mode of an input
+int input_set_mode(struct input *i, char *mode_name);
+
+// Register a parameter for a specific input mode
+int input_register_param(struct input_mode *mode, char *name, char *defval, struct ptype *value, char *descr);
+
+/// Give the input name from it's type
+char *input_get_name(int input_type);
+
 /// Create a new input and returns its structure.
 struct input *input_alloc(int input_type);
-
-/// Set a parameter of an input.
-int input_set_param(struct input *i, char *name, char* value);
 
 /// Open the input.
 int input_open(struct input *i);
@@ -141,6 +183,9 @@ int input_close(struct input *i);
 
 /// Cleanup the input stuff.
 int input_cleanup(struct input *i);
+
+// Unregister an input.
+int input_unregister(int input_type);
 
 /// Unregister all the inputs.
 int input_unregister_all();

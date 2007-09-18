@@ -71,7 +71,8 @@ int input_close_docsis(struct input *i);
 /// Cleanup the docsis input.
 int input_cleanup_docsis(struct input *i);
 
-
+/// Cleanup the memory allocated at registration time
+int input_unregister_docsis(struct input_reg *r);
 
 /// Reads an MPEG packet from the cable interface.
 int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_docsis *p);

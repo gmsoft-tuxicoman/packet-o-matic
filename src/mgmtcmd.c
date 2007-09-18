@@ -31,7 +31,7 @@
 extern struct helper_reg *helpers[];
 
 
-#define MGMT_COMMANDS_NUM 9
+#define MGMT_COMMANDS_NUM 10
 
 struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
@@ -92,6 +92,12 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.help = "Change a rule",
 		.callback_func = mgmtcmd_set_rule,
 		.usage = "set rule <rule id> <rule>",
+	},
+
+	{
+		.words = { "show", "input", NULL },
+		.help = "Display informations about the input in use",
+		.callback_func = mgmtcmd_show_input,
 	},
 
 };
@@ -217,7 +223,7 @@ int mgmtcmd_show_helpers(struct mgmt_connection *c, int argc, char *argv[]) {
 
 			char buff[256];
 			bzero(buff, sizeof(buff));
-			ptype_print_val(tmp->value, buff, 256);
+			ptype_print_val(tmp->value, buff, sizeof(buff));
 			mgmtsrv_send(c, buff);
 			mgmtsrv_send(c, " ");
 			mgmtsrv_send(c, tmp->value->unit);
@@ -841,6 +847,42 @@ int mgmtcmd_set_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	node_destroy(rl->node, 0);
 	rl->node = start;
 	reader_process_unlock();
+
+	return MGMT_OK;
+}
+
+int mgmtcmd_show_input(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	mgmtsrv_send(c, "Current input : ");
+	struct input* i = main_config->input;
+	if (!i) {
+		mgmtsrv_send(c, "none?!\r\n");
+		return MGMT_OK;
+	}
+	mgmtsrv_send(c, input_get_name(i->type));
+	mgmtsrv_send(c, ", mode ");
+	mgmtsrv_send(c, i->mode->name);
+
+	if (i->running)
+		mgmtsrv_send(c, " (running)\r\n");
+	else
+		mgmtsrv_send(c, "\r\n");
+	
+	struct input_param *p = i->mode->params;
+	while (p) {
+		mgmtsrv_send(c, "  ");
+		mgmtsrv_send(c, p->name);
+		mgmtsrv_send(c, " = ");
+		char buff[256];
+		bzero(buff, sizeof(buff));
+		ptype_print_val(p->value, buff, sizeof(buff));
+		mgmtsrv_send(c, buff);
+		mgmtsrv_send(c, " ");
+		mgmtsrv_send(c, p->value->unit);
+		mgmtsrv_send(c, "\r\n");
+		p = p->next;
+	}
+
 
 	return MGMT_OK;
 }
