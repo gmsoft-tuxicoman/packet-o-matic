@@ -31,7 +31,7 @@
 extern struct helper_reg *helpers[];
 
 
-#define MGMT_COMMANDS_NUM 10
+#define MGMT_COMMANDS_NUM 11
 
 struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
@@ -100,6 +100,11 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.callback_func = mgmtcmd_show_input,
 	},
 
+	{
+		.words = { "show", "targets", NULL },
+		.help = "Display informations about the targets in every rule",
+		.callback_func = mgmtcmd_show_targets,
+	},
 };
 
 int mgmtcmd_register_all() {
@@ -211,13 +216,13 @@ int mgmtcmd_show_helpers(struct mgmt_connection *c, int argc, char *argv[]) {
 	for (i = 0; i < MAX_HELPER; i++) {
 		if (!helpers[i])
 			continue;
-		mgmtsrv_send(c, "    ");
+		mgmtsrv_send(c, "  ");
 		mgmtsrv_send(c, match_get_name(i));
 		mgmtsrv_send(c, "\r\n");
 
 		struct helper_param *tmp = helpers[i]->params;
 		while (tmp) {
-			mgmtsrv_send(c, "        ");
+			mgmtsrv_send(c, "   ");
 			mgmtsrv_send(c, tmp->name);
 			mgmtsrv_send(c, " = ");
 
@@ -883,6 +888,57 @@ int mgmtcmd_show_input(struct mgmt_connection *c, int argc, char *argv[]) {
 		p = p->next;
 	}
 
+
+	return MGMT_OK;
+}
+
+int mgmtcmd_show_targets(struct mgmt_connection *c, int argc, char *argv[]) {
+
+
+	struct rule_list *rl = main_config->rules;
+
+	unsigned int rule_num = 0;
+	char buff[256];
+
+	while (rl) {
+		sprintf(buff, "%u", rule_num);
+		mgmtsrv_send(c, "Rule ");
+		mgmtsrv_send(c, buff);
+		mgmtsrv_send(c, " : \r\n");
+
+		struct target *t = rl->target;
+
+		while (t) {
+			mgmtsrv_send(c, "  ");
+			mgmtsrv_send(c, target_get_name(t->type));
+			if (t->mode) {
+				mgmtsrv_send(c, ", mode ");
+				mgmtsrv_send(c, t->mode->name);
+				mgmtsrv_send(c, "\r\n");
+				struct target_param_reg *pr = t->mode->params;
+				while (pr) {
+					mgmtsrv_send(c, "    ");
+					mgmtsrv_send(c, pr->name);
+					mgmtsrv_send(c, " = ");
+					char buff[256];
+					bzero(buff, sizeof(buff));
+					struct ptype *value = target_get_param_value(t, pr->name);
+					ptype_print_val(value , buff, sizeof(buff));
+					mgmtsrv_send(c, buff);
+					mgmtsrv_send(c, " ");
+					mgmtsrv_send(c, value->unit);
+					mgmtsrv_send(c, "\r\n");
+					pr = pr->next;
+				}
+
+			}
+			mgmtsrv_send(c, "\r\n");
+			t = t->next;
+		}
+
+		rl = rl->next;
+		rule_num++;
+	}
 
 	return MGMT_OK;
 }

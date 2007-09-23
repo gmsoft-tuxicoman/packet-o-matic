@@ -5,6 +5,7 @@ Updated config syntax according to new way of handling parameters for targets.
 Get rid of copy_params() and clean_params().
 Fixed possible segfaults while parsing the config file.
 Fix unloading of libs when unregistering ptypes.
+Added "show targets" command in the management console.
 
 * 2007/09/18 Guy Martin <gmsoft@tuxicoman.be>
 Inputs now use ptypes to save the parameters.

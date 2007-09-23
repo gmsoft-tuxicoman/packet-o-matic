@@ -100,6 +100,7 @@ int target_register_param_value(struct target *t, struct target_mode *mode, cons
 struct target *target_alloc(int target_type);
 int target_set_mode(struct target *t, const char *mode_name);
 struct ptype *target_get_param_value(struct target *t, const char *param);
+char *target_get_name(int target_type);
 int target_open(struct target *t);
 int target_process(struct target *t, struct frame *f);
 int target_close(struct target *t);

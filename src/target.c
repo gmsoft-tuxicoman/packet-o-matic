@@ -264,6 +264,15 @@ struct ptype *target_get_param_value(struct target *t, const char *param) {
 
 }
 
+char *target_get_name(int target_type) {
+
+	if (!targets[target_type])
+		return NULL;
+
+	return targets[target_type]->target_name;
+
+}
+
 int target_open(struct target *t) {
 
 	if (!t)

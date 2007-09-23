@@ -104,11 +104,12 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 				}
 				param = param->next;
 			}
-			if (!param)
+			if (!param) {
 				dprint("No parameter %s for input %s", param_type, input_type);
 				if (ip->mode)
 					dprint(" and mode %s", ip->mode->name);
 				dprint("\n");
+			}
 
 			xmlFree(param_type);
 			xmlFree(value);
