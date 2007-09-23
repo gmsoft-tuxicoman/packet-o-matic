@@ -38,14 +38,13 @@
 
 struct target_priv_tcpkill {
 
-	int routed; // 1 if mode is routed
 #ifdef HAVE_LINUX_IP_SOCKET
 	int socket;
 #endif
-	char errbuf[LIBNET_ERRBUF_SIZE];
 	libnet_t *lc;
 	int ifindex;
-	unsigned int severity;
+	struct ptype *severity;
+	struct ptype *interface;
 };
 
 int target_init_tcpkill(struct target *t);

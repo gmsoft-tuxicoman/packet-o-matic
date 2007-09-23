@@ -62,6 +62,13 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 		return NULL;
 	}
 	struct input *ip = input_alloc(it);
+	if (!ip) {
+		
+		dprint("Error, unable to allocate input of type %s\n", input_type);
+		xmlFree(input_type);
+		return NULL;
+	}
+
 	char *input_mode;
 	input_mode = (char *) xmlGetProp(cur, (const xmlChar*) "mode");
 	if (!input_mode)
@@ -98,7 +105,10 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 				param = param->next;
 			}
 			if (!param)
-				dprint("No parameter %s for input %s and mode %s\n", param_type, input_type, input_mode);
+				dprint("No parameter %s for input %s", param_type, input_type);
+				if (ip->mode)
+					dprint(" and mode %s", ip->mode->name);
+				dprint("\n");
 
 			xmlFree(param_type);
 			xmlFree(value);
@@ -136,22 +146,45 @@ struct target *parse_target(xmlDocPtr doc, xmlNodePtr cur) {
 		return NULL;
 	}
 
+	char *target_mode;
+	target_mode = (char *) xmlGetProp(cur, (const xmlChar*) "mode");
+	if (target_mode) {
+		if (target_set_mode(tp, target_mode) != POM_OK) {
+			dprint("No mode %s for target %s\n", target_mode, target_type);
+			free(tp);
+			xmlFree(target_type);
+			xmlFree(target_mode);
+			return NULL;
+		}
+	}
+
+	xmlFree(target_mode);
+
 	xmlNodePtr pcur = cur->xmlChildrenNode;
 	while (pcur) {
 		if (!xmlStrcmp(pcur->name, (const xmlChar*) "param")) {
 			char *param_type = (char *) xmlGetProp(pcur, (const xmlChar*) "name");
 			if (!param_type)
 				continue;
-			char *value = (char *) xmlNodeListGetString(doc, pcur->xmlChildrenNode, 1);
-			if (!value) {
+			char *param_value = (char *) xmlNodeListGetString(doc, pcur->xmlChildrenNode, 1);
+			if (!param_value) {
 				xmlFree(param_type);
 				continue;
 			}
-			if (!target_set_param(tp, param_type, value))
-				dprint("No parameter %s for target %s\n", param_type, target_type);
+			
+			struct ptype *value = target_get_param_value(tp, param_type);
+			if (!value) {
+				dprint("Error, no parameter %s for target %s", param_type, target_type);
+				if (tp->mode)
+					dprint("for mode %s", tp->mode->name);
+				dprint("\n");
+			} else { 
+				if (ptype_parse_val(value, param_value) != POM_OK) 
+					dprint("Error, could not parse value %s for parameter %s for target %s\n", param_value, param_type, target_type);
+			}
 
 			xmlFree(param_type);
-			xmlFree(value);
+			xmlFree(param_value);
 
 		}
 		pcur = pcur->next;
@@ -204,7 +237,9 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 					xmlFree(field);
 				} else {
 					struct match_param *mp = match_alloc_param(mt, field);
-					if (ptype_parse_val(mp->value, value) == POM_ERR) {
+					if (!mp) {
+						dprint("No field %s for match %s\n", field, layer);
+					} else if (ptype_parse_val(mp->value, value) == POM_ERR) {
 						dprint("Unable to parse value \"%s\" for field %s and match %s\n", value, field, layer);
 					} else {
 						n->match = mp;

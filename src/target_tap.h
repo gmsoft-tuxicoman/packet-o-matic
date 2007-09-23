@@ -36,6 +36,7 @@
 struct target_priv_tap {
 
 	int fd;
+	struct ptype *ifname;
 
 };
 

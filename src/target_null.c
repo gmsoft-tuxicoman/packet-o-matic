@@ -23,16 +23,11 @@
 
 #include "target_null.h"
 
-// Maximum segment len with ethernet header
-#define MAX_SEGMENT_LEN 1518
-
-int match_ethernet_id;
-
 int target_register_null(struct target_reg *r, struct target_functions *tg_funcs) {
 
 	r->process = target_process_null;
 
-	return 1;
+	return POM_OK;
 
 }
 
@@ -40,6 +35,6 @@ int target_process_null(struct target *t, struct frame *f) {
 
 	ndprint("Packet processed\n");
 
-	return 1;
+	return POM_OK;
 
 }

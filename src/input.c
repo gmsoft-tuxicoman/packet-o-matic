@@ -113,12 +113,15 @@ struct input_mode *input_register_mode(int input_type, const char *name, const c
 	strcpy(mode->name, name);
 	mode->descr = malloc(strlen(descr) + 1);
 	strcpy(mode->descr, descr);
-
-	mode->next = inputs[input_type]->modes;
-	inputs[input_type]->modes = mode;
-
-	if (!inputs[input_type]->default_mode)
-		inputs[input_type]->default_mode = mode;
+	
+	if (!inputs[input_type]->modes) {
+		inputs[input_type]->modes = mode;
+	} else {
+		struct input_mode *tmpm = inputs[input_type]->modes;
+		while (tmpm->next)
+			tmpm = tmpm->next;
+		tmpm->next = mode;
+	}
 
 	return mode;
 
@@ -214,6 +217,8 @@ struct input *input_alloc(int input_type) {
 			free(i);
 			return NULL;
 		}
+	// assign default mode
+	i->mode = inputs[input_type]->modes;
 	
 	return i;
 }
@@ -367,22 +372,18 @@ void input_print_help() {
 			printf("No parameter for this input\n");
 		} else {
 			struct input_mode *m = inputs[i]->modes;
-			if (!m) {
-				printf("No parameter for this input\n");
-			} else {
-				while (m) {
-					printf("Mode %s : %s\n", m->name, m->descr);
-					struct input_param *p = m->params;
-					if (!p) {
-						printf("No parameter for this mode\n");
-					} else {
-						while (p) {
-							printf("  %s : %s\n", p->name, p->descr);
-							p = p->next;
-						}
+			while (m) {
+				printf("Mode %s : %s\n", m->name, m->descr);
+				struct input_param *p = m->params;
+				if (!p) {
+					printf("  No parameter for this mode\n");
+				} else {
+					while (p) {
+						printf("  %s : %s\n", p->name, p->descr);
+						p = p->next;
 					}
-					m = m->next;
 				}
+				m = m->next;
 			}
 		}
 

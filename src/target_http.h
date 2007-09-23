@@ -32,6 +32,20 @@
 #define HTTP_HAVE_CTYPE	0x10 ///< We have the content type
 #define HTTP_HAVE_CLEN	0x20 ///< We have the content length
 
+struct target_priv_http {
+
+	int match_mask;
+
+	struct ptype *path;
+	struct ptype *dump_img;
+	struct ptype *dump_vid;
+	struct ptype *dump_snd;
+	struct ptype *dump_txt;
+	struct ptype *dump_bin;
+	struct ptype *dump_doc;
+
+};
+
 struct target_conntrack_priv_http {
 
 	int fd;

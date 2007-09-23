@@ -1,3 +1,11 @@
+* 2007/09/23 Guy Martin <gmsoft@tuxicoman.be>
+Removed unused field tv in struct input_priv_pcap.
+Modified targets to use struct ptypes for their parameters.
+Updated config syntax according to new way of handling parameters for targets.
+Get rid of copy_params() and clean_params().
+Fixed possible segfaults while parsing the config file.
+Fix unloading of libs when unregistering ptypes.
+
 * 2007/09/18 Guy Martin <gmsoft@tuxicoman.be>
 Inputs now use ptypes to save the parameters.
 Added the notion of input mode and reflected changes in the config accordingly.

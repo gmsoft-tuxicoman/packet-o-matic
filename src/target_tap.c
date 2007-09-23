@@ -20,21 +20,15 @@
 
 
 #include "target_tap.h"
+#include "ptype_string.h"
 
-#define PARAMS_NUM 1
-
-char *target_tap_params[PARAMS_NUM][3] = {
-	{ "ifname", "pom0", "interface to send packets to"},
-};
 
 int match_ethernet_id;
 
 struct target_functions *tg_functions;
+struct target_mode *mode_default;
 
 int target_register_tap(struct target_reg *r, struct target_functions *tg_funcs) {
-
-	copy_params(r->params_name, target_tap_params, 0, PARAMS_NUM);
-	copy_params(r->params_help, target_tap_params, 2, PARAMS_NUM);
 
 	r->init = target_init_tap;
 	r->open = target_open_tap;
@@ -46,35 +40,52 @@ int target_register_tap(struct target_reg *r, struct target_functions *tg_funcs)
 
 	match_ethernet_id = (*tg_functions->match_register) ("ethernet");
 
-	return 1;
+	mode_default = (*tg_funcs->register_mode) (r->type, "default", "Send packets to a new virtual interface");
 
-}
+	if (!mode_default)
+		return POM_ERR;
+	
+	(*tg_funcs->register_param) (mode_default, "ifname", "pom0", "Interface to create");
 
-int target_cleanup_tap(struct target *t) {
 
-	clean_params(t->params_value, PARAMS_NUM);
+	return POM_OK;
 
-	if (t->target_priv)
-		free(t->target_priv);
-
-	return 1;
 }
 
 
 int target_init_tap(struct target *t) {
 
-	copy_params(t->params_value, target_tap_params, 1, PARAMS_NUM);
-
 	if (match_ethernet_id == -1)
-		return 0;
+		return POM_ERR;
 
 	struct target_priv_tap *priv = malloc(sizeof(struct target_priv_tap));
 	bzero(priv, sizeof(struct target_priv_tap));
 
 	t->target_priv = priv;
+
+	priv->ifname = (*tg_functions->ptype_alloc) ("string", NULL);
+
+	if (!priv->ifname) {
+		target_cleanup_tap(t);
+		return POM_ERR;
+	}
+
+	(*tg_functions->register_param_value) (t, mode_default, "ifname", priv->ifname);
 	
 
-	return 1;
+	return POM_OK;
+}
+
+int target_cleanup_tap(struct target *t) {
+
+	struct target_priv_tap *priv = t->target_priv;
+
+	if (priv) {	
+		(*tg_functions->ptype_cleanup) (priv->ifname);
+		free(priv);
+	}
+
+	return POM_OK;
 }
 
 
@@ -85,22 +96,22 @@ int target_open_tap(struct target *t) {
 	priv->fd = open("/dev/net/tun", O_RDWR | O_SYNC);
 	if (priv->fd < 0) {
 		dprint("Failed to open tap device\n");
-		return 0;
+		return POM_ERR;
 	}
 
 	struct ifreq ifr;
 	bzero(&ifr, sizeof(ifr));
 	ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
-	strncpy(ifr.ifr_name, t->params_value[0], IFNAMSIZ);
+	strncpy(ifr.ifr_name, PTYPE_STRING_GETVAL(priv->ifname), IFNAMSIZ);
 	
 	if (ioctl(priv->fd, TUNSETIFF, (void *) &ifr) < 0 ) {
 		dprint("Unable to setup tap device\n");
 		close(priv->fd);
-		return 0;
+		return POM_ERR;
 	}
 
 
-	return 1;	
+	return POM_OK;	
 }
 
 
@@ -110,20 +121,20 @@ int target_process_tap(struct target *t, struct frame *f) {
 
 	if (priv->fd < 1) {
 		dprint("Error, tap target not opened !\n");
-		return 0;
+		return POM_ERR;
 	}
 	
 	int start = layer_find_start(f->l, match_ethernet_id);
 
 	if (start == -1) {
 		dprint("Unable to find the start of the packet\n");
-		return 0;
+		return POM_OK;
 
 	}
 
 	write(priv->fd, f->buff + start, f->len - start);
 
-	return 1;
+	return POM_OK;
 };
 
 int target_close_tap(struct target *t) {
@@ -132,9 +143,8 @@ int target_close_tap(struct target *t) {
 
 	if (priv->fd != -1)
 		close(priv->fd);
-	free(priv);
-	t->target_priv = NULL;
-	return 1;
+
+	return POM_OK;
 };
 
 

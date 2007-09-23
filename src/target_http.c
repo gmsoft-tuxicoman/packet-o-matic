@@ -28,6 +28,9 @@
 
 #include "target_http.h"
 
+#include "ptype_bool.h"
+#include "ptype_string.h"
+
 #define MIME_TYPES_COUNT 45
 
 #define MIME_BIN "\x01"
@@ -98,27 +101,12 @@ const char *mime_types[MIME_TYPES_COUNT][3] = {
 
 unsigned char mime_types_hash[MIME_TYPES_COUNT];
 
-
-#define PARAMS_NUM 7
-char *target_http_params[PARAMS_NUM][3] = {
-	{"path", ".", "path to the directory where the dumped files will be saved"},
-	{"dump_img", "0", "specifiy if you want to dump image content or not"},
-	{"dump_vid", "0", "specifiy if you want to dump video content or not"},
-	{"dump_snd", "0", "specifiy if you want to dump audio content or not"},
-	{"dump_txt", "0", "specifiy if you want to dump text content or not"},
-	{"dump_bin", "0", "specifiy if you want to dump binary content or not"},
-	{"dump_doc", "0", "specifiy if you want to dump documents content or not"},
-	
-};
-
 struct target_functions *tg_functions;
 
 unsigned int match_undefined_id;
+struct target_mode *mode_default;
 
 int target_register_http(struct target_reg *r, struct target_functions *tg_funcs) {
-
-	copy_params(r->params_name, target_http_params, 0, PARAMS_NUM);
-	copy_params(r->params_help, target_http_params, 2, PARAMS_NUM);
 
 	r->init = target_init_http;
 	r->open = target_open_http;
@@ -135,55 +123,102 @@ int target_register_http(struct target_reg *r, struct target_functions *tg_funcs
 	for (i = 0; i < MIME_TYPES_COUNT; i++) 
 		for (j = 0; *(mime_types[i][0] + j); j++)
 			mime_types_hash[i] += (unsigned char) *(mime_types[i][0] + j);
-	return 1;
 
-}
+	mode_default = (*tg_funcs->register_mode) (r->type, "default", "Dump each HTTP connection's content into separate files");
 
-int target_cleanup_http(struct target *t) {
+	if (!mode_default)
+		return POM_ERR;
 
-	clean_params(t->params_value, PARAMS_NUM);
-	if (t->target_priv)
-		free(t->target_priv);
+	(*tg_funcs->register_param) (mode_default, "path", "/tmp", "Path of dumped files");
+	(*tg_funcs->register_param) (mode_default, "dump_img", "no", "Dump the images or not");
+	(*tg_funcs->register_param) (mode_default, "dump_vid", "no", "Dump the videos or not");
+	(*tg_funcs->register_param) (mode_default, "dump_snd", "no", "Dump the images or not");
+	(*tg_funcs->register_param) (mode_default, "dump_txt", "no", "Dump the text or not");
+	(*tg_funcs->register_param) (mode_default, "dump_bin", "no", "Dump the binary or not");
+	(*tg_funcs->register_param) (mode_default, "dump_doc", "no", "Dump the documents or not");
 
-	return 1;
+
+	return POM_OK;
+
 }
 
 
 int target_init_http(struct target *t) {
 
-	copy_params(t->params_value, target_http_params, 1, PARAMS_NUM);
+	struct target_priv_http *priv = malloc(sizeof(struct target_priv_http));
+	bzero(priv, sizeof(struct target_priv_http));
 
-	t->target_priv = malloc(sizeof(int));
-	int *match_mask = t->target_priv;
-	*match_mask = 0;
+	t->target_priv = priv;
 
-	return 1;
+	priv->path = (*tg_functions->ptype_alloc) ("string", NULL);
+	priv->dump_img = (*tg_functions->ptype_alloc) ("bool", NULL);
+	priv->dump_vid = (*tg_functions->ptype_alloc) ("bool", NULL);
+	priv->dump_snd = (*tg_functions->ptype_alloc) ("bool", NULL);
+	priv->dump_txt = (*tg_functions->ptype_alloc) ("bool", NULL);
+	priv->dump_bin = (*tg_functions->ptype_alloc) ("bool", NULL);
+	priv->dump_doc = (*tg_functions->ptype_alloc) ("bool", NULL);
+
+	if (!priv->path || !priv->dump_img || !priv->dump_vid || !priv->dump_snd || !priv->dump_txt || !priv->dump_bin || !priv->dump_doc) {
+		target_cleanup_http(t);
+		return POM_ERR;
+	}
+	
+	(*tg_functions->register_param_value) (t, mode_default, "path", priv->path);
+	(*tg_functions->register_param_value) (t, mode_default, "dump_img", priv->dump_img);
+	(*tg_functions->register_param_value) (t, mode_default, "dump_vid", priv->dump_vid);
+	(*tg_functions->register_param_value) (t, mode_default, "dump_snd", priv->dump_snd);
+	(*tg_functions->register_param_value) (t, mode_default, "dump_txt", priv->dump_txt);
+	(*tg_functions->register_param_value) (t, mode_default, "dump_bin", priv->dump_bin);
+	(*tg_functions->register_param_value) (t, mode_default, "dump_doc", priv->dump_doc);
+
+
+	return POM_OK;
+}
+
+int target_cleanup_http(struct target *t) {
+
+	struct target_priv_http *priv = t->target_priv;
+
+	if (priv) {
+		(*tg_functions->ptype_cleanup) (priv->path);
+		(*tg_functions->ptype_cleanup) (priv->dump_img);
+		(*tg_functions->ptype_cleanup) (priv->dump_vid);
+		(*tg_functions->ptype_cleanup) (priv->dump_snd);
+		(*tg_functions->ptype_cleanup) (priv->dump_txt);
+		(*tg_functions->ptype_cleanup) (priv->dump_bin);
+		(*tg_functions->ptype_cleanup) (priv->dump_doc);
+		free(priv);
+	}
+
+	return POM_OK;
 }
 
 
 int target_open_http(struct target *t) {
 
-	int *match_mask = t->target_priv;
+	struct target_priv_http *priv = t->target_priv;
 
-	if (*t->params_value[1] == '1') // img
-		*match_mask |= TYPE_IMG;
-	if (*t->params_value[2] == '1') // vid
-		*match_mask |= TYPE_VID;
-	if (*t->params_value[3] == '1') // snd
-		*match_mask |= TYPE_SND;
-	if (*t->params_value[4] == '1') // txt
-		*match_mask |= TYPE_TXT;
-	if (*t->params_value[5] == '1') // bin
-		*match_mask |= TYPE_BIN;
-	if (*t->params_value[6] == '1') // doc
-		*match_mask |= TYPE_DOC;
+	if (PTYPE_BOOL_GETVAL(priv->dump_img)) // img
+		priv->match_mask |= TYPE_IMG;
+	if (PTYPE_BOOL_GETVAL(priv->dump_vid)) // vid
+		priv->match_mask |= TYPE_VID;
+	if (PTYPE_BOOL_GETVAL(priv->dump_snd)) // snd
+		priv->match_mask |= TYPE_SND;
+	if (PTYPE_BOOL_GETVAL(priv->dump_txt)) // txt
+		priv->match_mask |= TYPE_TXT;
+	if (PTYPE_BOOL_GETVAL(priv->dump_bin)) // bin
+		priv->match_mask |= TYPE_BIN;
+	if (PTYPE_BOOL_GETVAL(priv->dump_doc)) // doc
+		priv->match_mask |= TYPE_DOC;
 
-	return 1;
+	return POM_OK;
 
 }
 
 int target_process_http(struct target *t, struct frame *f) {
 
+	struct target_priv_http *priv = t->target_priv;
+	
 
 	struct layer *lastl = f->l;
 	while (lastl->next && lastl->next->type != match_undefined_id)
@@ -206,14 +241,14 @@ int target_process_http(struct target *t, struct frame *f) {
 	
 	}
 
-	if ((cp->state == HTTP_MATCH || cp->state == HTTP_NO_MATCH)&& cp->direction != CT_DIR_ONEWAY && (f->ce->direction != cp->direction)) {
+	if ((cp->state == HTTP_MATCH || cp->state == HTTP_NO_MATCH) && cp->direction != CT_DIR_ONEWAY && (f->ce->direction != cp->direction)) {
 		//dprint("Direction missmatch, %u, %u\n", f->ce->direction, cp->direction);
-		return 1;
+		return POM_OK;
 	}
 
 	if (lastl->payload_size == 0) {
 		ndprint("Payload size == 0\n");	
-		return 1;
+		return POM_OK;
 	}
 
 
@@ -229,7 +264,7 @@ int target_process_http(struct target *t, struct frame *f) {
 
 			if (!pload[i] || (unsigned)pload[i] > 128) { // Non ascii char
 				ndprint("NULL or non ASCII char in header packet\n");
-				return 1;
+				return POM_OK;
 			}
 
 			if (pload[i] == '\n') {
@@ -340,8 +375,7 @@ int target_process_http(struct target *t, struct frame *f) {
 
 	if (cp->state == (HTTP_HAVE_CTYPE | HTTP_HAVE_CLEN | HTTP_HEADER)) {
 		// Ok, we have all the info we need. Let's see if we need to actually save that
-		int *match_mask = t->target_priv;
-		if (*mime_types[cp->content_type][2] & *match_mask)
+		if (*mime_types[cp->content_type][2] & priv->match_mask)
 			cp->state = HTTP_MATCH;
 		else
 			cp->state = HTTP_NO_MATCH;
@@ -356,7 +390,7 @@ int target_process_http(struct target *t, struct frame *f) {
 		if (cp->fd == -1) {
 
 			char filename[NAME_MAX];
-			strcpy(filename, t->params_value[0]);
+			strcpy(filename, PTYPE_STRING_GETVAL(priv->path));
 
 			if (filename[strlen(filename) - 1] != '/')
 				strcat(filename, "/");
@@ -376,7 +410,7 @@ int target_process_http(struct target *t, struct frame *f) {
 				if (stat(filename, &sbuf) == -1) {
 					if (mkdir(filename, 0777) == -1) {
 						dprint("error while creating directory %s\n", filename);
-						return -1;
+						return POM_ERR;
 					}
 				}
 
@@ -404,7 +438,7 @@ int target_process_http(struct target *t, struct frame *f) {
 				strerror_r(errno, errbuff, 256);
 				dprint("Unable to open file %s for writing : %s\n", filename, errbuff);
 				cp->state = HTTP_NO_MATCH;
-				return -1;
+				return POM_ERR;
 			}
 
 			ndprint("%s opened\n", filename);
@@ -431,7 +465,7 @@ int target_process_http(struct target *t, struct frame *f) {
 			cp->fd = -1;
 		}
 	}
-	return 1;
+	return POM_OK;
 };
 
 int target_close_connection_http(struct conntrack_entry *ce, void *conntrack_priv) {
@@ -447,7 +481,7 @@ int target_close_connection_http(struct conntrack_entry *ce, void *conntrack_pri
 
 	free(cp);
 
-	return 1;
+	return POM_OK;
 
 }
 

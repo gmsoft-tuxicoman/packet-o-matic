@@ -27,20 +27,15 @@
 
 #include "target_dump_payload.h"
 
-#define PARAMS_NUM 2
-char *target_dump_payload_params[PARAMS_NUM][3] = {
-	{"prefix", "dump", "prefix of dumped files including directory"},
-	{"markdir", "0", "mark the direction of the packet in the dumped file"},
-};
+#include "ptype_bool.h"
+#include "ptype_string.h"
 
 struct target_functions *tg_functions;
 
 unsigned int match_undefined_id;
+struct target_mode *mode_default;
 
 int target_register_dump_payload(struct target_reg *r, struct target_functions *tg_funcs) {
-
-	copy_params(r->params_name, target_dump_payload_params, 0, PARAMS_NUM);
-	copy_params(r->params_help, target_dump_payload_params, 2, PARAMS_NUM);
 
 	r->init = target_init_dump_payload;
 	r->process = target_process_dump_payload;
@@ -50,28 +45,58 @@ int target_register_dump_payload(struct target_reg *r, struct target_functions *
 
 	match_undefined_id = (*tg_functions->match_register) ("undefined");
 
-	return 1;
+	mode_default = (*tg_funcs->register_mode) (r->type, "default", "Dump each connection into separate files");
 
+	if (!mode_default)
+		return POM_ERR;
+
+	(*tg_funcs->register_param) (mode_default, "prefix", "dump", "Prefix of dumped filenames including path");
+	(*tg_funcs->register_param) (mode_default, "markdir", "no", "Mark the direction of each packets in dumped files");
+
+	return POM_OK;
+
+}
+
+int target_init_dump_payload(struct target *t) {
+
+	struct target_priv_dump_payload *priv = malloc(sizeof(struct target_priv_dump_payload));
+	bzero(priv, sizeof(struct target_priv_dump_payload));
+
+	t->target_priv = priv;
+
+	priv->prefix = (*tg_functions->ptype_alloc) ("string", NULL);
+	priv->markdir = (*tg_functions->ptype_alloc) ("bool", NULL);
+
+	if (!priv->prefix || !priv->markdir) {
+		target_cleanup_dump_payload(t);
+		return POM_ERR;
+	}
+
+	(*tg_functions->register_param_value) (t, mode_default, "prefix", priv->prefix);
+	(*tg_functions->register_param_value) (t, mode_default, "markdir", priv->markdir);
+
+	return POM_OK;
 }
 
 int target_cleanup_dump_payload(struct target *t) {
 
-	clean_params(t->params_value, PARAMS_NUM);
+	struct target_priv_dump_payload *priv = t->target_priv;
 
-	return 1;
+	if (priv) {
+		(*tg_functions->ptype_cleanup) (priv->prefix);
+		(*tg_functions->ptype_cleanup) (priv->markdir);
+		free(priv);
+
+	}
+
+	return POM_OK;
 }
 
-
-int target_init_dump_payload(struct target *t) {
-
-	copy_params(t->params_value, target_dump_payload_params, 1, PARAMS_NUM);
-
-	return 1;
-}
 
 
 int target_process_dump_payload(struct target *t, struct frame *f) {
 
+	struct target_priv_dump_payload *priv = t->target_priv;
 
 	struct layer *lastl = f->l;
 	while (lastl->next && lastl->next->type != match_undefined_id)
@@ -102,7 +127,7 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 
 		strftime(outstr, 20, format, tmp);
 
-		strcpy(filename, t->params_value[0]);
+		strcpy(filename, PTYPE_STRING_GETVAL(priv->prefix));
 		strcat(filename, outstr);
 		sprintf(outstr, "%u", (unsigned int)f->tv.tv_usec);
 		strcat(filename, outstr);
@@ -113,7 +138,7 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 			char errbuff[256];
 			strerror_r(errno, errbuff, 256);
 			dprint("Unable to open file %s for writing : %s\n", filename, errbuff);
-			return -1;
+			return POM_ERR;
 		}
 
 		ndprint("%s opened\n", filename);
@@ -122,9 +147,9 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 	}
 
 	if (lastl->payload_size == 0)
-		return 1;
+		return POM_OK;
 
-	if (*t->params_value[1] == '1') {
+	if (PTYPE_BOOL_GETVAL(priv->markdir)) {
 		if (f->ce->direction == CT_DIR_FWD)
 			write(cp->fd, "\n> ", 3);
 		else
@@ -135,7 +160,7 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 
 	ndprint("Saved %u bytes of payload\n", lastl->payload_size);
 
-	return 1;
+	return POM_OK;
 };
 
 int target_close_connection_dump_payload(struct conntrack_entry *ce, void *conntrack_priv) {
@@ -149,7 +174,7 @@ int target_close_connection_dump_payload(struct conntrack_entry *ce, void *connt
 
 	free(cp);
 
-	return 1;
+	return POM_OK;
 
 }
 

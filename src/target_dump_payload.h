@@ -26,6 +26,13 @@
 #include "modules_common.h"
 #include "rules.h"
 
+struct target_priv_dump_payload {
+
+	struct ptype *prefix;
+	struct ptype *markdir;
+
+};
+
 struct target_conntrack_priv_dump_payload {
 
 	int fd;

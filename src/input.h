@@ -139,9 +139,6 @@ struct input_reg {
 	/// Pointer to the different possible modes.
 	struct input_mode *modes;
 
-	/// Default mode of this input.
-	struct input_mode *default_mode;
-
 };
 
 /// This structure provides usefull fonction pointers for the inputs

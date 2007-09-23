@@ -78,7 +78,7 @@
 
 <!-- rule to inject all ipv4 packet to lo interface excluding tcp port 1234 -->
 <rule>
-        <target type="inject">
+        <target type="inject" mode="interface">
                 <!-- could be either ip or eth name -->
                 <param name="interface">127.0.0.1</param>
         </target>

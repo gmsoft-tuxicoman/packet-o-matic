@@ -35,8 +35,10 @@ struct target_priv_pcap {
 	pcap_dumper_t *pdump;
 	pcap_t *p;
 	int last_layer_type;
-	unsigned int snaplen;
 	unsigned int size;
+	struct ptype *snaplen;
+	struct ptype *filename;
+	struct ptype *layer;
 
 };
 

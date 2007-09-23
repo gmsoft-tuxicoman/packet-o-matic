@@ -25,17 +25,9 @@
 #include "modules_common.h"
 #include "target.h"
 
-enum target_display_modes {
-	td_mode_normal,
-	td_mode_ascii,
-	td_mode_hex,
-
-};
-
 struct target_priv_display {
 
-	unsigned int skip;
-	unsigned int mode;
+	struct ptype *skip;
 
 };
 

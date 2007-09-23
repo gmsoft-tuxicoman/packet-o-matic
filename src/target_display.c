@@ -22,25 +22,16 @@
 #include <errno.h>
 
 #include "target_display.h"
-
-#define PARAMS_NUM 2
-char *target_display_params[PARAMS_NUM][3] = {
-	{ "skip", "0", "number of layers to skip" },
-	{ "mode", "normal", "mode of display : normal (display only header summary), ascii (display printable chars), hex (display hex dump)" },
-};
-
+#include "ptype_uint16.h"
 
 int match_undefined_id;
 
 struct target_functions *target_funcs;
+struct target_mode *mode_normal, *mode_ascii, *mode_hex;
 
 int target_register_display(struct target_reg *r, struct target_functions *tg_funcs) {
 
-	copy_params(r->params_name, target_display_params, 0, PARAMS_NUM);
-	copy_params(r->params_help, target_display_params, 2, PARAMS_NUM);
-
 	r->init = target_init_display;
-	r->open = target_open_display;
 	r->process = target_process_display;
 	r->cleanup = target_cleanup_display;
 
@@ -48,37 +39,42 @@ int target_register_display(struct target_reg *r, struct target_functions *tg_fu
 
 	match_undefined_id = (*target_funcs->match_register) ("undefined");
 
-	return 1;
+	mode_normal = (*tg_funcs->register_mode) (r->type, "normal", "Display the headers only");
+	mode_ascii = (*tg_funcs->register_mode) (r->type, "ascii", "Display the headers and a dump of the printable characters");
+	mode_hex = (*tg_funcs->register_mode) (r->type, "hex", "Display the headers and an hex dump of the packet content");
+
+	if (!mode_normal || !mode_ascii || !mode_hex)
+		return POM_ERR;
+
+	(*tg_funcs->register_param) (mode_normal, "skip", "0", "Number of headers to skip");
+	(*tg_funcs->register_param) (mode_ascii, "skip", "0", "Number of headers to skip");
+	(*tg_funcs->register_param) (mode_hex, "skip", "0", "Number of headers to skip");
+
+	return POM_OK;
 
 }
 
 int target_init_display(struct target *t) {
-
-	copy_params(t->params_value, target_display_params, 1, PARAMS_NUM);
 
 	struct target_priv_display *priv = malloc(sizeof(struct target_priv_display));
 	bzero(priv, sizeof(struct target_priv_display));
 
 	t->target_priv = priv;
 
-	return 1;
-}
+	priv->skip = (*target_funcs->ptype_alloc) ("uint16", "headers");
 
-int target_open_display(struct target *t) {
-
-	struct target_priv_display *priv = t->target_priv;
-
-	sscanf(t->params_value[0], "%u", &priv->skip);
-
-	if (!strcmp(t->params_value[1], "hex")) {
-		priv->mode = td_mode_hex;
-	} else if (!strcmp(t->params_value[1], "ascii")) {
-		priv->mode = td_mode_ascii;
-	} else {
-		priv->mode = td_mode_normal;
+	if (!priv->skip) {
+		free(priv);
+		return POM_ERR;
 	}
-	return 1;
+
+	(*target_funcs->register_param_value) (t, mode_normal, "skip", priv->skip);
+	(*target_funcs->register_param_value) (t, mode_ascii, "skip", priv->skip);
+	(*target_funcs->register_param_value) (t, mode_hex, "skip", priv->skip);
+
+	return POM_OK;
 }
+
 
 int target_process_display(struct target *t, struct frame *f) {
 
@@ -86,12 +82,12 @@ int target_process_display(struct target *t, struct frame *f) {
 
 	struct layer *l = f->l;
 	int i;
-	for (i = 0; i < p->skip && l; i++)
+	for (i = 0; i < PTYPE_UINT16_GETVAL(p->skip) && l; i++)
 		l = l->next;
 
 	if (!l) {
 		// Skip is higher than number of layers, skip this packet
-		return 1;
+		return POM_OK;
 	}
 
 	struct layer *start_layer = l;
@@ -149,18 +145,13 @@ int target_process_display(struct target *t, struct frame *f) {
 	}
 	
 
-	switch (p->mode) {
-		case td_mode_hex:
-			target_display_print_hex(f->buff, start, len);
-			break;
+	if (t->mode == mode_hex)
+		return target_display_print_hex(f->buff, start, len);
 
-		case td_mode_ascii:
-			target_display_print_ascii(f->buff, start, len);
-			break;
-	}
+	if (t->mode == mode_ascii)
+		return target_display_print_ascii(f->buff, start, len);
 
-
-	return 1;
+	return POM_OK;
 
 }
 
@@ -206,7 +197,7 @@ int target_display_print_hex(void *frame, unsigned int start, unsigned int len) 
 
 	}
 	
-	return 1;
+	return POM_OK;
 
 }
 
@@ -223,17 +214,19 @@ int target_display_print_ascii(void *frame, unsigned int start, unsigned int len
 
 	}
 	printf("\n");
-	return 1;
+	return POM_OK;
 
 }
 
 
 int target_cleanup_display(struct target *t) {
 
-	clean_params(t->params_value, PARAMS_NUM);
+	struct target_priv_display *priv = t->target_priv;
 
-	if (t->target_priv)
+	if (priv) {
+		(*target_funcs->ptype_cleanup) (priv->skip);
 		free(t->target_priv);
+	}
 
-	return 1;
+	return POM_OK;
 }

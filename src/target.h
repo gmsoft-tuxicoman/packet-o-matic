@@ -24,34 +24,66 @@
 
 #include "conntrack.h"
 #include "match.h"
+#include "ptype.h"
 
 
-struct target {
-	int target_type;
-	void *target_priv;
-	char **params_value;
+struct target_param_reg {
 
-	int matched_conntrack;
-	struct target *next;
+	char *name;
+	char *defval;
+	char *descr;
+	struct target_param_reg *next;
+
+};
+
+struct target_param {
+
+	struct target_param_reg *type;
+	struct ptype *value;
+	struct target_param *next;
+
+};
+
+struct target_mode {
+
+	char *name;
+	char *descr;
+	struct target_param_reg *params;
+	struct target_mode *next;
 
 };
 
 struct target_reg {
 	char *target_name;
+	int type;
 	void *dl_handle;
-	char **params_name;
-	char **params_help;
+	struct target_mode *modes;
 	int (*init) (struct target*);
 	int (*open) (struct target*);
 	int (*process) (struct target*, struct frame *f);
 	int (*close) (struct target *t);
 	int (*cleanup) (struct target *t);
 };
-	
+
+struct target {
+	int type;
+	void *target_priv;
+	struct target_param *params;
+	struct target_mode *mode;
+	int matched_conntrack;
+	struct target *next;
+
+};
+
 
 struct target_functions {
 
 	int (*match_register) (const char *);
+	struct target_mode *(*register_mode) (int , const char *, const char *);
+	int (*register_param) (struct target_mode *, char *, char *, char *);
+	int (*register_param_value) (struct target *t, struct target_mode *mode, const char *name, struct ptype *value);
+	struct ptype* (*ptype_alloc) (const char* , char*);
+	int (*ptype_cleanup) (struct ptype*);
 	int (*conntrack_create_entry) (struct frame *f);
 	int (*conntrack_add_priv) (void *priv, struct target *t,  struct conntrack_entry *ce, int (*cleanup_handler) (struct conntrack_entry *ce, void *priv));
 	void *(*conntrack_get_priv) (struct target *t, struct conntrack_entry *ce);
@@ -62,12 +94,17 @@ struct target_functions {
 
 int target_init();
 int target_register(const char *target_name);
+struct target_mode *target_register_mode(int target_type, const char *name, const char *descr);
+int target_register_param(struct target_mode *mode, char *name, char *defval, char *descr);
+int target_register_param_value(struct target *t, struct target_mode *mode, const char *name, struct ptype *value);
 struct target *target_alloc(int target_type);
-int target_set_param(struct target *t, char *name, char* value);
+int target_set_mode(struct target *t, const char *mode_name);
+struct ptype *target_get_param_value(struct target *t, const char *param);
 int target_open(struct target *t);
 int target_process(struct target *t, struct frame *f);
 int target_close(struct target *t);
-int target_cleanup_t(struct target *t);
+int target_cleanup_module(struct target *t);
+int target_unregister(int target_type);
 int target_unregister_all();
 void target_print_help();
 int target_cleanup();

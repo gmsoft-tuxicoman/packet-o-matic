@@ -35,7 +35,6 @@ struct input_priv_pcap {
 
 	pcap_t *p; ///< Pcap instance
 	int output_layer; ///< Layer type to use
-	struct timeval tv; ///< Store the time to return if we use file clock source
 
 };
 

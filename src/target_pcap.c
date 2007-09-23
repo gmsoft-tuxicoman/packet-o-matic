@@ -19,20 +19,13 @@
  */
 
 #include "target_pcap.h"
-
-#define PARAMS_NUM 3
-char *target_pcap_params[PARAMS_NUM][3] = {
-	{ "filename", "dump.cap", "filename to save packets to. default : dump.cap" },
-	{ "snaplen", "1522", "snaplen of saved packets. default : 1522" },
-	{ "layer", "ethernet", "type of layer to capture. ethernet, linux_cooked, docsis or ipv4. default : ethernet" },
-};
+#include "ptype_string.h"
+#include "ptype_uint16.h"
 
 struct target_functions *tg_functions;
+struct target_mode *mode_default;
 
 int target_register_pcap(struct target_reg *r, struct target_functions *tg_funcs) {
-
-	copy_params(r->params_name, target_pcap_params, 0, PARAMS_NUM);
-	copy_params(r->params_help, target_pcap_params, 2, PARAMS_NUM);
 
 	r->init = target_init_pcap;
 	r->open = target_open_pcap;
@@ -42,32 +35,55 @@ int target_register_pcap(struct target_reg *r, struct target_functions *tg_funcs
 
 	tg_functions = tg_funcs;
 
-	return 1;
+	mode_default = (*tg_funcs->register_mode) (r->type, "default", "Dump all the packets into a PCAP file");
 
-}
+	if (!mode_default)
+		return POM_ERR;
 
-int target_cleanup_pcap(struct target *t) {
+	(*tg_funcs->register_param) (mode_default, "filename", "dump.cap", "Filename to save packets to");
+	(*tg_funcs->register_param) (mode_default, "snaplen", "1552", "Maximum size of saved packets");
+	(*tg_funcs->register_param) (mode_default, "layer", "ethernet", "Type of layer to capture. Either ethernet, linux_cooked, docsis or ipv4");
 
-	clean_params(t->params_value, PARAMS_NUM);
 
-	if (t->target_priv)
-		free(t->target_priv);
+	return POM_OK;
 
-	return 1;
 }
 
 int target_init_pcap(struct target *t) {
 
-	copy_params(t->params_value, target_pcap_params, 1, PARAMS_NUM);
-
 	struct target_priv_pcap *priv = malloc(sizeof(struct target_priv_pcap));
 	bzero(priv, sizeof(struct target_priv_pcap));
-
-
 	t->target_priv = priv;
-	
 
-	return 1;
+	priv->filename = (*tg_functions->ptype_alloc) ("string", NULL);
+	priv->snaplen = (*tg_functions->ptype_alloc) ("uint16", NULL);
+	priv->layer = (*tg_functions->ptype_alloc) ("string", NULL);
+
+	if (!priv->filename || !priv->snaplen || !priv->layer) {
+		target_cleanup_pcap(t);
+		return POM_ERR;
+	}
+
+	(*tg_functions->register_param_value) (t, mode_default, "filename", priv->filename);
+	(*tg_functions->register_param_value) (t, mode_default, "snaplen", priv->snaplen);
+	(*tg_functions->register_param_value) (t, mode_default, "layer", priv->layer);
+
+
+	return POM_OK;
+}
+
+int target_cleanup_pcap(struct target *t) {
+
+	struct target_priv_pcap *priv = t->target_priv;
+
+	if (priv) {
+		(*tg_functions->ptype_cleanup) (priv->filename);
+		(*tg_functions->ptype_cleanup) (priv->snaplen);
+		(*tg_functions->ptype_cleanup) (priv->layer);
+		free(priv);
+	}
+
+	return POM_OK;
 }
 
 
@@ -75,42 +91,41 @@ int target_open_pcap(struct target *t) {
 
 	struct target_priv_pcap *priv = t->target_priv;
 
-	sscanf(t->params_value[1], "%u", &priv->snaplen);
-
 
 	priv->last_layer_type = -1;
+	int snaplen = PTYPE_UINT16_GETVAL(priv->snaplen);
 
-	if (!strcasecmp("ethernet", t->params_value[2])) {
-		priv->p = pcap_open_dead(DLT_EN10MB, priv->snaplen);
+	if (!strcasecmp("ethernet", PTYPE_STRING_GETVAL(priv->layer))) {
+		priv->p = pcap_open_dead(DLT_EN10MB, snaplen);
 		priv->last_layer_type = (*tg_functions->match_register) ("ethernet");
-	} else if (!strcasecmp("linux_cooked", t->params_value[2])) {
-		priv->p = pcap_open_dead(DLT_LINUX_SLL, priv->snaplen);
+	} else if (!strcasecmp("linux_cooked", PTYPE_STRING_GETVAL(priv->layer))) {
+		priv->p = pcap_open_dead(DLT_LINUX_SLL, snaplen);
 		priv->last_layer_type = (*tg_functions->match_register) ("linux_cooked");
-	} else if (!strcasecmp("ipv4", t->params_value[2])) {
-		priv->p = pcap_open_dead(DLT_RAW, priv->snaplen);
+	} else if (!strcasecmp("ipv4", PTYPE_STRING_GETVAL(priv->layer))) {
+		priv->p = pcap_open_dead(DLT_RAW, snaplen);
 		priv->last_layer_type = (*tg_functions->match_register) ("ipv4");
 #ifdef DLT_DOCSIS
-	} else if (!strcasecmp("docsis", t->params_value[2])) {
-		priv->p = pcap_open_dead(DLT_DOCSIS, priv->snaplen);
+	} else if (!strcasecmp("docsis", PTYPE_STRING_GETVAL(priv->layer))) {
+		priv->p = pcap_open_dead(DLT_DOCSIS, snaplen);
 		priv->last_layer_type = (*tg_functions->match_register) ("docsis");
 #endif
 	} else {
 		dprint("Pcap : error: no supported header found.\n");
-		return 0;
+		return POM_ERR;
 	}
 
 	if (!priv->p) {
 		dprint("Unable to open pcap !\n");
-		return 0;
+		return POM_ERR;
 	}
 
-	priv->pdump = pcap_dump_open(priv->p, t->params_value[0]);
+	priv->pdump = pcap_dump_open(priv->p, PTYPE_STRING_GETVAL(priv->filename));
 	if (!priv->pdump) {
 		dprint("Unable to open pcap dumper !\n");
-		return 0;
+		return POM_ERR;
 	}
 
-	return 1;	
+	return POM_OK;	
 
 }
 
@@ -121,7 +136,7 @@ int target_process_pcap(struct target *t, struct frame *f) {
 	
 	if (!priv->pdump) {
 		dprint("Error, pcap target not opened !\n");
-		return 0;
+		return POM_ERR;
 	}
 	
 	int start = layer_find_start(f->l, priv->last_layer_type);
@@ -129,7 +144,7 @@ int target_process_pcap(struct target *t, struct frame *f) {
 	if (start == -1) {
 
 		dprint("target_pcap: Unable to find the start of the packet. You probably need to set the parameter \"layer\" to \"%s\"\n", (*tg_functions->match_get_name) (f->l->type));
-		return 0;
+		return POM_ERR;
 
 	}
 	
@@ -154,7 +169,7 @@ int target_process_pcap(struct target *t, struct frame *f) {
 
 	ndprint("0x%lx; Packet saved (%u bytes (+%u bytes))!\n", (unsigned long) priv, priv->size, len);
 
-	return 1;
+	return POM_OK;
 };
 
 int target_close_pcap(struct target *t) {
@@ -162,7 +177,7 @@ int target_close_pcap(struct target *t) {
 	struct target_priv_pcap *priv = t->target_priv;
 
 	if (!t->target_priv)
-		return 0;
+		return POM_ERR;
 
 	dprint("0x%lx; PCAP : saved %u bytes\n", (unsigned long) priv, priv->size);
 
@@ -170,7 +185,7 @@ int target_close_pcap(struct target *t) {
 	pcap_close(priv->p);
 	free(priv);
 	t->target_priv = NULL;
-	return 1;
+	return POM_OK;
 };
 
 

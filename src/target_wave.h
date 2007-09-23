@@ -40,7 +40,7 @@ struct au_hdr {
 
 struct target_priv_wave {
 
-	char prefix[NAME_MAX];
+	struct ptype *prefix;
 
 };
 

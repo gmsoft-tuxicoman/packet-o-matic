@@ -20,28 +20,32 @@
 
 
 #include "target.h"
-#include "input.h"
 #include "conntrack.h"
+#include "ptype.h"
 
 #define MAX_TARGET 16
 
 
 struct target_reg *targets[MAX_TARGET];
-struct target_functions *tg_funcs;
+struct target_functions tg_funcs;
 
 int target_init() {
 
-	tg_funcs = malloc(sizeof(struct target_functions));
-	tg_funcs->match_register = match_register;
-	tg_funcs->conntrack_create_entry = conntrack_create_entry;
-	tg_funcs->conntrack_add_priv = conntrack_add_target_priv;
-	tg_funcs->conntrack_get_priv = conntrack_get_target_priv;
-	tg_funcs->layer_info_snprintf = layer_info_snprintf;
-	tg_funcs->match_get_name = match_get_name;
+	tg_funcs.match_register = match_register;
+	tg_funcs.register_mode = target_register_mode;
+	tg_funcs.register_param = target_register_param;
+	tg_funcs.register_param_value = target_register_param_value;
+	tg_funcs.ptype_alloc = ptype_alloc;
+	tg_funcs.ptype_cleanup = ptype_cleanup_module;
+	tg_funcs.conntrack_create_entry = conntrack_create_entry;
+	tg_funcs.conntrack_add_priv = conntrack_add_target_priv;
+	tg_funcs.conntrack_get_priv = conntrack_get_target_priv;
+	tg_funcs.layer_info_snprintf = layer_info_snprintf;
+	tg_funcs.match_get_name = match_get_name;
 
 	dprint("Targets initialized\n");
 
-	return 1;
+	return POM_OK;
 
 }
 
@@ -62,20 +66,23 @@ int target_register(const char *target_name) {
 			register_my_target = lib_get_register_func("target", target_name, &handle);
 
 			if (!register_my_target) {
-				return -1;
+				return POM_ERR;
 			}
 
 			struct target_reg *my_target = malloc(sizeof(struct target_reg));
 			bzero(my_target, sizeof(struct target_reg));
 
-			
-			if (!(*register_my_target) (my_target, tg_funcs)) {
+			targets[i] = my_target;
+			my_target->type = i;
+
+			if ((*register_my_target) (my_target, &tg_funcs) != POM_OK) {
 				dprint("Error while loading target %s. could not register target !\n", target_name);
-				return -1;
+				targets[i] = NULL;
+				free(my_target);
+				return POM_ERR;
 			}
 
 
-			targets[i] = my_target;
 			targets[i]->target_name = malloc(strlen(target_name) + 1);
 			strcpy(targets[i]->target_name, target_name);
 			targets[i]->dl_handle = handle;
@@ -87,10 +94,102 @@ int target_register(const char *target_name) {
 	}
 
 
-	return -1;
+	return POM_ERR;
 
 }
 
+struct target_mode *target_register_mode(int target_type, const char *name, const char *descr) {
+
+	if (!targets[target_type])
+		return NULL;
+
+	struct target_mode *mode = malloc(sizeof(struct target_mode));
+	bzero(mode, sizeof(struct target_mode));
+	
+	mode->name = malloc(strlen(name) + 1);
+	strcpy(mode->name, name);
+	mode->descr = malloc(strlen(descr) + 1);
+	strcpy(mode->descr, descr);
+	
+	if (!targets[target_type]->modes) {
+		targets[target_type]->modes = mode;
+	} else {
+		struct target_mode *tmpm = targets[target_type]->modes;
+		while (tmpm->next)
+			tmpm = tmpm->next;
+		tmpm->next = mode;
+	}
+
+	return mode;
+
+}
+
+int target_register_param(struct target_mode *mode, char *name, char *defval, char *descr) {
+
+	if (!mode)
+		return POM_ERR;
+
+	struct target_param_reg *param = malloc(sizeof(struct target_param_reg));
+	bzero(param, sizeof(struct target_param_reg));
+
+	param->name = malloc(strlen(name) + 1);
+	strcpy(param->name, name);
+	param->defval = malloc(strlen(name) + 1);
+	strcpy(param->defval, defval);
+	param->descr = malloc(strlen(descr) + 1);
+	strcpy(param->descr, descr);
+
+	if (!mode->params) {
+		mode->params = param;
+	} else {
+		struct target_param_reg *tmp = mode->params;
+		while (tmp->next)
+			tmp = tmp->next;
+		tmp->next = param;
+	}
+
+	return POM_OK;
+}
+
+int target_register_param_value(struct target *t, struct target_mode *mode, const char *name, struct ptype *value) {
+
+	if (!t || !mode || !value)
+		return POM_ERR;
+
+	struct target_param_reg *p = mode->params;
+	while (p) {
+		if (!strcmp(p->name, name))
+			break;
+		p = p->next;
+	}
+	if (!p)
+		return POM_ERR;
+
+	if (ptype_parse_val(value, p->defval) != POM_OK)
+		return POM_ERR;
+
+	struct target_param *tp = malloc(sizeof(struct target_param));
+	bzero(tp, sizeof(struct target_param));
+
+	tp->type = p;
+	tp->value = value;
+
+
+	struct target_param *tmp = t->params;
+
+	if (!tmp) {
+		t->params = tp;
+	} else {
+		while (tmp->next)
+			tmp = tmp->next;
+		tmp->next = tp;
+
+	}
+
+	return POM_OK;
+
+
+}
 
 struct target *target_alloc(int target_type) {
 
@@ -101,78 +200,155 @@ struct target *target_alloc(int target_type) {
 	struct target *t = malloc(sizeof(struct target));
 	bzero(t, sizeof(struct target));
 
-	t->target_type = target_type;
+	t->type = target_type;
 	
 	if (targets[target_type]->init)
-		if (!(*targets[target_type]->init) (t)) {
+		if ((*targets[target_type]->init) (t) != POM_OK) {
 			free(t);
 			return NULL;
 		}
+
+	// Default mode is the first one
+	t->mode = targets[target_type]->modes;
 		
 	return t;
 }
 
-int target_set_param(struct target *t, char *name, char* value) {
+int target_set_mode(struct target *t, const char *mode_name) {
 
-	if (!targets[t->target_type]->params_name)
-		return 0;
-
-	int i;
-	for (i = 0; targets[t->target_type]->params_name[i]; i++) {
-		if (!strcmp(targets[t->target_type]->params_name[i], name)) {
-			free(t->params_value[i]);
-			t->params_value[i] = malloc(strlen(value) + 1);
-			strcpy(t->params_value[i], value);
-			return 1;
+	if (!t)
+		return POM_ERR;
+	
+	struct target_mode *mode = targets[t->type]->modes;
+	while (mode) {
+		if (!strcmp(mode->name, mode_name)) {
+			t->mode = mode;
+			return POM_OK;
 		}
+		mode = mode->next;
 	}
 
+	return POM_ERR;
+}
 
-	return 0;
+struct ptype *target_get_param_value(struct target *t, const char *param) {
+
+	if (!t)
+		return NULL;
+
+	if (!t->mode)
+		return NULL;
+
+	struct target_param_reg *pr = t->mode->params;
+	while (pr) {
+		if (!strcmp(pr->name, param))
+			break;
+		pr = pr->next;
+	}
+
+	if (!pr)
+		return NULL;
+
+	struct target_param *p = t->params;
+	while (p) {
+		if (p->type == pr)
+			break;
+
+		p = p->next;
+	}
+	
+	if (!p)
+		return NULL;
+
+	return p->value;
 
 }
 
 int target_open(struct target *t) {
 
 	if (!t)
-		return 0;
+		return POM_ERR;
 
-	if (targets[t->target_type] && targets[t->target_type]->open)
-		return (*targets[t->target_type]->open) (t);
-	return 1;
+	if (targets[t->type] && targets[t->type]->open)
+		return (*targets[t->type]->open) (t);
+	return POM_OK;
 
 }
 
 int target_process(struct target *t, struct frame *f) {
 
-	if (targets[t->target_type]->process)
-		return (*targets[t->target_type]->process) (t, f);
-	return 1;
+	if (targets[t->type]->process)
+		return (*targets[t->type]->process) (t, f);
+	return POM_OK;
 
 }
 
 int target_close(struct target *t) {
 
 	if (!t)
-		return 1;
+		return POM_ERR;
 
-	if (targets[t->target_type] && targets[t->target_type]->close)
-		return (*targets[t->target_type]->close) (t);
-	return 1;
+	if (targets[t->type] && targets[t->type]->close)
+		return (*targets[t->type]->close) (t);
+	return POM_OK;
 
 }
 
-int target_cleanup_t(struct target *t) {
+int target_cleanup_module(struct target *t) {
 
 	if (!t)
-		return 1;
+		return POM_ERR;
 
-	if (targets[t->target_type] && targets[t->target_type]->cleanup)
-		(*targets[t->target_type]->cleanup) (t);
+	if (targets[t->type]) {
+		if (targets[t->type]->cleanup)
+			(*targets[t->type]->cleanup) (t);
+		struct target_param *p = t->params;
+		while (p) {
+			p = p->next;
+			free(t->params);
+			t->params = p;
+		}
+	}
 	
 	free (t);
 
-	return 1;
+	return POM_OK;
+
+}
+
+int target_unregister(int target_type) {
+
+	if (!targets[target_type])
+		return POM_ERR;
+
+	struct target_mode *mode = targets[target_type]->modes;
+
+	while (mode) {
+		
+		struct target_param_reg *p = mode->params;
+		while (p) {
+			free(p->name);
+			free(p->defval);
+			free(p->descr);
+			p = p->next;
+			free(mode->params);
+			mode->params = p;
+		}
+
+		free(mode->name);
+		free(mode->descr);
+		mode = mode->next;
+		free(targets[target_type]->modes);
+		targets[target_type]->modes = mode;
+	}
+
+	if(dlclose(targets[target_type]->dl_handle))
+		dprint("Error while closing library of target %s\n", targets[target_type]->target_name);
+	free(targets[target_type]->target_name);
+	free(targets[target_type]);
+	targets[target_type] = NULL;
+
+	return POM_OK;
 
 }
 
@@ -180,51 +356,49 @@ int target_unregister_all() {
 
 	int i = 0;
 
-	for (; i < MAX_INPUT && targets[i]; i++) {
-		if (targets[i]->params_name) {
-			int j;
-			for (j = 0; targets[i]->params_name[j]; j++) {
-				free(targets[i]->params_name[j]);
-				free(targets[i]->params_help[j]);
-			}
-			free(targets[i]->params_name);
-			free(targets[i]->params_help);
-		}
-		if(dlclose(targets[i]->dl_handle))
-			dprint("Error while closing library of target %s\n", targets[i]->target_name);
-		free(targets[i]->target_name);
-		free(targets[i]);
-		targets[i] = NULL;
-
+	for (; i < MAX_TARGET && targets[i]; i++) {
+		target_unregister(i);
 	}
 
-	return 1;
+	return POM_OK;
 
 }
 
 int target_cleanup() {
 
-	free(tg_funcs);
-
-	return 1;
+	return POM_OK;
 
 }
 
 
 void target_print_help() {
 
-	int i, j;
+	int i;
 
 
 	for (i = 0; targets[i]; i++) {
 		printf("* TARGET %s *\n", targets[i]->target_name);
 
-		if (!targets[i]->params_name) 
+		if (!targets[i]->modes) {
 			printf("No parameter for this target\n");
-		else
-			for (j = 0; targets[i]->params_name[j]; j++)
-				printf("%s : %s\n", targets[i]->params_name[j], targets[i]->params_help[j]);
+		} else {
+			struct target_mode *m = targets[i]->modes;
+			while (m) {
+				printf("Mode %s : %s\n", m->name, m->descr);
+				struct target_param_reg *p = m->params;
+				if (!p) {
+					printf("  No parameter for this mode\n");
+				} else {
+					while (p) {
+						printf("  %s : %s\n", p->name, p->descr);
+						p = p->next;
+					}
+				}
+				m = m->next;
+			}
 
+
+		}
 		printf("\n");
 	}
 }

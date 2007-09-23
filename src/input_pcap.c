@@ -189,8 +189,6 @@ int input_read_pcap(struct input *i, struct frame *f) {
 	}
 	memcpy(f->buff, next_pkt, phdr->caplen);
 	memcpy(&f->tv, &phdr->ts, sizeof(struct timeval));
-	memcpy(&p->tv, &phdr->ts, sizeof(struct timeval));
-
 
 	f->len = phdr->caplen;
 	f->first_layer = p->output_layer;

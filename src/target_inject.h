@@ -33,8 +33,8 @@
 struct target_priv_inject {
 
 	libnet_t *lc;
-	char errbuf[LIBNET_ERRBUF_SIZE];
 	unsigned int size;
+	struct ptype *iface;
 };
 
 int target_init_inject(struct target *t);

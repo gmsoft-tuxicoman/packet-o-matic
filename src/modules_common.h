@@ -111,26 +111,6 @@ unsigned int layer_find_start(struct layer *l, int header_type) {
 
 
 #endif // __COMMON_H__
-// d = dest; s = source; i = index; z = size
-
-#define copy_params(d, s, i, z) { \
-	d = malloc(sizeof(char *) * (z + 1)); \
-	bzero(d, sizeof(char *) * (z + 1)); \
-	int j; \
-	for (j = 0; j < z; j++) { \
-		d[j] = malloc(strlen(s[j][i]) + 1);\
-		strcpy(d[j], s[j][i]); \
-	} \
-}
-
-#define clean_params(p, s) { \
-	int j; \
-	for (j = 0; j < s ; j++) \
-		if (p[j]) \
-			free(p[j]); \
-	free(p);\
-}
-
 
 #define mask_compare(a, b, c, d) mask_compare2(a, c, b, c, d)
 

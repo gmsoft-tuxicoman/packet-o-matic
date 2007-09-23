@@ -28,19 +28,14 @@
 #include "target_wave.h"
 #include "match_rtp.h"
 
-#define PARAMS_NUM 1
-char *target_wave_params[PARAMS_NUM][3] = {
-	{ "prefix", "rtp", "prefix of wave files including directory"},
-};
+#include "ptype_string.h"
 
 unsigned int match_rtp_id;
 
 struct target_functions *tg_functions;
+struct target_mode *mode_default;
 
 int target_register_wave(struct target_reg *r, struct target_functions *tg_funcs) {
-
-	copy_params(r->params_name, target_wave_params, 0, PARAMS_NUM);
-	copy_params(r->params_help, target_wave_params, 2, PARAMS_NUM);
 
 	r->init = target_init_wave;
 	r->process = target_process_wave;
@@ -50,28 +45,54 @@ int target_register_wave(struct target_reg *r, struct target_functions *tg_funcs
 
 	match_rtp_id = (*tg_functions->match_register) ("rtp");
 
-	return 1;
+	mode_default = (*tg_funcs->register_mode) (r->type, "default", "Dump each RTP stream into separate files");
 
+	if (!mode_default)
+		return POM_ERR;
+
+	(*tg_funcs->register_param) (mode_default, "prefix", "dump", "Prefix of dumped filenames including path");
+
+	return POM_OK;
+
+}
+
+int target_init_wave(struct target *t) {
+
+	struct target_priv_wave *priv = malloc(sizeof(struct target_priv_wave));
+	bzero(priv, sizeof(struct target_priv_wave));
+
+	t->target_priv = priv;
+
+	priv->prefix = (*tg_functions->ptype_alloc) ("string", NULL);
+	if (!priv->prefix) {
+		target_cleanup_wave(t);
+		return POM_ERR;
+	}
+
+	(*tg_functions->register_param_value) (t, mode_default, "prefix", priv->prefix);
+
+
+	return POM_OK;
 }
 
 int target_cleanup_wave(struct target *t) {
 
-	clean_params(t->params_value, PARAMS_NUM);
+	struct target_priv_wave *priv = t->target_priv;
 
-	return 1;
+	if (priv) {
+		(*tg_functions->ptype_cleanup) (priv->prefix);
+		free(priv);
+	}
+
+	return POM_OK;
 }
 
-
-int target_init_wave(struct target *t) {
-
-	copy_params(t->params_value, target_wave_params, 1, PARAMS_NUM);
-
-	return 1;
-}
 
 
 
 int target_process_wave(struct target *t, struct frame *f) {
+
+	struct target_priv_wave *priv = t->target_priv;
 
 	struct layer *rtpl = f->l;
 	while (rtpl) {
@@ -82,12 +103,12 @@ int target_process_wave(struct target *t, struct frame *f) {
 
 	if (!rtpl) {
 		dprint("No RTP header found in this packet\n");
-		return 0;
+		return POM_OK;
 	}
 
 	// Do not create a file is there is nothing to save
 	if (rtpl->payload_size == 0)
-		return 1;
+		return POM_OK;
 	
 	if (!f->ce)
 		(*tg_functions->conntrack_create_entry) (f);
@@ -123,7 +144,7 @@ int target_process_wave(struct target *t, struct frame *f) {
 			default:
 				ndprint("WAVE: Payload type %u not supported\n", rtphdr->payload_type);
 				free(auhdr);
-				return 0;
+				return POM_OK;
 
 		}
 		auhdr->sample_rate = htonl(8000);
@@ -144,7 +165,7 @@ int target_process_wave(struct target *t, struct frame *f) {
 
 		strftime(outstr, 20, format, tmp);
 
-		strcpy(filename, t->params_value[0]);
+		strcpy(filename, PTYPE_STRING_GETVAL(priv->prefix));
 		strcat(filename, outstr);
 		sprintf(outstr, "%u", (unsigned int)f->tv.tv_usec);
 		strcat(filename, outstr);
@@ -156,7 +177,7 @@ int target_process_wave(struct target *t, struct frame *f) {
 			char errbuff[256];
 			strerror_r(errno, errbuff, 256);
 			dprint("Unable to open file %s for writing : %s\n", filename, errbuff);
-			return -1;
+			return POM_ERR;
 		}
 
 		ndprint("%s opened\n", filename);
@@ -207,7 +228,7 @@ int target_process_wave(struct target *t, struct frame *f) {
 
 	write(cp->fd, f->buff + rtpl->payload_start, rtpl->payload_size);
 
-	return 1;
+	return POM_OK;
 };
 
 int target_close_connection_wave(struct conntrack_entry *ce, void *conntrack_priv) {
@@ -225,7 +246,7 @@ int target_close_connection_wave(struct conntrack_entry *ce, void *conntrack_pri
 
 	free(cp);
 	
-	return 1;
+	return POM_OK;
 
 }
 

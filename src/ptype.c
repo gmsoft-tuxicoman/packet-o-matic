@@ -198,6 +198,7 @@ int ptype_unregister_all() {
 
 	int i;
 	for (i = 0; i < MAX_P && ptypes[i]; i++) {
+		dlclose(ptypes[i]->dl_handle);
 		free(ptypes[i]->name);
 		free(ptypes[i]);
 		ptypes[i] = NULL;

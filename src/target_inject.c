@@ -22,25 +22,16 @@
 #include <errno.h>
 
 #include "target_inject.h"
+#include "ptype_string.h"
 
 // Maximum segment len with ethernet header
 #define MAX_SEGMENT_LEN 1518
 
-
-#define PARAMS_NUM 1
-
-char *target_inject_params[PARAMS_NUM][3] = {
-	{ "interface", "eth0", "name or ip address of interface to inject packets on"},
-};
-
 int match_ethernet_id;
 struct target_functions *tg_functions;
+struct target_mode *mode_default;
 
 int target_register_inject(struct target_reg *r, struct target_functions *tg_funcs) {
-
-	copy_params(r->params_name, target_inject_params, 0, PARAMS_NUM);
-	copy_params(r->params_help, target_inject_params, 2, PARAMS_NUM);
-
 
 	r->init = target_init_inject;
 	r->open = target_open_inject;
@@ -52,35 +43,48 @@ int target_register_inject(struct target_reg *r, struct target_functions *tg_fun
 
 	match_ethernet_id = (*tg_functions->match_register) ("ethernet");
 
-	return 1;
+	mode_default = (*tg_funcs->register_mode) (r->type, "default", "Reinject matched packets on the specified interface");
+	if (!mode_default)
+		return POM_ERR;
 
-}
+	(*tg_funcs->register_param) (mode_default, "interface", "eth0", "Where to reinject packets to");
 
-int target_cleanup_inject(struct target *t) {
+	return POM_OK;
 
-	clean_params(t->params_value, PARAMS_NUM);
-
-	if (t->target_priv)
-		free(t->target_priv);
-
-	return 1;
 }
 
 
 int target_init_inject(struct target *t) {
 
-	copy_params(t->params_value, target_inject_params, 1, PARAMS_NUM);
-
-
 	if (match_ethernet_id == -1)
-		return 0;
+		return POM_ERR;
 
 	struct target_priv_inject *priv = malloc(sizeof(struct target_priv_inject));
 	bzero(priv, sizeof(struct target_priv_inject));
-
 	t->target_priv = priv;
+
+	priv->iface = (*tg_functions->ptype_alloc) ("string", NULL);
+
+	if (!priv->iface) {
+		target_cleanup_inject(t);
+		return POM_ERR;
+	}
 	
-	return 1;
+	(*tg_functions->register_param_value) (t, mode_default, "interface", priv->iface);
+
+	return POM_OK;
+}
+
+int target_cleanup_inject(struct target *t) {
+
+	struct target_priv_inject *priv = t->target_priv;
+
+	if (priv) {
+		(*tg_functions->ptype_cleanup) (priv->iface);
+		free(priv);
+	}
+
+	return POM_OK;
 }
 
 int target_open_inject(struct target *t) {
@@ -90,18 +94,20 @@ int target_open_inject(struct target *t) {
 
 	if (!priv) {
 		dprint("Error, inject target not initialized !\n");
-		return 0;
+		return POM_ERR;
 	}
 
-	priv->lc = libnet_init (LIBNET_LINK_ADV, t->params_value[0], priv->errbuf);
+	char errbuf[LIBNET_ERRBUF_SIZE];
+
+	priv->lc = libnet_init (LIBNET_LINK_ADV, PTYPE_STRING_GETVAL(priv->iface), errbuf);
 	if (!priv->lc) {
-		dprint("Error, cannot open libnet context: %s", priv->errbuf);
-		return 0;
+		dprint("Error, cannot open libnet context: %s", errbuf);
+		return POM_ERR;
 	}
 	dprint("Libnet context initialized for interface %s\n", priv->lc->device);
 
 
-	return 1;
+	return POM_OK;
 }
 
 int target_process_inject(struct target *t, struct frame *f) {
@@ -110,12 +116,12 @@ int target_process_inject(struct target *t, struct frame *f) {
 
 	if (!priv->lc) {
 		dprint("Error, libnet context not initialized !\n");
-		return 0;
+		return POM_ERR;
 	}
 	int start = layer_find_start(f->l, match_ethernet_id);
 	if (start == -1) {
 		dprint("Unable to find the start of the packet\n");
-		return 0;
+		return POM_ERR;
 	}
 
 	unsigned int len = f->len;
@@ -127,18 +133,18 @@ int target_process_inject(struct target *t, struct frame *f) {
 		
 		priv->size += len;
 		dprint("0x%lx; Packet injected (%u bytes (+%u bytes))!\n", (unsigned long) priv, priv->size, len);
-		return 1;
+		return POM_OK;
 	}
 
 	dprint("Error while injecting packet : %s\n", libnet_geterror(priv->lc));
-	return 0;
+	return POM_ERR;
 
 }
 
 int target_close_inject(struct target *t) {
 
 	if (!t->target_priv)
-		return 0;
+		return POM_ERR;
 
 	struct target_priv_inject *priv = t->target_priv;
 
@@ -153,5 +159,5 @@ int target_close_inject(struct target *t) {
 	t->target_priv = NULL;
 
 	
-	return 1;
+	return POM_OK;
 }

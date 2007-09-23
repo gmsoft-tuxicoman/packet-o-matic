@@ -347,7 +347,7 @@ int list_destroy(struct rule_list *list) {
 		while (t) {
 			struct target* next = t->next;
 			target_close(t);
-			target_cleanup_t(t);
+			target_cleanup_module(t);
 			t = next;
 		}
 			
