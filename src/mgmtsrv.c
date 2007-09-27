@@ -315,9 +315,14 @@ int mgmtsrv_process_command(struct mgmt_connection *c) {
 	for (i = 0; i < MGMT_MAX_CMD_WORDS_ARGS; i++)
 		words[i] = 0;
 
-	for (str = c->cmds[c->curcmd]; ;str = NULL) {
+	// Use temporary buffer to avoid modifying the command history
+	char *tmpcmdstr = malloc(strlen(c->cmds[c->curcmd]) + 1);
+	strcpy(tmpcmdstr, c->cmds[c->curcmd]);
+
+	for (str = tmpcmdstr; ;str = NULL) {
 		if (words_count >= MGMT_MAX_CMD_WORDS_ARGS) {
 			mgmtsrv_send(c, "\r\nToo many arguments\r\n");
+			free(tmpcmdstr);
 			return MGMT_OK;
 		}
 		token = strtok_r(str, " ", &saveptr);
@@ -331,8 +336,10 @@ int mgmtsrv_process_command(struct mgmt_connection *c) {
 
 	mgmtsrv_send(c, "\r\n");
 
-	if (words_count == 0)
+	if (words_count == 0) {
+		free(tmpcmdstr);
 		return MGMT_OK;
+	}
 	
 	struct mgmt_command *tmpcmd = cmds;
 
@@ -348,6 +355,7 @@ int mgmtsrv_process_command(struct mgmt_connection *c) {
 			int res;
 			res = (*tmpcmd->callback_func) (c, words_count - cmd_words_count, words + cmd_words_count);
 
+			free(tmpcmdstr);
 			if (res == MGMT_USAGE)
 				return mgmtvty_print_usage(c, tmpcmd);
 			else
@@ -358,6 +366,7 @@ int mgmtsrv_process_command(struct mgmt_connection *c) {
 	
 	mgmtsrv_send(c, "No such command\r\n");
 
+	free(tmpcmdstr);
 	return MGMT_OK;
 
 }

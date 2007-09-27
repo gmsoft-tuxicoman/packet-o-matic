@@ -392,10 +392,15 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 		}
 
 		case '\r': { // carriage return
+			if (strlen(c->cmds[c->curcmd]) == 0) {
+				mgmtsrv_send(c, "\r\n" MGMT_CMD_PROMPT);
+				break;
+			}
+
 			// Process the command
 			mgmtsrv_process_command(c);
 			mgmtsrv_send(c, MGMT_CMD_PROMPT);
-
+			
 			// Alloc the next one
 			c->curcmd++;
 			if (c->curcmd >= MGMT_CMD_HISTORY_SIZE)
