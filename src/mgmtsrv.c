@@ -151,6 +151,12 @@ int mgmtsrv_process() {
 	struct mgmt_connection *cc = conn_head;
 	while(cc) {
 		if (cc->closed) { // cleanup this connection entry if it was closed earlier
+			
+			int i;
+			for (i = 0; i < MGMT_CMD_HISTORY_SIZE; i++)
+				if (cc->cmds[i])
+					free(cc->cmds[i]);
+
 			struct mgmt_connection *tmp = cc->next;
 			if (!cc->prev)
 				conn_head = cc->next;
@@ -231,6 +237,9 @@ int mgmtsrv_accept_connection(struct mgmt_connection *c) {
 
 	getnameinfo((struct sockaddr*)&remote_addr, remote_addr_len, host, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST);
 
+	new_cc->cmds[0] = malloc(1);
+	new_cc->cmds[0][0] = 0;
+
 	if (conn_tail) {
 		conn_tail->next = new_cc;
 		new_cc->prev = conn_tail;
@@ -306,7 +315,7 @@ int mgmtsrv_process_command(struct mgmt_connection *c) {
 	for (i = 0; i < MGMT_MAX_CMD_WORDS_ARGS; i++)
 		words[i] = 0;
 
-	for (str = c->cmd; ;str = NULL) {
+	for (str = c->cmds[c->curcmd]; ;str = NULL) {
 		if (words_count >= MGMT_MAX_CMD_WORDS_ARGS) {
 			mgmtsrv_send(c, "\r\nToo many arguments\r\n");
 			return MGMT_OK;
@@ -370,6 +379,10 @@ int mgmtsrv_cleanup() {
 	struct mgmt_connection *tmp;
 	while (conn_head) {
 		close(conn_head->fd);
+		int i;
+		for (i = 0; i < MGMT_CMD_HISTORY_SIZE; i++)
+			if (conn_head->cmds[i])
+				free(conn_head->cmds[i]);
 		tmp = conn_head;
 		conn_head = conn_head->next;
 		free(tmp);

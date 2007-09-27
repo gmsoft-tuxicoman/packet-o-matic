@@ -110,20 +110,58 @@ int mgmtvty_process(struct mgmt_connection *c, unsigned char *buffer, unsigned i
 					case '3': // delete (complete escape seq is 0x3 0x7e)
 						i++;
 						// same as Ctrl-D if there is something in the buffer
-						if (c->cmdlen > 0)
+						if (strlen(c->cmds[c->curcmd]) > 0)
 							mgmtvty_process_key(c, 0x4);
 						break;
 						
-					case 'A': // up arrow
-						dprint("up arrow pressed\n");
-						break;
-					case 'B': // down arrow
-						dprint("down arrow pressed\n");
-						break;
+					case 'A': { // up arrow
+							int prev = c->curcmd - 1;
+							if (prev < 0)
+								prev = MGMT_CMD_HISTORY_SIZE - 1;
+
+							if (!c->cmds[prev])
+								break;
+
+							int i;
+							for (i = c->cursor_pos; i > 0; i--)
+								mgmtsrv_send(c, "\b");
+							for (i = 0; i < strlen(c->cmds[c->curcmd]); i++)
+								mgmtsrv_send(c, " ");
+							for (i = 0; i < strlen(c->cmds[c->curcmd]); i++)
+								mgmtsrv_send(c, "\b");
+							c->curcmd = prev;
+
+							mgmtsrv_send(c, c->cmds[c->curcmd]);
+							c->cursor_pos = strlen(c->cmds[c->curcmd]);
+
+							break;
+						}
+					case 'B': { // down arrow
+							int next = c->curcmd + 1;
+							if (next >= MGMT_CMD_HISTORY_SIZE)
+								next = 0;
+
+							if (!c->cmds[next])
+								break;
+
+							int i;
+							for (i = c->cursor_pos; i > 0; i--)
+								mgmtsrv_send(c, "\b");
+							for (i = 0; i < strlen(c->cmds[c->curcmd]); i++)
+								mgmtsrv_send(c, " ");
+							for (i = 0; i < strlen(c->cmds[c->curcmd]); i++)
+								mgmtsrv_send(c, "\b");
+							c->curcmd = next;
+
+							mgmtsrv_send(c, c->cmds[c->curcmd]);
+							c->cursor_pos = strlen(c->cmds[c->curcmd]);
+
+							break;
+						}
 					case 'C': // right arrow
-						if (c->cursor_pos < c->cmdlen) {
+						if (c->cursor_pos < strlen(c->cmds[c->curcmd])) {
 							char chr[2];
-							chr[0] = c->cmd[c->cursor_pos];
+							chr[0] = c->cmds[c->curcmd][c->cursor_pos];
 							chr[1] = 0;
 							mgmtsrv_send(c, chr);
 							c->cursor_pos++;
@@ -284,23 +322,24 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 
 		case 0x3: { // Ctrl-C
 			mgmtsrv_send(c, "\r\n" MGMT_CMD_PROMPT);
-			memset(c->cmd, 0, MGMT_CMD_BUFF_LEN);
-			c->cmdlen = 0;
+			c->cmds[c->curcmd] = realloc(c->cmds[c->curcmd], 1);
+			c->cmds[c->curcmd][0] = 0;
 			c->cursor_pos = 0;
 			break;
 		}
 
 		case 0x4: { // Ctrl-D
-			if (c->cmdlen == 0)
+			if (strlen(c->cmds[c->curcmd]) == 0)
 				mgmtcmd_exit(c, 0, NULL);
 			else {
-				if (c->cursor_pos < c->cmdlen) {
-					memmove(c->cmd + c->cursor_pos, c->cmd + c->cursor_pos + 1, c->cmdlen - c->cursor_pos);
-					c->cmdlen--;
-					mgmtsrv_send(c, c->cmd + c->cursor_pos);
+				size_t cmdlen = strlen(c->cmds[c->curcmd]);
+				if (c->cursor_pos < cmdlen) {
+					memmove(c->cmds[c->curcmd] + c->cursor_pos, c->cmds[c->curcmd] + c->cursor_pos + 1, cmdlen - c->cursor_pos);
+					c->cmds[c->curcmd] = realloc(c->cmds[c->curcmd], cmdlen);
+					mgmtsrv_send(c, c->cmds[c->curcmd] + c->cursor_pos);
 					mgmtsrv_send(c, " ");
 					int i;
-					for (i = c->cmdlen; i >= c->cursor_pos; i--)
+					for (i = strlen(c->cmds[c->curcmd]); i >= c->cursor_pos; i--)
 						mgmtsrv_send(c, "\b");
 
 				}
@@ -310,82 +349,94 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 		}
 
 		case 0x5: { // Ctrl-E
-			while (c->cursor_pos < c->cmdlen) {
-				mgmtsrv_send(c, c->cmd +c->cursor_pos);
-				c->cursor_pos = c->cmdlen;
+			while (c->cursor_pos < strlen(c->cmds[c->curcmd])) {
+				mgmtsrv_send(c, c->cmds[c->curcmd] + c->cursor_pos);
+				c->cursor_pos = strlen(c->cmds[c->curcmd]);
 			}
 			break;
 		}
 
 		case '\b': { // backspace
-			if (c->cmdlen == 0 || c->cursor_pos == 0)
+			size_t cmdlen = strlen(c->cmds[c->curcmd]);
+			if (cmdlen == 0 || c->cursor_pos == 0)
 				break;
 
 			c->cursor_pos--;
 
-			int i;
-			for (i = c->cursor_pos; i < c->cmdlen; i++) {
-				c->cmd[i] = c->cmd[i + 1];
-			}
+			memmove(c->cmds[c->curcmd] + c->cursor_pos, c->cmds[c->curcmd] + c->cursor_pos + 1, cmdlen - c->cursor_pos);
+			c->cmds[c->curcmd][cmdlen - 1] = 0;
+			c->cmds[c->curcmd] = realloc(c->cmds[c->curcmd], cmdlen);
 			mgmtsrv_send(c, "\b");
-			mgmtsrv_send(c, c->cmd + c->cursor_pos);
+			mgmtsrv_send(c, c->cmds[c->curcmd] + c->cursor_pos);
 			mgmtsrv_send(c, " ");
-			for (i = c->cursor_pos; i < c->cmdlen; i++)
+			int i;
+			for (i = c->cursor_pos; i < cmdlen; i++)
 				mgmtsrv_send(c, "\b");
-		
-			c->cmdlen--;
-			c->cmd[c->cmdlen] = 0;
+
 			break;
 		}
 
 		case 0x15: { // Ctrl-U
 			int i;
+			size_t cmdlen = strlen(c->cmds[c->curcmd]);
 			for (i = c->cursor_pos; i > 0; i--)
 				mgmtsrv_send(c, "\b");
-			for (i = 0; i < c->cmdlen; i++)
+			for (i = 0; i < cmdlen; i++)
 				mgmtsrv_send(c, " ");
-			for (i = 0; i < c->cmdlen; i++)
+			for (i = 0; i < cmdlen; i++)
 				mgmtsrv_send(c, "\b");
-			memset(c->cmd, 0 , MGMT_CMD_BUFF_LEN);
-			c->cmdlen = 0;
+			c->cmds[c->curcmd] = realloc(c->cmds[c->curcmd], 1);
+			c->cmds[c->curcmd][0] = 0;
 			c->cursor_pos = 0;
 			break;
 		}
 
 		case '\r': { // carriage return
+			// Process the command
 			mgmtsrv_process_command(c);
 			mgmtsrv_send(c, MGMT_CMD_PROMPT);
-			memset(c->cmd, 0, MGMT_CMD_BUFF_LEN);
-			c->cmdlen = 0;
+
+			// Alloc the next one
+			c->curcmd++;
+			if (c->curcmd >= MGMT_CMD_HISTORY_SIZE)
+				c->curcmd = 0;
+			c->cmds[c->curcmd] = realloc(c->cmds[c->curcmd], 1);
+			c->cmds[c->curcmd][0] = 0;
 			c->cursor_pos = 0;
+
+			// Make sure the one that comes after is empty
+			int next = c->curcmd + 1;
+			if (next >= MGMT_CMD_HISTORY_SIZE)
+				next = 0;
+			if (c->cmds[next]) {
+				free(c->cmds[next]);
+				c->cmds[next] = 0;
+			}
+
 			break;
 		}
 
 		case '\t': // tab completion
 		case '?': { // completion
 			mgmtsrv_send(c, "\r\nCompletion not implemented (yet :)\r\n" MGMT_CMD_PROMPT);
-			mgmtsrv_send(c, c->cmd);
-			c->cursor_pos = c->cmdlen;
+			mgmtsrv_send(c, c->cmds[c->curcmd]);
+			c->cursor_pos = strlen(c->cmds[c->curcmd]);
 			break;
 		}
 
-		default: 
-			if (c->cmdlen >= MGMT_CMD_BUFF_LEN - 1) {
-				mgmtsrv_send(c, "\r\nCommand too long\r\n" MGMT_CMD_PROMPT);
-				mgmtsrv_send(c, c->cmd);
-			} else {
-				ndprint("Got key 0x%x\n", key);
-				int i;
-				for (i = c->cmdlen + 1; i > c->cursor_pos; i--)
-					c->cmd[i] = c->cmd[i - 1];
-				c->cmd[c->cursor_pos] = key;
-				mgmtsrv_send(c, c->cmd + c->cursor_pos);
-				for (i = c->cmdlen; i > c->cursor_pos; i--)
-					mgmtsrv_send(c, "\b");
-				c->cmdlen++;
-				c->cursor_pos++;
+		default: {
+			ndprint("Got key 0x%x\n", key);
+			size_t cmdlen = strlen(c->cmds[c->curcmd]) + 1;
+			c->cmds[c->curcmd] = realloc(c->cmds[c->curcmd], cmdlen + 1);
+			memmove(c->cmds[c->curcmd] + c->cursor_pos + 1, c->cmds[c->curcmd] + c->cursor_pos, cmdlen - c->cursor_pos);
+			c->cmds[c->curcmd][c->cursor_pos] = key;
+			mgmtsrv_send(c, c->cmds[c->curcmd] + c->cursor_pos);
+			int i;
+			for (i = cmdlen - 1; i > c->cursor_pos; i--)
+				mgmtsrv_send(c, "\b");
+			c->cursor_pos++;
+		}
 
-			}
 	}
 
 

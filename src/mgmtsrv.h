@@ -47,7 +47,7 @@ struct mgmt_command *cmds;
 // Maximum number of words in a command entered in the console
 #define MGMT_MAX_CMD_WORDS_ARGS 2048
 
-#define MGMT_CMD_BUFF_LEN 2048
+#define MGMT_CMD_HISTORY_SIZE 100
 
 #define MGMT_CMD_PROMPT "pom> "
 
@@ -55,8 +55,8 @@ struct mgmt_connection {
 	int fd; // fd of the socket
 	int listening; // is it a listening socket ?
 	int closed; // was the socket closed earlier ?
-	char cmd[MGMT_CMD_BUFF_LEN];
-	size_t cmdlen;
+	char *cmds[MGMT_CMD_HISTORY_SIZE];
+	size_t curcmd; // current command in the history
 	size_t cursor_pos; // position of the cursor on the line
 	struct mgmt_connection *prev;
 	struct mgmt_connection *next;

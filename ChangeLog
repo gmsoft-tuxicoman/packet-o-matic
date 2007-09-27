@@ -1,3 +1,6 @@
+* 2007/09/27 Guy Martin <gmsoft@tuxicoman.be>
+Added support for history, up and down arrow in management console.
+
 * 2007/09/23 Guy Martin <gmsoft@tuxicoman.be>
 Removed unused field tv in struct input_priv_pcap.
 Modified targets to use struct ptypes for their parameters.
