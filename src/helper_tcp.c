@@ -51,13 +51,13 @@ int helper_register_tcp(struct helper_reg *r, struct helper_functions *hlp_funcs
 
 	conn_head = NULL;
 
-	return H_OK;
+	return POM_OK;
 
 err:
 
 	(hlp_functions->ptype_cleanup) (pkt_timeout);
 	(hlp_functions->ptype_cleanup) (conn_buff);
-	return H_ERR;
+	return POM_ERR;
 
 }
 
@@ -68,11 +68,11 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 	int payload_size = l->payload_size;
 
 	if (!payload_size) // We don't need to reorder empty packets
-		return H_OK;
+		return POM_OK;
 
 	// We need to track all the tcp packets
 	if (!f->ce)
-		if ((*hlp_functions->conntrack_get_entry) (f) == C_ERR)
+		if ((*hlp_functions->conntrack_get_entry) (f) == POM_ERR)
 			(*hlp_functions->conntrack_create_entry) (f);
 	
 	uint32_t new_seq, new_ack;
@@ -288,7 +288,7 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 		(*hlp_functions->queue_timer) (cp->t[dir], PTYPE_UINT32_GETVAL(pkt_timeout));
 	}
 */
-	return H_OK;
+	return POM_OK;
 }
 
 int helper_process_timer_tcp(void *priv) {
@@ -335,7 +335,7 @@ int helper_process_next_tcp(struct helper_priv_tcp *p, int dir) {
 
 	free(pkt);
 
-	return H_OK;
+	return POM_OK;
 }
 
 
@@ -345,15 +345,15 @@ int helper_flush_buffer_tcp(struct conntrack_entry *ce, void *conntrack_priv) {
 
 	if (cp->pkts[0]) {
 		helper_process_next_tcp(cp, 0);
-		return H_OK;
+		return POM_OK;
 	}
 
 	if (cp->pkts[1]) {
 		helper_process_next_tcp(cp, 1);
-		return H_OK;
+		return POM_OK;
 	}
 
-	return H_ERR;
+	return POM_ERR;
 }
 
 int helper_cleanup_connection_tcp(struct conntrack_entry *ce, void *conntrack_priv) {
@@ -398,7 +398,7 @@ int helper_cleanup_connection_tcp(struct conntrack_entry *ce, void *conntrack_pr
 		
 	free(cp);
 
-	return H_OK;
+	return POM_OK;
 }
 
 int helper_cleanup_tcp() {
@@ -410,6 +410,6 @@ int helper_cleanup_tcp() {
 
 	(hlp_functions->ptype_cleanup) (pkt_timeout);
 	(hlp_functions->ptype_cleanup) (conn_buff);
-	return H_OK;
+	return POM_OK;
 }
 

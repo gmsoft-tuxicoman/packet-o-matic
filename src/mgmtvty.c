@@ -36,7 +36,7 @@ int mgmtvty_init(struct mgmt_connection *c) {
 	char commands[] = { IAC, WILL, TELOPT_ECHO, IAC, WILL, TELOPT_SGA, IAC, DO, TELOPT_NAWS, IAC, DONT, TELOPT_LINEMODE };
 	send(c->fd, commands, sizeof(commands), 0);
 
-	return MGMT_OK;
+	return POM_OK;
 
 }
 
@@ -205,7 +205,7 @@ int mgmtvty_process(struct mgmt_connection *c, unsigned char *buffer, unsigned i
 
 	}
 
-	return MGMT_OK;
+	return POM_OK;
 
 }
 
@@ -285,7 +285,7 @@ int mgmtvty_process_telnet_option(struct mgmt_connection *c, unsigned char *opt,
 					deny_msg[1] = DONT;
 					break;
 				default:
-					return MGMT_OK;
+					return POM_OK;
 
 			}
 			send(c->fd, deny_msg, 3, 0);
@@ -294,7 +294,7 @@ int mgmtvty_process_telnet_option(struct mgmt_connection *c, unsigned char *opt,
 	}
 
 
-	return MGMT_OK;
+	return POM_OK;
 
 }
 
@@ -445,7 +445,7 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 	}
 
 
-	return MGMT_OK;
+	return POM_OK;
 
 }
 
@@ -464,6 +464,6 @@ int mgmtvty_print_usage(struct mgmt_connection *c, struct mgmt_command *cmd) {
 
 
 	}
-	mgmtsrv_send(c, " <cr>\r\n");
-	return MGMT_OK;
+	mgmtsrv_send(c, "\r\n");
+	return POM_OK;
 }

@@ -57,13 +57,6 @@
 #define CT_DIR_BOTH 3
 
 
-
-/// Return value in case of error
-#define C_ERR -1
-
-/// Return value on success
-#define C_OK 0
-
 /// This structure contains all that needs to be known about a connection.
 struct conntrack_entry {
 

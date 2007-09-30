@@ -33,7 +33,7 @@ int ptype_register_ipv6(struct ptype_reg *r) {
 	
 	r->ops = PTYPE_OP_EQUALS;
 	
-	return P_OK;
+	return POM_OK;
 
 }
 
@@ -44,7 +44,7 @@ int ptype_alloc_ipv6(struct ptype* p) {
 	bzero(v, sizeof(struct ptype_ipv6_val));
 	v->mask = 128;
 
-	return P_OK;
+	return POM_OK;
 
 }
 
@@ -52,7 +52,7 @@ int ptype_alloc_ipv6(struct ptype* p) {
 int ptype_cleanup_ipv6(struct ptype *p) {
 
 	free(p->value);
-	return P_OK;
+	return POM_OK;
 }
 
 
@@ -69,14 +69,14 @@ int ptype_parse_ipv6(struct ptype *p, char *val) {
 			strncpy(ip, val, i);
 			unsigned char mask;
 			if (sscanf(val + i + 1, "%hhu", &mask) != 1)
-				return P_ERR;
+				return POM_ERR;
 			if (mask > 128)
-				return P_ERR;
+				return POM_ERR;
 			v->mask = mask;
 			if (inet_pton(AF_INET6, ip, &v->addr) <= 0)
-				return P_ERR;
+				return POM_ERR;
 
-			return P_OK;
+			return POM_OK;
 		}
 	}
 
@@ -84,10 +84,10 @@ int ptype_parse_ipv6(struct ptype *p, char *val) {
 
 
 	if (inet_pton(AF_INET6, val, &v->addr) <= 0)
-		return P_ERR;
+		return POM_ERR;
 	v->mask = 128;
 
-	return P_OK;
+	return POM_OK;
 
 }
 

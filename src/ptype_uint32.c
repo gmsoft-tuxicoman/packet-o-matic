@@ -33,7 +33,7 @@ int ptype_register_uint32(struct ptype_reg *r) {
 	
 	r->ops = PTYPE_OP_ALL;
 
-	return P_OK;
+	return POM_OK;
 
 }
 
@@ -43,7 +43,7 @@ int ptype_alloc_uint32(struct ptype* p) {
 	uint32_t *v = p->value;
 	*v = 0;
 
-	return P_OK;
+	return POM_OK;
 
 }
 
@@ -51,7 +51,7 @@ int ptype_alloc_uint32(struct ptype* p) {
 int ptype_cleanup_uint32(struct ptype *p) {
 
 	free(p->value);
-	return P_OK;
+	return POM_OK;
 }
 
 
@@ -60,9 +60,9 @@ int ptype_parse_uint32(struct ptype *p, char *val) {
 
 	uint32_t *v = p->value;
 	if(sscanf(val, "%u", v) == 1)
-		return P_OK;
+		return POM_OK;
 
-	return P_ERR;
+	return POM_ERR;
 
 };
 

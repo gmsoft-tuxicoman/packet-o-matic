@@ -31,7 +31,7 @@ static struct input_functions i_funcs; ///< Variable to hold the function pointe
 /**
  * This function will try to find the module input_<name>.so and
  * call the function input_<name>_register() from it.
- * This function should return the input type id on success or I_ERR on failure.
+ * This function should return the input type id on success or POM_ERR on failure.
  * Subsequently, this function behave the same.
  **/
 int input_register(const char *input_name) {
@@ -54,7 +54,7 @@ int input_register(const char *input_name) {
 
 
 			if (!register_my_input) {
-				return I_ERR;
+				return POM_ERR;
 			}
 
 			struct input_reg *my_input = malloc(sizeof(struct input_reg));
@@ -70,11 +70,11 @@ int input_register(const char *input_name) {
 			i_funcs.ptype_cleanup = ptype_cleanup_module;
 			i_funcs.ptype_snprintf = ptype_print_val;
 			
-			if ((*register_my_input) (my_input, &i_funcs) != I_OK) {
+			if ((*register_my_input) (my_input, &i_funcs) != POM_OK) {
 				dprint("Error while loading input %s. Could not register input !\n", input_name);
 				inputs[i] = NULL;
 				free(my_input);
-				return I_ERR;
+				return POM_ERR;
 			}
 
 			inputs[i] = my_input;
@@ -91,7 +91,7 @@ int input_register(const char *input_name) {
 
 	}
 
-	return I_ERR;
+	return POM_ERR;
 
 }
 
@@ -129,35 +129,35 @@ struct input_mode *input_register_mode(int input_type, const char *name, const c
 
 /**
  * Set the current input mode.
- * Return I_ERR if the mode doesn't exists or if the input is already running
+ * Return POM_ERR if the mode doesn't exists or if the input is already running
  **/
 
 int input_set_mode(struct input *i, char *mode_name) {
 	if (!i)
-		return I_ERR;
+		return POM_ERR;
 	if (i->running)
-		return I_ERR;
+		return POM_ERR;
 	struct input_mode *mode = inputs[i->type]->modes;
 	while (mode) {
 		if (!strcmp(mode->name, mode_name)) {
 			i->mode = mode;
-			return I_OK;
+			return POM_OK;
 		}
 		mode = mode->next;
 	}
 
-	return I_ERR;
+	return POM_ERR;
 
  }
 
 /**
  * Register a parameter for a specific input mode.
- * Returns I_ERR on failure, I_OK on success.
+ * Returns POM_ERR on failure, POM_OK on success.
  **/
 int input_register_param(struct input_mode *mode, char *name, char *defval, struct ptype *value, char *descr) {
 
 	if (!mode)
-		return I_ERR;
+		return POM_ERR;
 
 	struct input_param *param = malloc(sizeof(struct input_param));
 	bzero(param, sizeof(struct input_param));
@@ -170,8 +170,8 @@ int input_register_param(struct input_mode *mode, char *name, char *defval, stru
 	strcpy(param->descr, descr);
 	param->value = value;
 
-	if (ptype_parse_val(param->value, defval) == P_ERR)
-		return I_ERR;
+	if (ptype_parse_val(param->value, defval) == POM_ERR)
+		return POM_ERR;
 
 	if (!mode->params) {
 		mode->params = param;
@@ -182,7 +182,7 @@ int input_register_param(struct input_mode *mode, char *name, char *defval, stru
 		tmp->next = param;
 	}
 
-	return I_OK;
+	return POM_OK;
 }
 
 /**
@@ -213,7 +213,7 @@ struct input *input_alloc(int input_type) {
 	i->type = input_type;
 	
 	if (inputs[input_type]->init)
-		if ((*inputs[input_type]->init) (i) != I_OK) {
+		if ((*inputs[input_type]->init) (i) != POM_OK) {
 			free(i);
 			return NULL;
 		}
@@ -225,67 +225,67 @@ struct input *input_alloc(int input_type) {
 
 /**
  * Returns a selectable file descriptor
- * or returns I_ERR on failure.
+ * or returns POM_ERR on failure.
  **/
 int input_open(struct input *i) {
 
 	if (!i)
-		return I_ERR;
+		return POM_ERR;
 
 	if (i->running)
-		return I_ERR;
+		return POM_ERR;
 
 	if (inputs[i->type] && inputs[i->type]->open) {
 		int res = (*inputs[i->type]->open) (i);
-		if (res == I_ERR)
-			return I_ERR;
+		if (res == POM_ERR)
+			return POM_ERR;
 	}
 
 	i->running = 1;
-	return I_OK;
+	return POM_OK;
 }
 
 /**
  * The buffer used should be at least the size of the snaplen returned by input_get_caps. The argument bufflen is the length of the buffer.
- * Returns the number of bytes copied. Returns 0 if nothing was read and I_ERR in case of fatal error.
+ * Returns the number of bytes copied. Returns 0 if nothing was read and POM_ERR in case of fatal error.
  **/
 int input_read(struct input *i, struct frame *f) {
 
 	int res = (*inputs[i->type]->read) (i, f);
-	if (res == I_ERR) {
+	if (res == POM_ERR) {
 		input_close(i);
-		return I_ERR;
+		return POM_ERR;
 	}
 	return res;
 }
 
 /**
- * Returns I_ERR on failure.
+ * Returns POM_ERR on failure.
  **/
 int input_close(struct input *i) {
 
 	if (!i)
-		return I_ERR;
+		return POM_ERR;
 	
 	if (!i->running)
-		return I_ERR;
+		return POM_ERR;
 	
 	i->running = 0;
 
 	if (inputs[i->type] && inputs[i->type]->close) 
 		return (*inputs[i->type]->close) (i);
 
-	return I_ERR;
+	return POM_ERR;
 
 }
 
 /**
- * Returns I_ERR on failure.
+ * Returns POM_ERR on failure.
  **/
 int input_cleanup(struct input *i) {
 
 	if (!i)
-		return I_ERR;
+		return POM_ERR;
 
 	if (inputs[i->type] && inputs[i->type]->cleanup)
 		(*inputs[i->type]->cleanup) (i);
@@ -293,18 +293,18 @@ int input_cleanup(struct input *i) {
 
 	free (i);
 	
-	return I_ERR;
+	return POM_ERR;
 
 }
 
 /**
- * Return I_ERR on failure.
+ * Return POM_ERR on failure.
  **/
 
 int input_unregister(int input_type) {
 	
 	if (!inputs[input_type])
-		return I_ERR;
+		return POM_ERR;
 
 	if (inputs[input_type]->unregister)
 		(*inputs[input_type]->unregister) (inputs[input_type]);
@@ -331,13 +331,13 @@ int input_unregister(int input_type) {
 	free(inputs[input_type]->name);
 	free(inputs[input_type]);
 	inputs[input_type] = NULL;
-	return I_OK;
+	return POM_OK;
 }
 
 /**
  * This function makes sure that all the memory of the input is remove.
  * However it doesn't call the cleanup() functions of the input.
- * Returns I_ERR on failure.
+ * Returns POM_ERR on failure.
  **/
 int input_unregister_all() {
 
@@ -345,14 +345,14 @@ int input_unregister_all() {
 
 	for (; i < MAX_INPUT && inputs[i]; i++) 
 		input_unregister(i);
-	return I_OK;
+	return POM_OK;
 
 }
 
 int input_getcaps(struct input *i, struct input_caps *ic) {
 
 	if (!i || !inputs[i->type])
-		return I_ERR;
+		return POM_ERR;
 
 	return (*inputs[i->type]->getcaps) (i, ic);
 	

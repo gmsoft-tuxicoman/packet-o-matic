@@ -219,8 +219,9 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 	// Now, check each rule and see if it matches
 
 	while (r) {
+		r->result = 0;
 
-		if (r->node) {
+		if (r->node && r->enabled) {
 			// If there is a conntrack_entry, it means one of the target added it's priv, so the packet needs to be processed
 			r->result = node_match(f, r->node, f->l); // Get the result to fully populate layers
 			if (r->result)
@@ -230,7 +231,7 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 
 	}
 
-	if (f->ce || conntrack_get_entry(f) == C_OK) { // We got a conntrack_entry, process the corresponding targets
+	if (f->ce || conntrack_get_entry(f) == POM_OK) { // We got a conntrack_entry, process the corresponding targets
 		struct conntrack_target_priv *cp = f->ce->target_privs;
 		while (cp) {
 			r = rules;
@@ -238,7 +239,7 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 				struct target *t = r->target;
 				while (t) {
 					if (t == cp->t) {
-						target_process(r->target, f);
+						target_process(t, f);
 						t->matched_conntrack = 1; // Do no process this target again if it matched here
 					}
 					t = t->next;

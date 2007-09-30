@@ -36,5 +36,7 @@ int mgmtcmd_set_rule_split(struct mgmt_connection *c, char *expr, struct rule_no
 int mgmtcmd_set_rule(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_show_input(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_show_targets(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_disable_rule(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_enable_rule(struct mgmt_connection *c, int argc, char *argv[]);
 
 #endif

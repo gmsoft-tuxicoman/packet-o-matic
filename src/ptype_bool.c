@@ -31,7 +31,7 @@ int ptype_register_bool(struct ptype_reg *r) {
 	
 	r->ops = PTYPE_OP_ALL;
 
-	return P_OK;
+	return POM_OK;
 
 }
 
@@ -51,9 +51,9 @@ int ptype_parse_bool(struct ptype *p, char *val) {
 		!strcasecmp(val, "0"))
 		p->value = (void*)0;
 	else
-		return P_ERR;
+		return POM_ERR;
 
-	return P_OK;
+	return POM_OK;
 
 };
 

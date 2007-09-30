@@ -28,6 +28,7 @@
 #include "conntrack.h"
 #include "helper.h"
 #include "ptype.h"
+#include "ptype_bool.h"
 
 struct conf *config_alloc() {
 
@@ -56,7 +57,7 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 	}
 	ndprint("Parsing input of type %s\n", input_type);
 	int it = input_register(input_type);
-	if (it == I_ERR) {
+	if (it == POM_ERR) {
 		dprint("Could not load input %s !\n", input_type);
 		xmlFree(input_type);
 		return NULL;
@@ -74,7 +75,7 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 	if (!input_mode)
 		dprint("Warning, no mode specified in the input tag. Will use the default\n");
 	else {
-		if (input_set_mode(ip, input_mode) != I_OK) {
+		if (input_set_mode(ip, input_mode) != POM_OK) {
 			dprint("Unable to set mode %s for input %s\n", input_type, input_mode);
 			free(ip);
 			xmlFree(input_type);
@@ -97,7 +98,7 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 			struct input_param *param = ip->mode->params;
 			while (param) {
 				if (!strcmp(param->name, param_type)) {
-					if (ptype_parse_val(param->value, value) == P_ERR) {
+					if (ptype_parse_val(param->value, value) == POM_ERR) {
 						dprint("Unable to parse \"%s\" for parameter %s of input %s\n", value, param_type, input_type);
 					}
 					break;
@@ -249,7 +250,7 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 							mp->op = ptype_get_op(mp->value, "==");
 						else
 							mp->op = ptype_get_op(mp->value, op);
-						if (mp->op == P_ERR) {
+						if (mp->op == POM_ERR) {
 							dprint("Invalid operation %s for field %s and layer %s\n", op, field, layer);
 							free(mp);
 							n->match = NULL;
@@ -394,8 +395,22 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 	r = malloc(sizeof(struct rule_list));
 	bzero(r, sizeof(struct rule_list));
 	
-	cur = cur->xmlChildrenNode;
+	struct ptype *disabled_pt = ptype_alloc("bool", NULL);
+	if (!disabled_pt) {
+		dprint("Unable to load ptype bool !\n");
+		return NULL;
+	}
 
+	char *disabled = (char *) xmlGetProp(cur, (const xmlChar*) "disabled");
+	if (disabled) {
+		ptype_parse_val(disabled_pt, disabled);
+		r->enabled = !PTYPE_BOOL_GETVAL(disabled_pt);
+	} else
+		r->enabled = 1;
+
+	ptype_cleanup_module(disabled_pt);
+
+	cur = cur->xmlChildrenNode;
 	while (cur) {
 		if (!xmlStrcmp(cur->name, (const xmlChar *) "target")) {
 			struct target *t = parse_target(doc, cur);

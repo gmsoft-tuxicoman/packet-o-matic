@@ -32,7 +32,7 @@ int ptype_register_string(struct ptype_reg *r) {
 	
 	r->ops = PTYPE_OP_EQUALS;
 	
-	return P_OK;
+	return POM_OK;
 
 }
 
@@ -41,7 +41,7 @@ int ptype_cleanup_string(struct ptype *p) {
 
 	if (p->value)
 		free(p->value);
-	return P_OK;
+	return POM_OK;
 }
 
 
@@ -54,7 +54,7 @@ int ptype_parse_string(struct ptype *p, char *val) {
 	strcpy(str, val);
 	p->value = str;
 
-	return P_OK;
+	return POM_OK;
 
 }
 

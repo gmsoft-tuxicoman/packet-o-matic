@@ -26,12 +26,6 @@
 #include "common.h"
 #include "rules.h"
 
-/// Return value in case of error
-#define H_ERR -1
-
-/// Return value on success
-#define H_OK 0
-
 /// Return value if the packet needs to be processed by the helper
 /// Returned by helper_need_help only
 #define H_NEED_HELP 1

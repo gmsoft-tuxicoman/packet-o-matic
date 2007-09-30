@@ -57,7 +57,7 @@ int mgmtsrv_init() {
 	if (getaddrinfo(NULL, PORT, &hints, &res) < 0) {
 		strerror_r(errno, errbuff, 256);
 		dprint("Error while finding an address to listen on : %s\n", errbuff);
-		return MGMT_ERR;
+		return POM_ERR;
 	}
 
 	struct addrinfo *tmpres = res;
@@ -129,14 +129,14 @@ int mgmtsrv_init() {
 
 	if (!conn_head) {
 		dprint("Could not open a single socket\n");
-		return MGMT_ERR;
+		return POM_ERR;
 	}
 
 	// register all the commands
 	mgmtcmd_register_all();
 
 
-	return MGMT_OK;
+	return POM_OK;
 
 }
 
@@ -185,7 +185,7 @@ int mgmtsrv_process() {
 	tv.tv_usec = 0;
 
 	if (select(max_fd + 1, &fds, NULL, NULL, &tv) <= 0)
-		return MGMT_OK;
+		return POM_OK;
 
 	cc = conn_head;
 	while(cc) {
@@ -198,7 +198,7 @@ int mgmtsrv_process() {
 		cc = cc->next;
 	}
 
-	return MGMT_OK;
+	return POM_OK;
 
 }
 
@@ -215,20 +215,20 @@ int mgmtsrv_accept_connection(struct mgmt_connection *c) {
 	if (new_cc->fd < 0) {
 		free(new_cc);
 		dprint("Error while accepting new connection\n");
-		return MGMT_ERR;
+		return POM_ERR;
 	}
 
 	int flags = fcntl(new_cc->fd, F_GETFL);
 	if (flags < 0) {
 		free(new_cc);
 		dprint("Error while getting flags of fd %d\n", new_cc->fd);
-		return MGMT_ERR;
+		return POM_ERR;
 	}
 
 	if (fcntl(new_cc->fd, F_SETFL, (flags | O_NONBLOCK)) < 0) {
 		free(new_cc);
 		dprint("Unable to set non blocking flag for socket %d\n", new_cc->fd);
-		return MGMT_ERR;
+		return POM_ERR;
 	}
 
 	char host[NI_MAXHOST], port[NI_MAXSERV];
@@ -269,19 +269,19 @@ int mgmtsrv_read_socket(struct mgmt_connection *c) {
 	if (res == 0) {
 		ndprint("Connection %u closed by foreign host\n", c->fd);
 		mgmtsrv_close_connection(c);
-		return MGMT_OK;
+		return POM_OK;
 	}
 
 	int my_errno = errno;
 	if (my_errno != EAGAIN) {
 		ndprint("Error while reading from socket %u\n", c->fd);
 		mgmtsrv_close_connection(c);
-		return MGMT_OK;
+		return POM_OK;
 	}
 
 	mgmtvty_process(c, buffer, len);
 
-	return MGMT_OK;
+	return POM_OK;
 }
 
 
@@ -290,7 +290,7 @@ int mgmtsrv_register_command(struct mgmt_command *cmd) {
 
 	if (!cmds) {
 		cmds = cmd;
-		return MGMT_OK;
+		return POM_OK;
 	}
 
 	struct mgmt_command *tmp = cmds;
@@ -301,7 +301,7 @@ int mgmtsrv_register_command(struct mgmt_command *cmd) {
 
 	tmp->next = cmd;
 
-	return MGMT_OK;
+	return POM_OK;
 
 }
 
@@ -323,7 +323,7 @@ int mgmtsrv_process_command(struct mgmt_connection *c) {
 		if (words_count >= MGMT_MAX_CMD_WORDS_ARGS) {
 			mgmtsrv_send(c, "\r\nToo many arguments\r\n");
 			free(tmpcmdstr);
-			return MGMT_OK;
+			return POM_OK;
 		}
 		token = strtok_r(str, " ", &saveptr);
 		if (token == NULL)
@@ -338,7 +338,7 @@ int mgmtsrv_process_command(struct mgmt_connection *c) {
 
 	if (words_count == 0) {
 		free(tmpcmdstr);
-		return MGMT_OK;
+		return POM_OK;
 	}
 	
 	struct mgmt_command *tmpcmd = cmds;
@@ -367,7 +367,7 @@ int mgmtsrv_process_command(struct mgmt_connection *c) {
 	mgmtsrv_send(c, "No such command\r\n");
 
 	free(tmpcmdstr);
-	return MGMT_OK;
+	return POM_OK;
 
 }
 
@@ -378,7 +378,7 @@ int mgmtsrv_close_connection(struct mgmt_connection *c) {
 	close(c->fd);
 	c->closed = 1;
 
-	return MGMT_OK;
+	return POM_OK;
 
 }
 
@@ -398,7 +398,7 @@ int mgmtsrv_cleanup() {
 
 	}
 
-	return MGMT_OK;
+	return POM_OK;
 }
 
 

@@ -33,7 +33,7 @@ int ptype_init() {
 		ptypes[i] = NULL;
 	}
 
-	return P_OK;
+	return POM_OK;
 
 }
 
@@ -55,16 +55,16 @@ int ptype_register(const char *ptype_name) {
 			register_my_ptype = lib_get_register_func("ptype", ptype_name, &handle);
 
 			if (!register_my_ptype) {
-				return P_ERR;
+				return POM_ERR;
 			}
 
 			struct ptype_reg *my_ptype = malloc(sizeof(struct ptype_reg));
 			bzero(my_ptype, sizeof(struct ptype_reg));
 
 			
-			if ((*register_my_ptype) (my_ptype) != P_OK) {
+			if ((*register_my_ptype) (my_ptype) != POM_OK) {
 				dprint("Error while loading ptype %s. could not register ptype !\n", ptype_name);
-				return P_ERR;
+				return POM_ERR;
 			}
 
 
@@ -79,7 +79,7 @@ int ptype_register(const char *ptype_name) {
 		}
 	}
 
-	return P_ERR;
+	return POM_ERR;
 
 }
 
@@ -88,7 +88,7 @@ struct ptype* ptype_alloc(const char* type, char* unit) {
 
 	int idx = ptype_register(type);
 
-	if (idx == P_ERR) {
+	if (idx == POM_ERR) {
 		dprint("Error, could not allocate ptype of type %s\n", type);
 		return NULL;
 	}
@@ -151,7 +151,7 @@ int ptype_get_op(struct ptype *pt, char *op) {
 		return o;
 
 	dprint("Invalid operation %s for ptype %s.\n", op, ptypes[pt->type]->name);
-	return P_ERR;
+	return POM_ERR;
 }
 
 char *ptype_get_op_name(int op) {
@@ -185,13 +185,13 @@ int ptype_compare_val(int op, struct ptype *a, struct ptype *b) {
 int ptype_cleanup_module(struct ptype* p) {
 
 	if (!p)
-		return P_ERR;
+		return POM_ERR;
 
 	if (ptypes[p->type] && ptypes[p->type]->cleanup)
 		ptypes[p->type]->cleanup(p);
 	free(p);
 
-	return P_OK;
+	return POM_OK;
 }
 
 int ptype_unregister_all() {
@@ -204,6 +204,6 @@ int ptype_unregister_all() {
 		ptypes[i] = NULL;
 	}
 
-	return P_OK;
+	return POM_OK;
 
 }

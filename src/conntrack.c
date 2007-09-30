@@ -160,7 +160,7 @@ int conntrack_create_entry(struct frame *f) {
 	ce->direction = CT_DIR_FWD;
 	f->ce = ce;
 
-	return C_OK;
+	return POM_OK;
 }
 
 
@@ -369,11 +369,11 @@ int conntrack_get_entry(struct frame *f) {
 
 	if (ce) { 
 		f->ce = ce;
-		return C_OK;
+		return POM_OK;
 	}
 
 	f->ce = NULL;
-	return C_ERR;
+	return POM_ERR;
 
 }
 
@@ -552,7 +552,7 @@ int conntrack_close_connections(struct rule_list *r) {
 			
 			struct conntrack_helper_priv *hp = cl->ce->helper_privs;
 			while (hp) {
-				while ((*hp->flush_buffer) (cl->ce, hp->priv) == H_OK)
+				while ((*hp->flush_buffer) (cl->ce, hp->priv) == POM_OK)
 					helper_process_queue(r);
 
 				hp = hp->next;

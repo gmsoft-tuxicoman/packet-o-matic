@@ -31,13 +31,6 @@
 
 struct mgmt_command *cmds;
 
-
-/// Return value in case of error
-#define MGMT_ERR -1
-
-/// Return value on success
-#define MGMT_OK 0
-
 // Command functions return this value if it's needed to print the usage
 #define MGMT_USAGE -2
 

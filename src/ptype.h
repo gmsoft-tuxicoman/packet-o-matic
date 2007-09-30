@@ -23,11 +23,6 @@
 
 #include <unistd.h>
 
-#define P_OK 0
-
-#define P_ERR -1
-
-
 #define PTYPE_OP_EQUALS	0x01
 #define PTYPE_OP_GT	0x02
 #define PTYPE_OP_GE	0x04

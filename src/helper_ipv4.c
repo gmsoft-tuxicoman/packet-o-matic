@@ -50,10 +50,10 @@ int helper_register_ipv4(struct helper_reg *r, struct helper_functions *hlp_func
 
 	frag_timeout = (*hlp_funcs->ptype_alloc) ("uint32", "seconds");
 	if (!frag_timeout)
-		return H_ERR;
+		return POM_ERR;
 	(*hlp_funcs->register_param) (r->type, "frag_timeout", "60", frag_timeout, "Number of seconds to wait for subsequent packets");
 
-	return H_OK;
+	return POM_OK;
 }
 
 
@@ -96,7 +96,7 @@ int helper_ipv4_process_frags(struct helper_priv_ipv4 *p) {
 
 	helper_cleanup_ipv4_frag(p);
 
-	return H_OK;
+	return POM_OK;
 
 
 }
@@ -112,12 +112,12 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 
 	// No help needed if the don't fragment bit is set
 	if (frag_off & IP_DONT_FRAG)
-		return H_OK;
+		return POM_OK;
 
 	// We don't need to look at the packet if there are no more frags and it's an unfragmented packet
 	// This imply MF -> 0 and offset = 0
 	if (!(frag_off & IP_MORE_FRAG) && !(frag_off & IP_OFFSET_MASK))
-		return H_OK;
+		return POM_OK;
 
 	u_short offset = (frag_off & IP_OFFSET_MASK) << 3;
 
@@ -140,7 +140,7 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 	
 	// Ignore invalid fragments
 	if (frag_size > 0xFFFF)
-		return H_ERR;
+		return POM_ERR;
 
 	if (frag_start + frag_size > len + start) {
 		dprint("Error, packet len missmatch dropping this frag : ipv4 [");
@@ -153,7 +153,7 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 		}
 		dprint("frag_off: 0x%X, id: %u, frag_start: %u, frag_size: %u, size: %u]\n", frag_off, ntohs(hdr->ip_id), frag_start, (unsigned int) frag_size, l->prev->payload_size);
 
-		return H_ERR;
+		return POM_ERR;
 	}
 
 	if (!tmp) {
@@ -316,7 +316,7 @@ int helper_cleanup_ipv4_frag(void *priv) {
 	}
 	free(p);
 
-	return H_OK;
+	return POM_OK;
 }
 
 int helper_cleanup_ipv4() {
@@ -330,6 +330,6 @@ int helper_cleanup_ipv4() {
 		helper_cleanup_ipv4_frag(frags_head);
 	}
 	
-	return H_OK;
+	return POM_OK;
 }
 

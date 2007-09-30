@@ -31,7 +31,7 @@
 extern struct helper_reg *helpers[];
 
 
-#define MGMT_COMMANDS_NUM 11
+#define MGMT_COMMANDS_NUM 13
 
 struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
@@ -105,6 +105,20 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.help = "Display informations about the targets in every rule",
 		.callback_func = mgmtcmd_show_targets,
 	},
+
+	{
+		.words = { "disable", "rule", NULL },
+		.help = "Disable a rule",
+		.callback_func = mgmtcmd_disable_rule,
+		.usage = "disable rule <rule id>",
+	},
+
+	{
+		.words = { "enable", "rule", NULL },
+		.help = "Enable a rule",
+		.callback_func = mgmtcmd_enable_rule,
+		.usage = "enable rule <rule id>",
+	},
 };
 
 int mgmtcmd_register_all() {
@@ -116,7 +130,7 @@ int mgmtcmd_register_all() {
 		mgmtsrv_register_command(&mgmt_commands[i]);
 	}
 
-	return MGMT_OK;
+	return POM_OK;
 }
 
 
@@ -169,7 +183,7 @@ int mgmtcmd_help(struct mgmt_connection *c, int argc, char *argv[]) {
 	}
 
 
-	return MGMT_OK;
+	return POM_OK;
 
 }
 
@@ -180,7 +194,7 @@ int mgmtcmd_exit(struct mgmt_connection *c, int argc, char *argv[]) {
 	mgmtsrv_send(c, bye_msg);
 	mgmtsrv_close_connection(c);
 
-	return MGMT_OK;
+	return POM_OK;
 
 }
 
@@ -204,7 +218,7 @@ int mgmtcmd_show_license(struct mgmt_connection *c, int argc, char *argv[]) {
 		"Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA\r\n";
 	
 	mgmtsrv_send(c, license_msg);
-	return MGMT_OK;
+	return POM_OK;
 }
 
 int mgmtcmd_show_helpers(struct mgmt_connection *c, int argc, char *argv[]) {
@@ -239,7 +253,7 @@ int mgmtcmd_show_helpers(struct mgmt_connection *c, int argc, char *argv[]) {
 	}
 				
 
-	return MGMT_OK;
+	return POM_OK;
 }
 
 
@@ -254,23 +268,23 @@ int mgmtcmd_load_helper(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (id == -1) {
 		mgmtsrv_send(c, "Cannot load helper : corresponding match not loaded yet\r\n");
-		return MGMT_OK;
+		return POM_OK;
 	}
 
 	if (helpers[id]) {
 		mgmtsrv_send(c, "Helper already loaded\r\n");
-		return MGMT_OK;
+		return POM_OK;
 	}
 
 	reader_process_lock();
-	if (helper_register(argv[0]) != H_ERR) {
+	if (helper_register(argv[0]) != POM_ERR) {
 		mgmtsrv_send(c, "Helper registered successfully\r\n");
 	} else {
 		mgmtsrv_send(c, "Error while loading helper\r\n");
 	}
 	reader_process_unlock();
 	
-	return MGMT_OK;
+	return POM_OK;
 
 }
 
@@ -283,21 +297,21 @@ int mgmtcmd_set_helper_param(struct mgmt_connection *c, int argc, char *argv[]) 
 	int id = match_get_type(argv[0]);
 	if (!helpers[id]) {
 		mgmtsrv_send(c, "No helper with that name loaded\r\n");
-		return MGMT_OK;
+		return POM_OK;
 	}
 
 	struct helper_param *p = helper_get_param(id, argv[1]);
 	if (!p) {
 		mgmtsrv_send(c, "This parameter does not exists\r\n");
-		return MGMT_OK;
+		return POM_OK;
 	}
 
-	if (ptype_parse_val(p->value, argv[2]) != P_OK) {
+	if (ptype_parse_val(p->value, argv[2]) != POM_OK) {
 		mgmtsrv_send(c, "Invalid value given\r\n");
-		return MGMT_OK;
+		return POM_OK;
 	}
 
-	return MGMT_OK;
+	return POM_OK;
 
 }
 
@@ -311,17 +325,17 @@ int mgmtcmd_unload_helper(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (!helpers[id]) {
 		mgmtsrv_send(c, "Helper not loaded\r\n");
-		return MGMT_OK;
+		return POM_OK;
 	}
 	reader_process_lock();
-	if (helper_unregister(id) != H_ERR) {
+	if (helper_unregister(id) != POM_ERR) {
 		mgmtsrv_send(c, "Helper unloaded successfully\r\n");
 	} else {
 		mgmtsrv_send(c, "Error while unloading helper\r\n");
 	}
 	reader_process_unlock();
 	
-	return MGMT_OK;
+	return POM_OK;
 
 }
 
@@ -399,7 +413,7 @@ int mgmtcmd_show_rule_print_node_flat(struct mgmt_connection *c, struct rule_nod
 	}
 	if (display_parenthesis)
 		mgmtsrv_send(c, ")");
-	return MGMT_OK;
+	return POM_OK;
 }
 
 int mgmtcmd_show_rule_print_node_tree(struct mgmt_connection *c, struct rule_node *n, struct rule_node *last, char *prepend) {
@@ -472,7 +486,7 @@ int mgmtcmd_show_rule_print_node_tree(struct mgmt_connection *c, struct rule_nod
 		}
 	}
 
-	return MGMT_OK;
+	return POM_OK;
 }
 
 int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]) {
@@ -486,6 +500,8 @@ int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]) {
 		sprintf(buff, "%u", rule_num);
 		mgmtsrv_send(c, "Rule ");
 		mgmtsrv_send(c, buff);
+		if (!rl->enabled)
+			mgmtsrv_send(c, " (disabled)");
 		mgmtsrv_send(c, " : \r\n");
 
 		struct rule_node *last, *rn = rl->node;
@@ -514,7 +530,7 @@ int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]) {
 		rule_num++;
 	}
 
-	return MGMT_OK;
+	return POM_OK;
 }
 
 struct rule_node *mgmtcmd_set_rule_parse_block(struct mgmt_connection *c, char *expr) {
@@ -553,9 +569,9 @@ struct rule_node *mgmtcmd_set_rule_parse_block(struct mgmt_connection *c, char *
 
 	if (wordcount == 1) {
 		int layer = match_get_type(words[0]);
-		if (layer == MGMT_ERR) 
+		if (layer == POM_ERR) 
 			layer = match_register(words[0]);
-		if (layer == MGMT_ERR) {
+		if (layer == POM_ERR) {
 			mgmtsrv_send(c, "Unknown match \"");
 			mgmtsrv_send(c, words[0]);
 			mgmtsrv_send(c, "\"\r\n");
@@ -581,9 +597,9 @@ struct rule_node *mgmtcmd_set_rule_parse_block(struct mgmt_connection *c, char *
 	*field = 0;
 	field++;
 	int layer = match_get_type(words[0]);
-	if (layer == MGMT_ERR)
+	if (layer == POM_ERR)
 		layer = match_register(words[0]);
-	if (layer == MGMT_ERR) {
+	if (layer == POM_ERR) {
 		mgmtsrv_send(c, "Unknown match \"");
 		mgmtsrv_send(c, words[0]);
 		mgmtsrv_send(c, "\"\r\n");
@@ -602,7 +618,7 @@ struct rule_node *mgmtcmd_set_rule_parse_block(struct mgmt_connection *c, char *
 	}
 
 	param->op = ptype_get_op(param->value, words[1]);
-	if (param->op == P_ERR) {
+	if (param->op == POM_ERR) {
 		mgmtsrv_send(c, "Unknown or unsuported operation \"");
 		mgmtsrv_send(c, words[1]);
 		mgmtsrv_send(c, "\" for field \"");
@@ -614,7 +630,7 @@ struct rule_node *mgmtcmd_set_rule_parse_block(struct mgmt_connection *c, char *
 		return NULL;
 	}
 
-	if (ptype_parse_val(param->value, words[2]) == P_ERR) {
+	if (ptype_parse_val(param->value, words[2]) == POM_ERR) {
 		mgmtsrv_send(c, "Unable to parse \"");
 		mgmtsrv_send(c, words[2]);
 		mgmtsrv_send(c, "\" for field \"");
@@ -688,7 +704,7 @@ int mgmtcmd_set_rule_parse_branch(struct mgmt_connection *c, char *expr, struct 
 			mgmtcmd_set_rule_split(c, expr + i + found_len, &my_start->b, &the_end);
 			the_end->a = my_end;
 
-			return MGMT_OK;
+			return POM_OK;
 		}
 				
 
@@ -701,7 +717,7 @@ int mgmtcmd_set_rule_parse_branch(struct mgmt_connection *c, char *expr, struct 
 			stack_size--;
 			if (stack_size < 0) {
 				mgmtsrv_send(c, "Unmatched )\r\n");
-				return MGMT_ERR;
+				return POM_ERR;
 			}
 		}
 
@@ -726,28 +742,28 @@ int mgmtcmd_set_rule_parse_branch(struct mgmt_connection *c, char *expr, struct 
 	if (expr[0] == '(' && strlen(expr) > 0 && expr[strlen(expr) - 1] == ')') { // parenthesis at begining and end of block
 		expr++;
 		expr[strlen(expr) - 1] = 0;
-		if (mgmtcmd_set_rule_split(c, expr, start, end) == MGMT_ERR)
-			return MGMT_ERR;
+		if (mgmtcmd_set_rule_split(c, expr, start, end) == POM_ERR)
+			return POM_ERR;
 
 		if (inv) {
 			if ((*start)->op == 0) {
 				mgmtsrv_send(c, "Unexpected \"!\"\r\n");
-				return MGMT_ERR;
+				return POM_ERR;
 			}
 			(*start)->op |= RULE_OP_NOT;
 		}
-		return MGMT_OK;
+		return POM_OK;
 	}
 
 	*start = mgmtcmd_set_rule_parse_block(c, expr);
 	if (!*start)
-		return MGMT_ERR;
+		return POM_ERR;
 	*end = *start;
 
 	if (inv)
 		(*start)->op |= RULE_OP_NOT;
 
-	return MGMT_OK;
+	return POM_OK;
 }
 
 
@@ -766,8 +782,8 @@ int mgmtcmd_set_rule_split(struct mgmt_connection *c, char *expr, struct rule_no
 	for (i = 0; i < len; i++) {
 		if (stack_size == 0 && expr[i] == '|') {
 			expr[i] = 0;
-			if (mgmtcmd_set_rule_parse_branch(c, expr + pstart, my_start_addr, end) == P_ERR)
-				return MGMT_ERR;
+			if (mgmtcmd_set_rule_parse_branch(c, expr + pstart, my_start_addr, end) == POM_ERR)
+				return POM_ERR;
 			if (!*start)
 				*start = *my_start_addr;
 			my_start_addr = &(*end)->a;
@@ -783,24 +799,24 @@ int mgmtcmd_set_rule_split(struct mgmt_connection *c, char *expr, struct rule_no
 			stack_size--;
 			if (stack_size < 0) {
 				mgmtsrv_send(c, "Unmatched )\r\n");
-				return MGMT_ERR;
+				return POM_ERR;
 			}
 		}
 	}
 
 	if (stack_size > 0) {
 		mgmtsrv_send(c, "Unmatched (\r\n");
-		return MGMT_ERR;
+		return POM_ERR;
 	}
 
 	// parse the last block
 	if (mgmtcmd_set_rule_parse_branch(c, expr + pstart, my_start_addr, end))
-		return MGMT_ERR;
+		return POM_ERR;
 	if (!*start)
 		*start = *my_start_addr;
 
 
-	return MGMT_OK;
+	return POM_OK;
 }
 
 int mgmtcmd_set_rule(struct mgmt_connection *c, int argc, char *argv[]) {
@@ -820,7 +836,7 @@ int mgmtcmd_set_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (!rl) {
 		mgmtsrv_send(c, "Rule not found\r\n");
-		return MGMT_OK;
+		return POM_OK;
 	}
 
 	// first, let's reconstruct the whole rule
@@ -836,10 +852,10 @@ int mgmtcmd_set_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	}
 
 	struct rule_node *start, *end;
-	if (mgmtcmd_set_rule_split(c, rule_str, &start, &end) == P_ERR) {
+	if (mgmtcmd_set_rule_split(c, rule_str, &start, &end) == POM_ERR) {
 		node_destroy(start, 0);
 		free(rule_str);
-		return MGMT_OK;
+		return POM_OK;
 	}
 
 	free(rule_str);
@@ -853,7 +869,7 @@ int mgmtcmd_set_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	rl->node = start;
 	reader_process_unlock();
 
-	return MGMT_OK;
+	return POM_OK;
 }
 
 int mgmtcmd_show_input(struct mgmt_connection *c, int argc, char *argv[]) {
@@ -862,7 +878,7 @@ int mgmtcmd_show_input(struct mgmt_connection *c, int argc, char *argv[]) {
 	struct input* i = main_config->input;
 	if (!i) {
 		mgmtsrv_send(c, "none?!\r\n");
-		return MGMT_OK;
+		return POM_OK;
 	}
 	mgmtsrv_send(c, input_get_name(i->type));
 	mgmtsrv_send(c, ", mode ");
@@ -889,7 +905,7 @@ int mgmtcmd_show_input(struct mgmt_connection *c, int argc, char *argv[]) {
 	}
 
 
-	return MGMT_OK;
+	return POM_OK;
 }
 
 int mgmtcmd_show_targets(struct mgmt_connection *c, int argc, char *argv[]) {
@@ -904,6 +920,8 @@ int mgmtcmd_show_targets(struct mgmt_connection *c, int argc, char *argv[]) {
 		sprintf(buff, "%u", rule_num);
 		mgmtsrv_send(c, "Rule ");
 		mgmtsrv_send(c, buff);
+		if (!rl->enabled)
+			mgmtsrv_send(c, " (disabled)");
 		mgmtsrv_send(c, " : \r\n");
 
 		struct target *t = rl->target;
@@ -940,5 +958,67 @@ int mgmtcmd_show_targets(struct mgmt_connection *c, int argc, char *argv[]) {
 		rule_num++;
 	}
 
-	return MGMT_OK;
+	return POM_OK;
+}
+
+int mgmtcmd_disable_rule(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	if (argc < 1)
+		return MGMT_USAGE;
+
+	int rule_id;
+	if (sscanf(argv[0], "%u", &rule_id) < 1)
+		return MGMT_USAGE;
+
+	struct rule_list *rl = main_config->rules;
+
+	int i;
+	for (i = 0; i < rule_id && rl; i++)
+		rl = rl->next;
+
+	if (!rl) {
+		mgmtsrv_send(c, "Rule not found\r\n");
+		return POM_OK;
+	}
+
+	if (!rl->enabled) {
+		mgmtsrv_send(c, "Rule already disabled\n");
+		return POM_OK;
+	}
+
+	rl->enabled = 0;
+
+	return POM_OK;
+
+}
+
+int mgmtcmd_enable_rule(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	if (argc < 1)
+		return MGMT_USAGE;
+
+	int rule_id;
+	if (sscanf(argv[0], "%u", &rule_id) < 1)
+		return MGMT_USAGE;
+
+	struct rule_list *rl = main_config->rules;
+
+	int i;
+	for (i = 0; i < rule_id && rl; i++)
+		rl = rl->next;
+
+	if (!rl) {
+		mgmtsrv_send(c, "Rule not found\r\n");
+		return POM_OK;
+	}
+
+	if (rl->enabled) {
+		mgmtsrv_send(c, "Rule already enabled\n");
+		return POM_OK;
+	}
+
+	rl->enabled = 1;
+
+	return POM_OK;
+
 }

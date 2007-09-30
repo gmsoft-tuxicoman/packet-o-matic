@@ -27,12 +27,6 @@
 /// Maximum number of inputs
 #define MAX_INPUT 16
 
-/// Return value in case of error
-#define I_ERR -1
-
-/// Return value on success
-#define I_OK 0
-
 /// This structure is used to retreive the capabilities of the current opened input
 struct input_caps {
 
@@ -87,14 +81,14 @@ struct input_reg {
 	/// Pointer to the initialization function of the input
 	/**
 	 * The init function is called when we create the input.
-	 * Returns I_OK on success and I_ERR on failure.
+	 * Returns POM_OK on success and POM_ERR on failure.
 	 **/
 	int (*init) (struct input *i);
 
 	/// Pointer to the open function of the input
 	/**
 	 * The open function is called when opening the input.
-	 * Returns a seclectable file descriptor on success and I_ERR on failure.
+	 * Returns a seclectable file descriptor on success and POM_ERR on failure.
 	 **/
 	int (*open) (struct input *i);
 
@@ -102,36 +96,36 @@ struct input_reg {
 	/**
 	 *  Reads a packet and store it in the buffer present in the frame structure.
 	 *  It must populate first_layer, len and buff. Set len to 0 if nothing was read.
-	 *  Return I_OK or I_ERR in case of fatal error.
+	 *  Return POM_OK or POM_ERR in case of fatal error.
 	 **/
 	int (*read) (struct input *i, struct frame *f);
 
 	/// Pointer to the close fonction
 	/**
 	 * Close the input.
-	 * Returns I_OK on success and I_ERR on failure.
+	 * Returns POM_OK on success and POM_ERR on failure.
 	 **/
 	int (*close) (struct input *i);
 
 	/// Pointer to the cleanup function
 	/**
 	 * Cleanup the input once we don't need it anymore.
-	 * Returns I_OK on success and I_ERR on failure.
+	 * Returns POM_OK on success and POM_ERR on failure.
 	 **/
 	int (*cleanup) (struct input *i);
 
 	/// Pointer to the unregister function
 	/**
 	 * Free the memory allocated at registration time.
-	 * Returns I_OK on success and I_ERR on failure.
+	 * Returns POM_OK on success and POM_ERR on failure.
 	 **/
 	 int (*unregister) (struct input_reg *r);
 
 	/// Pointer to the fonction to provide the capabilities of an input
 	/**
 	 * Fills the struct input_caps with the capabilities of the input.
-	 * The input must be opened or I_ERR will be returned.
-	 * Returns I_OK on success and I_ERR on failure.
+	 * The input must be opened or POM_ERR will be returned.
+	 * Returns POM_OK on success and POM_ERR on failure.
 	 **/
 
 	int (*getcaps) (struct input *i, struct input_caps *ic);

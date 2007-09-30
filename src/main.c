@@ -67,6 +67,7 @@ unsigned int ringbuffer_usage = 0; // Number of packet in the buffer waiting to 
 struct timeval now; ///< Used to get the current time from the input perspective
 
 
+
 void signal_handler(int signal) {
 	
 	dprint("Received signal. Finishing ... !\n");
@@ -165,7 +166,7 @@ void *input_thread_func(void *params) {
 	while (!finish) {
 
 
-		if (input_read(p->i, ringbuffer[ringbuffer_write_pos]) == I_ERR) {
+		if (input_read(p->i, ringbuffer[ringbuffer_write_pos]) == POM_ERR) {
 			dprint("Error while reading. Abording\n");
 			break;
 		}
@@ -260,19 +261,19 @@ int main(int argc, char *argv[]) {
 		goto err;
 	}
 
-	if (mgmtsrv_init() == MGMT_ERR) {
+	if (mgmtsrv_init() == POM_ERR) {
 		dprint("Error when initializing the management console. Abording\n");
 		goto err;
 	}
 	int fd = input_open(main_config->input);
 
-	if (fd == I_ERR) {
+	if (fd == POM_ERR) {
 		dprint("Error while opening input\n");
 		goto err;
 	}
 
 	struct input_caps ic;
-	if (input_getcaps(main_config->input, &ic) == I_ERR) {
+	if (input_getcaps(main_config->input, &ic) == POM_ERR) {
 		dprint("Error while getting input capabilities\n");
 		goto err;
 	}
@@ -485,7 +486,7 @@ int reader_process_unlock() {
 
 int get_current_input_time(struct timeval *cur_time) {
 
-		memcpy(cur_time, &now, sizeof(struct timeval));
-		return 0;
+	memcpy(cur_time, &now, sizeof(struct timeval));
+	return 0;
 }
 

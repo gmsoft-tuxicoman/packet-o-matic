@@ -33,7 +33,7 @@ int ptype_register_mac(struct ptype_reg *r) {
 	
 	r->ops = PTYPE_OP_EQUALS;
 	
-	return P_OK;
+	return POM_OK;
 
 }
 
@@ -44,7 +44,7 @@ int ptype_alloc_mac(struct ptype* p) {
 	bzero(v->addr, sizeof(v->addr));
 	memset(v->mask, 0xff, sizeof(v->mask));
 
-	return P_OK;
+	return POM_OK;
 
 }
 
@@ -52,7 +52,7 @@ int ptype_alloc_mac(struct ptype* p) {
 int ptype_cleanup_mac(struct ptype *p) {
 
 	free(p->value);
-	return P_OK;
+	return POM_OK;
 }
 
 
@@ -64,10 +64,10 @@ int ptype_parse_mac(struct ptype *p, char *val) {
 
 	if (sscanf(val, "%hhX:%hhX:%hhX:%hhX:%hhX:%hhX", v->addr, v->addr + 1, v->addr + 2, v->addr + 3, v->addr + 4, v->addr + 5) == 6) {
 		memset(v->mask, 0xff, sizeof(v->mask));
-		return P_OK;
+		return POM_OK;
 	}
 
-	return P_ERR;
+	return POM_ERR;
 
 }
 

@@ -49,7 +49,7 @@ int helper_init() {
 
 	dprint("Helper initialized\n");
 
-	return H_OK;
+	return POM_OK;
 
 }
 
@@ -60,7 +60,7 @@ int helper_register(const char *helper_name) {
 	id = match_get_type(helper_name);
 	if (id == -1) {
 		dprint("Unable to register helper %s. Corresponding match not found\n", helper_name);
-		return H_ERR;
+		return POM_ERR;
 	}
 
 	if (helpers[id])
@@ -74,7 +74,7 @@ int helper_register(const char *helper_name) {
 	register_my_helper = lib_get_register_func("helper", helper_name, &handle);
 	
 	if (!register_my_helper) {
-		return H_ERR;
+		return POM_ERR;
 	}
 
 	struct helper_reg *my_helper = malloc(sizeof(struct helper_reg));
@@ -83,11 +83,11 @@ int helper_register(const char *helper_name) {
 	helpers[id] = my_helper;
 	helpers[id]->dl_handle = handle;
 
-	if ((*register_my_helper) (my_helper, hlp_funcs) != H_OK) {
+	if ((*register_my_helper) (my_helper, hlp_funcs) != POM_OK) {
 		dprint("Error while loading helper %s. Could not register helper !\n", helper_name);
 		helpers[id] = NULL;
 		free(my_helper);
-		return H_ERR;
+		return POM_ERR;
 	}
 
 
@@ -102,7 +102,7 @@ int helper_register(const char *helper_name) {
 int helper_register_param(int helper_type, char *name, char *defval, struct ptype *value, char *descr) {
 
 	if (!helpers[helper_type])
-		return H_ERR;
+		return POM_ERR;
 
 	struct helper_param *p = malloc(sizeof(struct helper_param));
 	bzero(p, sizeof(struct helper_param));
@@ -115,8 +115,8 @@ int helper_register_param(int helper_type, char *name, char *defval, struct ptyp
 	p->value = value;
 
 	// Store the default value in the ptype
-	if (ptype_parse_val(p->value, defval) == P_ERR)
-		return H_ERR;
+	if (ptype_parse_val(p->value, defval) == POM_ERR)
+		return POM_ERR;
 
 	if (!helpers[helper_type]->params) {
 		helpers[helper_type]->params = p;
@@ -127,7 +127,7 @@ int helper_register_param(int helper_type, char *name, char *defval, struct ptyp
 		tmp->next = p;
 	}
 
-	return H_OK;
+	return POM_OK;
 
 
 }
@@ -159,7 +159,7 @@ struct helper_param* helper_get_param(int helper_type, char* param_name) {
 int helper_need_help(struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
 
 	if (!helpers[l->type] || !helpers[l->type]->need_help)
-		return H_OK;
+		return POM_OK;
 
 	return helpers[l->type]->need_help(f, start, len, l);
 
@@ -187,9 +187,9 @@ int helper_unregister(int helper_type) {
 
 		dprint("Helper %s unregistered\n", match_get_name(helper_type));
 	} else
-		return H_ERR;
+		return POM_ERR;
 
-	return H_OK;
+	return POM_OK;
 
 }
 
@@ -202,7 +202,7 @@ int helper_unregister_all() {
 			helper_unregister(i);
 	}
 
-	return H_OK;
+	return POM_OK;
 
 }
 
@@ -212,7 +212,7 @@ int helper_cleanup() {
 
 	free(hlp_funcs);
 
-	return H_OK;
+	return POM_OK;
 }
 
 
@@ -238,7 +238,7 @@ int helper_queue_frame(struct frame *f) {
 		frame_tail = hf;
 	}
 	
-	return H_OK;
+	return POM_OK;
 
 }
 
@@ -246,7 +246,7 @@ int helper_queue_frame(struct frame *f) {
 int helper_process_queue(struct rule_list *list) {
 
 	if (!frame_head)
-		return H_OK;
+		return POM_OK;
 
 	while (frame_head) {
 		do_rules(frame_head->f, list);
@@ -258,6 +258,6 @@ int helper_process_queue(struct rule_list *list) {
 	}
 	frame_tail = NULL;
 
-	return H_OK;
+	return POM_OK;
 }
 

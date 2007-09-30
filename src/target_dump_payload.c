@@ -102,6 +102,9 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 	while (lastl->next && lastl->next->type != match_undefined_id)
 		lastl = lastl->next;
 
+	if (lastl->payload_size == 0)
+		return POM_OK;
+
 	if (!f->ce)
 		(*tg_functions->conntrack_create_entry) (f);
 
@@ -146,9 +149,6 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 		(*tg_functions->conntrack_add_priv) (cp, t, f->ce, target_close_connection_dump_payload);
 	}
 
-	if (lastl->payload_size == 0)
-		return POM_OK;
-
 	if (PTYPE_BOOL_GETVAL(priv->markdir)) {
 		if (f->ce->direction == CT_DIR_FWD)
 			write(cp->fd, "\n> ", 3);
@@ -156,9 +156,9 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 			write(cp->fd, "\n< ", 3);
 	}
 
-	write(cp->fd, f->l + lastl->payload_start, lastl->payload_size);
+	write(cp->fd, f->buff + lastl->payload_start, lastl->payload_size);
 
-	ndprint("Saved %u bytes of payload\n", lastl->payload_size);
+	dprint("Saved %u bytes of payload\n", lastl->payload_size);
 
 	return POM_OK;
 };

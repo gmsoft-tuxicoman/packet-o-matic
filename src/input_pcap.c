@@ -45,7 +45,7 @@ int input_register_pcap(struct input_reg *r, struct input_functions *i_funcs) {
 	mode_file = (*i_funcs->register_mode) (r->type, "file", "Read packets from a pcap file");
 
 	if (!mode_interface || !mode_file)
-		return I_ERR;
+		return POM_ERR;
 	
 	p_filename = (*i_funcs->ptype_alloc) ("string", NULL);
 	p_interface = (*i_funcs->ptype_alloc) ("string", NULL);
@@ -54,7 +54,7 @@ int input_register_pcap(struct input_reg *r, struct input_functions *i_funcs) {
 
 	if (!p_filename || !p_interface || !p_snaplen || !p_promisc) {
 		input_unregister_pcap(r);
-		return I_ERR;
+		return POM_ERR;
 	}
 
 	(*i_funcs->register_param) (mode_interface, "interface", "eth0", p_interface, "Interface to listen from");
@@ -63,7 +63,7 @@ int input_register_pcap(struct input_reg *r, struct input_functions *i_funcs) {
 
 	(*i_funcs->register_param) (mode_file, "file", "", p_filename, "PCAP file");
 
-	return I_OK;
+	return POM_OK;
 }
 
 
@@ -72,7 +72,7 @@ int input_init_pcap(struct input *i) {
 	i->input_priv = malloc(sizeof(struct input_priv_pcap));
 	bzero(i->input_priv, sizeof(struct input_priv_pcap));
 
-	return I_OK;
+	return POM_OK;
 
 }
 
@@ -81,7 +81,7 @@ int input_cleanup_pcap(struct input *i) {
 	if (i->input_priv)
 		free(i->input_priv);
 
-	return I_OK;
+	return POM_OK;
 
 }
 
@@ -91,7 +91,7 @@ int input_unregister_pcap(struct input_reg *r) {
 	(*i_functions->ptype_cleanup) (p_snaplen);
 	(*i_functions->ptype_cleanup) (p_promisc);
 	(*i_functions->ptype_cleanup) (p_filename);
-	return I_OK;
+	return POM_OK;
 }
 
 int input_open_pcap(struct input *i) {
@@ -107,7 +107,7 @@ int input_open_pcap(struct input *i) {
 		p->p = pcap_open_offline(filename, errbuf);
 		if (!p->p) {
 			dprint("Error opening file %s for reading\n", filename);
-			return I_ERR;
+			return POM_ERR;
 		}
 	} else if (i->mode == mode_interface) {
 		char *interface = PTYPE_STRING_GETVAL(p_interface);
@@ -119,11 +119,11 @@ int input_open_pcap(struct input *i) {
 		p->p = pcap_open_live(interface, snaplen, promisc, 0, errbuf);
 		if (!p->p) {
 			dprint("Error when opening interface %s : %s\n", interface, errbuf);
-			return I_ERR;
+			return POM_ERR;
 		}
 	} else {
 		dprint("Invalid input mode\n");
-		return I_ERR;
+		return POM_ERR;
 	}
 
 	switch (pcap_datalink(p->p)) {
@@ -161,7 +161,7 @@ int input_open_pcap(struct input *i) {
 		dprint("Pcap opened successfullly\n");
 	else {
 		dprint("Error while opening pcap input\n");
-		return I_ERR;
+		return POM_ERR;
 	}
 	
 	return pcap_get_selectable_fd(p->p);
@@ -179,7 +179,7 @@ int input_read_pcap(struct input *i, struct frame *f) {
 
 	if (result < 0) {
 		dprint("Error while reading packet.\n");
-		return I_ERR;
+		return POM_ERR;
 	}
 
 	if (f->bufflen < phdr->caplen) {
@@ -193,17 +193,17 @@ int input_read_pcap(struct input *i, struct frame *f) {
 	f->len = phdr->caplen;
 	f->first_layer = p->output_layer;
 
-	return I_OK;
+	return POM_OK;
 }
 
 int input_close_pcap(struct input *i) {
 
 	struct input_priv_pcap *p = i->input_priv;
 	if (!p)
-		return I_ERR;
+		return POM_ERR;
 
 	if (!p->p)
-		return I_OK;
+		return POM_OK;
 
 	struct pcap_stat ps;
 	if (!pcap_stats(p->p, &ps)) 
@@ -211,7 +211,7 @@ int input_close_pcap(struct input *i) {
 
 	pcap_close(p->p);
 
-	return I_OK;
+	return POM_OK;
 
 }
 
@@ -220,7 +220,7 @@ int input_getcaps_pcap(struct input *i, struct input_caps *ic) {
 	struct input_priv_pcap *p = i->input_priv;
 
 	if (!p->p)
-		return I_ERR;
+		return POM_ERR;
 
 	ic->snaplen = pcap_snapshot(p->p);
 	if (i->mode == mode_file) 
@@ -228,7 +228,7 @@ int input_getcaps_pcap(struct input *i, struct input_caps *ic) {
 	else
 		ic->is_live = 1;
 
-	return I_OK;
+	return POM_OK;
 
 }
 
