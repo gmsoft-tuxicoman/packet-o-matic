@@ -1,3 +1,9 @@
+* 2007/09/30 Guy Martin <gmsoft@tuxicoman.be>
+Now use POM_OK and POM_ERR everywhere.
+Fixed a bug in target_dump_payload that made it dump rubish.
+Fixed a bug in rule processing that was not processing the right target for the corresponding conntrack.
+Added the possibility to enable or disable a rule in the management console.
+
 * 2007/09/27 Guy Martin <gmsoft@tuxicoman.be>
 Added support for history, up and down arrow in management console.
 
