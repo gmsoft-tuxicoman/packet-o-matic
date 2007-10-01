@@ -818,6 +818,9 @@ int input_read_docsis(struct input *i, struct frame *f) {
 				f->len = 0;
 				return POM_OK;
 			}
+
+			// We don't need the last 4 bytes containing the ethernet checksum
+			dlen -= 4;
 		}
 
 		if (p->output_layer == match_atm_id) {

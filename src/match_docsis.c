@@ -76,6 +76,8 @@ int match_identify_docsis(struct frame *f, struct layer* l, unsigned int start, 
 
 	switch (dhdr->fc_type) {
 		case FC_TYPE_PKT_MAC:
+			// We don't need the 4 bytes of ethernet checksum
+			l->payload_size -= 4;
 			return match_ethernet_id;
 		case FC_TYPE_ATM:
 			return match_atm_id;

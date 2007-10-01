@@ -40,6 +40,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <pthread.h>
+#include <getopt.h>
 
 #include <time.h>
 #ifdef TIME_WITH_SYS_TIME
@@ -78,7 +79,16 @@ void signal_handler(int signal) {
 
 void print_usage() {
 
-	printf("Usage : packet-o-matic [-c config_file] [-h]\n");
+	printf(	"Usage : packet-o-matic [options]\n"
+		"\n"
+		"Options :\n"
+		" -c, --config=FILE      specify configuration file to use (default pom.xml.conf)\n"
+		" -h, --help             display the help\n"
+		"   , --no-cli           disable the CLI console\n"
+		" -p, --port=PORT        specify the CLI console port (default 4655)\n"
+		"\n"
+		);
+	
 
 }
 
@@ -220,11 +230,31 @@ int main(int argc, char *argv[]) {
 #endif
 
 	char *cfgfile = "pom.xml.conf";
+	int disable_mgmtsrv = 0;
+	char *cli_port = "4655";
 
-	int o;
 
-	while ((o = getopt(argc, argv, "hc:")) != -1 ) {
-		switch(o) {
+	int c;
+
+	while (1) {
+		static struct option long_options[] = {
+			{ "help", 0, 0, 'h' },
+			{ "conf", 1, 0, 'c'},
+			{ "port", 1, 0, 'p'},
+			{ "no-cli", 0, 0, 1},
+			{ 0, 0, 0, 0}
+		};
+
+		c = getopt_long(argc, argv, "hc:p:", long_options, NULL);
+
+		if (c == -1)
+			break;
+
+		switch(c) {
+			case 1:
+				disable_mgmtsrv = 1;
+				dprint("Not starting CLI console because of --no-cli flag\n");
+				break;
 			case 'h':
 				match_init();
 				target_init();
@@ -236,6 +266,11 @@ int main(int argc, char *argv[]) {
 				cfgfile = optarg;
 				dprint("Config file is %s\n", optarg);
 				break;
+			case 'p':
+				cli_port = optarg;
+				dprint("Using port %s for CLI console\n", cli_port);
+				break;
+			case '?':
 			default:
 				print_usage();
 				return 1;
@@ -261,7 +296,7 @@ int main(int argc, char *argv[]) {
 		goto err;
 	}
 
-	if (mgmtsrv_init() == POM_ERR) {
+	if (!disable_mgmtsrv && mgmtsrv_init(cli_port) == POM_ERR) {
 		dprint("Error when initializing the management console. Abording\n");
 		goto err;
 	}
@@ -307,7 +342,7 @@ int main(int argc, char *argv[]) {
 	}
 	
 	pthread_t mgmtsrv_thread;
-	if (pthread_create(&mgmtsrv_thread, NULL, mgmtsrv_thread_func, NULL)) {
+	if (!disable_mgmtsrv && pthread_create(&mgmtsrv_thread, NULL, mgmtsrv_thread_func, NULL)) {
 		dprint("Error when creating the management console thread. Abording\n");
 		goto err;
 	}
@@ -434,7 +469,8 @@ int main(int argc, char *argv[]) {
 finish:
 	finish = 1;
 	pthread_join(input_thread, NULL);
-	pthread_join(mgmtsrv_thread, NULL);
+	if (!disable_mgmtsrv)
+		pthread_join(mgmtsrv_thread, NULL);
 
 	dprint("Total packets read : %lu, dropped %lu (%.2f%%)\n", ringbuffer_total_packets, ringbuffer_dropped_packets, 100.0 / ringbuffer_total_packets * ringbuffer_dropped_packets);
 
@@ -459,7 +495,8 @@ err:
 	timers_cleanup();
 	target_cleanup();
 
-	mgmtsrv_cleanup();
+	if (!disable_mgmtsrv)
+		mgmtsrv_cleanup();
 
 	target_unregister_all();
 	

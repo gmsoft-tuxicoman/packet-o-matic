@@ -1,3 +1,8 @@
+* 2007/10/01 Guy Martin <gmsoft@tuxicoman.be>
+Fixed a unlikely segfault in config parsing.
+Added options to disable CLI and specify it's port.
+Don't pass the 4 bytes of ethernet checksum to upper layer anymore.
+
 * 2007/09/30 Guy Martin <gmsoft@tuxicoman.be>
 Now use POM_OK and POM_ERR everywhere.
 Fixed a bug in target_dump_payload that made it dump rubish.

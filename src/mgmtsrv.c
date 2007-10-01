@@ -20,7 +20,6 @@
 
 #define NDEBUG
 
-#define PORT "4655"
 #define WAIT_CONNS 2
 
 #define READ_BUFF_LEN 2048
@@ -35,7 +34,7 @@
 struct mgmt_connection *conn_head;
 struct mgmt_connection *conn_tail;
 
-int mgmtsrv_init() {
+int mgmtsrv_init(const char *port) {
 
 
 	// first of all, ignore SIGPIPE
@@ -54,7 +53,7 @@ int mgmtsrv_init() {
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
 
-	if (getaddrinfo(NULL, PORT, &hints, &res) < 0) {
+	if (getaddrinfo(NULL, port, &hints, &res) < 0) {
 		strerror_r(errno, errbuff, 256);
 		dprint("Error while finding an address to listen on : %s\n", errbuff);
 		return POM_ERR;
@@ -111,7 +110,7 @@ int mgmtsrv_init() {
 		conn->fd = sockfd;
 		conn->listening = 1;
 
-		dprint("Management console listening on %s\n", host);
+		dprint("Management console listening on %s:%s\n", host, port);
 	
 		if (!conn_head) {
 			conn_head = conn;

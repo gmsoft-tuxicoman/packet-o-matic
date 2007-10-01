@@ -475,6 +475,8 @@ int config_parse(struct conf *c, char * filename) {
 				c->input = config_parse_input(doc, cur);
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "rule")) {
 			struct rule_list *r = parse_rule(doc, cur);
+			if (!r)
+				return 0;
 			r->next = c->rules;
 			c->rules = r;
 		}

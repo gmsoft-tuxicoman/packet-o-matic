@@ -71,7 +71,7 @@ struct mgmt_command {
 };
 
 
-int mgmtsrv_init();
+int mgmtsrv_init(const char *port);
 int mgmtsrv_process();
 int mgmtsrv_read_socket(struct mgmt_connection *c);
 int mgmtsrv_cleanup();
