@@ -67,8 +67,6 @@ unsigned int ringbuffer_usage = 0; // Number of packet in the buffer waiting to 
 
 struct timeval now; ///< Used to get the current time from the input perspective
 
-
-
 void signal_handler(int signal) {
 	
 	dprint("Received signal. Finishing ... !\n");
@@ -82,10 +80,11 @@ void print_usage() {
 	printf(	"Usage : packet-o-matic [options]\n"
 		"\n"
 		"Options :\n"
-		" -c, --config=FILE      specify configuration file to use (default pom.xml.conf)\n"
-		" -h, --help             display the help\n"
-		"   , --no-cli           disable the CLI console\n"
-		" -p, --port=PORT        specify the CLI console port (default 4655)\n"
+		" -c, --config=FILE          specify configuration file to use (default pom.xml.conf)\n"
+		" -h, --help                 display the help\n"
+		"   , --no-cli               disable the CLI console\n"
+		" -p, --port=PORT            specify the CLI console port (default 4655)\n"
+		" -w, --password=PASSWORD    specify a password to enter the CLI console\n"
 		"\n"
 		);
 	
@@ -233,7 +232,6 @@ int main(int argc, char *argv[]) {
 	int disable_mgmtsrv = 0;
 	char *cli_port = "4655";
 
-
 	int c;
 
 	while (1) {
@@ -241,11 +239,12 @@ int main(int argc, char *argv[]) {
 			{ "help", 0, 0, 'h' },
 			{ "conf", 1, 0, 'c'},
 			{ "port", 1, 0, 'p'},
+			{ "password", 1, 0, 'w'},
 			{ "no-cli", 0, 0, 1},
 			{ 0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:p:", long_options, NULL);
+		c = getopt_long(argc, argv, "hc:p:w:", long_options, NULL);
 
 		if (c == -1)
 			break;
@@ -269,6 +268,10 @@ int main(int argc, char *argv[]) {
 			case 'p':
 				cli_port = optarg;
 				dprint("Using port %s for CLI console\n", cli_port);
+				break;
+			case 'w':
+				mgmtsrv_set_password(optarg);
+				dprint("CLI is password protected\n");
 				break;
 			case '?':
 			default:

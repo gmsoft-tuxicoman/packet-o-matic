@@ -82,6 +82,7 @@ struct helper_functions {
 
 };
 
+struct helper_reg *helpers[MAX_HELPER];
 
 int helper_init();
 int helper_register(const char *name);

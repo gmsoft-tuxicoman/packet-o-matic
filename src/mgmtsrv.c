@@ -34,6 +34,8 @@
 struct mgmt_connection *conn_head;
 struct mgmt_connection *conn_tail;
 
+char *mgmt_password = NULL;
+
 int mgmtsrv_init(const char *port) {
 
 
@@ -149,7 +151,7 @@ int mgmtsrv_process() {
 
 	struct mgmt_connection *cc = conn_head;
 	while(cc) {
-		if (cc->closed) { // cleanup this connection entry if it was closed earlier
+		if (cc->state == MGMT_STATE_CLOSED) { // cleanup this connection entry if it was closed earlier
 			
 			int i;
 			for (i = 0; i < MGMT_CMD_HISTORY_SIZE; i++)
@@ -236,8 +238,11 @@ int mgmtsrv_accept_connection(struct mgmt_connection *c) {
 
 	getnameinfo((struct sockaddr*)&remote_addr, remote_addr_len, host, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST);
 
+	// Init cmd line buffer
 	new_cc->cmds[0] = malloc(1);
 	new_cc->cmds[0][0] = 0;
+	
+	new_cc->state = MGMT_STATE_INIT;
 
 	if (conn_tail) {
 		conn_tail->next = new_cc;
@@ -375,7 +380,7 @@ int mgmtsrv_close_connection(struct mgmt_connection *c) {
 
 	ndprint("Closing socket %u\n", c->fd);
 	close(c->fd);
-	c->closed = 1;
+	c->state = MGMT_STATE_CLOSED;
 
 	return POM_OK;
 
@@ -397,11 +402,32 @@ int mgmtsrv_cleanup() {
 
 	}
 
+	if (mgmt_password)
+		free(mgmt_password);
+
 	return POM_OK;
 }
 
 
 int mgmtsrv_send(struct mgmt_connection *c, char* msg) {
 
+	// Do not echo anything if we are processing password
+	if (c->state == MGMT_STATE_PASSWORD)
+		return 0;
+
 	return send(c->fd, msg, strlen(msg), 0);
+}
+
+int mgmtsrv_set_password(const char *password) {
+
+	if (mgmt_password)
+		free(mgmt_password);
+	mgmt_password = malloc(strlen(password) + 1);
+	strcpy(mgmt_password, password);
+	return POM_OK;
+}
+
+const char *mgmtsrv_get_password() {
+
+	return mgmt_password;
 }

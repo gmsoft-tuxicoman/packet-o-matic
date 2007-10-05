@@ -28,9 +28,6 @@
 #include "ptype.h"
 #include "main.h"
 
-extern struct helper_reg *helpers[];
-
-
 #define MGMT_COMMANDS_NUM 13
 
 struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {

@@ -43,11 +43,21 @@ struct mgmt_command *cmds;
 #define MGMT_CMD_HISTORY_SIZE 100
 
 #define MGMT_CMD_PROMPT "pom> "
+#define MGMT_CMD_PWD_PROMPT "Password : "
+
+enum {
+	MGMT_STATE_INIT,
+	MGMT_STATE_PASSWORD,
+	MGMT_STATE_AUTHED,
+	MGMT_STATE_CLOSED,
+
+};
 
 struct mgmt_connection {
 	int fd; // fd of the socket
 	int listening; // is it a listening socket ?
-	int closed; // was the socket closed earlier ?
+	int state; // Current state of this connection
+	int auth_tries; // Number of authentification tries
 	char *cmds[MGMT_CMD_HISTORY_SIZE];
 	size_t curcmd; // current command in the history
 	size_t cursor_pos; // position of the cursor on the line
@@ -82,6 +92,9 @@ int mgmtsrv_process_command(struct mgmt_connection *c);
 int mgmtsrv_close_connection(struct mgmt_connection *c);
 
 int mgmtsrv_send(struct mgmt_connection *c, char* msg);
+
+int mgmtsrv_set_password(const char *password);
+const char *mgmtsrv_get_password();
 
 #endif
 

@@ -31,10 +31,25 @@
 
 int mgmtvty_init(struct mgmt_connection *c) {
 
-	mgmtsrv_send(c, "\nThis is packet-o-matic. \nCopyright Guy Martin 2006-2007\n\n" MGMT_CMD_PROMPT);
+
+	if (c->state != MGMT_STATE_INIT) {
+		dprint("Error, connection in wrong state\n");
+		return POM_ERR;
+	}
+
+	mgmtsrv_send(c, "\nThis is packet-o-matic. \nCopyright Guy Martin 2006-2007\n\n");
 
 	char commands[] = { IAC, WILL, TELOPT_ECHO, IAC, WILL, TELOPT_SGA, IAC, DO, TELOPT_NAWS, IAC, DONT, TELOPT_LINEMODE };
 	send(c->fd, commands, sizeof(commands), 0);
+
+	if (!mgmtsrv_get_password()) {
+		mgmtsrv_send(c, MGMT_CMD_PROMPT);
+		c->state = MGMT_STATE_AUTHED;
+	} else {
+		mgmtsrv_send(c, MGMT_CMD_PWD_PROMPT);
+		c->state = MGMT_STATE_PASSWORD;
+	}
+
 
 	return POM_OK;
 
@@ -392,6 +407,30 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 		}
 
 		case '\r': { // carriage return
+			if (c->state == MGMT_STATE_PASSWORD) {
+				if (!strcmp(c->cmds[c->curcmd], mgmtsrv_get_password())) {
+					c->state = MGMT_STATE_AUTHED;
+					mgmtsrv_send(c, "\r\n" MGMT_CMD_PROMPT);
+				} else {
+					// Need this to actualy send something in the vty
+					c->state = MGMT_STATE_INIT;
+
+					if (c->auth_tries >= 2) {
+						mgmtsrv_send(c, "\r\nToo many authentication failure.\r\n");
+						mgmtsrv_close_connection(c);
+						break;
+					}
+					mgmtsrv_send(c, "\r\n" MGMT_CMD_PWD_PROMPT);
+					c->state = MGMT_STATE_PASSWORD;
+					c->auth_tries++;
+				}
+				c->cmds[c->curcmd] = realloc(c->cmds[c->curcmd], 1);
+				c->cmds[c->curcmd][0] = 0;
+				c->cursor_pos = 0;
+				break;
+
+			}
+
 			if (strlen(c->cmds[c->curcmd]) == 0) {
 				mgmtsrv_send(c, "\r\n" MGMT_CMD_PROMPT);
 				break;

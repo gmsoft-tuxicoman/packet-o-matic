@@ -25,7 +25,6 @@
 #include "ptype.h"
 #include "rules.h"
 
-struct helper_reg *helpers[MAX_HELPER];
 struct helper_functions *hlp_funcs;
 struct helper_frame *frame_head, *frame_tail;
 
@@ -104,6 +103,10 @@ int helper_register_param(int helper_type, char *name, char *defval, struct ptyp
 	if (!helpers[helper_type])
 		return POM_ERR;
 
+	// Store the default value in the ptype
+	if (ptype_parse_val(value, defval) == POM_ERR)
+		return POM_ERR;
+
 	struct helper_param *p = malloc(sizeof(struct helper_param));
 	bzero(p, sizeof(struct helper_param));
 	p->name = malloc(strlen(name) + 1);
@@ -113,10 +116,6 @@ int helper_register_param(int helper_type, char *name, char *defval, struct ptyp
 	p->descr = malloc(strlen(descr) + 1);
 	strcpy(p->descr, descr);
 	p->value = value;
-
-	// Store the default value in the ptype
-	if (ptype_parse_val(p->value, defval) == POM_ERR)
-		return POM_ERR;
 
 	if (!helpers[helper_type]->params) {
 		helpers[helper_type]->params = p;

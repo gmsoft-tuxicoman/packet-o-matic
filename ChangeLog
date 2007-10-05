@@ -1,3 +1,6 @@
+* 2007/10/05 Guy Martin <gmsot@tuxicoman.be>
+Added -w option to specify a password for the management console.
+
 * 2007/10/01 Guy Martin <gmsoft@tuxicoman.be>
 Fixed a unlikely segfault in config parsing.
 Added options to disable CLI and specify it's port.
