@@ -28,7 +28,7 @@
 #include "ptype.h"
 #include "main.h"
 
-#define MGMT_COMMANDS_NUM 13
+#define MGMT_COMMANDS_NUM 15
 
 struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
@@ -115,6 +115,19 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.help = "Enable a rule",
 		.callback_func = mgmtcmd_enable_rule,
 		.usage = "enable rule <rule id>",
+	},
+
+	{
+		.words = { "set", "password", NULL },
+		.help = "Set the password to access the CLI",
+		.callback_func = mgmtcmd_set_password,
+		.usage = "set password <password>",
+	},
+
+	{
+		.words = { "unset", "password", NULL },
+		.help = "Unset the password to access the CLI",
+		.callback_func = mgmtcmd_unset_password,
 	},
 };
 
@@ -1019,3 +1032,20 @@ int mgmtcmd_enable_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	return POM_OK;
 
 }
+
+int mgmtcmd_set_password(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	if (argc != 1)
+		return MGMT_USAGE;
+
+	mgmtsrv_set_password(argv[0]);
+
+	return POM_OK;
+}
+
+int mgmtcmd_unset_password(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	mgmtsrv_set_password(NULL);
+	return POM_OK;
+}
+

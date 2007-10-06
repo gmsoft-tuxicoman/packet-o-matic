@@ -408,7 +408,7 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 
 		case '\r': { // carriage return
 			if (c->state == MGMT_STATE_PASSWORD) {
-				if (!strcmp(c->cmds[c->curcmd], mgmtsrv_get_password())) {
+				if (!mgmtsrv_get_password() || !strcmp(c->cmds[c->curcmd], mgmtsrv_get_password())) {
 					c->state = MGMT_STATE_AUTHED;
 					mgmtsrv_send(c, "\r\n" MGMT_CMD_PROMPT);
 				} else {

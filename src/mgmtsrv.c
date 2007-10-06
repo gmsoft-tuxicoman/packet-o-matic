@@ -422,6 +422,12 @@ int mgmtsrv_set_password(const char *password) {
 
 	if (mgmt_password)
 		free(mgmt_password);
+
+	if (!password) {
+		mgmt_password = NULL;
+		return POM_OK;
+	}
+	
 	mgmt_password = malloc(strlen(password) + 1);
 	strcpy(mgmt_password, password);
 	return POM_OK;

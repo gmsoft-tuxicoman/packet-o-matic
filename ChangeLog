@@ -1,3 +1,6 @@
+* 2007/10/07 Guy Maritn <gmsoft@tuxicoman.be>
+Added commands "set password" and "unset password" in management console.
+
 * 2007/10/05 Guy Martin <gmsot@tuxicoman.be>
 Added -w option to specify a password for the management console.
 
