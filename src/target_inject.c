@@ -28,7 +28,7 @@
 #define MAX_SEGMENT_LEN 1518
 
 int match_ethernet_id;
-struct target_functions *tg_functions;
+struct target_functions *tf;
 struct target_mode *mode_default;
 
 int target_register_inject(struct target_reg *r, struct target_functions *tg_funcs) {
@@ -39,9 +39,9 @@ int target_register_inject(struct target_reg *r, struct target_functions *tg_fun
 	r->close = target_close_inject;
 	r->cleanup = target_cleanup_inject;
 
-	tg_functions = tg_funcs;
+	tf = tg_funcs;
 
-	match_ethernet_id = (*tg_functions->match_register) ("ethernet");
+	match_ethernet_id = (*tf->match_register) ("ethernet");
 
 	mode_default = (*tg_funcs->register_mode) (r->type, "default", "Reinject matched packets on the specified interface");
 	if (!mode_default)
@@ -63,14 +63,14 @@ int target_init_inject(struct target *t) {
 	bzero(priv, sizeof(struct target_priv_inject));
 	t->target_priv = priv;
 
-	priv->iface = (*tg_functions->ptype_alloc) ("string", NULL);
+	priv->iface = (*tf->ptype_alloc) ("string", NULL);
 
 	if (!priv->iface) {
 		target_cleanup_inject(t);
 		return POM_ERR;
 	}
 	
-	(*tg_functions->register_param_value) (t, mode_default, "interface", priv->iface);
+	(*tf->register_param_value) (t, mode_default, "interface", priv->iface);
 
 	return POM_OK;
 }
@@ -80,7 +80,7 @@ int target_cleanup_inject(struct target *t) {
 	struct target_priv_inject *priv = t->target_priv;
 
 	if (priv) {
-		(*tg_functions->ptype_cleanup) (priv->iface);
+		(*tf->ptype_cleanup) (priv->iface);
 		free(priv);
 	}
 
@@ -93,7 +93,7 @@ int target_open_inject(struct target *t) {
 	struct target_priv_inject *priv = t->target_priv;
 
 	if (!priv) {
-		dprint("Error, inject target not initialized !\n");
+		(*tf->pom_log) (POM_LOG_ERR "Error, inject target not initialized !\r\n");
 		return POM_ERR;
 	}
 
@@ -101,10 +101,10 @@ int target_open_inject(struct target *t) {
 
 	priv->lc = libnet_init (LIBNET_LINK_ADV, PTYPE_STRING_GETVAL(priv->iface), errbuf);
 	if (!priv->lc) {
-		dprint("Error, cannot open libnet context: %s", errbuf);
+		(*tf->pom_log) (POM_LOG_ERR "Error, cannot open libnet context: %s\r\n", errbuf);
 		return POM_ERR;
 	}
-	dprint("Libnet context initialized for interface %s\n", priv->lc->device);
+	(*tf->pom_log) (POM_LOG_DEBUG "Libnet context initialized for interface %s\r\n", priv->lc->device);
 
 
 	return POM_OK;
@@ -115,12 +115,12 @@ int target_process_inject(struct target *t, struct frame *f) {
 	struct target_priv_inject *priv = t->target_priv;
 
 	if (!priv->lc) {
-		dprint("Error, libnet context not initialized !\n");
+		(*tf->pom_log) (POM_LOG_ERR "Error, libnet context not initialized !\r\n");
 		return POM_ERR;
 	}
 	int start = layer_find_start(f->l, match_ethernet_id);
 	if (start == -1) {
-		dprint("Unable to find the start of the packet\n");
+		(*tf->pom_log) (POM_LOG_ERR "Unable to find the start of the packet\r\n");
 		return POM_ERR;
 	}
 
@@ -132,11 +132,11 @@ int target_process_inject(struct target *t, struct frame *f) {
 	if (libnet_write_link (priv->lc, f->buff + start, len - start) != -1) {
 		
 		priv->size += len;
-		dprint("0x%lx; Packet injected (%u bytes (+%u bytes))!\n", (unsigned long) priv, priv->size, len);
+		(*tf->pom_log) (POM_LOG_DEBUG"0x%lx; Packet injected (%u bytes (+%u bytes))!\r\n", (unsigned long) priv, priv->size, len);
 		return POM_OK;
 	}
 
-	dprint("Error while injecting packet : %s\n", libnet_geterror(priv->lc));
+	(*tf->pom_log) (POM_LOG_ERR "Error while injecting packet : %s\r\n", libnet_geterror(priv->lc));
 	return POM_ERR;
 
 }
@@ -148,7 +148,7 @@ int target_close_inject(struct target *t) {
 
 	struct target_priv_inject *priv = t->target_priv;
 
-	dprint("0x%lx; INJECT : %u bytes injected\n", (unsigned long) priv, priv->size);
+	(*tf->pom_log) ("0x%lx; INJECT : %u bytes injected\r\n", (unsigned long) priv, priv->size);
 
 	if (priv->lc) {
 

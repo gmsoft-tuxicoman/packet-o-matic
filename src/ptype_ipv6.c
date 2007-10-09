@@ -108,6 +108,9 @@ int ptype_compare_ipv6(int op, void *val_a, void *val_b) {
 	struct ptype_ipv6_val *a = val_a;
 	struct ptype_ipv6_val *b = val_b;
 
+	if (op != PTYPE_OP_EQUALS)
+		return 0;
+
 	int minmask = a->mask;
 	if (b->mask < minmask)
 		minmask = b->mask;
@@ -135,17 +138,8 @@ int ptype_compare_ipv6(int op, void *val_a, void *val_b) {
 		mask[3] = (0xffffffff << (128 - minmask));
 	}
 	
-	
-	switch (op) {
-		case PTYPE_OP_EQUALS:
-			return ((a->addr.s6_addr32[0] & mask[0]) == (b->addr.s6_addr32[0] & mask[0])
-				&& (a->addr.s6_addr32[1] & mask[1]) == (b->addr.s6_addr32[1] & mask[1])
-				&& (a->addr.s6_addr32[2] & mask[2]) == (b->addr.s6_addr32[2] & mask[2])
-				&& (a->addr.s6_addr32[3] & mask[3]) == (b->addr.s6_addr32[3] & mask[3]));
-		default:
-			dprint("Unkown operation %c\n", op);
-
-	}
-
-	return 0;
+	return ((a->addr.s6_addr32[0] & mask[0]) == (b->addr.s6_addr32[0] & mask[0])
+		&& (a->addr.s6_addr32[1] & mask[1]) == (b->addr.s6_addr32[1] & mask[1])
+		&& (a->addr.s6_addr32[2] & mask[2]) == (b->addr.s6_addr32[2] & mask[2])
+		&& (a->addr.s6_addr32[3] & mask[3]) == (b->addr.s6_addr32[3] & mask[3]));
 }

@@ -31,6 +31,7 @@ struct helper_frame *frame_head, *frame_tail;
 int helper_init() {
 
 	hlp_funcs = malloc(sizeof(struct helper_functions));
+	hlp_funcs->pom_log = pom_log;
 	hlp_funcs->register_param = helper_register_param;
 	hlp_funcs->alloc_timer = timer_alloc;
 	hlp_funcs->cleanup_timer = timer_cleanup;
@@ -46,7 +47,7 @@ int helper_init() {
 	hlp_funcs->ptype_alloc = ptype_alloc;
 	hlp_funcs->ptype_cleanup = ptype_cleanup_module;
 
-	dprint("Helper initialized\n");
+	pom_log(POM_LOG_DEBUG "Helper initialized\r\n");
 
 	return POM_OK;
 
@@ -58,7 +59,7 @@ int helper_register(const char *helper_name) {
 	int id;
 	id = match_get_type(helper_name);
 	if (id == -1) {
-		dprint("Unable to register helper %s. Corresponding match not found\n", helper_name);
+		pom_log(POM_LOG_WARN "Unable to register helper %s. Corresponding match not found\r\n", helper_name);
 		return POM_ERR;
 	}
 
@@ -83,14 +84,14 @@ int helper_register(const char *helper_name) {
 	helpers[id]->dl_handle = handle;
 
 	if ((*register_my_helper) (my_helper, hlp_funcs) != POM_OK) {
-		dprint("Error while loading helper %s. Could not register helper !\n", helper_name);
+		pom_log(POM_LOG_ERR "Error while loading helper %s. Could not register helper !\r\n", helper_name);
 		helpers[id] = NULL;
 		free(my_helper);
 		return POM_ERR;
 	}
 
 
-	dprint("Helper %s registered\n", helper_name);
+	pom_log(POM_LOG_DEBUG "Helper %s registered\r\n", helper_name);
 
 
 	return id;
@@ -182,9 +183,9 @@ int helper_unregister(int helper_type) {
 		free(helpers[helper_type]);
 		helpers[helper_type] = NULL;
 		if (dlclose(handle))
-			dprint("Error while closing library of target %s\n", match_get_name(helper_type));
+			pom_log(POM_LOG_WARN "Error while closing library of target %s\r\n", match_get_name(helper_type));
 
-		dprint("Helper %s unregistered\n", match_get_name(helper_type));
+		pom_log(POM_LOG_DEBUG "Helper %s unregistered\r\n", match_get_name(helper_type));
 	} else
 		return POM_ERR;
 

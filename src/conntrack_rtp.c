@@ -51,8 +51,6 @@ uint32_t conntrack_get_hash_rtp(struct frame *f, unsigned int start, unsigned in
 	// Compute the hash
 
 	uint32_t rtp_hash = jhash_1word(hdr->ssrc, INITVAL);
-	ndprint("SSRC = 0x%x, start %u\n", hdr->ssrc, start);
-
 
 	return rtp_hash;
 
@@ -94,7 +92,6 @@ void *conntrack_alloc_match_priv_rtp(struct frame *f, unsigned int start, struct
 	struct conntrack_priv_rtp *priv;
 	priv = malloc(sizeof(struct conntrack_priv_rtp));
 	bzero(priv, sizeof(struct conntrack_priv_rtp));
-	ndprint("CONNTRACK SSRC 0x%x, start %u\n", hdr->ssrc, start);
 	priv->ssrc = hdr->ssrc;
 	priv->payload_type = hdr->payload_type;
 

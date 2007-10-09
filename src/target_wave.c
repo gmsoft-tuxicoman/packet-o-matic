@@ -32,7 +32,7 @@
 
 unsigned int match_rtp_id;
 
-struct target_functions *tg_functions;
+struct target_functions *tf;
 struct target_mode *mode_default;
 
 int target_register_wave(struct target_reg *r, struct target_functions *tg_funcs) {
@@ -41,9 +41,9 @@ int target_register_wave(struct target_reg *r, struct target_functions *tg_funcs
 	r->process = target_process_wave;
 	r->cleanup = target_cleanup_wave;
 
-	tg_functions = tg_funcs;
+	tf = tg_funcs;
 
-	match_rtp_id = (*tg_functions->match_register) ("rtp");
+	match_rtp_id = (*tf->match_register) ("rtp");
 
 	mode_default = (*tg_funcs->register_mode) (r->type, "default", "Dump each RTP stream into separate files");
 
@@ -63,13 +63,13 @@ int target_init_wave(struct target *t) {
 
 	t->target_priv = priv;
 
-	priv->prefix = (*tg_functions->ptype_alloc) ("string", NULL);
+	priv->prefix = (*tf->ptype_alloc) ("string", NULL);
 	if (!priv->prefix) {
 		target_cleanup_wave(t);
 		return POM_ERR;
 	}
 
-	(*tg_functions->register_param_value) (t, mode_default, "prefix", priv->prefix);
+	(*tf->register_param_value) (t, mode_default, "prefix", priv->prefix);
 
 
 	return POM_OK;
@@ -80,7 +80,7 @@ int target_cleanup_wave(struct target *t) {
 	struct target_priv_wave *priv = t->target_priv;
 
 	if (priv) {
-		(*tg_functions->ptype_cleanup) (priv->prefix);
+		(*tf->ptype_cleanup) (priv->prefix);
 		free(priv);
 	}
 
@@ -102,7 +102,7 @@ int target_process_wave(struct target *t, struct frame *f) {
 	}
 
 	if (!rtpl) {
-		dprint("No RTP header found in this packet\n");
+		(*tf->pom_log) (POM_LOG_INFO "No RTP header found in this packet\r\n");
 		return POM_OK;
 	}
 
@@ -111,11 +111,11 @@ int target_process_wave(struct target *t, struct frame *f) {
 		return POM_OK;
 	
 	if (!f->ce)
-		(*tg_functions->conntrack_create_entry) (f);
+		(*tf->conntrack_create_entry) (f);
 
 	struct target_conntrack_priv_wave *cp;
 
-	cp = (*tg_functions->conntrack_get_priv) (t, f->ce);
+	cp = (*tf->conntrack_get_priv) (t, f->ce);
 
 	int rtp_start = rtpl->prev->payload_start;
 	struct rtphdr *rtphdr;
@@ -142,7 +142,7 @@ int target_process_wave(struct target *t, struct frame *f) {
 				auhdr->encoding = htonl(24);
 				break;
 			default:
-				ndprint("WAVE: Payload type %u not supported\n", rtphdr->payload_type);
+				(*tf->pom_log) (POM_LOG_DEBUG "WAVE: Payload type %u not supported\r\n", rtphdr->payload_type);
 				free(auhdr);
 				return POM_OK;
 
@@ -176,19 +176,17 @@ int target_process_wave(struct target *t, struct frame *f) {
 			free(cp);
 			char errbuff[256];
 			strerror_r(errno, errbuff, 256);
-			dprint("Unable to open file %s for writing : %s\n", filename, errbuff);
+			(*tf->pom_log) (POM_LOG_ERR "Unable to open file %s for writing : %s\r\n", filename, errbuff);
 			return POM_ERR;
 		}
 
-		ndprint("%s opened\n", filename);
+		(*tf->pom_log) (POM_LOG_TSHOOT "%s opened\r\n", filename);
 
-		(*tg_functions->conntrack_add_priv) (cp, t, f->ce, target_close_connection_wave);
+		(*tf->conntrack_add_priv) (cp, t, f->ce, target_close_connection_wave);
 
 
 
 		cp->last_seq = ntohs(rtphdr->seq_num) - 1;
-
-		ndprint("Last seq 1 for fd %u is %u\n", cp->fd, cp->last_seq);
 
 		write(cp->fd, auhdr, sizeof(struct au_hdr));
 
@@ -202,8 +200,6 @@ int target_process_wave(struct target *t, struct frame *f) {
 	
 	cp->last_seq++;
 
-	ndprint("Last seq for fd %u is %u\n", cp->fd, cp->last_seq);
-
 	if (cp->last_seq < cur_seq) {
 		char *buffer = malloc(rtpl->payload_size);
 		switch (rtphdr->payload_type) {
@@ -216,7 +212,6 @@ int target_process_wave(struct target *t, struct frame *f) {
 		}
 
 		while (cp->last_seq != cur_seq) { // Fill with 0
-			ndprint("RTP Packet missed, last seq %u, cur seq %u\n", cp->last_seq, cur_seq);
 			write(cp->fd, buffer, rtpl->payload_size);
 			cp->last_seq++;
 		}
@@ -233,7 +228,7 @@ int target_process_wave(struct target *t, struct frame *f) {
 
 int target_close_connection_wave(struct conntrack_entry *ce, void *conntrack_priv) {
 
-	ndprint("Closing connection 0x%lx\n", (unsigned long) conntrack_priv);
+	(*tf->pom_log) (POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
 
 	struct target_conntrack_priv_wave *cp;
 	cp = conntrack_priv;

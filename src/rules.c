@@ -38,16 +38,16 @@ int dump_invalid_packet(struct frame *f) {
 
 	struct layer *l = f->l;
 
-	dprint("Invalid packet : frame len %u, bufflen %u > ", f->len, f->bufflen);
+	pom_log(POM_LOG_DEBUG "Invalid packet : frame len %u, bufflen %u > ", f->len, f->bufflen);
 
 	while (l) {
-		dprint("%s pstart %u, psize %u", match_get_name(l->type), l->payload_start, l->payload_size);
+		pom_log(POM_LOG_DEBUG "%s pstart %u, psize %u", match_get_name(l->type), l->payload_start, l->payload_size);
 		l = l->next;
 		if (l)
-			dprint(" > ");
+			pom_log(POM_LOG_DEBUG " > ");
 
 	}
-	dprint("\n");
+	pom_log(POM_LOG_DEBUG "\r\n");
 
 	return 0;
 }
@@ -72,7 +72,7 @@ int node_match(struct frame *f, struct rule_node *n, struct layer *l) {
 		// The current layer is not identified. Let's see if we can match with the current match type
 		if (l->type == match_undefined_id) {
 			if (!l->prev) {
-				ndprint("Error, first layer is undefined !\n");
+				pom_log(POM_LOG_ERR "Error, first layer is undefined !\r\n");
 				return 0;
 			}
 			unsigned int next_layer;
@@ -143,7 +143,7 @@ int node_match(struct frame *f, struct rule_node *n, struct layer *l) {
 	else if (n->op & RULE_OP_AND)
 		result = node_match(f, n->a, next_layer) && node_match(f, n->b, next_layer);
 	else {
-		dprint("Invalid rule specified for node with two subnodes.\n");
+		pom_log(POM_LOG_ERR "Invalid rule specified for node with two subnodes.\r\n");
 		return 0;
 	}
 
@@ -159,7 +159,7 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 	
 	struct rule_list *r = rules;
 	if (r == NULL) {
-		dprint("No rules given !\n");
+		pom_log(POM_LOG_ERR "No rules given !\r\n");
 		return 1;
 	}
 
@@ -225,7 +225,7 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 			// If there is a conntrack_entry, it means one of the target added it's priv, so the packet needs to be processed
 			r->result = node_match(f, r->node, f->l); // Get the result to fully populate layers
 			if (r->result)
-				ndprint("Rule matched\n");
+				pom_log(POM_LOG_TSHOOT "Rule matched\r\n");
 		}
 		r = r->next;
 

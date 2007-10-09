@@ -25,6 +25,8 @@
 
 int ptype_register_bool(struct ptype_reg *r) {
 
+	r->alloc = ptype_alloc_bool;
+	r->cleanup = ptype_cleanup_bool;
 	r->parse_val = ptype_parse_bool;
 	r->print_val = ptype_print_bool;
 	r->compare_val = ptype_compare_bool;
@@ -35,21 +37,36 @@ int ptype_register_bool(struct ptype_reg *r) {
 
 }
 
+int ptype_alloc_bool(struct ptype* p) {
 
+	p->value = malloc(sizeof(int));
+	int *v = p->value;
+	*v = 0;
+
+	return POM_OK;
+
+}
+
+int ptype_cleanup_bool(struct ptype *p) {
+
+	free(p->value);
+	return POM_OK;
+}
 
 int ptype_parse_bool(struct ptype *p, char *val) {
 
+	int *v = p->value;
 
 	if(!strcasecmp(val, "yes") ||
 		!strcasecmp(val, "true") ||
 		!strcasecmp(val, "on") ||
 		!strcasecmp(val, "1"))
-		p->value = (void*)1;
+		*v = 1;
 	else if(!strcasecmp(val, "no") ||
 		!strcasecmp(val, "false") ||
 		!strcasecmp(val, "off") ||
 		!strcasecmp(val, "0"))
-		p->value = (void*)0;
+		*v = 0;
 	else
 		return POM_ERR;
 
@@ -59,7 +76,9 @@ int ptype_parse_bool(struct ptype *p, char *val) {
 
 int ptype_print_bool(struct ptype *p, char *val, size_t size) {
 
-	if ((int)p->value)
+	int *v = p->value;
+
+	if (*v)
 		strncpy(val, "yes", size);
 	else
 		strncpy(val, "no", size);
@@ -73,6 +92,5 @@ int ptype_compare_bool(int op, void *val_a, void* val_b) {
 	if (op == PTYPE_OP_EQUALS)
 		return (int)val_a == (int)val_b;
 
-	dprint("Unkown operation %c\n", op);
 	return 0;
 }

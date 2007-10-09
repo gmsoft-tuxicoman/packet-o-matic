@@ -24,14 +24,14 @@
 #include "ptype_bool.h"
 #include "ptype_uint16.h"
 
-struct input_functions *i_functions;
+struct input_functions *ifcs;
 
 struct input_mode *mode_interface, *mode_file;
 struct ptype *p_filename, *p_interface, *p_snaplen, *p_promisc;
 
 int input_register_pcap(struct input_reg *r, struct input_functions *i_funcs) {
 
-	i_functions = i_funcs;
+	ifcs = i_funcs;
 
 	r->init = input_init_pcap;
 	r->open = input_open_pcap;
@@ -87,10 +87,10 @@ int input_cleanup_pcap(struct input *i) {
 
 int input_unregister_pcap(struct input_reg *r) {
 
-	(*i_functions->ptype_cleanup) (p_interface);
-	(*i_functions->ptype_cleanup) (p_snaplen);
-	(*i_functions->ptype_cleanup) (p_promisc);
-	(*i_functions->ptype_cleanup) (p_filename);
+	(*ifcs->ptype_cleanup) (p_interface);
+	(*ifcs->ptype_cleanup) (p_snaplen);
+	(*ifcs->ptype_cleanup) (p_promisc);
+	(*ifcs->ptype_cleanup) (p_filename);
 	return POM_OK;
 }
 
@@ -106,7 +106,7 @@ int input_open_pcap(struct input *i) {
 		char *filename = PTYPE_STRING_GETVAL(p_filename);
 		p->p = pcap_open_offline(filename, errbuf);
 		if (!p->p) {
-			dprint("Error opening file %s for reading\n", filename);
+			(*ifcs->pom_log) (POM_LOG_ERR "Error opening file %s for reading\r\n", filename);
 			return POM_ERR;
 		}
 	} else if (i->mode == mode_interface) {
@@ -115,52 +115,52 @@ int input_open_pcap(struct input *i) {
 		int promisc = PTYPE_BOOL_GETVAL(p_promisc);
 		if (snaplen < 64)
 			snaplen = 64;
-		dprint("Opening interface %s with a snaplen of %u\n", interface, snaplen);
+		(*ifcs->pom_log) ("Opening interface %s with a snaplen of %u\r\n", interface, snaplen);
 		p->p = pcap_open_live(interface, snaplen, promisc, 0, errbuf);
 		if (!p->p) {
-			dprint("Error when opening interface %s : %s\n", interface, errbuf);
+			(*ifcs->pom_log) (POM_LOG_ERR "Error when opening interface %s : %s\r\n", interface, errbuf);
 			return POM_ERR;
 		}
 	} else {
-		dprint("Invalid input mode\n");
+		(*ifcs->pom_log) (POM_LOG_ERR "Invalid input mode\r\n");
 		return POM_ERR;
 	}
 
 	switch (pcap_datalink(p->p)) {
 		case DLT_EN10MB:
-			dprint("PCAP output type is ethernet\n");
-			p->output_layer = (*i_functions->match_register) ("ethernet");
+			(*ifcs->pom_log) ("PCAP output type is ethernet\r\n");
+			p->output_layer = (*ifcs->match_register) ("ethernet");
 			break;
 #ifdef DLT_DOCSIS // this doesn't exits in all libpcap version
 		case DLT_DOCSIS:
-			dprint("PCAP output type is docsis\n");
-			p->output_layer = (*i_functions->match_register) ("docsis");
+			(*ifcs->pom_log) ("PCAP output type is docsis\r\n");
+			p->output_layer = (*ifcs->match_register) ("docsis");
 			break;
 #endif
 		case DLT_LINUX_SLL:
-			dprint("PCAP output type is linux_cooked\n");
-			p->output_layer = (*i_functions->match_register) ("linux_cooked");
+			(*ifcs->pom_log) ("PCAP output type is linux_cooked\r\n");
+			p->output_layer = (*ifcs->match_register) ("linux_cooked");
 			break;
 
 		case DLT_RAW:
-			dprint("PCAP output type is ipv4\n");
-			p->output_layer = (*i_functions->match_register) ("ipv4");
+			(*ifcs->pom_log) ("PCAP output type is ipv4\r\n");
+			p->output_layer = (*ifcs->match_register) ("ipv4");
 			break;
 
 		default:
-			dprint("PCAP output type is undefined\n");
-			p->output_layer = (*i_functions->match_register) ("undefined");
+			(*ifcs->pom_log) ("PCAP output type is undefined\r\n");
+			p->output_layer = (*ifcs->match_register) ("undefined");
 
 	}
 
 	if (strlen(errbuf) > 0)
-		dprint("PCAP warning : %s\n", errbuf);
+		(*ifcs->pom_log) (POM_LOG_WARN "PCAP warning : %s\r\n", errbuf);
 	
 
 	if (p->p)	
-		dprint("Pcap opened successfullly\n");
+		(*ifcs->pom_log) ("Pcap opened successfullly\r\n");
 	else {
-		dprint("Error while opening pcap input\n");
+		(*ifcs->pom_log) (POM_LOG_ERR "Error while opening pcap input\r\n");
 		return POM_ERR;
 	}
 	
@@ -178,12 +178,12 @@ int input_read_pcap(struct input *i, struct frame *f) {
 	result = pcap_next_ex(p->p, &phdr, &next_pkt);
 
 	if (result < 0) {
-		dprint("Error while reading packet.\n");
+		(*ifcs->pom_log) (POM_LOG_ERR "Error while reading packet.\r\n");
 		return POM_ERR;
 	}
 
 	if (f->bufflen < phdr->caplen) {
-		dprint("Please increase your read buffer. Provided %u, needed %u\n", f->bufflen, phdr->caplen);
+		(*ifcs->pom_log) (POM_LOG_WARN "Please increase your read buffer. Provided %u, needed %u\r\n", f->bufflen, phdr->caplen);
 		phdr->caplen = f->bufflen;
 		
 	}
@@ -207,7 +207,7 @@ int input_close_pcap(struct input *i) {
 
 	struct pcap_stat ps;
 	if (!pcap_stats(p->p, &ps)) 
-		dprint("0x%02lx; PCAP : Total packet read %u, dropped %u (%.1f%%)\n", (unsigned long) i->input_priv, ps.ps_recv, ps.ps_drop, 100.0 / (ps.ps_recv + ps.ps_drop)  * (float)ps.ps_drop);
+		(*ifcs->pom_log) ("0x%02lx; PCAP : Total packet read %u, dropped %u (%.1f%%)\r\n", (unsigned long) i->input_priv, ps.ps_recv, ps.ps_drop, 100.0 / (ps.ps_recv + ps.ps_drop)  * (float)ps.ps_drop);
 
 	pcap_close(p->p);
 

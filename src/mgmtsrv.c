@@ -18,8 +18,6 @@
  *
  */
 
-#define NDEBUG
-
 #define WAIT_CONNS 2
 
 #define READ_BUFF_LEN 2048
@@ -57,7 +55,7 @@ int mgmtsrv_init(const char *port) {
 
 	if (getaddrinfo(NULL, port, &hints, &res) < 0) {
 		strerror_r(errno, errbuff, 256);
-		dprint("Error while finding an address to listen on : %s\n", errbuff);
+		pom_log(POM_LOG_ERR "Error while finding an address to listen on : %s\r\n", errbuff);
 		return POM_ERR;
 	}
 
@@ -76,7 +74,7 @@ int mgmtsrv_init(const char *port) {
 		sockfd = socket(tmpres->ai_family, tmpres->ai_socktype, tmpres->ai_protocol);
 		if (sockfd < 0) {
 			strerror_r(errno, errbuff, 256);
-			dprint("Error while creating socket : %s\n", errbuff);
+			pom_log(POM_LOG_ERR "Error while creating socket : %s\r\n", errbuff);
 			tmpres = tmpres->ai_next;
 			continue;
 		}
@@ -84,7 +82,7 @@ int mgmtsrv_init(const char *port) {
 		const int yes = 1;
 		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
 			strerror_r(errno, errbuff, 256);
-			dprint("Error while setting REUSEADDR option on socket : %s\n", errbuff);
+			pom_log(POM_LOG_WARN "Error while setting REUSEADDR option on socket : %s\r\n", errbuff);
 			close(sockfd);
 			tmpres = tmpres->ai_next;
 			continue;
@@ -93,7 +91,7 @@ int mgmtsrv_init(const char *port) {
 
 		if (bind(sockfd, tmpres->ai_addr, tmpres->ai_addrlen) < 0) {
 			strerror_r(errno, errbuff, 256);
-			dprint("Error while binding socket on address %s : %s\n", host, errbuff);
+			pom_log(POM_LOG_ERR "Error while binding socket on address %s : %s\r\n", host, errbuff);
 			close(sockfd);
 			tmpres = tmpres->ai_next;
 			continue;
@@ -101,7 +99,7 @@ int mgmtsrv_init(const char *port) {
 
 		if (listen(sockfd, WAIT_CONNS)) {
 			strerror_r(errno, errbuff, 256);
-			dprint("Error while switching socket to listen state : %s\n", errbuff);
+			pom_log(POM_LOG_ERR "Error while switching socket to listen state : %s\r\n", errbuff);
 			close(sockfd);
 			tmpres = tmpres->ai_next;
 			continue;
@@ -110,9 +108,9 @@ int mgmtsrv_init(const char *port) {
 		struct mgmt_connection *conn = malloc(sizeof(struct mgmt_connection));
 		bzero(conn, sizeof(struct mgmt_connection));
 		conn->fd = sockfd;
-		conn->listening = 1;
+		conn->flags = MGMT_FLAG_LISTENING;
 
-		dprint("Management console listening on %s:%s\n", host, port);
+		pom_log("Management console listening on %s:%s\r\n", host, port);
 	
 		if (!conn_head) {
 			conn_head = conn;
@@ -129,7 +127,7 @@ int mgmtsrv_init(const char *port) {
 	freeaddrinfo(res);
 
 	if (!conn_head) {
-		dprint("Could not open a single socket\n");
+		pom_log(POM_LOG_ERR "Could not open a single socket\r\n");
 		return POM_ERR;
 	}
 
@@ -192,7 +190,7 @@ int mgmtsrv_process() {
 	while(cc) {
 
 		if (FD_ISSET(cc->fd, &fds)) {
-			if (cc->listening)
+			if (cc->flags & MGMT_FLAG_LISTENING)
 				return mgmtsrv_accept_connection(cc);
 			return mgmtsrv_read_socket(cc);
 		}
@@ -215,20 +213,27 @@ int mgmtsrv_accept_connection(struct mgmt_connection *c) {
 
 	if (new_cc->fd < 0) {
 		free(new_cc);
-		dprint("Error while accepting new connection\n");
+		pom_log(POM_LOG_ERR "Error while accepting new connection\r\n");
 		return POM_ERR;
 	}
 
 	int flags = fcntl(new_cc->fd, F_GETFL);
 	if (flags < 0) {
 		free(new_cc);
-		dprint("Error while getting flags of fd %d\n", new_cc->fd);
+		pom_log("Error while getting flags of fd %d\r\n", new_cc->fd);
 		return POM_ERR;
 	}
 
 	if (fcntl(new_cc->fd, F_SETFL, (flags | O_NONBLOCK)) < 0) {
 		free(new_cc);
-		dprint("Unable to set non blocking flag for socket %d\n", new_cc->fd);
+		pom_log(POM_LOG_ERR "Unable to set non blocking flag for socket %d\r\n", new_cc->fd);
+		return POM_ERR;
+	}
+
+	new_cc->f = fdopen(new_cc->fd, "rw");
+	if (!new_cc->f) {
+		pom_log(POM_LOG_ERR "Unable to open FILE from fd\r\n");
+		free(new_cc);
 		return POM_ERR;
 	}
 
@@ -252,7 +257,7 @@ int mgmtsrv_accept_connection(struct mgmt_connection *c) {
 	}
 
 	conn_tail = new_cc;
-	dprint("Accepted management connection from %s\n", host);
+	pom_log("Accepted management connection from %s on socket %u\r\n", host, new_cc->fd);
 
 
 	return mgmtvty_init(new_cc);
@@ -271,14 +276,14 @@ int mgmtsrv_read_socket(struct mgmt_connection *c) {
 	}
 
 	if (res == 0) {
-		ndprint("Connection %u closed by foreign host\n", c->fd);
+		pom_log(POM_LOG_DEBUG "Connection %u closed by foreign host\r\n", c->fd);
 		mgmtsrv_close_connection(c);
 		return POM_OK;
 	}
 
 	int my_errno = errno;
 	if (my_errno != EAGAIN) {
-		ndprint("Error while reading from socket %u\n", c->fd);
+		pom_log(POM_LOG_DEBUG "Error while reading from socket %u\r\n", c->fd);
 		mgmtsrv_close_connection(c);
 		return POM_OK;
 	}
@@ -303,6 +308,7 @@ int mgmtsrv_register_command(struct mgmt_command *cmd) {
 		tmp = tmp->next;
 	}
 
+	cmd->next = tmp->next;
 	tmp->next = cmd;
 
 	return POM_OK;
@@ -378,9 +384,11 @@ int mgmtsrv_process_command(struct mgmt_connection *c) {
 int mgmtsrv_close_connection(struct mgmt_connection *c) {
 
 
-	ndprint("Closing socket %u\n", c->fd);
-	close(c->fd);
 	c->state = MGMT_STATE_CLOSED;
+	pom_log("Management connection with socket %u closed\r\n", c->fd);
+	if (c->f)
+		fclose(c->f);
+	close(c->fd);
 
 	return POM_OK;
 
@@ -391,6 +399,8 @@ int mgmtsrv_cleanup() {
 
 	struct mgmt_connection *tmp;
 	while (conn_head) {
+		if (conn_head->f)
+			fclose(conn_head->f);
 		close(conn_head->fd);
 		int i;
 		for (i = 0; i < MGMT_CMD_HISTORY_SIZE; i++)
@@ -409,13 +419,18 @@ int mgmtsrv_cleanup() {
 }
 
 
-int mgmtsrv_send(struct mgmt_connection *c, char* msg) {
+int mgmtsrv_send(struct mgmt_connection *c, char* format, ...) {
 
 	// Do not echo anything if we are processing password
 	if (c->state == MGMT_STATE_PASSWORD)
 		return 0;
 
-	return send(c->fd, msg, strlen(msg), 0);
+	char buff[MGMT_PRINT_BUFF_SIZE];
+
+	va_list arg_list;
+	va_start(arg_list, format);
+	int len = vsnprintf(buff, MGMT_PRINT_BUFF_SIZE, format, arg_list);
+	return send(c->fd, buff, len, 0);
 }
 
 int mgmtsrv_set_password(const char *password) {
@@ -436,4 +451,42 @@ int mgmtsrv_set_password(const char *password) {
 const char *mgmtsrv_get_password() {
 
 	return mgmt_password;
+}
+
+
+int mgmtsrv_send_debug(const char *format, va_list ap) {
+
+
+	struct mgmt_connection *c = conn_head;
+	char buff[MGMT_PRINT_BUFF_SIZE];
+	vsnprintf(buff, MGMT_PRINT_BUFF_SIZE, format, ap);
+	int i;
+
+	while (c) {
+		if (c->state == MGMT_STATE_AUTHED && c->flags & MGMT_FLAG_MONITOR) {
+			int cmdlen = strlen(c->cmds[c->curcmd]) + strlen(MGMT_CMD_PROMPT);
+			int loglen = strlen(buff) - 2;// do -2 to avoid counting /r/n
+			int pos = c->cursor_pos + strlen(MGMT_CMD_PROMPT);
+
+			if (loglen > cmdlen) {
+				for (i = pos; i > 0; i--)
+					mgmtsrv_send(c, "\b");
+			} else {
+				for (i = pos; i > loglen; i--)
+					mgmtsrv_send(c, "\b");
+				for (i = loglen; i < cmdlen; i++)
+					mgmtsrv_send(c, " ");
+				for (i = cmdlen; i > 0; i--)
+					mgmtsrv_send(c, "\b");
+			}
+			mgmtsrv_send(c, buff);
+			mgmtsrv_send(c, MGMT_CMD_PROMPT "%s", c->cmds[c->curcmd]);
+			for (i = strlen(c->cmds[c->curcmd]); i > c->cursor_pos; i--)
+				mgmtsrv_send(c, "\b");
+
+		}
+		c = c->next;
+	}
+	return POM_OK;
+
 }

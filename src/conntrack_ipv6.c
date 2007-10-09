@@ -60,7 +60,6 @@ uint32_t conntrack_get_hash_ipv6(struct frame *f, unsigned int start, unsigned i
 			break;
 
 		default:
-			ndprint("Error, unknown direction for conntrack\n");
 			return 0;
 	}
 
@@ -100,7 +99,6 @@ int conntrack_doublecheck_ipv6(struct frame *f, unsigned int start, void *priv, 
 					return 0;
 			break;
 		default:
-			ndprint("Error, unknown direction for conntrack\n");
 			return 0;
 
 	}

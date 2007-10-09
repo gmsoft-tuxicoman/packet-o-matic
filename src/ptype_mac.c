@@ -92,13 +92,8 @@ int ptype_compare_mac(int op, void *val_a, void *val_b) {
 	struct ptype_mac_val *a = val_a;
 	struct ptype_mac_val *b = val_b;
 
-	switch (op) {
-		case PTYPE_OP_EQUALS:
-			return (memcmp(a->addr, b->addr, sizeof(a->addr)) == 0);
-		default:
-			dprint("Unkown operation %c\n", op);
-
-	}
+	if(op == PTYPE_OP_EQUALS)
+		return (memcmp(a->addr, b->addr, sizeof(a->addr)) == 0);
 
 	return 0;
 }

@@ -1,3 +1,8 @@
+* 2007/10/09 Guy Martin <gmsoft@tuxicoman.be>
+Get rid of dprint() in favor of pom_log().
+Added commands "enable/disable debug" and "set debug level" in management console.
+Fixed compilation warnings on amd64.
+
 * 2007/10/07 Guy Maritn <gmsoft@tuxicoman.be>
 Added commands "set password" and "unset password" in management console.
 

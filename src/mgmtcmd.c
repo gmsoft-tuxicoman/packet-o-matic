@@ -28,7 +28,7 @@
 #include "ptype.h"
 #include "main.h"
 
-#define MGMT_COMMANDS_NUM 15
+#define MGMT_COMMANDS_NUM 19
 
 struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
@@ -128,6 +128,31 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.words = { "unset", "password", NULL },
 		.help = "Unset the password to access the CLI",
 		.callback_func = mgmtcmd_unset_password,
+	},
+
+	{
+		.words = { "enable", "debug",  NULL },
+		.help = "Enable debug messages for this connection",
+		.callback_func = mgmtcmd_enable_debug,
+	},
+
+	{
+		.words = { "disable", "debug", NULL },
+		.help = "Disable debug messages for this connection",
+		.callback_func = mgmtcmd_disable_debug,
+	},
+
+	{
+		.words = { "set", "debug", "level", NULL },
+		.help = "Change the current debug level",
+		.callback_func = mgmtcmd_set_debug_level,
+		.usage = "set debug level <0-5>",
+	},
+
+	{
+		.words = { "show", "debug", "level", NULL },
+		.help = "Display the current debug level",
+		.callback_func = mgmtcmd_show_debug_level,
 	},
 };
 
@@ -240,24 +265,15 @@ int mgmtcmd_show_helpers(struct mgmt_connection *c, int argc, char *argv[]) {
 	for (i = 0; i < MAX_HELPER; i++) {
 		if (!helpers[i])
 			continue;
-		mgmtsrv_send(c, "  ");
-		mgmtsrv_send(c, match_get_name(i));
-		mgmtsrv_send(c, "\r\n");
+		mgmtsrv_send(c, "  %s\r\n", match_get_name(i));
 
 		struct helper_param *tmp = helpers[i]->params;
 		while (tmp) {
-			mgmtsrv_send(c, "   ");
-			mgmtsrv_send(c, tmp->name);
-			mgmtsrv_send(c, " = ");
-
 			char buff[256];
 			bzero(buff, sizeof(buff));
 			ptype_print_val(tmp->value, buff, sizeof(buff));
-			mgmtsrv_send(c, buff);
-			mgmtsrv_send(c, " ");
-			mgmtsrv_send(c, tmp->value->unit);
-			mgmtsrv_send(c, "\r\n");
 
+			mgmtsrv_send(c, "   %s = %s %s\r\n", tmp->name, buff, tmp->value->unit);
 			tmp = tmp->next;
 		}
 	}
@@ -379,15 +395,10 @@ int mgmtcmd_show_rule_print_node_flat(struct mgmt_connection *c, struct rule_nod
 					mgmtsrv_send(c, "!");
 				mgmtsrv_send(c, match_get_name(n->layer));
 				if (n->match) {
-					mgmtsrv_send(c, ".");
-					mgmtsrv_send(c, n->match->field->name);
-					mgmtsrv_send(c, " ");
-					mgmtsrv_send(c, ptype_get_op_name(n->match->op));
-					mgmtsrv_send(c, " ");
 					const int bufflen = 256;
 					char buff[bufflen];
 					ptype_print_val(n->match->value, buff, bufflen);
-					mgmtsrv_send(c, buff);
+					mgmtsrv_send(c, ".%s %s %s" , n->match->field->name, ptype_get_op_name(n->match->op), buff);
 
 				}
 			}
@@ -440,15 +451,10 @@ int mgmtcmd_show_rule_print_node_tree(struct mgmt_connection *c, struct rule_nod
 					mgmtsrv_send(c, "!");
 				mgmtsrv_send(c, match_get_name(n->layer));
 				if (n->match) {
-					mgmtsrv_send(c, ".");
-					mgmtsrv_send(c, n->match->field->name);
-					mgmtsrv_send(c, " ");
-					mgmtsrv_send(c, ptype_get_op_name(n->match->op));
-					mgmtsrv_send(c, " ");
 					const int bufflen = 256;
 					char buff[bufflen];
 					ptype_print_val(n->match->value, buff, bufflen);
-					mgmtsrv_send(c, buff);
+					mgmtsrv_send(c, ".%s %s %s" , n->match->field->name, ptype_get_op_name(n->match->op), buff);
 
 				}
 				mgmtsrv_send(c, "\r\n");
@@ -504,12 +510,9 @@ int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]) {
 	struct rule_list *rl = main_config->rules;
 
 	unsigned int rule_num = 0;
-	char buff[256];
 
 	while (rl) {
-		sprintf(buff, "%u", rule_num);
-		mgmtsrv_send(c, "Rule ");
-		mgmtsrv_send(c, buff);
+		mgmtsrv_send(c, "Rule %u", rule_num);
 		if (!rl->enabled)
 			mgmtsrv_send(c, " (disabled)");
 		mgmtsrv_send(c, " : \r\n");
@@ -545,7 +548,7 @@ int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]) {
 
 struct rule_node *mgmtcmd_set_rule_parse_block(struct mgmt_connection *c, char *expr) {
 
-	char *words[3];
+	char *words[3]; 
 	int wordcount = 0;
 
 	char *str, *saveptr, *token;
@@ -559,9 +562,7 @@ struct rule_node *mgmtcmd_set_rule_parse_block(struct mgmt_connection *c, char *
 		
 		// there should not be more than 3 words
 		if (wordcount >= 3) {
-			mgmtsrv_send(c, "Could not parse \"");
-			mgmtsrv_send(c, expr);
-			mgmtsrv_send(c, "\"\r\n");
+			mgmtsrv_send(c, "Could not parse \"%s\"\r\n", expr);
 			return NULL;
 		}
 
@@ -571,9 +572,7 @@ struct rule_node *mgmtcmd_set_rule_parse_block(struct mgmt_connection *c, char *
 	}
 
 	if (wordcount == 2) {
-		mgmtsrv_send(c, "Could not parse \"");
-		mgmtsrv_send(c, expr);
-		mgmtsrv_send(c, "\"\r\n");
+		mgmtsrv_send(c, "Could not parse \"%s\"\r\n", expr);
 		return NULL;
 	}
 
@@ -582,9 +581,7 @@ struct rule_node *mgmtcmd_set_rule_parse_block(struct mgmt_connection *c, char *
 		if (layer == POM_ERR) 
 			layer = match_register(words[0]);
 		if (layer == POM_ERR) {
-			mgmtsrv_send(c, "Unknown match \"");
-			mgmtsrv_send(c, words[0]);
-			mgmtsrv_send(c, "\"\r\n");
+			mgmtsrv_send(c, "Unknown match \"%s\"\r\n", words[0]);
 			return NULL;
 		}
 		struct rule_node *rn = malloc(sizeof(struct rule_node));
@@ -598,9 +595,7 @@ struct rule_node *mgmtcmd_set_rule_parse_block(struct mgmt_connection *c, char *
 	// wordcount is supposed to be 3 now
 	char *field = strchr(words[0], '.');
 	if (!field) {
-		mgmtsrv_send(c, "Expression \"");
-		mgmtsrv_send(c, words[0]);
-		mgmtsrv_send(c, "\" doesn't not contain a field specifier\r\n");
+		mgmtsrv_send(c, "Expression \"%s\" doesn't not contain a field specifier\r\n", words[0]);
 		return NULL;
 	}
 
@@ -610,44 +605,26 @@ struct rule_node *mgmtcmd_set_rule_parse_block(struct mgmt_connection *c, char *
 	if (layer == POM_ERR)
 		layer = match_register(words[0]);
 	if (layer == POM_ERR) {
-		mgmtsrv_send(c, "Unknown match \"");
-		mgmtsrv_send(c, words[0]);
-		mgmtsrv_send(c, "\"\r\n");
+		mgmtsrv_send(c, "Unknown match \"\"\r\n", words[0]);
 		return NULL;
 	}
 	
 	struct match_param *param;
 	param = match_alloc_param(layer, field);
 	if (param == NULL) {
-		mgmtsrv_send(c, "Unknown field \"");
-		mgmtsrv_send(c, field);
-		mgmtsrv_send(c, "\" for match \"");
-		mgmtsrv_send(c, words[0]);
-		mgmtsrv_send(c, "\"\r\n");
+		mgmtsrv_send(c, "Unknown field \"%s\" for match \"%s\"\r\n", field, words[0]);
 		return NULL;
 	}
 
 	param->op = ptype_get_op(param->value, words[1]);
 	if (param->op == POM_ERR) {
-		mgmtsrv_send(c, "Unknown or unsuported operation \"");
-		mgmtsrv_send(c, words[1]);
-		mgmtsrv_send(c, "\" for field \"");
-		mgmtsrv_send(c, field);
-		mgmtsrv_send(c, "\" and match \"");
-		mgmtsrv_send(c, words[0]);
-		mgmtsrv_send(c, "\"\r\n");
+		mgmtsrv_send(c, "Unknown or unsuported operation \"%s\" for field \"%s\" and match \"%s\"\r\n", words[1], field, words[0]);
 		free(param);
 		return NULL;
 	}
 
 	if (ptype_parse_val(param->value, words[2]) == POM_ERR) {
-		mgmtsrv_send(c, "Unable to parse \"");
-		mgmtsrv_send(c, words[2]);
-		mgmtsrv_send(c, "\" for field \"");
-		mgmtsrv_send(c, field);
-		mgmtsrv_send(c, "\" and match \"");
-		mgmtsrv_send(c, words[0]);
-		mgmtsrv_send(c, "\"\r\n");
+		mgmtsrv_send(c, "Unable to parse \"%s\" for field \"%s\" and match \"%s\"\r\n", words[2], field, words[0]);
 		free(param);
 		return NULL;
 	}
@@ -901,16 +878,10 @@ int mgmtcmd_show_input(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	struct input_param *p = i->mode->params;
 	while (p) {
-		mgmtsrv_send(c, "  ");
-		mgmtsrv_send(c, p->name);
-		mgmtsrv_send(c, " = ");
 		char buff[256];
 		bzero(buff, sizeof(buff));
 		ptype_print_val(p->value, buff, sizeof(buff));
-		mgmtsrv_send(c, buff);
-		mgmtsrv_send(c, " ");
-		mgmtsrv_send(c, p->value->unit);
-		mgmtsrv_send(c, "\r\n");
+		mgmtsrv_send(c, "  %s = %s %s\r\n", p->name, buff, p->value->unit);
 		p = p->next;
 	}
 
@@ -924,12 +895,9 @@ int mgmtcmd_show_targets(struct mgmt_connection *c, int argc, char *argv[]) {
 	struct rule_list *rl = main_config->rules;
 
 	unsigned int rule_num = 0;
-	char buff[256];
 
 	while (rl) {
-		sprintf(buff, "%u", rule_num);
-		mgmtsrv_send(c, "Rule ");
-		mgmtsrv_send(c, buff);
+		mgmtsrv_send(c, "Rule %u", rule_num);
 		if (!rl->enabled)
 			mgmtsrv_send(c, " (disabled)");
 		mgmtsrv_send(c, " : \r\n");
@@ -937,25 +905,16 @@ int mgmtcmd_show_targets(struct mgmt_connection *c, int argc, char *argv[]) {
 		struct target *t = rl->target;
 
 		while (t) {
-			mgmtsrv_send(c, "  ");
-			mgmtsrv_send(c, target_get_name(t->type));
+			mgmtsrv_send(c, "  %s", target_get_name(t->type));
 			if (t->mode) {
-				mgmtsrv_send(c, ", mode ");
-				mgmtsrv_send(c, t->mode->name);
-				mgmtsrv_send(c, "\r\n");
+				mgmtsrv_send(c, ", mode %s\r\n", t->mode->name);
 				struct target_param_reg *pr = t->mode->params;
 				while (pr) {
-					mgmtsrv_send(c, "    ");
-					mgmtsrv_send(c, pr->name);
-					mgmtsrv_send(c, " = ");
 					char buff[256];
 					bzero(buff, sizeof(buff));
 					struct ptype *value = target_get_param_value(t, pr->name);
 					ptype_print_val(value , buff, sizeof(buff));
-					mgmtsrv_send(c, buff);
-					mgmtsrv_send(c, " ");
-					mgmtsrv_send(c, value->unit);
-					mgmtsrv_send(c, "\r\n");
+					mgmtsrv_send(c, "    %s = %s %s\r\n", pr->name, buff, value->unit);
 					pr = pr->next;
 				}
 
@@ -1046,6 +1005,74 @@ int mgmtcmd_set_password(struct mgmt_connection *c, int argc, char *argv[]) {
 int mgmtcmd_unset_password(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	mgmtsrv_set_password(NULL);
+	return POM_OK;
+}
+
+int mgmtcmd_enable_debug(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	if (c->flags & MGMT_FLAG_MONITOR) {
+		mgmtsrv_send(c, "Debug already enabled\r\n");
+		return POM_OK;
+	}
+
+	c->flags |= MGMT_FLAG_MONITOR;
+	return POM_OK;
+}
+
+int mgmtcmd_disable_debug(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	if (!(c->flags & MGMT_FLAG_MONITOR)) {
+		mgmtsrv_send(c, "Debug already disabled\r\n");
+		return POM_OK;
+	}
+	c->flags &= ~MGMT_FLAG_MONITOR;
+	return POM_OK;
+}
+
+int mgmtcmd_set_debug_level(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	if (argc != 1)
+		return MGMT_USAGE;
+
+	unsigned int new_level;
+	if (sscanf(argv[0], "%u", &new_level ) < 1)
+		return MGMT_USAGE;
+	if (new_level > 5)
+		return MGMT_USAGE;
+
+	debug_level = new_level;
+
+	return POM_OK;
+}
+
+int mgmtcmd_show_debug_level(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	mgmtsrv_send(c, "Debug level is ");
+
+	switch (debug_level) {
+		case 0:
+			mgmtsrv_send(c, "0 : No output at all\r\n");
+			break;
+		case 1:
+			mgmtsrv_send(c, "1 : Errors only\r\n");
+			break;
+		case 2:
+			mgmtsrv_send(c, "2 : Warnings and errors\r\n");
+			break;
+		case 3:
+			mgmtsrv_send(c, "3 : Warnings, errors and general information messages\r\n");
+			break;
+		case 4:
+			mgmtsrv_send(c, "4 : Warnings, errors, info and debug messages\r\n");
+			break;
+		case 5:
+			mgmtsrv_send(c, "5 : Troubleshooting debug level\r\n");
+			break;
+		default:
+			mgmtsrv_send(c, "invalid\r\n");
+
+	}
+
 	return POM_OK;
 }
 

@@ -30,7 +30,7 @@
 #include "ptype_bool.h"
 #include "ptype_string.h"
 
-struct target_functions *tg_functions;
+struct target_functions *tf;
 
 unsigned int match_undefined_id;
 struct target_mode *mode_default;
@@ -41,9 +41,9 @@ int target_register_dump_payload(struct target_reg *r, struct target_functions *
 	r->process = target_process_dump_payload;
 	r->cleanup = target_cleanup_dump_payload;
 
-	tg_functions = tg_funcs;
+	tf = tg_funcs;
 
-	match_undefined_id = (*tg_functions->match_register) ("undefined");
+	match_undefined_id = (*tf->match_register) ("undefined");
 
 	mode_default = (*tg_funcs->register_mode) (r->type, "default", "Dump each connection into separate files");
 
@@ -64,16 +64,16 @@ int target_init_dump_payload(struct target *t) {
 
 	t->target_priv = priv;
 
-	priv->prefix = (*tg_functions->ptype_alloc) ("string", NULL);
-	priv->markdir = (*tg_functions->ptype_alloc) ("bool", NULL);
+	priv->prefix = (*tf->ptype_alloc) ("string", NULL);
+	priv->markdir = (*tf->ptype_alloc) ("bool", NULL);
 
 	if (!priv->prefix || !priv->markdir) {
 		target_cleanup_dump_payload(t);
 		return POM_ERR;
 	}
 
-	(*tg_functions->register_param_value) (t, mode_default, "prefix", priv->prefix);
-	(*tg_functions->register_param_value) (t, mode_default, "markdir", priv->markdir);
+	(*tf->register_param_value) (t, mode_default, "prefix", priv->prefix);
+	(*tf->register_param_value) (t, mode_default, "markdir", priv->markdir);
 
 	return POM_OK;
 }
@@ -83,8 +83,8 @@ int target_cleanup_dump_payload(struct target *t) {
 	struct target_priv_dump_payload *priv = t->target_priv;
 
 	if (priv) {
-		(*tg_functions->ptype_cleanup) (priv->prefix);
-		(*tg_functions->ptype_cleanup) (priv->markdir);
+		(*tf->ptype_cleanup) (priv->prefix);
+		(*tf->ptype_cleanup) (priv->markdir);
 		free(priv);
 
 	}
@@ -106,12 +106,12 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 		return POM_OK;
 
 	if (!f->ce)
-		(*tg_functions->conntrack_create_entry) (f);
+		(*tf->conntrack_create_entry) (f);
 
 
 	struct target_conntrack_priv_dump_payload *cp;
 
-	cp = (*tg_functions->conntrack_get_priv) (t, f->ce);
+	cp = (*tf->conntrack_get_priv) (t, f->ce);
 
 	if (!cp) {
 
@@ -140,13 +140,13 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 			free(cp);
 			char errbuff[256];
 			strerror_r(errno, errbuff, 256);
-			dprint("Unable to open file %s for writing : %s\n", filename, errbuff);
+			(*tf->pom_log) (POM_LOG_ERR "Unable to open file %s for writing : %s\r\n", filename, errbuff);
 			return POM_ERR;
 		}
 
-		ndprint("%s opened\n", filename);
+		(*tf->pom_log) (POM_LOG_TSHOOT "%s opened\r\n", filename);
 
-		(*tg_functions->conntrack_add_priv) (cp, t, f->ce, target_close_connection_dump_payload);
+		(*tf->conntrack_add_priv) (cp, t, f->ce, target_close_connection_dump_payload);
 	}
 
 	if (PTYPE_BOOL_GETVAL(priv->markdir)) {
@@ -158,14 +158,14 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 
 	write(cp->fd, f->buff + lastl->payload_start, lastl->payload_size);
 
-	dprint("Saved %u bytes of payload\n", lastl->payload_size);
+	(*tf->pom_log) (POM_LOG_TSHOOT "Saved %u bytes of payload\r\n", lastl->payload_size);
 
 	return POM_OK;
 };
 
 int target_close_connection_dump_payload(struct conntrack_entry *ce, void *conntrack_priv) {
 
-	ndprint("Closing connection 0x%lx\n", (unsigned long) conntrack_priv);
+	(*tf->pom_log) (POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
 
 	struct target_conntrack_priv_dump_payload *cp;
 	cp = conntrack_priv;

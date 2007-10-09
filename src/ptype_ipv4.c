@@ -110,23 +110,18 @@ int ptype_compare_ipv4(int op, void *val_a, void *val_b) {
 	struct ptype_ipv4_val *a = val_a;
 	struct ptype_ipv4_val *b = val_b;
 
-	switch (op) {
-		case PTYPE_OP_EQUALS: {
-			uint32_t masked_addr_a, masked_addr_b;
-			int mask = a->mask;
-			if (b->mask < mask)
-				mask = b->mask;
-			masked_addr_a = ntohl(a->addr.s_addr);
-			masked_addr_b = ntohl(b->addr.s_addr);
-			masked_addr_a &= (0xffffffff << (32 - mask));
-			masked_addr_b &= (0xffffffff << (32 - mask));
-			return (masked_addr_a == masked_addr_b);
+	if (op != PTYPE_OP_EQUALS)
+		return 0;
 
-		}
-		default:
-			dprint("Unkown operation %c\n", op);
+	
+	uint32_t masked_addr_a, masked_addr_b;
+	int mask = a->mask;
+	if (b->mask < mask)
+		mask = b->mask;
+	masked_addr_a = ntohl(a->addr.s_addr);
+	masked_addr_b = ntohl(b->addr.s_addr);
+	masked_addr_a &= (0xffffffff << (32 - mask));
+	masked_addr_b &= (0xffffffff << (32 - mask));
+	return (masked_addr_a == masked_addr_b);
 
-	}
-
-	return 0;
 }

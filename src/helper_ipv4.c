@@ -36,7 +36,7 @@
 
 
 struct helper_priv_ipv4 *frags_head;
-struct helper_functions *hlp_functions;
+struct helper_functions *hf;
 
 struct ptype *frag_timeout;
 
@@ -45,7 +45,7 @@ int helper_register_ipv4(struct helper_reg *r, struct helper_functions *hlp_func
 	r->need_help = helper_need_help_ipv4;
 	r->cleanup = helper_cleanup_ipv4;
 
-	hlp_functions = hlp_funcs;
+	hf = hlp_funcs;
 	frags_head = NULL;
 
 	frag_timeout = (*hlp_funcs->ptype_alloc) ("uint32", "seconds");
@@ -88,9 +88,9 @@ int helper_ipv4_process_frags(struct helper_priv_ipv4 *p) {
 	hdr->ip_len = htons(f->bufflen - p->hdr_offset);
 
 
-	ndprint("Helper ipv4 : sending packet to rule processor. len %u, first_layer %u\n", f->bufflen, f->first_layer);
+	(*hf->pom_log) (POM_LOG_TSHOOT "Helper ipv4 : sending packet to rule processor. len %u, first_layer %u\r\n", f->bufflen, f->first_layer);
 
-	(*hlp_functions->queue_frame) (f);
+	(*hf->queue_frame) (f);
 
 	p->f = NULL;
 
@@ -143,15 +143,15 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 		return POM_ERR;
 
 	if (frag_start + frag_size > len + start) {
-		dprint("Error, packet len missmatch dropping this frag : ipv4 [");
+		(*hf->pom_log) (POM_LOG_DEBUG "Error, packet len missmatch dropping this frag : ipv4 [");
 		struct layer_info *li = l->infos;
 		while (li) {
 			char buff[2048];
-			if((hlp_functions->layer_info_snprintf) (buff, 2048, li))
-				dprint("%s: %s, ", li->name, buff);
+			if((hf->layer_info_snprintf) (buff, 2048, li))
+				(*hf->pom_log) (POM_LOG_DEBUG "%s: %s, ", li->name, buff);
 			li = li->next;
 		}
-		dprint("frag_off: 0x%X, id: %u, frag_start: %u, frag_size: %u, size: %u]\n", frag_off, ntohs(hdr->ip_id), frag_start, (unsigned int) frag_size, l->prev->payload_size);
+		(*hf->pom_log) (POM_LOG_DEBUG "frag_off: 0x%X, id: %u, frag_start: %u, frag_size: %u, size: %u]\r\n", frag_off, ntohs(hdr->ip_id), frag_start, (unsigned int) frag_size, l->prev->payload_size);
 
 		return POM_ERR;
 	}
@@ -176,15 +176,15 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 		tmp->f->len = frag_start;
 		tmp->hdr_offset = start;
 
-		ndprint("Helper ipv4 : allocated buffer for new packet id %u\n", ntohs(hdr->ip_id));
-		tmp->t = (*hlp_functions->alloc_timer) (tmp, f->input, helper_cleanup_ipv4_frag);
+		(*hf->pom_log) (POM_LOG_TSHOOT "Helper ipv4 : allocated buffer for new packet id %u\r\n", ntohs(hdr->ip_id));
+		tmp->t = (*hf->alloc_timer) (tmp, f->input, helper_cleanup_ipv4_frag);
 
 
 	} else  // Remove this from the timer queue 
-		(*hlp_functions->dequeue_timer) (tmp->t);
+		(*hf->dequeue_timer) (tmp->t);
 
 	// Reschedule the timer
-	(*hlp_functions->queue_timer) (tmp->t, PTYPE_UINT32_GETVAL(frag_timeout));
+	(*hf->queue_timer) (tmp->t, PTYPE_UINT32_GETVAL(frag_timeout));
 
 
 
@@ -208,7 +208,7 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 
 	// At this point we don't have the fragment in memory yet. Let's add it
 	
-	ndprint("Helper ipv4 : adding fragment %u for id %u in memory (start %u, len %u)\n", offset, ntohs(hdr->ip_id), frag_start, (unsigned int) frag_size);
+	(*hf->pom_log) (POM_LOG_TSHOOT "Helper ipv4 : adding fragment %u for id %u in memory (start %u, len %u)\r\n", offset, ntohs(hdr->ip_id), frag_start, (unsigned int) frag_size);
 
 	struct helper_priv_ipv4_frag *ftmp = malloc(sizeof(struct helper_priv_ipv4_frag));
 	bzero(ftmp, sizeof(struct helper_priv_ipv4_frag));
@@ -258,12 +258,12 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 	fp = tmp->frags;
 
 	if (fp->offset != 0) {
-		ndprint("Helper ipv4 : missing first fragment\n");
+		(*hf->pom_log) (POM_LOG_TSHOOT "Helper ipv4 : missing first fragment\r\n");
 		return H_NEED_HELP; // We miss the first fragment
 	}
 
 	while (fp->next) {
-		ndprint("Helper ipv4 : fragment offset %u, len %u\n", fp->next->offset, fp->next->len);
+		(*hf->pom_log) (POM_LOG_TSHOOT "Helper ipv4 : fragment offset %u, len %u\r\n", fp->next->offset, fp->next->len);
 		if (fp->next->offset != (fp->len + fp->offset))
 			return H_NEED_HELP; // Return if we miss a fragment
 		fp = fp->next;
@@ -271,7 +271,7 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 
 	if (fp->last) {
 		// We have the last fragment. Process the packet
-		ndprint("Helper ipv4 : processing packet\n");
+		(*hf->pom_log) ("Helper ipv4 : processing packet\r\n");
 		helper_ipv4_process_frags(tmp);
 		return H_NEED_HELP;
 
@@ -286,10 +286,6 @@ int helper_cleanup_ipv4_frag(void *priv) {
 
 	struct helper_priv_ipv4 *p = priv;
 
-#ifdef NDEBUG
-	struct ip *tmphdr = (struct ip*) (p->f->buff + p->hdr_offset);
-	ndprint("Helper ipv4 : cleaning up fragments of id %u\n", ntohs(tmphdr->ip_id));
-#endif
 	while (p->frags) {
 		struct helper_priv_ipv4_frag *f;
 		f = p->frags;
@@ -299,7 +295,7 @@ int helper_cleanup_ipv4_frag(void *priv) {
 	}
 
 	if (p->t) {
-		(*hlp_functions->cleanup_timer) (p->t);
+		(*hf->cleanup_timer) (p->t);
 	}
 
 	if (p->prev)
@@ -321,7 +317,7 @@ int helper_cleanup_ipv4_frag(void *priv) {
 
 int helper_cleanup_ipv4() {
 
-	(*hlp_functions->ptype_cleanup) (frag_timeout);
+	(*hf->ptype_cleanup) (frag_timeout);
 
 	while (frags_head) {
 /*		struct helper_priv_ipv4 *p = frags_head;

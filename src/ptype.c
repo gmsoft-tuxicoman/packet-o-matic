@@ -63,7 +63,7 @@ int ptype_register(const char *ptype_name) {
 
 			
 			if ((*register_my_ptype) (my_ptype) != POM_OK) {
-				dprint("Error while loading ptype %s. could not register ptype !\n", ptype_name);
+				pom_log(POM_LOG_ERR "Error while loading ptype %s. could not register ptype !\r\n", ptype_name);
 				return POM_ERR;
 			}
 
@@ -73,7 +73,7 @@ int ptype_register(const char *ptype_name) {
 			strcpy(ptypes[i]->name, ptype_name);
 			ptypes[i]->dl_handle = handle;
 
-			dprint("Ptype %s registered\n", ptype_name);
+			pom_log(POM_LOG_DEBUG "Ptype %s registered\r\n", ptype_name);
 			
 			return i;
 		}
@@ -89,7 +89,7 @@ struct ptype* ptype_alloc(const char* type, char* unit) {
 	int idx = ptype_register(type);
 
 	if (idx == POM_ERR) {
-		dprint("Error, could not allocate ptype of type %s\n", type);
+		pom_log(POM_LOG_ERR "Error, could not allocate ptype of type %s\r\n", type);
 		return NULL;
 	}
 	
@@ -150,7 +150,7 @@ int ptype_get_op(struct ptype *pt, char *op) {
 	if (ptypes[pt->type]->ops & o)
 		return o;
 
-	dprint("Invalid operation %s for ptype %s.\n", op, ptypes[pt->type]->name);
+	pom_log(POM_LOG_ERR "Invalid operation %s for ptype %s\r\n", op, ptypes[pt->type]->name);
 	return POM_ERR;
 }
 
@@ -174,9 +174,13 @@ char *ptype_get_op_name(int op) {
 int ptype_compare_val(int op, struct ptype *a, struct ptype *b) {
 	
 	if (a->type != b->type) {
-		dprint("Cannot compare ptypes, type differs. What about you try not to compare pears with apples ...\n");
+		pom_log(POM_LOG_ERR "Cannot compare ptypes, type differs. What about you try not to compare pears with apples ...\r\n");
 		return 0; // false
 	}
+
+	if (!(ptypes[a->type]->ops & op))
+		pom_log(POM_LOG_ERR "Invalid operation %s for ptype %s\r\n", ptype_get_op_name(op), ptypes[a->type]->name);
+
 	return (*ptypes[a->type]->compare_val) (op, a->value, b->value);
 
 }

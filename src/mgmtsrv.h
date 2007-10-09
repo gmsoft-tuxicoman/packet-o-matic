@@ -45,6 +45,11 @@ struct mgmt_command *cmds;
 #define MGMT_CMD_PROMPT "pom> "
 #define MGMT_CMD_PWD_PROMPT "Password : "
 
+#define MGMT_FLAG_LISTENING	0x1	// this is a listening socket
+#define MGMT_FLAG_MONITOR	0x2	// this connections wants debug output
+
+#define MGMT_PRINT_BUFF_SIZE 2048
+
 enum {
 	MGMT_STATE_INIT,
 	MGMT_STATE_PASSWORD,
@@ -55,9 +60,10 @@ enum {
 
 struct mgmt_connection {
 	int fd; // fd of the socket
-	int listening; // is it a listening socket ?
-	int state; // Current state of this connection
-	int auth_tries; // Number of authentification tries
+	FILE *f; // file used by vfprintf
+	int flags; // attributes of the connection
+	int state; // current state of this connection
+	int auth_tries; // number of authentification tries
 	char *cmds[MGMT_CMD_HISTORY_SIZE];
 	size_t curcmd; // current command in the history
 	size_t cursor_pos; // position of the cursor on the line
@@ -91,10 +97,12 @@ int mgmtsrv_register_command(struct mgmt_command *cmd);
 int mgmtsrv_process_command(struct mgmt_connection *c);
 int mgmtsrv_close_connection(struct mgmt_connection *c);
 
-int mgmtsrv_send(struct mgmt_connection *c, char* msg);
+int mgmtsrv_send(struct mgmt_connection *c, char* format, ...);
 
 int mgmtsrv_set_password(const char *password);
 const char *mgmtsrv_get_password();
+
+int mgmtsrv_send_debug(const char *format, va_list ap);
 
 #endif
 

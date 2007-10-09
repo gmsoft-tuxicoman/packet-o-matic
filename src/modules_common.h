@@ -44,39 +44,6 @@
 #endif
 
 
-#ifdef DEBUG
-#define dprint(x, y...) printf(x, ##y)
-
-
-void dprint_hex(unsigned char *str, unsigned int len) {
-
-	int i;
-	
-	for (i = 0; i < len; i++)
-		printf("%02X ", *(str + i));
-}
-
-
-#ifdef NDEBUG
-#define ndprint(x, y...) printf(x, ##y)
-#define ndprint_hex(x, y) dprint_hex(x, y)
-#else // NDEBUG
-#define ndprint(x,y...)
-#define ndprint_hex(a, b)
-#endif // NDEBUG
-
-#else // DEBUG
-
-#define dprint(x,y...)
-#define dprint_hex(x, y)
-#define ndprint(a,b...)
-#define ndprint_hex(c, d)
-
-
-#endif // DEBUG
-
-
-
 #include "rules.h"
 
 static inline int mask_compare2(unsigned char *value1, unsigned char *mask1, unsigned char *value2, unsigned char *mask2, unsigned int len) {

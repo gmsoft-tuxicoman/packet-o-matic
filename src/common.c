@@ -21,19 +21,28 @@
 
 
 #include "common.h"
+#include "mgmtsrv.h"
 
+void pom_log(const char *format, ...) {
 
-#ifdef DEBUG
+	int level = *POM_LOG_INFO;
 
-void dprint_hex(unsigned char *str, unsigned int len) {
+	if (format[0] <= *POM_LOG_TSHOOT) {
+		level = format[0];
+		format++;
+	}
 
-	int i;
-	
-	for (i = 0; i < len; i++)
-		printf("%02X ", *(str + i));
+	va_list arg_list;
+
+	if (level > debug_level)
+		return;
+
+	va_start(arg_list, format);
+	vprintf(format, arg_list);
+
+	mgmtsrv_send_debug(format, arg_list);
+
 }
-
-#endif
 
 
 void *lib_get_register_func(const char *type, const char *name, void **handle) {
@@ -64,9 +73,7 @@ void *lib_get_register_func(const char *type, const char *name, void **handle) {
 	}
 
 	if (!*handle) {
-/*		dprint("Unable to load %s %s : ", type, name);
-		dprint(dlerror());
-		dprint("\n");*/
+//		pom_log(POM_LOG_DEBUG "Unable to load %s %s : %s\r\n", type, name, dlerror());
 		return NULL;
 	}
 	dlerror();

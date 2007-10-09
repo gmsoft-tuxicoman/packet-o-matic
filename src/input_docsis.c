@@ -50,7 +50,7 @@ int match_ethernet_id, match_docsis_id, match_atm_id;
 struct input_mode *mode_normal, *mode_scan;
 struct ptype *p_eurodocsis, *p_frequency, *p_modulation, *p_adapter, *p_frontend, *p_outlayer, *p_startfreq, *p_frontend_reinit, *p_tuning_timeout;
 
-struct input_functions *i_functions;
+struct input_functions *ifcs;
 
 /// Register input_docsis
 int input_register_docsis(struct input_reg *r, struct input_functions *i_funcs) {
@@ -64,7 +64,7 @@ int input_register_docsis(struct input_reg *r, struct input_functions *i_funcs) 
 	r->cleanup = input_cleanup_docsis;
 	r->unregister = input_unregister_docsis;
 
-	i_functions = i_funcs;
+	ifcs = i_funcs;
 
 	match_ethernet_id = (*i_funcs->match_register) ("ethernet");
 	match_atm_id = (*i_funcs->match_register) ("atm");
@@ -123,7 +123,7 @@ int input_init_docsis(struct input *i) {
 	struct input_priv_docsis *p = i->input_priv;
 	p->temp_buff = malloc(TEMP_BUFF_LEN);
 	memset(p->temp_buff, 0xff, TEMP_BUFF_LEN);
-	ndprint("Temp buff is 0x%X-0x%X\n", (unsigned) p->temp_buff, (unsigned) p->temp_buff + TEMP_BUFF_LEN);
+	//(*ifcs->pom_log) (POM_LOG_TSHOOT "Temp buff is 0x%X-0x%X\r\n", (unsigned) p->temp_buff, (unsigned) p->temp_buff + TEMP_BUFF_LEN);
 
 	return POM_OK;
 
@@ -142,15 +142,15 @@ int input_cleanup_docsis(struct input *i) {
 
 int input_unregister_docsis(struct input_reg *r) {
 
-	(*i_functions->ptype_cleanup) (p_eurodocsis);
-	(*i_functions->ptype_cleanup) (p_frequency);
-	(*i_functions->ptype_cleanup) (p_modulation);
-	(*i_functions->ptype_cleanup) (p_adapter);
-	(*i_functions->ptype_cleanup) (p_frontend);
-	(*i_functions->ptype_cleanup) (p_outlayer);
-	(*i_functions->ptype_cleanup) (p_startfreq);
-	(*i_functions->ptype_cleanup) (p_frontend_reinit);
-	(*i_functions->ptype_cleanup) (p_tuning_timeout);
+	(*ifcs->ptype_cleanup) (p_eurodocsis);
+	(*ifcs->ptype_cleanup) (p_frequency);
+	(*ifcs->ptype_cleanup) (p_modulation);
+	(*ifcs->ptype_cleanup) (p_adapter);
+	(*ifcs->ptype_cleanup) (p_frontend);
+	(*ifcs->ptype_cleanup) (p_outlayer);
+	(*ifcs->ptype_cleanup) (p_startfreq);
+	(*ifcs->ptype_cleanup) (p_frontend_reinit);
+	(*ifcs->ptype_cleanup) (p_tuning_timeout);
 
 	return POM_OK;
 }
@@ -173,7 +173,7 @@ int input_open_docsis(struct input *i) {
 	} else if (!strcmp(PTYPE_STRING_GETVAL(p_outlayer), "docsis")) {
 		p->output_layer = match_docsis_id;
 	} else {
-		dprint("Invalid output layer :%s\n", PTYPE_STRING_GETVAL(p_outlayer));
+		(*ifcs->pom_log) (POM_LOG_ERR "Invalid output layer :%s\r\n", PTYPE_STRING_GETVAL(p_outlayer));
 		return POM_ERR;
 	}
 
@@ -188,7 +188,7 @@ int input_open_docsis(struct input *i) {
 	else if (!strcmp(PTYPE_STRING_GETVAL(p_modulation), "QAM256"))
 		modulation = QAM_256;
 	else {
-		dprint("Invalid modulation. Valid modulation are QAM64 or QAM256\n");
+		(*ifcs->pom_log) (POM_LOG_ERR "Invalid modulation. Valid modulation are QAM64 or QAM256\r\n");
 		return POM_ERR;
 	}	
 	
@@ -196,16 +196,16 @@ int input_open_docsis(struct input *i) {
 	char adapter[NAME_MAX];
 	bzero(adapter, NAME_MAX);
 	strcpy(adapter, "/dev/dvb/adapter");
-	(*i_functions->ptype_snprintf) (p_adapter, adapter + strlen(adapter), NAME_MAX - strlen(adapter));
+	(*ifcs->ptype_snprintf) (p_adapter, adapter + strlen(adapter), NAME_MAX - strlen(adapter));
 
 	char frontend[NAME_MAX];
 	strcpy(frontend, adapter);
 	strcat(frontend, "/frontend");
-	(*i_functions->ptype_snprintf) (p_frontend, frontend + strlen(frontend), NAME_MAX - strlen(frontend));
+	(*ifcs->ptype_snprintf) (p_frontend, frontend + strlen(frontend), NAME_MAX - strlen(frontend));
 
 	p->frontend_fd = open(frontend, O_RDWR);
 	if (p->frontend_fd == -1) {
-		dprint("Unable to open frontend %s\n", frontend);
+		(*ifcs->pom_log) (POM_LOG_ERR "Unable to open frontend %s\r\n", frontend);
 		return POM_ERR;
 	}
 
@@ -213,12 +213,12 @@ int input_open_docsis(struct input *i) {
 	
 	struct dvb_frontend_info info;
 	if (ioctl(p->frontend_fd, FE_GET_INFO, &info) != 0) {
-		dprint("Unable to get frontend type\n");
+		(*ifcs->pom_log) (POM_LOG_ERR "Unable to get frontend type\r\n");
 		return POM_ERR;
 	}
 
 	if (info.type != FE_QAM) {
-		dprint("Error, device %s is not a DVB-C device\n", frontend);
+		(*ifcs->pom_log) (POM_LOG_ERR "Error, device %s is not a DVB-C device\r\n", frontend);
 		return POM_ERR;
 	}
 
@@ -229,7 +229,7 @@ int input_open_docsis(struct input *i) {
 
 	p->demux_fd = open(demux, O_RDWR);
 	if (p->demux_fd == -1) {
-		dprint("Unable to open demux\n");
+		(*ifcs->pom_log) ("Unable to open demux\r\n");
 		return POM_ERR;
 	}
 
@@ -237,7 +237,7 @@ int input_open_docsis(struct input *i) {
 	if (ioctl(p->demux_fd, DMX_SET_BUFFER_SIZE, (unsigned long) DEMUX_BUFFER_SIZE) != 0) {
 		char errbuff[256];
 		strerror_r(errno, errbuff, 256);
-		dprint("Unable to set the buffer size on the demux : %s\n", errbuff);
+		(*ifcs->pom_log) (POM_LOG_WARN "Unable to set the buffer size on the demux : %s\r\n", errbuff);
 	}
 
 	// Let's filter on the DOCSIS PID
@@ -249,7 +249,7 @@ int input_open_docsis(struct input *i) {
 	filter.flags = DMX_IMMEDIATE_START;
 
 	if (ioctl(p->demux_fd, DMX_SET_PES_FILTER, &filter) != 0) {
-		dprint("Unable to set demuxer\n");
+		(*ifcs->pom_log) (POM_LOG_ERR "Unable to set demuxer\r\n");
 		return POM_ERR;
 	}
 
@@ -261,7 +261,7 @@ int input_open_docsis(struct input *i) {
 
 	p->dvr_fd = open(dvr, O_RDONLY);
 	if (p->dvr_fd == -1) {
-		dprint("Unable to open dvr\n");
+		(*ifcs->pom_log) (POM_LOG_ERR "Unable to open dvr interface\r\n");
 		return POM_ERR;
 	}
 
@@ -287,11 +287,11 @@ int input_open_docsis(struct input *i) {
 		}
 		
 		if (tuned != 1) {
-			dprint("Error while tuning to the right freq.\n");
+			(*ifcs->pom_log) (POM_LOG_ERR "Error while tuning to the right freq\r\n");
 			return POM_ERR;
 		}
 		if (input_docsis_check_downstream(i) == POM_ERR) {
-			dprint("Error, no DOCSIS SYNC message received within timeout\n");
+			(*ifcs->pom_log) ("Error, no DOCSIS SYNC message received within timeout\r\n");
 			return POM_ERR;
 		}
 
@@ -318,10 +318,10 @@ int input_open_docsis(struct input *i) {
 		unsigned int need_reinit = PTYPE_BOOL_GETVAL(p_frontend_reinit);
 
 
-		dprint("No frequency specified. starting a scan from %uMhz to %uMhz\n", start / 1000000, end / 1000000);
+		(*ifcs->pom_log)  ("No frequency specified. starting a scan from %uMhz to %uMhz\r\n", start / 1000000, end / 1000000);
 		for (j = start; j <= end; j += step) {
 
-			dprint("Tuning to %u Mz ...\n", j / 1000000);
+			(*ifcs->pom_log) ("Tuning to %u Mz ...\r\n", j / 1000000);
 
 			int res = input_docsis_tune(i, j, symbolRate, modulation);
 			if (res == -1)
@@ -329,12 +329,12 @@ int input_open_docsis(struct input *i) {
 			else if (res == 0) {
 				if (need_reinit) {
 					// Let's close and reopen the frontend to reinit it
-					dprint("Reinitializing frontend ...\n");
+					(*ifcs->pom_log) ("Reinitializing frontend ...\r\n");
 					close(p->frontend_fd);
 					sleep(10); // Yes, stupid frontends need to be closed to lock again or result is arbitrary
 					p->frontend_fd = open(frontend, O_RDWR);
 					if (p->frontend_fd == -1) {
-						dprint("Error while reopening frontend\n");
+						(*ifcs->pom_log) (POM_LOG_ERR "Error while reopening frontend\r\n");
 						return -1;
 					}
 				}
@@ -343,18 +343,18 @@ int input_open_docsis(struct input *i) {
 
 			tuned = 1;
 
-			dprint("Frequency tunned. Looking up for SYNC messages ...\n");
+			(*ifcs->pom_log) ("Frequency tunned. Looking up for SYNC messages ...\r\n");
 
 			if (input_docsis_check_downstream(i) == POM_ERR)
 				continue;
 
-			dprint("Downstream acquired !\n");
-			dprint("Frequency : %f Mhz, Symbol rate : %u Sym/s, QAM : ", (double) j / 1000000.0, symbolRate);
+			(*ifcs->pom_log) ("Downstream acquired !\r\n");
+			(*ifcs->pom_log) ("Frequency : %f Mhz, Symbol rate : %u Sym/s, QAM : ", (double) j / 1000000.0, symbolRate);
 			if (modulation == QAM_64)
-				dprint("QAM64");
+				(*ifcs->pom_log) ("QAM64");
 			else if(modulation == QAM_256)
-				dprint("QAM256");
-			dprint("\n");
+				(*ifcs->pom_log) ("QAM256");
+			(*ifcs->pom_log) ("\r\n");
 
 			PTYPE_UINT32_SETVAL(p_frequency, j);
 
@@ -362,16 +362,16 @@ int input_open_docsis(struct input *i) {
 
 		}
 	} else {
-		dprint("Invalid input mode");
+		(*ifcs->pom_log) (POM_LOG_ERR "Invalid input mode\r\n");
 		return POM_ERR;
 	}
 
 	if (!tuned) {
-		dprint("Failed to open docsis input\n");
+		(*ifcs->pom_log) (POM_LOG_ERR "Failed to open docsis input\r\n");
 		return POM_ERR;
 	}
 
-	dprint("Docsis stream opened successfullly\n");
+	(*ifcs->pom_log) ("Docsis stream opened successfullly\r\n");
 	
 	return p->dvr_fd;
 }
@@ -407,10 +407,10 @@ int input_docsis_check_downstream(struct input *i) {
 		if (res == -1) {
 			char errbuff[256];
 			strerror_r(errno, errbuff, 256);
-			dprint("Error select() : %s\n", errbuff);
+			(*ifcs->pom_log) (POM_LOG_ERR "Error select() : %s\r\n", errbuff);
 			break;
 		} else if (res == 0) {
-			dprint("Timeout while waiting for data\n");
+			(*ifcs->pom_log) (POM_LOG_ERR "Timeout while waiting for data\r\n");
 			break;
 		}
 
@@ -418,7 +418,7 @@ int input_docsis_check_downstream(struct input *i) {
 
 		switch (res) {
 			case -2:
-				dprint("Error while reading MPEG stream\n");
+				(*ifcs->pom_log) (POM_LOG_ERR "Error while reading MPEG stream\r\n");
 				return POM_ERR;
 			
 			case -1:
@@ -472,7 +472,7 @@ int input_docsis_check_downstream(struct input *i) {
 		
 	} 
 
-	dprint("Did not receive SYNC message within timeout\n");
+	(*ifcs->pom_log) (POM_LOG_ERR "Did not receive SYNC message within timeout\r\n");
 	return POM_ERR;
 }
 
@@ -502,7 +502,7 @@ int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symbolRate, 
 	// Let's do some tuning
 
 	if (ioctl(p->frontend_fd, FE_SET_FRONTEND, &frp) < 0){
-		dprint("Error while setting tuning parameters\n");
+		(*ifcs->pom_log) (POM_LOG_ERR "Error while setting tuning parameters\r\n");
 		return -1;
 	}
 
@@ -518,41 +518,41 @@ int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symbolRate, 
 		if (poll(pfd, 1, 1000)){
 			if (pfd[0].revents & POLLIN) {
 				if (ioctl(p->frontend_fd, FE_GET_EVENT, &event)) {
-					dprint("IOCTL failed while getting event of DOCSIS input\n");
+					(*ifcs->pom_log) (POM_LOG_WARN "IOCTL failed while getting event of DOCSIS input\r\n");
 					return -1;
 				}
 				if (ioctl(p->frontend_fd, FE_READ_STATUS, &status)) {
-					dprint("IOCTL failed while getting status of DOCSIS input\n");
+					(*ifcs->pom_log) (POM_LOG_WARN "IOCTL failed while getting status of DOCSIS input\r\n");
 					return -1;
 				}
 				
 				if (status & FE_TIMEDOUT) {
-					dprint("Timeout while tuning\n");
+					(*ifcs->pom_log) (POM_LOG_WARN "Timeout while tuning\r\n");
 					return 0;
 				}
 				if (status & FE_REINIT) {
-					dprint("Frontend was reinit\n");
+					(*ifcs->pom_log) (POM_LOG_WARN "Frontend was reinit\r\n");
 					return 0;
 				}
 				
 				if (status)
-					dprint("Status : " );
+					(*ifcs->pom_log) (POM_LOG_DEBUG "Status : " );
 
 				if (status & FE_HAS_SIGNAL)
-					dprint("SIGNAL ");
+					(*ifcs->pom_log) (POM_LOG_DEBUG "SIGNAL ");
 				if (status & FE_HAS_CARRIER)
-					dprint("CARRIER ");
+					(*ifcs->pom_log) (POM_LOG_DEBUG "CARRIER ");
 				if (status & FE_HAS_VITERBI)
-					dprint("VITERBI ");
+					(*ifcs->pom_log) (POM_LOG_DEBUG "VITERBI ");
 				if (status & FE_HAS_SYNC)
-					dprint("VSYNC ");
+					(*ifcs->pom_log) (POM_LOG_DEBUG "VSYNC ");
 				if (status & FE_HAS_LOCK) {
-					dprint("LOCK ");
-					dprint("\n");
+					(*ifcs->pom_log) (POM_LOG_DEBUG "LOCK ");
+					(*ifcs->pom_log) (POM_LOG_DEBUG "\r\n");
 					return 1;
 				}
 				if (status)
-					dprint("\n");
+					(*ifcs->pom_log) (POM_LOG_DEBUG "\r\n");
 
 
 			} /*else
@@ -561,7 +561,7 @@ int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symbolRate, 
 			try++;
 	};
 
-	dprint("Lock not aquired\n");
+	(*ifcs->pom_log) ("Lock not aquired\r\n");
 
 	return 0;
 
@@ -581,7 +581,7 @@ int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_docsis *
 		do {
 			r = read(p->dvr_fd, buff + len, MPEG_TS_LEN - len);
 			if (r <= 0 ) {
-				dprint("Error while reading dvr\n");
+				(*ifcs->pom_log) (POM_LOG_ERR "Error while reading dvr\r\n");
 				return -2;
 			}
 			len += r;
@@ -592,7 +592,7 @@ int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_docsis *
 		
 		// Check sync byte
 		if (buff[0] != 0x47) {
-			dprint("Error, stream out of sync ! Abording !\n");
+			(*ifcs->pom_log) (POM_LOG_ERR "Error, stream out of sync ! Abording !\r\n");
 			return -2;
 		}
 		
@@ -666,7 +666,7 @@ int input_read_docsis(struct input *i, struct frame *f) {
 		while (pos < p->temp_buff_len && p->temp_buff[pos] == 0xff)
 			pos++;
 
-		ndprint("Copying1 %u bytes into 0x%X-0x%X\n", p->temp_buff_len - pos, (unsigned) f->buff,  (unsigned) f->buff + p->temp_buff_len - pos);
+		//(*ifcs->pom_log) (POM_LOG_TSHOOT "Copying1 %u bytes into 0x%X-0x%X\r\n", p->temp_buff_len - pos, (unsigned) f->buff,  (unsigned) f->buff + p->temp_buff_len - pos);
 		memcpy(f->buff, p->temp_buff + pos, p->temp_buff_len - pos);
 		packet_pos = p->temp_buff_len - pos;
 
@@ -688,7 +688,7 @@ int input_read_docsis(struct input *i, struct frame *f) {
 			
 			if (dlen < sizeof(struct docsis_hdr) || dlen > f->bufflen) {
 				// Invalid packet, let's discard the whole thing
-				ndprint("Invalid packet. discarding.\n");
+				//(*ifcs->pom_log) (POM_LOG_TSHOOT "Invalid packet. discarding.\r\n");
 				packet_pos = 0;
 				dlen = 0;
 				continue;
@@ -702,7 +702,7 @@ int input_read_docsis(struct input *i, struct frame *f) {
 
 		//  buffer overflow. Let's discard the whole thing
 		if (packet_pos + MPEG_TS_LEN - 4 >= f->bufflen) {
-			ndprint("buffer overflow2\n");
+			//(*ifcs->pom_log) (POM_LOG_TSHOOT "buffer overflow2i\r\n");
 			packet_pos = 0;
 			dlen = 0;
 		}
@@ -718,13 +718,13 @@ int input_read_docsis(struct input *i, struct frame *f) {
 		while (p->last_seq != (mpeg_buff[3] & 0xF)) {
 			p->last_seq = (p->last_seq + 1) & 0xF;
 			p->missed_packets++;
-			ndprint("Filling1 %u bytes with 0xff at 0x%X-0x%X\n", MPEG_TS_LEN - 4,(unsigned) (f->buff + packet_pos), (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 4);
+			//(*ifcs->pom_log) (POM_LOG_TSHOOT "Filling1 %u bytes with 0xff at 0x%X-0x%X\r\n", MPEG_TS_LEN - 4,(unsigned) (f->buff + packet_pos), (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 4);
 			memset(f->buff + packet_pos, 0xff, MPEG_TS_LEN - 4); // Fill buffer with stuff byte
 			packet_pos += MPEG_TS_LEN - 4;
 
 			if (packet_pos + MPEG_TS_LEN - 4 >= f->bufflen) {
 				//  buffer overflow. Let's discard the whole thing
-				ndprint("Buffer overflow\n");
+				//(*ifcs->pom_log) (POM_LOG_TSHOOT "Buffer overflow\r\n");
 				packet_pos = 0;
 				dlen = 0;
 
@@ -742,13 +742,13 @@ int input_read_docsis(struct input *i, struct frame *f) {
 
 		switch (res) {
 			case -1: // Invalid MPEG packet
-				ndprint("Filling2 %u bytes with 0xff at 0x%X-0x%X\n", MPEG_TS_LEN - 4,(unsigned) (f->buff + packet_pos), (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 4);
+				//(*ifcs->pom_log) (POM_LOG_TSHOOT "Filling2 %u bytes with 0xff at 0x%X-0x%X\r\n", MPEG_TS_LEN - 4,(unsigned) (f->buff + packet_pos), (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 4);
 				memset(f->buff + packet_pos, 0xff, MPEG_TS_LEN - 4); // Fill buffer with stuff byte
 				packet_pos += MPEG_TS_LEN - 4;
 				continue;
 
 			case 0: // Packet is valid and does not contain the start of a PDU
-				ndprint("Copying2 %u bytes into 0x%X-0x%X\n", MPEG_TS_LEN - 4, (unsigned) f->buff + packet_pos, (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 4);
+				//(*ifcs->pom_log) (POM_LOG_TSHOOT "Copying2 %u bytes into 0x%X-0x%X\r\n", MPEG_TS_LEN - 4, (unsigned) f->buff + packet_pos, (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 4);
 				memcpy(f->buff + packet_pos, mpeg_buff + 4, MPEG_TS_LEN - 4);
 				packet_pos += MPEG_TS_LEN - 4;
 				continue;
@@ -764,14 +764,14 @@ int input_read_docsis(struct input *i, struct frame *f) {
 					// let's discard the previous frame then
 					if (packet_pos > 0) {
 						// We got some cruft left. Discard the current buffer
-						ndprint("cruft left\n");
+						//(*ifcs->pom_log) (POM_LOG_TSHOOT "cruft left\r\n");
 						packet_pos = 0;
 					}
 
 					// Skip possible stuff byte
 					for (new_start = mpeg_buff[4] + 5; new_start < MPEG_TS_LEN && mpeg_buff[new_start + 5] == 0xff; new_start++);
 
-					ndprint("Copying3 %u bytes into 0x%X-0x%X\n", MPEG_TS_LEN - new_start, (unsigned) f->buff + packet_pos, (unsigned) f->buff + packet_pos + MPEG_TS_LEN - new_start);
+					//(*ifcs->pom_log) (POM_LOG_TSHOOT "Copying3 %u bytes into 0x%X-0x%X\r\n", MPEG_TS_LEN - new_start, (unsigned) f->buff + packet_pos, (unsigned) f->buff + packet_pos + MPEG_TS_LEN - new_start);
 					memcpy(f->buff + packet_pos, mpeg_buff + new_start, MPEG_TS_LEN - new_start);
 					packet_pos = MPEG_TS_LEN - new_start;
 
@@ -783,7 +783,7 @@ int input_read_docsis(struct input *i, struct frame *f) {
 				// Let's copy everything, we'll later what is part of new PDU
 				
 				// last packet
-				ndprint("Copying5 %u bytes into 0x%X-0x%X\n", MPEG_TS_LEN - 5, (unsigned) f->buff + packet_pos, (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 5);
+				//(*ifcs->pom_log) (POM_LOG_TSHOOT "Copying5 %u bytes into 0x%X-0x%X\r\n", MPEG_TS_LEN - 5, (unsigned) f->buff + packet_pos, (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 5);
 				memcpy(f->buff + packet_pos, mpeg_buff + 5, MPEG_TS_LEN - 5);
 				packet_pos += MPEG_TS_LEN - 5;
 
@@ -800,7 +800,7 @@ int input_read_docsis(struct input *i, struct frame *f) {
 	// We have a full packet !
 
 	if (dlen < packet_pos) { // Copy leftover if any
-		ndprint("Copying7 %u bytes into 0x%X-0x%X\n", packet_pos - dlen, (unsigned) p->temp_buff + p->temp_buff_len, (unsigned) p->temp_buff + p->temp_buff_len + packet_pos - dlen);
+		//(*ifcs->pom_log) (POM_LOG_TSHOOT "Copying7 %u bytes into 0x%X-0x%X\r\n", packet_pos - dlen, (unsigned) p->temp_buff + p->temp_buff_len, (unsigned) p->temp_buff + p->temp_buff_len + packet_pos - dlen);
 		memcpy(p->temp_buff, f->buff + dlen, packet_pos - dlen);
 		p->temp_buff_len = packet_pos - dlen;
 	} 
@@ -810,7 +810,7 @@ int input_read_docsis(struct input *i, struct frame *f) {
 
 		if (p->output_layer == match_ethernet_id) {
 			if (dhdr->fc_type != FC_TYPE_PKT_MAC) {
-				ndprint("output type is ethernet and fc_type doesn't match. ignoring\n");
+				//(*ifcs->pom_log) (POM_LOG_TSHOT "output type is ethernet and fc_type doesn't match. ignoring\r\n");
 				f->len = 0;
 				return POM_OK;
 			}
@@ -825,7 +825,7 @@ int input_read_docsis(struct input *i, struct frame *f) {
 
 		if (p->output_layer == match_atm_id) {
 			if (dhdr->fc_type != FC_TYPE_ATM) {
-				ndprint("output type is atm and fc_type doesn't match. ignoring\n");	
+				//(*ifcs->pom_log) (POM_LOG_TSHOOT "output type is atm and fc_type doesn't match. ignoring\r\n");	
 				f->len = 0;
 				return POM_OK;
 			}
@@ -844,7 +844,7 @@ int input_read_docsis(struct input *i, struct frame *f) {
 		
 		}
 
-		ndprint("calculated dlen is %u\n", dlen);
+		//(*ifcs->pom_log) (POM_LOG_TSHOOT "calculated dlen is %u\r\n", dlen);
 
 		memmove(f->buff, f->buff + new_start, dlen);
 
@@ -854,8 +854,8 @@ int input_read_docsis(struct input *i, struct frame *f) {
 	}
 
 
-	ndprint("outlayer : %u\n", p->output_layer);
-	ndprint("RETURNING packet of %u\n", dlen);
+	//(*ifcs->pom_log) (POM_LOG_TSHOOT "outlayer : %u\r\n", p->output_layer);
+	//(*ifcs->pom_log) (POM_LOG_TSHOOT "RETURNING packet of %u\r\n", dlen);
 
 	f->len = dlen;
 	return POM_OK;
@@ -879,7 +879,7 @@ int input_close_docsis(struct input *i) {
 	close(p->demux_fd);
 	close(p->dvr_fd);
 
-	dprint("0x%02lx; DOCSIS : Total packet read %lu, missed %lu (%.1f%%),  erroneous %lu (%.1f%%), invalid %lu (%.1f%%), total errors %lu (%.1f%%)\n", \
+	(*ifcs->pom_log) ("0x%02lx; DOCSIS : Total packet read %lu, missed %lu (%.1f%%),  erroneous %lu (%.1f%%), invalid %lu (%.1f%%), total errors %lu (%.1f%%)\r\n", \
 		(unsigned long) i->input_priv, \
 		p->total_packets, \
 		p->missed_packets, \

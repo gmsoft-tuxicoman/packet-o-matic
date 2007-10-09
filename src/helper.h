@@ -63,6 +63,7 @@ struct helper_reg {
 };
 
 struct helper_functions {
+	void (*pom_log) (const char *format, ...);
 	int (*register_param) (int helper_type, char *name, char *defval, struct ptype *value, char *descr);
 	struct timer* (*alloc_timer) (void *priv, struct input *i, int (*handler) (void *));
 	int (*cleanup_timer) (struct timer *t);

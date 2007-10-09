@@ -89,8 +89,6 @@ int ptype_compare_uint8(int op, void *val_a, void* val_b) {
 			return *a < *b;
 		case PTYPE_OP_LE:
 			return *a <= *b;
-		default:
-			dprint("Unkown operation %c\n", op);
 
 	}
 

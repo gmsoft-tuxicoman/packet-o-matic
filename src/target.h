@@ -78,6 +78,7 @@ struct target {
 
 struct target_functions {
 
+	void (*pom_log) (const char *format, ...);
 	int (*match_register) (const char *);
 	struct target_mode *(*register_mode) (int , const char *, const char *);
 	int (*register_param) (struct target_mode *, char *, char *, char *);

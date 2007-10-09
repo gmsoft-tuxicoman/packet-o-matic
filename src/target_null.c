@@ -23,9 +23,13 @@
 
 #include "target_null.h"
 
+struct target_functions *tf;
+
 int target_register_null(struct target_reg *r, struct target_functions *tg_funcs) {
 
 	r->process = target_process_null;
+
+	tf = tg_funcs;
 
 	return POM_OK;
 
@@ -33,7 +37,7 @@ int target_register_null(struct target_reg *r, struct target_functions *tg_funcs
 
 int target_process_null(struct target *t, struct frame *f) {
 
-	ndprint("Packet processed\n");
+	(*tf->pom_log) (POM_LOG_DEBUG "Packet processed\r\n");
 
 	return POM_OK;
 

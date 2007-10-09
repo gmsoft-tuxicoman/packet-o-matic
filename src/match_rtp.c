@@ -25,7 +25,7 @@
 #include "ptype_uint32.h"
 
 int match_undefined_id;
-struct match_functions *m_functions;
+struct match_functions *mf;
 struct layer_info *match_payload_info, *match_seq_info, *match_timestamp_info, *match_ssrc_info;
 
 struct ptype *field_payload, *field_ssrc;
@@ -35,9 +35,9 @@ int match_register_rtp(struct match_reg *r, struct match_functions *m_funcs) {
 	r->identify = match_identify_rtp;
 	r->unregister = match_unregister_rtp;
 
-	m_functions = m_funcs;
+	mf = m_funcs;
 
-	match_undefined_id = (*m_functions->match_register) ("undefined");
+	match_undefined_id = (*mf->match_register) ("undefined");
 
 	match_payload_info = (*m_funcs->layer_info_register) (r->type, "payload_type", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
 	match_seq_info = (*m_funcs->layer_info_register) (r->type, "seq", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
@@ -67,7 +67,7 @@ int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, uns
 	hdr_len += hdr->csrc_count * 4;
 
 	if (len - hdr_len <= 0) {
-		ndprint("Invalid size for RTP packet\n");
+		(*mf->pom_log) (POM_LOG_TSHOOT "Invalid size for RTP packet\r\n");
 		return -1;
 	}
 
@@ -84,7 +84,7 @@ int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, uns
 		ext = f->buff + start + hdr_len;
 		hdr_len += ntohs(ext->length);
 		if (len < (hdr_len + start)) {
-			ndprint(" Invalid size for RTP packet\n");
+			(*mf->pom_log) (POM_LOG_TSHOOT "Invalid size for RTP packet\r\n");
 			return -1;
 		}
 	}
@@ -101,7 +101,7 @@ int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, uns
 }
 	
 int match_unregister_rtp(struct match_reg *r) {
-	(*m_functions->ptype_cleanup) (field_payload);
-	(*m_functions->ptype_cleanup) (field_ssrc);
+	(*mf->ptype_cleanup) (field_payload);
+	(*mf->ptype_cleanup) (field_ssrc);
 	return POM_OK;
 }

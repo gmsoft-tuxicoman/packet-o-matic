@@ -31,6 +31,7 @@ struct target_functions tg_funcs;
 
 int target_init() {
 
+	tg_funcs.pom_log = pom_log;
 	tg_funcs.match_register = match_register;
 	tg_funcs.register_mode = target_register_mode;
 	tg_funcs.register_param = target_register_param;
@@ -43,7 +44,7 @@ int target_init() {
 	tg_funcs.layer_info_snprintf = layer_info_snprintf;
 	tg_funcs.match_get_name = match_get_name;
 
-	dprint("Targets initialized\n");
+	pom_log(POM_LOG_DEBUG "Targets initialized\r\n");
 
 	return POM_OK;
 
@@ -76,7 +77,7 @@ int target_register(const char *target_name) {
 			my_target->type = i;
 
 			if ((*register_my_target) (my_target, &tg_funcs) != POM_OK) {
-				dprint("Error while loading target %s. could not register target !\n", target_name);
+				pom_log(POM_LOG_ERR "Error while loading target %s. could not register target !\r\n", target_name);
 				targets[i] = NULL;
 				free(my_target);
 				return POM_ERR;
@@ -87,7 +88,7 @@ int target_register(const char *target_name) {
 			strcpy(targets[i]->target_name, target_name);
 			targets[i]->dl_handle = handle;
 
-			dprint("Target %s registered\n", target_name);
+			pom_log(POM_LOG_DEBUG "Target %s registered\r\n", target_name);
 			
 			return i;
 		}
@@ -194,7 +195,7 @@ int target_register_param_value(struct target *t, struct target_mode *mode, cons
 struct target *target_alloc(int target_type) {
 
 	if (!targets[target_type]) {
-		dprint("Target type %u is not registered\n", target_type);
+		pom_log(POM_LOG_ERR "Target type %u is not registered\r\n", target_type);
 		return NULL;
 	}
 	struct target *t = malloc(sizeof(struct target));
@@ -352,7 +353,7 @@ int target_unregister(int target_type) {
 	}
 
 	if(dlclose(targets[target_type]->dl_handle))
-		dprint("Error while closing library of target %s\n", targets[target_type]->target_name);
+		pom_log(POM_LOG_WARN "Error while closing library of target %s\r\n", targets[target_type]->target_name);
 	free(targets[target_type]->target_name);
 	free(targets[target_type]);
 	targets[target_type] = NULL;

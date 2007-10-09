@@ -69,7 +69,7 @@ struct timeval now; ///< Used to get the current time from the input perspective
 
 void signal_handler(int signal) {
 	
-	dprint("Received signal. Finishing ... !\n");
+	pom_log("Received signal. Finishing ... !\r\n");
 	finish = 1;
 
 }
@@ -176,7 +176,7 @@ void *input_thread_func(void *params) {
 
 
 		if (input_read(p->i, ringbuffer[ringbuffer_write_pos]) == POM_ERR) {
-			dprint("Error while reading. Abording\n");
+			pom_log(POM_LOG_ERR "Error while reading. Abording\r\n");
 			break;
 		}
 		ringbuffer_total_packets++;
@@ -190,19 +190,18 @@ void *input_thread_func(void *params) {
 
 		while (ringbuffer_usage >= RINGBUFFER_SIZE - 1) {
 			if (p->input_is_live) {
-				ndprint("Buffer overflow (%u). droping packet\n", ringbuffer_usage);
+				pom_log(POM_LOG_TSHOOT "Buffer overflow (%u). droping packet\r\n", ringbuffer_usage);
 				ringbuffer_write_pos--;
 				ringbuffer_dropped_packets++;
 				ringbuffer_usage--;
 				break;
 			} else {
-				ndprint("Buffer is full. Waiting\n");
+				pom_log(POM_LOG_TSHOOT "Buffer is full. Waiting\r\n");
 				if(pthread_cond_wait(&ringbuffer_overflow_cond, &ringbuffer_mutex)) {
-					dprint("Failed to wait for buffer to empty out\n");
+					pom_log(POM_LOG_ERR "Failed to wait for buffer to empty out\r\n");
 					pthread_mutex_unlock(&ringbuffer_mutex);
 					pthread_exit(NULL);
 				}
-				ndprint("waiting over\n");
 			}
 		}
 
@@ -228,6 +227,9 @@ int main(int argc, char *argv[]) {
 	mtrace();
 #endif
 
+
+	debug_level = *POM_LOG_INFO;
+
 	char *cfgfile = "pom.xml.conf";
 	int disable_mgmtsrv = 0;
 	char *cli_port = "4655";
@@ -252,7 +254,7 @@ int main(int argc, char *argv[]) {
 		switch(c) {
 			case 1:
 				disable_mgmtsrv = 1;
-				dprint("Not starting CLI console because of --no-cli flag\n");
+				pom_log("Not starting CLI console because of --no-cli flag\r\n");
 				break;
 			case 'h':
 				match_init();
@@ -263,15 +265,15 @@ int main(int argc, char *argv[]) {
 				return 0;
 			case 'c':
 				cfgfile = optarg;
-				dprint("Config file is %s\n", optarg);
+				pom_log("Config file is %s\r\n", optarg);
 				break;
 			case 'p':
 				cli_port = optarg;
-				dprint("Using port %s for CLI console\n", cli_port);
+				pom_log("Using port %s for CLI console\r\n", cli_port);
 				break;
 			case 'w':
 				mgmtsrv_set_password(optarg);
-				dprint("CLI is password protected\n");
+				pom_log("CLI is password protected\r\n");
 				break;
 			case '?':
 			default:
@@ -295,24 +297,24 @@ int main(int argc, char *argv[]) {
 	main_config = config_alloc();
 
 	if (!config_parse(main_config, cfgfile)) {
-		dprint("Error while parsing config\n");
+		pom_log(POM_LOG_ERR "Error while parsing config\r\n");
 		goto err;
 	}
 
 	if (!disable_mgmtsrv && mgmtsrv_init(cli_port) == POM_ERR) {
-		dprint("Error when initializing the management console. Abording\n");
+		pom_log(POM_LOG_ERR "Error when initializing the management console. Abording\r\n");
 		goto err;
 	}
 	int fd = input_open(main_config->input);
 
 	if (fd == POM_ERR) {
-		dprint("Error while opening input\n");
+		pom_log(POM_LOG_ERR "Error while opening input\r\n");
 		goto err;
 	}
 
 	struct input_caps ic;
 	if (input_getcaps(main_config->input, &ic) == POM_ERR) {
-		dprint("Error while getting input capabilities\n");
+		pom_log(POM_LOG_ERR "Error while getting input capabilities\r\n");
 		goto err;
 	}
 
@@ -321,7 +323,7 @@ int main(int argc, char *argv[]) {
 	signal(SIGINT, signal_handler);
 	
 	// Initialize the ring buffer
-	dprint("Using %u buffers of %u bytes\n", RINGBUFFER_SIZE, ic.snaplen);
+	pom_log(POM_LOG_DEBUG "Using %u buffers of %u bytes\r\n", RINGBUFFER_SIZE, ic.snaplen);
 	int i;
 	for (i = 0; i < RINGBUFFER_SIZE; i++) {
 		ringbuffer[i] = malloc(sizeof(struct frame));
@@ -340,13 +342,13 @@ int main(int argc, char *argv[]) {
 
 	pthread_t input_thread;
 	if (pthread_create(&input_thread, NULL, input_thread_func, (void*)&itp)) {
-		dprint("Error when creating the input thread. Abording\n");
+		pom_log(POM_LOG_ERR "Error when creating the input thread. Abording\r\n");
 		goto finish;
 	}
 	
 	pthread_t mgmtsrv_thread;
 	if (!disable_mgmtsrv && pthread_create(&mgmtsrv_thread, NULL, mgmtsrv_thread_func, NULL)) {
-		dprint("Error when creating the management console thread. Abording\n");
+		pom_log(POM_LOG_ERR "Error when creating the management console thread. Abording\r\n");
 		goto err;
 	}
 
@@ -355,11 +357,11 @@ int main(int argc, char *argv[]) {
 	sp.sched_priority = 5;
 
 	if (pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp)) {
-		dprint("Error while setting input thread priority\n");
+		pom_log(POM_LOG_ERR "Error while setting input thread priority\r\n");
 	}
 
 	if (pthread_mutex_lock(&ringbuffer_mutex)) {
-		dprint("Error while locking the buffer mutex. Abording\n");
+		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording\r\n");
 		goto finish;
 	}
 
@@ -369,7 +371,7 @@ int main(int argc, char *argv[]) {
 			pthread_mutex_unlock(&ringbuffer_mutex);
 			goto finish;
 		}
-		ndprint("Buffer empty (%u). Waiting\n", ringbuffer_usage);
+		pom_log(POM_LOG_TSHOOT "Buffer empty (%u). Waiting\r\n", ringbuffer_usage);
 		struct timeval tv;
 		gettimeofday(&tv, NULL);
 		struct timespec tp;
@@ -377,18 +379,17 @@ int main(int argc, char *argv[]) {
 		tp.tv_nsec = tv.tv_usec * 1000;
 		switch (pthread_cond_timedwait(&ringbuffer_underrun_cond, &ringbuffer_mutex, &tp)) {
 			case ETIMEDOUT:
-				dprint("timeout occured\n");
 			case 0:
 				break;
 			default:
-				dprint("Error occured while waiting for next frame to be available\n");
+				pom_log(POM_LOG_ERR "Error occured while waiting for next frame to be available\r\n");
 				pthread_mutex_unlock(&ringbuffer_mutex);
 				goto finish;
 
 		}
 	}
 	if (pthread_mutex_unlock(&ringbuffer_mutex)) {
-		dprint("Error while unlocking the buffer mutex. Abording\n");
+		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
 		goto finish;
 	}
 
@@ -399,7 +400,7 @@ int main(int argc, char *argv[]) {
 			gettimeofday(&now, NULL);
 
 		if (pthread_mutex_lock(&reader_mutex)) {
-			dprint("Error while locking the reader mutex. Abording\n");
+			pom_log(POM_LOG_ERR "Error while locking the reader mutex. Abording\r\n");
 			goto finish;
 		}
 	
@@ -417,13 +418,13 @@ int main(int argc, char *argv[]) {
 
 
 		if (pthread_mutex_unlock(&reader_mutex)) {
-			dprint("Error while locking the reader mutex. Abording\n");
+			pom_log(POM_LOG_ERR "Error while locking the reader mutex. Abording\r\n");
 			goto finish;
 		}
 
 
 		if (pthread_mutex_lock(&ringbuffer_mutex)) {
-			dprint("Error while locking the buffer mutex. Abording\n");
+			pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording\r\n");
 			goto finish;
 		}
 		ringbuffer_usage--;
@@ -440,7 +441,7 @@ int main(int argc, char *argv[]) {
 				pthread_mutex_unlock(&ringbuffer_mutex);
 				goto finish;
 			}
-			ndprint("Buffer empty (%u). Waiting\n", ringbuffer_usage);
+			pom_log(POM_LOG_TSHOOT "Buffer empty (%u). Waiting\r\n", ringbuffer_usage);
 			struct timeval tv;
 			gettimeofday(&tv, NULL);
 			struct timespec tp;
@@ -448,11 +449,11 @@ int main(int argc, char *argv[]) {
 			tp.tv_nsec = tv.tv_usec * 1000;
 			switch (pthread_cond_timedwait(&ringbuffer_underrun_cond, &ringbuffer_mutex, &tp)) {
 				case ETIMEDOUT:
-					ndprint("timeout occured\n");
+					pom_log(POM_LOG_TSHOOT "Timeout occured while waiting for next frame to be available\r\n");
 				case 0:
 					break;
 				default:
-					dprint("Error occured while waiting for next frame to be available\n");
+					pom_log(POM_LOG_ERR "Error occured while waiting for next frame to be available\r\n");
 					pthread_mutex_unlock(&ringbuffer_mutex);
 					goto finish;
 
@@ -460,7 +461,7 @@ int main(int argc, char *argv[]) {
 		}
 		
 		if (pthread_mutex_unlock(&ringbuffer_mutex)) {
-			dprint("Error while unlocking the buffer mutex. Abording\n");
+			pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
 			goto finish;
 		}
 	
@@ -475,7 +476,7 @@ finish:
 	if (!disable_mgmtsrv)
 		pthread_join(mgmtsrv_thread, NULL);
 
-	dprint("Total packets read : %lu, dropped %lu (%.2f%%)\n", ringbuffer_total_packets, ringbuffer_dropped_packets, 100.0 / ringbuffer_total_packets * ringbuffer_dropped_packets);
+	pom_log("Total packets read : %lu, dropped %lu (%.2f%%)\r\n", ringbuffer_total_packets, ringbuffer_dropped_packets, 100.0 / ringbuffer_total_packets * ringbuffer_dropped_packets);
 
 	// Process remaining queued frames
 	conntrack_close_connections(main_config->rules);

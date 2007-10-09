@@ -59,6 +59,7 @@ struct match_param {
 
 /// provide usefull fonction pointers to the inputs
 struct match_functions {
+	void (*pom_log) (const char *format, ...);
 	int (*match_register) (const char *); ///< register a match
 	int (*register_param) (int match_type, char *name, struct ptype *value, char *descr); ///< register a parameter for this match
 	struct ptype* (*ptype_alloc) (const char* type, char* unit);

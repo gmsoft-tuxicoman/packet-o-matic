@@ -50,7 +50,7 @@ int conntrack_init() {
 	ct_funcs->queue_timer = timer_queue;
 	ct_funcs->dequeue_timer = timer_dequeue;
 
-	dprint("Conntrack initialized\n");
+	pom_log(POM_LOG_DEBUG "Conntrack initialized\r\n");
 	
 	return 1;
 
@@ -62,7 +62,7 @@ int conntrack_register(const char *conntrack_name) {
 	int id;
 	id = match_get_type(conntrack_name);
 	if (id == -1) {
-		dprint("Unable to register conntrack %s. Corresponding match not found\n", conntrack_name);
+		pom_log(POM_LOG_WARN "Unable to register conntrack %s. Corresponding match not found\r\n", conntrack_name);
 		return -1;
 	}
 
@@ -83,7 +83,7 @@ int conntrack_register(const char *conntrack_name) {
 
 
 	if (!(*register_my_conntrack) (my_conntrack, ct_funcs)) {
-		dprint("Error while loading conntrack %s. Could not register conntrack !\n", conntrack_name);
+		pom_log(POM_LOG_ERR "Error while loading conntrack %s. Could not register conntrack !\r\n", conntrack_name);
 		free(my_conntrack);
 		return -1;
 	}
@@ -91,7 +91,7 @@ int conntrack_register(const char *conntrack_name) {
 	conntracks[id] = my_conntrack;
 	conntracks[id]->dl_handle = handle;
 
-	dprint("Conntrack %s registered\n", conntrack_name);
+	pom_log(POM_LOG_DEBUG "Conntrack %s registered\r\n", conntrack_name);
 
 
 	return id;
@@ -155,7 +155,7 @@ int conntrack_create_entry(struct frame *f) {
 		l = l->next;
 	}
 
-	ndprint("Conntrack entry 0x%lx created\n", (unsigned long) ce);
+	pom_log(POM_LOG_TSHOOT "Conntrack entry 0x%lx created\r\n", (unsigned long) ce);
 
 	ce->direction = CT_DIR_FWD;
 	f->ce = ce;
@@ -177,7 +177,7 @@ int conntrack_add_target_priv(void *priv, struct target *t, struct conntrack_ent
 	cp = ce->target_privs;
 	while (cp) {
 		if (cp->t == t) {
-			dprint("Warning. Target priv already added\n");
+			pom_log(POM_LOG_WARN "Warning. Target priv already added\r\n");
 			return 0;
 		}
 		cp = cp->next;
@@ -195,8 +195,8 @@ int conntrack_add_target_priv(void *priv, struct target *t, struct conntrack_ent
 	cp->t = t;
 	cp->priv = priv;
 	cp->cleanup_handler = cleanup_handler;
-
-	ndprint("Target priv 0x%lx added to conntrack 0x%lx\n", (unsigned long) priv, (unsigned long) ce);
+	
+	pom_log(POM_LOG_TSHOOT "Target priv 0x%lx added to conntrack 0x%lx\r\n", (unsigned long) priv, (unsigned long) ce);
 
 	
 	return 1;
@@ -213,7 +213,7 @@ int conntrack_add_helper_priv(void *priv, int type, struct conntrack_entry *ce, 
 	cp = ce->helper_privs;
 	while (cp) {
 		if (cp->type == type) {
-			dprint("Warning. Helper priv already added\n");
+			pom_log(POM_LOG_WARN "Warning. Helper priv already added\r\n");
 			return 0;
 		}
 		cp = cp->next;
@@ -233,7 +233,7 @@ int conntrack_add_helper_priv(void *priv, int type, struct conntrack_entry *ce, 
 	cp->flush_buffer = flush_buffer;
 	cp->cleanup_handler = cleanup_handler;
 
-	ndprint("Helper priv 0x%lx added to conntrack 0x%lx\n", (unsigned long) priv, (unsigned long) ce);
+	pom_log(POM_LOG_TSHOOT "Helper priv 0x%lx added to conntrack 0x%lx\r\n", (unsigned long) priv, (unsigned long) ce);
 
 	
 	return 1;
@@ -410,7 +410,7 @@ struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct frame *
 		cp = cp->next;
 	}
 
-	ndprint("Found conntrack 0x%lx, hash 0x%lx\n", (unsigned long) ce, ce->full_hash);
+	pom_log(POM_LOG_TSHOOT "Found conntrack 0x%lx, hash 0x%lx\r\n", (unsigned long) ce, ce->full_hash);
 
 	return ce;
 }
@@ -509,7 +509,7 @@ int conntrack_cleanup_connection(struct conntrack_entry *ce) {
 		free(cl);
 	
 	} else
-		dprint("Warning, conntrack_list not found for conntrack 0x%lu\n", (unsigned long) ce);
+		pom_log(POM_LOG_WARN "Warning, conntrack_list not found for conntrack 0x%lu\r\n", (unsigned long) ce);
 
 	// Free the conntrack_entry itself
 
@@ -591,7 +591,7 @@ int conntrack_unregister_all() {
 	for (i = 0; i < MAX_CONNTRACK; i++) {
 		if (conntracks[i]) {
 			if (dlclose(conntracks[i]->dl_handle))
-				dprint("Error while closing library of conntrack %s\n", match_get_name(i));
+				pom_log(POM_LOG_WARN "Error while closing library of conntrack %s\r\n", match_get_name(i));
 			free(conntracks[i]);
 			conntracks[i] = NULL;
 		}

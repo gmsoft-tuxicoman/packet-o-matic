@@ -87,7 +87,7 @@ int layer_info_default_snprintf(char *buff, unsigned int maxlen, struct layer_in
 			return strlen(buff);
 		
 		case LAYER_INFO_TYPE_CUSTOM:
-			ndprint("Warning custom type declared but no snprintf set\n");
+			pom_log(POM_LOG_ERR "Warning custom type declared but no snprintf set\r\n");
 			return 0;
 		
 	}

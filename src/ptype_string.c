@@ -74,6 +74,5 @@ int ptype_compare_string(int op, void *val_a, void *val_b) {
 	if (op == PTYPE_OP_EQUALS)
 		return !strcmp(a, b);
 	
-	dprint("Unkown operation %c\n", op);
 	return 0;
 }

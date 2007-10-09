@@ -64,7 +64,6 @@ uint32_t conntrack_get_hash_udp(struct frame *f, unsigned int start, unsigned in
 			break;
 
 		default:
-			ndprint("Error, unknown direction for conntrack\n");
 			return 0;
 	}
 
@@ -95,7 +94,6 @@ int conntrack_doublecheck_udp(struct frame *f, unsigned int start, void *priv, u
 			break;
 		
 		default:
-			ndprint("Error, unknown direction for conntrack\n");
 			return 0;
 	}
 

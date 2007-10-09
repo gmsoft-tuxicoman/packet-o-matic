@@ -63,6 +63,7 @@ int input_register(const char *input_name) {
 			inputs[i] = my_input;
 			inputs[i]->dl_handle = handle;
 
+			i_funcs.pom_log = pom_log;
 			i_funcs.match_register = match_register;
 			i_funcs.register_mode = input_register_mode;
 			i_funcs.register_param = input_register_param;
@@ -71,7 +72,7 @@ int input_register(const char *input_name) {
 			i_funcs.ptype_snprintf = ptype_print_val;
 			
 			if ((*register_my_input) (my_input, &i_funcs) != POM_OK) {
-				dprint("Error while loading input %s. Could not register input !\n", input_name);
+				pom_log(POM_LOG_ERR "Error while loading input %s. Could not register input !\r\n", input_name);
 				inputs[i] = NULL;
 				free(my_input);
 				return POM_ERR;
@@ -82,7 +83,7 @@ int input_register(const char *input_name) {
 			strcpy(inputs[i]->name, input_name);
 			inputs[i]->dl_handle = handle;
 
-			dprint("Input %s registered\n", input_name);
+			pom_log(POM_LOG_DEBUG "Input %s registered\r\n", input_name);
 
 
 			return i;
@@ -203,7 +204,7 @@ char *input_get_name(int input_type) {
 struct input *input_alloc(int input_type) {
 
 	if (!inputs[input_type]) {
-		dprint("Input type %u is not registered\n", input_type);
+		pom_log(POM_LOG_ERR "Input type %u is not registered\r\n", input_type);
 		return NULL;
 	}
 
@@ -327,7 +328,7 @@ int input_unregister(int input_type) {
 		inputs[input_type]->modes = m;
 	}
 	if (dlclose(inputs[input_type]->dl_handle))
-		dprint("Error while closing library of input %s\n", inputs[input_type]->name);
+		pom_log(POM_LOG_WARN "Error while closing library of input %s\r\n", inputs[input_type]->name);
 	free(inputs[input_type]->name);
 	free(inputs[input_type]);
 	inputs[input_type] = NULL;

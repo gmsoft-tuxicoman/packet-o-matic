@@ -36,6 +36,7 @@
 #include <dlfcn.h>
 
 #include <stdio.h>
+#include <stdarg.h>
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -59,30 +60,16 @@
 
 void *lib_get_register_func(const char *type, const char *name, void **handle);
 
+// Prepend value to log string to indicate log level
+#define POM_LOG_ERR	"\1"
+#define POM_LOG_WARN	"\2"
+#define POM_LOG_INFO	"\3"
+#define POM_LOG_DEBUG	"\4"
+#define POM_LOG_TSHOOT	"\5"
 
-#ifdef DEBUG
-#define dprint(x, y...) printf(x, ##y)
+/// Global debug level
+unsigned int debug_level;
 
-
-void dprint_hex(unsigned char *str, unsigned int len);
-
-#ifdef NDEBUG
-#define ndprint(x, y...) printf(x, ##y)
-#define ndprint_hex(x, y) dprint_hex(x, y)
-#else
-#define ndprint(x,y...)
-#define ndprint_hex(a, b)
-#endif
-
-#else
-
-#define dprint(x,y...)
-#define dprint_hex(x, y)
-#define ndprint(a,b...)
-#define ndprint_hex(c, d)
-
-
-#endif
-
+void pom_log(const char *format, ...);
 
 #endif

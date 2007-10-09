@@ -59,7 +59,7 @@ int match_register(const char *match_name) {
 			my_match->type = i; // Allow the match to know it's number at registration time
 
 			if ((*register_my_match) (my_match, m_funcs) != POM_OK) {
-				dprint("Error while loading match %s. Could not register match !\n", match_name);
+				pom_log(POM_LOG_ERR "Error while loading match %s. Could not register match !\r\n", match_name);
 				free(my_match->name);
 				free(my_match);
 				matchs[i] = NULL;
@@ -68,7 +68,7 @@ int match_register(const char *match_name) {
 
 			matchs[i]->dl_handle = handle;
 
-			dprint("Match %s registered\n", match_name);
+			pom_log(POM_LOG_DEBUG "Match %s registered\r\n", match_name);
 
 
 			return i;
@@ -146,6 +146,7 @@ int match_init() {
 	match_undefined_id = match_register("undefined");
 
 	m_funcs = malloc(sizeof(struct match_functions));
+	m_funcs->pom_log = pom_log;
 	m_funcs->match_register = match_register;
 	m_funcs->layer_info_register = layer_info_register;
 	m_funcs->register_param = match_register_param;
@@ -232,7 +233,7 @@ int match_unregister(unsigned int match_type) {
 		(*r->unregister) (r);
 	
 	if (dlclose(r->dl_handle))
-		dprint("Error while closing library of match %s\n", r->name);
+		pom_log(POM_LOG_WARN "Error while closing library of match %s\r\n", r->name);
 	free(r->name);
 	free(r);
 

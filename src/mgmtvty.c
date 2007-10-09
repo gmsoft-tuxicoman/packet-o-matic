@@ -33,7 +33,7 @@ int mgmtvty_init(struct mgmt_connection *c) {
 
 
 	if (c->state != MGMT_STATE_INIT) {
-		dprint("Error, connection in wrong state\n");
+		pom_log(POM_LOG_ERR "Error, connection in wrong state\r\n");
 		return POM_ERR;
 	}
 
@@ -93,7 +93,7 @@ int mgmtvty_process(struct mgmt_connection *c, unsigned char *buffer, unsigned i
 									msg_type = 0;
 									break;
 								} else {
-									dprint("Warning, unexpected value while reading telnet suboption : %hhu\n", buffer[i]);
+									pom_log(POM_LOG_WARN "Warning, unexpected value while reading telnet suboption : %hhu\r\n", buffer[i]);
 									continue;
 								}
 							}
@@ -116,7 +116,7 @@ int mgmtvty_process(struct mgmt_connection *c, unsigned char *buffer, unsigned i
 
 			case 2: // Handle escape sequence
 				if (i + 1 > len || buffer[i] != '[') {
-					dprint("Invalid escape sequence\n");
+					pom_log(POM_LOG_WARN "Invalid escape sequence\r\n");
 					msg_type = 0;
 					break;
 				}
@@ -197,7 +197,7 @@ int mgmtvty_process(struct mgmt_connection *c, unsigned char *buffer, unsigned i
 						mgmtvty_process_key(c, 0x1);
 						break;
 					default: // not handled
-						ndprint("Unknown escape sequence pressed : %c\n", buffer[i]);
+						pom_log(POM_LOG_TSHOOT "Unknown escape sequence pressed : %c\r\n", buffer[i]);
 						
 					msg_type = 0;
 				}
@@ -227,13 +227,13 @@ int mgmtvty_process(struct mgmt_connection *c, unsigned char *buffer, unsigned i
 
 int mgmtvty_process_telnet_option(struct mgmt_connection *c, unsigned char *opt, unsigned int len) {
 
-#ifdef NDEBUG
+#ifdef DEBUG
 
 	if (opt[0] == SB) {
-		ndprint("Got telnet suboption %s\n", TELOPT(opt[1]));
+		pom_log(POM_LOG_TSHOOT "Got telnet suboption %s\r\n", TELOPT(opt[1]));
 	} else {
 
-		ndprint("Got telnet option %s %s\n", TELCMD(opt[0]), TELOPT(opt[1]));
+		pom_log(POM_LOG_TSHOOT "Got telnet option %s %s\r\n", TELCMD(opt[0]), TELOPT(opt[1]));
 	}
 
 #endif
@@ -269,7 +269,7 @@ int mgmtvty_process_telnet_option(struct mgmt_connection *c, unsigned char *opt,
 					c->win_x += opt[3];
 					c->win_y = opt[4] * 0x100;
 					c->win_y += opt[5];
-					ndprint("New remote window size for connection %u is %ux%u\n", c->fd, c->win_x, c->win_y);
+					pom_log(POM_LOG_TSHOOT "New remote window size for connection %u is %ux%u\r\n", c->fd, c->win_x, c->win_y);
 			}
 			break;
 		case TELOPT_SGA:
@@ -469,7 +469,7 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 		}
 
 		default: {
-			ndprint("Got key 0x%x\n", key);
+			pom_log(POM_LOG_TSHOOT "Got key 0x%x\r\n", key);
 			size_t cmdlen = strlen(c->cmds[c->curcmd]) + 1;
 			c->cmds[c->curcmd] = realloc(c->cmds[c->curcmd], cmdlen + 1);
 			memmove(c->cmds[c->curcmd] + c->cursor_pos + 1, c->cmds[c->curcmd] + c->cursor_pos, cmdlen - c->cursor_pos);

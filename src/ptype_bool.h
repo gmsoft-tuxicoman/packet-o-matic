@@ -25,16 +25,19 @@
 #include "ptype.h"
 
 /// x the struct ptype
-#define PTYPE_BOOL_GETVAL(x) 			\
-	(int) ((x)->value)
+#define PTYPE_BOOL_GETVAL(x) 		\
+	(int) *((int*)(x)->value)
 
 /// x the struct ptype, y is the value
 #define PTYPE_BOOL_SETVAL(x, y) {	\
-	(int) (x)->value = (y);		\
+	int *v = (x)->value;		\
+	*v = (y);			\
 }
 
 
 int ptype_register_bool(struct ptype_reg *r);
+int ptype_alloc_bool(struct ptype* p);
+int ptype_cleanup_bool(struct ptype *p);
 int ptype_parse_bool(struct ptype *p, char *val);
 int ptype_print_bool(struct ptype *pt, char *val, size_t size);
 int ptype_compare_bool(int op, void *val_a, void* val_b);
