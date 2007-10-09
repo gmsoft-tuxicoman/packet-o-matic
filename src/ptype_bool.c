@@ -88,9 +88,11 @@ int ptype_print_bool(struct ptype *p, char *val, size_t size) {
 
 int ptype_compare_bool(int op, void *val_a, void* val_b) {
 
+	int *a = val_a;
+	int *b = val_b;
 
 	if (op == PTYPE_OP_EQUALS)
-		return (int)val_a == (int)val_b;
+		return *a == *b;
 
 	return 0;
 }
