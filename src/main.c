@@ -82,9 +82,10 @@ void print_usage() {
 		"Options :\n"
 		" -c, --config=FILE          specify configuration file to use (default pom.xml.conf)\n"
 		" -h, --help                 display the help\n"
-		"   , --no-cli               disable the CLI console\n"
+		"     --no-cli               disable the CLI console\n"
 		" -p, --port=PORT            specify the CLI console port (default 4655)\n"
 		" -w, --password=PASSWORD    specify a password to enter the CLI console\n"
+		" -d, --debug-level=LEVEL    specify the debug level <1-4> (default 3)\n"
 		"\n"
 		);
 	
@@ -190,13 +191,13 @@ void *input_thread_func(void *params) {
 
 		while (ringbuffer_usage >= RINGBUFFER_SIZE - 1) {
 			if (p->input_is_live) {
-				pom_log(POM_LOG_TSHOOT "Buffer overflow (%u). droping packet\r\n", ringbuffer_usage);
+				//pom_log(POM_LOG_TSHOOT "Buffer overflow (%u). droping packet\r\n", ringbuffer_usage);
 				ringbuffer_write_pos--;
 				ringbuffer_dropped_packets++;
 				ringbuffer_usage--;
 				break;
 			} else {
-				pom_log(POM_LOG_TSHOOT "Buffer is full. Waiting\r\n");
+				//pom_log(POM_LOG_TSHOOT "Buffer is full. Waiting\r\n");
 				if(pthread_cond_wait(&ringbuffer_overflow_cond, &ringbuffer_mutex)) {
 					pom_log(POM_LOG_ERR "Failed to wait for buffer to empty out\r\n");
 					pthread_mutex_unlock(&ringbuffer_mutex);
@@ -243,10 +244,11 @@ int main(int argc, char *argv[]) {
 			{ "port", 1, 0, 'p'},
 			{ "password", 1, 0, 'w'},
 			{ "no-cli", 0, 0, 1},
+			{ "debug-level", 1, 0, 'd'},
 			{ 0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:p:w:", long_options, NULL);
+		c = getopt_long(argc, argv, "hc:p:w:d:", long_options, NULL);
 
 		if (c == -1)
 			break;
@@ -275,6 +277,13 @@ int main(int argc, char *argv[]) {
 				mgmtsrv_set_password(optarg);
 				pom_log("CLI is password protected\r\n");
 				break;
+			case 'd':
+				if (sscanf(optarg, "%u", &debug_level) == 1) {
+					printf("Debug level set to %u\n", debug_level);
+					break;
+				} else {
+					printf("Invalid debug level \"%s\"\n", optarg);
+				}
 			case '?':
 			default:
 				print_usage();
@@ -371,7 +380,7 @@ int main(int argc, char *argv[]) {
 			pthread_mutex_unlock(&ringbuffer_mutex);
 			goto finish;
 		}
-		pom_log(POM_LOG_TSHOOT "Buffer empty (%u). Waiting\r\n", ringbuffer_usage);
+		//pom_log(POM_LOG_TSHOOT "Buffer empty (%u). Waiting\r\n", ringbuffer_usage);
 		struct timeval tv;
 		gettimeofday(&tv, NULL);
 		struct timespec tp;
@@ -441,7 +450,7 @@ int main(int argc, char *argv[]) {
 				pthread_mutex_unlock(&ringbuffer_mutex);
 				goto finish;
 			}
-			pom_log(POM_LOG_TSHOOT "Buffer empty (%u). Waiting\r\n", ringbuffer_usage);
+			//pom_log(POM_LOG_TSHOOT "Buffer empty (%u). Waiting\r\n", ringbuffer_usage);
 			struct timeval tv;
 			gettimeofday(&tv, NULL);
 			struct timespec tp;

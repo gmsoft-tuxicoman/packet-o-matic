@@ -31,8 +31,6 @@ struct timeval next_run;
 
 int timers_process() {
 
-	pom_log(POM_LOG_TSHOOT "Looking at timers ...\r\n");
-
 	struct timeval now;
 	get_current_input_time(&now);
 

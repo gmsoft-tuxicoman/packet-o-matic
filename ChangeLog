@@ -1,3 +1,8 @@
+* 2007/10/10 Guy Martin <gmsoft@tuxicoman.be>
+Added -d option to choose debug level at startup.
+Commented or removed useless debug lines.
+Fixed handling of va_list in pom_log() and mgmtsrv_send().
+
 * 2007/10/09 Guy Martin <gmsoft@tuxicoman.be>
 Get rid of dprint() in favor of pom_log().
 Added commands "enable/disable debug" and "set debug level" in management console.

@@ -224,8 +224,8 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 		if (r->node && r->enabled) {
 			// If there is a conntrack_entry, it means one of the target added it's priv, so the packet needs to be processed
 			r->result = node_match(f, r->node, f->l); // Get the result to fully populate layers
-			if (r->result)
-				pom_log(POM_LOG_TSHOOT "Rule matched\r\n");
+			//if (r->result)
+			//	pom_log(POM_LOG_TSHOOT "Rule matched\r\n");
 		}
 		r = r->next;
 

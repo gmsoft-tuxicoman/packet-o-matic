@@ -430,6 +430,7 @@ int mgmtsrv_send(struct mgmt_connection *c, char* format, ...) {
 	va_list arg_list;
 	va_start(arg_list, format);
 	int len = vsnprintf(buff, MGMT_PRINT_BUFF_SIZE, format, arg_list);
+	va_end(arg_list);
 	return send(c->fd, buff, len, 0);
 }
 

@@ -271,7 +271,7 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 
 	if (fp->last) {
 		// We have the last fragment. Process the packet
-		(*hf->pom_log) ("Helper ipv4 : processing packet\r\n");
+		(*hf->pom_log) (POM_LOG_TSHOOT "Helper ipv4 : processing packet\r\n");
 		helper_ipv4_process_frags(tmp);
 		return H_NEED_HELP;
 
