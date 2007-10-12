@@ -377,7 +377,7 @@ int mgmtcmd_show_rule_print_node_flat(struct mgmt_connection *c, struct rule_nod
 		display_parenthesis = 1;
 
 
-	if (n->op & RULE_OP_NOT) {
+	if (n->op & RULE_OP_NOT && n->b) {
 		mgmtsrv_send(c, "!");
 		display_parenthesis = 1;
 	}
@@ -407,9 +407,17 @@ int mgmtcmd_show_rule_print_node_flat(struct mgmt_connection *c, struct rule_nod
 		} else {
 			// fin the last one that needs to be processed
 			struct rule_node *new_last = NULL, *rn = n;
+			int depth = 0;
 			while (rn && rn != last) {
-				if (rn->op == RULE_OP_TAIL)
-					new_last = rn;
+				if (rn->b) {
+					depth++;
+				} else if (rn->op == RULE_OP_TAIL) {
+					depth--;
+					if (depth == 0) {
+						new_last = rn;
+						break;
+					}
+				}
 				rn = rn->a;
 			}
 
@@ -464,9 +472,17 @@ int mgmtcmd_show_rule_print_node_tree(struct mgmt_connection *c, struct rule_nod
 		} else {
 			// fin the last one that needs to be processed
 			struct rule_node *new_last = NULL, *rn = n;
+			int depth = 0;
 			while (rn && rn != last) {
-				if (rn->op == RULE_OP_TAIL)
-					new_last = rn;
+				if (rn->b) {
+					depth++;
+				} else if (rn->op == RULE_OP_TAIL) {
+					depth--;
+					if (depth == 0) {
+						new_last = rn;
+						break;
+					}
+				}
 				rn = rn->a;
 			}
 			if (n->op & RULE_OP_NOT) {

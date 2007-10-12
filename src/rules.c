@@ -121,7 +121,7 @@ int node_match(struct frame *f, struct rule_node *n, struct layer *l) {
 	}
 
 	if (result == 0)
-		return 0; // It doesn't match
+		return (n->op & RULE_OP_NOT); // It doesn't match
 
 	if (!n->a)
 		return !(n->op & RULE_OP_NOT); // There is nothing else to match

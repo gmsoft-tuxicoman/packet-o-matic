@@ -1,3 +1,7 @@
+* 2007/10/13 Guy Martin <gmsoft@tuxicoman.be>
+Fixed rule display in management console.
+Fixed the behaviour of inv="yes" for a match with a field.
+
 * 2007/10/10 Guy Martin <gmsoft@tuxicoman.be>
 Added -d option to choose debug level at startup.
 Commented or removed useless debug lines.
