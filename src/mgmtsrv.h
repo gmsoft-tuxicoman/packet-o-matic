@@ -83,6 +83,7 @@ struct mgmt_command {
 	int (*callback_func) (struct mgmt_connection *c, int argc, char *argv[]);
 
 	struct mgmt_command *next;
+	struct mgmt_command *prev;
 
 };
 

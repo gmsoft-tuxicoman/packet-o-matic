@@ -1,3 +1,6 @@
+* 2007/10/14 Guy Martin <gmsoft@tuxicoman.be>
+Sort management console commands when registering them.
+
 * 2007/10/13 Guy Martin <gmsoft@tuxicoman.be>
 Fixed rule display in management console.
 Fixed the behaviour of inv="yes" for a match with a field.
