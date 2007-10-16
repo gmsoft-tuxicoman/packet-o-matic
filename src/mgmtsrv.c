@@ -360,7 +360,7 @@ int mgmtsrv_process_command(struct mgmt_connection *c) {
 	// Let's start by splitting this line
 	char *words[MGMT_MAX_CMD_WORDS_ARGS];
 	unsigned int words_count = 0, i;
-	char *str, *saveptr, *token;
+	char *str, *saveptr = NULL, *token;
 
 	for (i = 0; i < MGMT_MAX_CMD_WORDS_ARGS; i++)
 		words[i] = 0;

@@ -46,6 +46,25 @@
 #include <sys/time.h>
 #endif
 
+
+#ifdef HAVE_SYS_ENDIAN_H
+#include <sys/endian.h>
+#elif HAVE_ENDIAN_H
+#include <endian.h>
+#endif
+
+
+#ifndef __LITTLE_ENDIAN
+#define __LITTLE_ENDIAN LITTLE_ENDIAN
+#endif
+#ifndef __BIG_ENDIAN
+#define __BIG_ENDIAN BIG_ENDIAN
+#endif
+#ifndef __BYTE_ORDER
+#define __BYTE_ORDER BYTE_ORDER
+#endif
+
+
 #include "layer.h"
 
 

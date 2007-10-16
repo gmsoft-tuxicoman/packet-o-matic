@@ -32,6 +32,13 @@
 #include <dlfcn.h>
 #include <arpa/inet.h>
 
+// Define IPv6 fields
+#if defined(__APPLE__) || defined(__darwin__) || defined(__FreeBSD__) || defined (__NetBSD__)
+#define s6_addr __u6_addr.__u6_addr8
+#define s6_addr16 __u6_addr.__u6_addr16
+#define s6_addr32 __u6_addr.__u6_addr32
+#endif
+
 // Those two collide // TOBE REMOVED
 #ifndef __COMMON_H__
 

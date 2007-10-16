@@ -25,16 +25,6 @@
 #include "modules_common.h"
 #include "match.h"
 
-
-
-#ifdef HAVE_SYS_ENDIAN_H
-#include <sys/endian.h>
-#elif HAVE_ENDIAN_H
-#include <endian.h>
-#else
-#error "Could not determine system's endianness"
-#endif
-
 struct rtphdr {
 	
 #if __BYTE_ORDER == __LITTLE_ENDIAN
