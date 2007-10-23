@@ -28,7 +28,7 @@
 #include "ptype.h"
 #include "main.h"
 
-#define MGMT_COMMANDS_NUM 19
+#define MGMT_COMMANDS_NUM 21
 
 struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
@@ -153,6 +153,18 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.words = { "show", "debug", "level", NULL },
 		.help = "Display the current debug level",
 		.callback_func = mgmtcmd_show_debug_level,
+	},
+
+	{
+		.words = { "start", "input", NULL },
+		.help = "Start the input",
+		.callback_func = mgmtcmd_start_input,
+	},
+
+	{
+		.words = { "stop", "input", NULL },
+		.help = "Stop the input",
+		.callback_func = mgmtcmd_stop_input,
 	},
 };
 
@@ -1092,3 +1104,26 @@ int mgmtcmd_show_debug_level(struct mgmt_connection *c, int argc, char *argv[]) 
 	return POM_OK;
 }
 
+int mgmtcmd_start_input(struct mgmt_connection *c, int argc, char *argv[]) {
+
+
+	if (rbuf->state != rb_state_closed) {
+		mgmtsrv_send(c, "Input already started\r\n");
+		return POM_OK;
+	}
+
+	return start_input(rbuf);
+
+}
+
+int mgmtcmd_stop_input(struct mgmt_connection *c, int argc, char *argv[]) {
+
+
+	if (rbuf->state == rb_state_closed) {
+		mgmtsrv_send(c, "Input already stopped\r\n");
+		return POM_OK;
+	}
+
+	return stop_input(rbuf);
+
+}

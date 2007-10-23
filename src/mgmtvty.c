@@ -436,9 +436,7 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 				break;
 			}
 
-			// Process the command
-			mgmtsrv_process_command(c);
-			mgmtsrv_send(c, MGMT_CMD_PROMPT);
+			unsigned int curcmd = c->curcmd;
 			
 			// Alloc the next one
 			c->curcmd++;
@@ -456,6 +454,10 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 				free(c->cmds[next]);
 				c->cmds[next] = 0;
 			}
+
+			// Process the command
+			mgmtsrv_process_command(c, curcmd);
+			mgmtsrv_send(c, "\r"MGMT_CMD_PROMPT);
 
 			break;
 		}

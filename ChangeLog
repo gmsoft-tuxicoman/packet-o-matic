@@ -1,3 +1,8 @@
+* 2007/10/23 Guy Martin <gmsoft@tuxicoman.be>
+Improved debug output in mgmt console to allow debug when issuing commands.
+Added struct ringbuffer to ease its handling.
+Added functions "start input" and "stop input" in mgmt console.
+
 * 2007/10/16 Guy Martin <gmsoft@tuxicoman.be>
 Some compilation fix on OS X and FreeBSD and for gcc 4.2 as well.
 

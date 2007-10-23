@@ -26,14 +26,50 @@
 
 struct conf *main_config;
 
-struct input_thread_params {
-	struct input *i; ///< The input we want to read from
-	int input_is_live; ///< If the input isn't live, we don't need to drop packets in case of overflow in buffer
+#define RINGBUFFER_SIZE 10000
+
+enum ringbuffer_state {
+	rb_state_closed,
+	rb_state_open,
+	rb_state_closing,
+	rb_state_stopping,
+
 };
+
+struct ringbuffer {
+
+	pthread_mutex_t mutex; ///< Mutex of the circle buffer
+	pthread_cond_t underrun_cond; ///< Condition wait of the circle buffer when it's empty
+	pthread_cond_t overflow_cond; ///< Condition wait of the circle buffer when it's full and we don't have to drop packets
+	unsigned long dropped_packets; ///< Count the dropped packets
+	unsigned long total_packets; ///< Count the total number of packet that went trough the buffer
+
+
+	struct frame* buffer[RINGBUFFER_SIZE];
+	unsigned int read_pos; // Where the process thread WILL read the packets
+	unsigned int write_pos; // Where the input thread is CURRENTLY writing
+	unsigned int usage; // Number of packet in the buffer waiting to be processed
+
+	enum ringbuffer_state state; // State of the ringbuffer
+
+	struct input *i; // Input associated with this ringbuffer
+	struct input_caps ic; // Capabilities of the input
+};
+
+struct ringbuffer *rbuf; ///< The ring buffer
+
+int ringbuffer_init(struct ringbuffer *r, struct input *i);
+int ringbuffer_alloc(struct ringbuffer *r);
+int ringbuffer_cleanup(struct ringbuffer *r);
+
+int start_input(struct ringbuffer *r);
+int stop_input(struct ringbuffer *r);
 
 int get_current_input_time(struct timeval *cur_time);
 
 int reader_process_lock();
 int reader_process_unlock();
+
+void *input_thread_func(void *params);
 
 #endif

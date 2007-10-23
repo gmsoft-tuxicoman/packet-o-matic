@@ -44,5 +44,7 @@ int mgmtcmd_enable_debug(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_disable_debug(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_debug_level(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_show_debug_level(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_start_input(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_stop_input(struct mgmt_connection *c, int argc, char *argv[]);
 
 #endif

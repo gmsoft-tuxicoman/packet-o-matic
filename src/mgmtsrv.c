@@ -355,7 +355,7 @@ int mgmtsrv_register_command(struct mgmt_command *cmd) {
 
 }
 
-int mgmtsrv_process_command(struct mgmt_connection *c) {
+int mgmtsrv_process_command(struct mgmt_connection *c, unsigned int cmdnum) {
 
 	// Let's start by splitting this line
 	char *words[MGMT_MAX_CMD_WORDS_ARGS];
@@ -366,8 +366,8 @@ int mgmtsrv_process_command(struct mgmt_connection *c) {
 		words[i] = 0;
 
 	// Use temporary buffer to avoid modifying the command history
-	char *tmpcmdstr = malloc(strlen(c->cmds[c->curcmd]) + 1);
-	strcpy(tmpcmdstr, c->cmds[c->curcmd]);
+	char *tmpcmdstr = malloc(strlen(c->cmds[cmdnum]) + 1);
+	strcpy(tmpcmdstr, c->cmds[cmdnum]);
 
 	for (str = tmpcmdstr; ;str = NULL) {
 		if (words_count >= MGMT_MAX_CMD_WORDS_ARGS) {
@@ -507,7 +507,7 @@ int mgmtsrv_send_debug(const char *format, va_list ap) {
 		if (c->state == MGMT_STATE_AUTHED && c->flags & MGMT_FLAG_MONITOR) {
 			int cmdlen = strlen(c->cmds[c->curcmd]) + strlen(MGMT_CMD_PROMPT);
 			int loglen = strlen(buff) - 2;// do -2 to avoid counting /r/n
-			int pos = c->cursor_pos + strlen(MGMT_CMD_PROMPT);
+			/*int pos = c->cursor_pos + strlen(MGMT_CMD_PROMPT);
 
 			if (loglen > cmdlen) {
 				for (i = pos; i > 0; i--)
@@ -519,6 +519,12 @@ int mgmtsrv_send_debug(const char *format, va_list ap) {
 					mgmtsrv_send(c, " ");
 				for (i = cmdlen; i > 0; i--)
 					mgmtsrv_send(c, "\b");
+			}*/
+			mgmtsrv_send(c, "\r");
+			if (loglen < cmdlen) {
+				for (i = 0; i < cmdlen; i++)
+					mgmtsrv_send(c, " ");
+				mgmtsrv_send(c, "\r");
 			}
 			mgmtsrv_send(c, buff);
 			mgmtsrv_send(c, MGMT_CMD_PROMPT "%s", c->cmds[c->curcmd]);

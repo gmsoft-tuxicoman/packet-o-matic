@@ -47,23 +47,10 @@
 #include <sys/time.h>
 #endif
 
-#define RINGBUFFER_SIZE 10000
-
-
-int finish = 0;
-pthread_mutex_t ringbuffer_mutex = PTHREAD_MUTEX_INITIALIZER; ///< Mutex of the circle buffer
-pthread_cond_t ringbuffer_underrun_cond = PTHREAD_COND_INITIALIZER; ///< Condition wait of the circle buffer when it's empty
-pthread_cond_t ringbuffer_overflow_cond = PTHREAD_COND_INITIALIZER; ///< Condition wait of the circle buffer when it's full and we don't have to drop packets
-unsigned long ringbuffer_dropped_packets = 0; ///< Count the dropped packets
-unsigned long ringbuffer_total_packets = 0; ///< Count the total number of packet that went trough the buffer
 
 pthread_mutex_t reader_mutex = PTHREAD_MUTEX_INITIALIZER; ///< Mutex used to lock the reader thread if changes are made or modules are loaded/unloaded
 
-struct frame* ringbuffer[RINGBUFFER_SIZE];
-unsigned int ringbuffer_read_pos; // Where the process thread WILL read the packets
-unsigned int ringbuffer_write_pos; // Where the input thread is CURRENTLY writing
-unsigned int ringbuffer_usage = 0; // Number of packet in the buffer waiting to be processed
-
+int finish = 0;
 
 struct timeval now; ///< Used to get the current time from the input perspective
 
@@ -71,6 +58,7 @@ void signal_handler(int signal) {
 	
 	pom_log("Received signal. Finishing ... !\r\n");
 	finish = 1;
+	rbuf->state = rb_state_stopping;
 
 }
 
@@ -169,55 +157,146 @@ void *mgmtsrv_thread_func(void *params) {
 	return NULL;
 }
 
+int start_input(struct ringbuffer *r) {
+
+
+	if (r->state != rb_state_closed) {
+		pom_log(POM_LOG_WARN "Input already opened\r\n");
+		return POM_ERR;
+	}
+
+	if (pthread_mutex_lock(&r->mutex)) {
+		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording\r\n");
+		return POM_ERR;
+	}
+
+	int fd = input_open(r->i);
+
+	if (fd == POM_ERR) {
+		pom_log(POM_LOG_ERR "Error while opening input\r\n");
+		return POM_ERR;
+	}
+
+	if (ringbuffer_alloc(r) == POM_ERR) {
+		pom_log(POM_LOG_ERR "Error while allocating the ringbuffer\r\n");
+		return POM_ERR;
+	}
+
+	r->state = rb_state_open;
+
+	if (pthread_mutex_unlock(&r->mutex)) {
+		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
+		return POM_ERR;
+	}
+
+	pthread_t input_thread;
+	if (pthread_create(&input_thread, NULL, input_thread_func, (void*)r)) {
+		pom_log(POM_LOG_ERR "Error when creating the input thread. Abording\r\n");
+		return POM_ERR;
+	}
+	
+	return POM_OK;
+
+}
+
+int stop_input(struct ringbuffer *r) {
+
+	if (pthread_mutex_lock(&r->mutex)) {
+		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording\r\n");
+		return POM_ERR;
+	}
+
+	r->state = rb_state_stopping;
+
+	if (pthread_mutex_unlock(&r->mutex)) {
+		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
+		return POM_ERR;
+	}
+
+	return POM_OK;
+
+}
+
 void *input_thread_func(void *params) {
 
-	struct input_thread_params *p = params;
-
-	while (!finish) {
+	struct ringbuffer *r = params;
 
 
-		if (input_read(p->i, ringbuffer[ringbuffer_write_pos]) == POM_ERR) {
-			pom_log(POM_LOG_ERR "Error while reading. Abording\r\n");
+	if (pthread_mutex_lock(&r->mutex)) {
+		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording\r\n");
+		finish = 1;
+		return NULL;
+	}
+
+	pom_log(POM_LOG_DEBUG "Input thead started\r\n");
+
+	while (r->state == rb_state_open) {
+
+		if (pthread_mutex_unlock(&r->mutex)) {
+			pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
+			finish = 1;
+			return NULL;
+		}
+
+		if (input_read(r->i, r->buffer[r->write_pos]) == POM_ERR) {
+			pom_log(POM_LOG_ERR "Error while reading from input\r\n");
+			r->state = rb_state_closing;
 			break;
 		}
-		ringbuffer_total_packets++;
+		r->total_packets++;
 
-		pthread_mutex_lock(&ringbuffer_mutex);
-		ringbuffer_usage++;
-
-		if (ringbuffer_usage == 1) {
-			pthread_cond_signal(&ringbuffer_underrun_cond);
+		if (pthread_mutex_lock(&r->mutex)) {
+			pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording\r\n");
+			finish = 1;
+			return NULL;
 		}
 
-		while (ringbuffer_usage >= RINGBUFFER_SIZE - 1) {
-			if (p->input_is_live) {
-				//pom_log(POM_LOG_TSHOOT "Buffer overflow (%u). droping packet\r\n", ringbuffer_usage);
-				ringbuffer_write_pos--;
-				ringbuffer_dropped_packets++;
-				ringbuffer_usage--;
+		r->usage++;
+
+		if (r->usage == 1) {
+			pthread_cond_signal(&r->underrun_cond);
+		}
+
+		while (r->usage >= RINGBUFFER_SIZE - 1) {
+			if (r->ic.is_live) {
+				//pom_log(POM_LOG_TSHOOT "Buffer overflow (%u). droping packet\r\n", r->usage);
+				r->write_pos--;
+				r->dropped_packets++;
+				r->usage--;
 				break;
 			} else {
 				//pom_log(POM_LOG_TSHOOT "Buffer is full. Waiting\r\n");
-				if(pthread_cond_wait(&ringbuffer_overflow_cond, &ringbuffer_mutex)) {
+				if(pthread_cond_wait(&r->overflow_cond, &r->mutex)) {
 					pom_log(POM_LOG_ERR "Failed to wait for buffer to empty out\r\n");
-					pthread_mutex_unlock(&ringbuffer_mutex);
+					pthread_mutex_unlock(&r->mutex);
 					pthread_exit(NULL);
 				}
 			}
 		}
 
-		ringbuffer_write_pos++;
-		if (ringbuffer_write_pos >= RINGBUFFER_SIZE)
-			ringbuffer_write_pos = 0;
+		r->write_pos++;
+		if (r->write_pos >= RINGBUFFER_SIZE)
+			r->write_pos = 0;
 
-		pthread_mutex_unlock(&ringbuffer_mutex);
 
 	}
 
 
-	finish = 1;
+	input_close(r->i);
+	if (r->state != rb_state_closing && pthread_mutex_unlock(&r->mutex)) {
+		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
+		finish = 1;
+		return NULL;
+	}
+	r->state = rb_state_closed;
 
-	//pthread_exit(NULL);
+	if (!r->ic.is_live) // if it's not a live input, we can stop the program
+		finish = 1;
+
+	ringbuffer_cleanup(r);
+
+	pom_log(POM_LOG_DEBUG "Input thread stopped\r\n");
+
 	return NULL;
 }
 
@@ -314,98 +393,68 @@ int main(int argc, char *argv[]) {
 		pom_log(POM_LOG_ERR "Error when initializing the management console. Abording\r\n");
 		goto err;
 	}
-	int fd = input_open(main_config->input);
-
-	if (fd == POM_ERR) {
-		pom_log(POM_LOG_ERR "Error while opening input\r\n");
-		goto err;
-	}
-
-	struct input_caps ic;
-	if (input_getcaps(main_config->input, &ic) == POM_ERR) {
-		pom_log(POM_LOG_ERR "Error while getting input capabilities\r\n");
-		goto err;
-	}
 
 	// Install the signal handler
 	signal(SIGHUP, signal_handler);
 	signal(SIGINT, signal_handler);
-	
-	// Initialize the ring buffer
-	pom_log(POM_LOG_DEBUG "Using %u buffers of %u bytes\r\n", RINGBUFFER_SIZE, ic.snaplen);
-	int i;
-	for (i = 0; i < RINGBUFFER_SIZE; i++) {
-		ringbuffer[i] = malloc(sizeof(struct frame));
-		bzero(ringbuffer[i], sizeof(struct frame));
-		ringbuffer[i]->buff = malloc(ic.snaplen);
-		ringbuffer[i]->bufflen = ic.snaplen;
-		ringbuffer[i]->input = main_config->input;
 
-	}
-	ringbuffer_read_pos = RINGBUFFER_SIZE - 1;
-	ringbuffer_write_pos = 0;
 
-	struct input_thread_params itp;
-	itp.i = main_config->input;
-	itp.input_is_live = ic.is_live;
+	rbuf = malloc(sizeof(struct ringbuffer));
 
-	pthread_t input_thread;
-	if (pthread_create(&input_thread, NULL, input_thread_func, (void*)&itp)) {
-		pom_log(POM_LOG_ERR "Error when creating the input thread. Abording\r\n");
+	if (ringbuffer_init(rbuf, main_config->input) == POM_ERR) {
 		goto finish;
 	}
-	
+
 	pthread_t mgmtsrv_thread;
 	if (!disable_mgmtsrv && pthread_create(&mgmtsrv_thread, NULL, mgmtsrv_thread_func, NULL)) {
 		pom_log(POM_LOG_ERR "Error when creating the management console thread. Abording\r\n");
 		goto err;
 	}
 
-
-	struct sched_param sp;
-	sp.sched_priority = 5;
-
-	if (pthread_setschedparam(pthread_self(), SCHED_FIFO, &sp)) {
-		pom_log(POM_LOG_ERR "Error while setting input thread priority\r\n");
+	if (start_input(rbuf) == POM_ERR) {
+		pom_log(POM_LOG_ERR "Error when starting the input. Abording\r\n");
+		goto err;
 	}
 
-	if (pthread_mutex_lock(&ringbuffer_mutex)) {
+	if (pthread_mutex_lock(&rbuf->mutex)) {
 		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording\r\n");
 		goto finish;
 	}
 
 	// wait for at least one packet to be available
-	while (ringbuffer_usage <= 0) {
+	while (rbuf->usage <= 0) {
 		if (finish) {
-			pthread_mutex_unlock(&ringbuffer_mutex);
+			pthread_mutex_unlock(&rbuf->mutex);
 			goto finish;
 		}
-		//pom_log(POM_LOG_TSHOOT "Buffer empty (%u). Waiting\r\n", ringbuffer_usage);
+		//pom_log(POM_LOG_TSHOOT "Buffer empty (%u). Waiting\r\n", rbuf->usage);
 		struct timeval tv;
 		gettimeofday(&tv, NULL);
 		struct timespec tp;
 		tp.tv_sec = tv.tv_sec + 3;
 		tp.tv_nsec = tv.tv_usec * 1000;
-		switch (pthread_cond_timedwait(&ringbuffer_underrun_cond, &ringbuffer_mutex, &tp)) {
+		switch (pthread_cond_timedwait(&rbuf->underrun_cond, &rbuf->mutex, &tp)) {
 			case ETIMEDOUT:
 			case 0:
 				break;
 			default:
 				pom_log(POM_LOG_ERR "Error occured while waiting for next frame to be available\r\n");
-				pthread_mutex_unlock(&ringbuffer_mutex);
+				pthread_mutex_unlock(&rbuf->mutex);
 				goto finish;
 
 		}
 	}
-	if (pthread_mutex_unlock(&ringbuffer_mutex)) {
-		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
-		goto finish;
-	}
 
 
-	while (!finish) {
+	while (!finish && rbuf->usage > 0) {
 
-		if (ic.is_live)
+		
+		if (pthread_mutex_unlock(&rbuf->mutex)) {
+			pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
+			goto finish;
+		}
+	
+		if (rbuf->ic.is_live)
 			gettimeofday(&now, NULL);
 
 		if (pthread_mutex_lock(&reader_mutex)) {
@@ -414,11 +463,11 @@ int main(int argc, char *argv[]) {
 		}
 	
 		timers_process(); // This is not real-time timers but we don't really need it
-		if (ringbuffer[ringbuffer_read_pos]->len > 0) // Need to queue that in the buffer
-			do_rules(ringbuffer[ringbuffer_read_pos], main_config->rules);
+		if (rbuf->buffer[rbuf->read_pos]->len > 0) // Need to queue that in the buffer
+			do_rules(rbuf->buffer[rbuf->read_pos], main_config->rules);
 
-		if (!ic.is_live) {
-			memcpy(&now, &ringbuffer[ringbuffer_read_pos]->tv, sizeof(struct timeval));
+		if (!rbuf->ic.is_live) {
+			memcpy(&now, &rbuf->buffer[rbuf->read_pos]->tv, sizeof(struct timeval));
 			now.tv_usec += 1;
 		}
 
@@ -432,48 +481,42 @@ int main(int argc, char *argv[]) {
 		}
 
 
-		if (pthread_mutex_lock(&ringbuffer_mutex)) {
+		if (pthread_mutex_lock(&rbuf->mutex)) {
 			pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording\r\n");
 			goto finish;
 		}
-		ringbuffer_usage--;
-		if (!ic.is_live && ringbuffer_usage <= RINGBUFFER_SIZE - 1)
-			pthread_cond_signal(&ringbuffer_overflow_cond);
+		rbuf->usage--;
+		if (!rbuf->ic.is_live && rbuf->usage <= RINGBUFFER_SIZE - 1)
+			pthread_cond_signal(&rbuf->overflow_cond);
 
-		ringbuffer_read_pos++;
-		if (ringbuffer_read_pos >= RINGBUFFER_SIZE)
-			ringbuffer_read_pos = 0;
+		rbuf->read_pos++;
+		if (rbuf->read_pos >= RINGBUFFER_SIZE)
+			rbuf->read_pos = 0;
 
 
-		while (ringbuffer_usage <= 0) {
+		while (rbuf->usage <= 0) {
 			if (finish) {
-				pthread_mutex_unlock(&ringbuffer_mutex);
+				pthread_mutex_unlock(&rbuf->mutex);
 				goto finish;
 			}
-			//pom_log(POM_LOG_TSHOOT "Buffer empty (%u). Waiting\r\n", ringbuffer_usage);
+			//pom_log(POM_LOG_TSHOOT "Buffer empty (%u). Waiting\r\n", rbuf->usage);
 			struct timeval tv;
 			gettimeofday(&tv, NULL);
 			struct timespec tp;
 			tp.tv_sec = tv.tv_sec + 3;
 			tp.tv_nsec = tv.tv_usec * 1000;
-			switch (pthread_cond_timedwait(&ringbuffer_underrun_cond, &ringbuffer_mutex, &tp)) {
+			switch (pthread_cond_timedwait(&rbuf->underrun_cond, &rbuf->mutex, &tp)) {
 				case ETIMEDOUT:
 					pom_log(POM_LOG_TSHOOT "Timeout occured while waiting for next frame to be available\r\n");
 				case 0:
 					break;
 				default:
 					pom_log(POM_LOG_ERR "Error occured while waiting for next frame to be available\r\n");
-					pthread_mutex_unlock(&ringbuffer_mutex);
+					pthread_mutex_unlock(&rbuf->mutex);
 					goto finish;
 
 			}
 		}
-		
-		if (pthread_mutex_unlock(&ringbuffer_mutex)) {
-			pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
-			goto finish;
-		}
-	
 
 
 
@@ -481,22 +524,17 @@ int main(int argc, char *argv[]) {
 
 finish:
 	finish = 1;
-	pthread_join(input_thread, NULL);
+	//pthread_join(input_thread, NULL);
 	if (!disable_mgmtsrv)
 		pthread_join(mgmtsrv_thread, NULL);
 
-	pom_log("Total packets read : %lu, dropped %lu (%.2f%%)\r\n", ringbuffer_total_packets, ringbuffer_dropped_packets, 100.0 / ringbuffer_total_packets * ringbuffer_dropped_packets);
+	pom_log("Total packets read : %lu, dropped %lu (%.2f%%)\r\n", rbuf->total_packets, rbuf->dropped_packets, 100.0 / rbuf->total_packets * rbuf->dropped_packets);
 
 	// Process remaining queued frames
 	conntrack_close_connections(main_config->rules);
 
 	input_close(main_config->input);
 
-	for (i = 0; i < RINGBUFFER_SIZE; i++) {
-		free(ringbuffer[i]->buff);
-		free(ringbuffer[i]);
-
-	}
 err:
 
 	config_cleanup(main_config);
@@ -523,8 +561,60 @@ err:
 	// Layers need to be cleaned up after the match
 	layer_cleanup();
 
+	free(rbuf);
+
 	return 0;
 }
+
+int ringbuffer_init(struct ringbuffer *r, struct input *i) {
+	bzero(r, sizeof(struct ringbuffer));
+	pthread_mutex_init(&r->mutex, NULL);
+	pthread_cond_init(&r->underrun_cond, NULL);
+	pthread_cond_init(&r->overflow_cond, NULL);
+
+	r->i = i;
+
+	return POM_OK;
+
+}
+
+int ringbuffer_alloc(struct ringbuffer *r) {
+
+	if (input_getcaps(r->i, &r->ic) == POM_ERR) {
+		pom_log(POM_LOG_ERR "Error while getting input capabilities\r\n");
+		return POM_ERR;
+	}
+
+	// Initialize the ring buffer
+	pom_log(POM_LOG_DEBUG "Using %u buffers of %u bytes\r\n", RINGBUFFER_SIZE, r->ic.snaplen);
+	int i;
+	for (i = 0; i < RINGBUFFER_SIZE; i++) {
+		r->buffer[i] = malloc(sizeof(struct frame));
+		bzero(r->buffer[i], sizeof(struct frame));
+		r->buffer[i]->buff = malloc(r->ic.snaplen);
+		r->buffer[i]->bufflen = r->ic.snaplen;
+		r->buffer[i]->input = main_config->input;
+
+	}
+	r->read_pos = RINGBUFFER_SIZE - 1;
+	r->write_pos = 0;
+
+	return POM_OK;
+
+}
+
+int ringbuffer_cleanup(struct ringbuffer *r) {
+
+	int i;
+
+	for (i = 0; i < RINGBUFFER_SIZE; i++) {
+		free(r->buffer[i]->buff);
+		free(r->buffer[i]);
+	}
+
+	return POM_OK;
+}
+
 
 int reader_process_lock() {
 	return pthread_mutex_lock(&reader_mutex);

@@ -879,7 +879,7 @@ int input_close_docsis(struct input *i) {
 	close(p->demux_fd);
 	close(p->dvr_fd);
 
-	(*ifcs->pom_log) ("0x%02lx; DOCSIS : Total packet read %lu, missed %lu (%.1f%%),  erroneous %lu (%.1f%%), invalid %lu (%.1f%%), total errors %lu (%.1f%%)\r\n", \
+	(*ifcs->pom_log) ("0x%02lx; DOCSIS : Total MPEG packet read %lu, missed %lu (%.1f%%), erroneous %lu (%.1f%%), invalid %lu (%.1f%%), total errors %lu (%.1f%%)\r\n", \
 		(unsigned long) i->input_priv, \
 		p->total_packets, \
 		p->missed_packets, \
