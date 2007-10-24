@@ -161,7 +161,7 @@ int start_input(struct ringbuffer *r) {
 
 
 	if (r->state != rb_state_closed) {
-		pom_log(POM_LOG_WARN "Input already opened\r\n");
+		pom_log(POM_LOG_WARN "Input already started or being started\r\n");
 		return POM_ERR;
 	}
 
@@ -169,6 +169,8 @@ int start_input(struct ringbuffer *r) {
 		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording\r\n");
 		return POM_ERR;
 	}
+
+	r->state = rb_state_opening;
 
 	int fd = input_open(r->i);
 
@@ -200,6 +202,11 @@ int start_input(struct ringbuffer *r) {
 }
 
 int stop_input(struct ringbuffer *r) {
+
+	if (r->state != rb_state_open) {
+		pom_log(POM_LOG_WARN "Input not yet started\r\n");
+		return POM_ERR;
+	}
 
 	if (pthread_mutex_lock(&r->mutex)) {
 		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording\r\n");

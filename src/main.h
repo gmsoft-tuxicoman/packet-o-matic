@@ -31,6 +31,7 @@ struct conf *main_config;
 enum ringbuffer_state {
 	rb_state_closed,
 	rb_state_open,
+	rb_state_opening,
 	rb_state_closing,
 	rb_state_stopping,
 

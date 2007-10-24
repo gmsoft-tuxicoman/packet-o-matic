@@ -100,7 +100,6 @@ int input_register_docsis(struct input_reg *r, struct input_functions *i_funcs) 
 	(*i_funcs->register_param) (mode_normal, "outlayer", "ethernet", p_outlayer, "Type of the output layer wanted");
 
 	(*i_funcs->register_param) (mode_scan, "eurodocsis", "yes", p_eurodocsis, "Use EuroDOCSIS specification instead of normal DOCSIS specification");
-	(*i_funcs->register_param) (mode_scan, "frequency", "440000000", p_frequency, "Frequency of the DOCSIS stream in Hz");
 	(*i_funcs->register_param) (mode_scan, "startfreq", "0", p_startfreq, "Starting frequency. Will use the default of the specification if 0");
 	(*i_funcs->register_param) (mode_scan, "modulation", "QAM216", p_modulation, "Modulation of the DOCSIS stream");
 	(*i_funcs->register_param) (mode_scan, "adapter", "0", p_adapter, "ID of the DVB adapter to use");
@@ -318,7 +317,7 @@ int input_open_docsis(struct input *i) {
 		unsigned int need_reinit = PTYPE_BOOL_GETVAL(p_frontend_reinit);
 
 
-		(*ifcs->pom_log)  ("No frequency specified. starting a scan from %uMhz to %uMhz\r\n", start / 1000000, end / 1000000);
+		(*ifcs->pom_log)  ("Starting a scan from %uMhz to %uMhz\r\n", start / 1000000, end / 1000000);
 		for (j = start; j <= end; j += step) {
 
 			(*ifcs->pom_log) ("Tuning to %u Mz ...\r\n", j / 1000000);
@@ -360,6 +359,11 @@ int input_open_docsis(struct input *i) {
 
 			break;
 
+		}
+
+		if (j > end) {
+			(*ifcs->pom_log) (POM_LOG_WARN "No DOCSIS stream found\r\n");
+			return POM_ERR;
 		}
 	} else {
 		(*ifcs->pom_log) (POM_LOG_ERR "Invalid input mode\r\n");
@@ -510,16 +514,16 @@ int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symbolRate, 
 	pfd[0].fd = p->frontend_fd;
 	pfd[0].events = POLLIN;
 
-	int try = 0;
+	struct timeval now;
+	gettimeofday(&now, NULL);
+	time_t timeout = now.tv_sec + PTYPE_UINT32_GETVAL(p_tuning_timeout);
 
-	int tune_timeout = PTYPE_UINT32_GETVAL(p_tuning_timeout);
-
-	while (try < tune_timeout) {
+	while (now.tv_sec < timeout) {
 		if (poll(pfd, 1, 1000)){
 			if (pfd[0].revents & POLLIN) {
 				if (ioctl(p->frontend_fd, FE_GET_EVENT, &event)) {
 					(*ifcs->pom_log) (POM_LOG_WARN "IOCTL failed while getting event of DOCSIS input\r\n");
-					return -1;
+					continue;
 				}
 				if (ioctl(p->frontend_fd, FE_READ_STATUS, &status)) {
 					(*ifcs->pom_log) (POM_LOG_WARN "IOCTL failed while getting status of DOCSIS input\r\n");
@@ -555,11 +559,10 @@ int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symbolRate, 
 					(*ifcs->pom_log) (POM_LOG_DEBUG "\r\n");
 
 
-			} /*else
-				try++;*/
-		} else
-			try++;
-	};
+			} 
+		} 
+		gettimeofday(&now, NULL);
+	}
 
 	(*ifcs->pom_log) ("Lock not aquired\r\n");
 

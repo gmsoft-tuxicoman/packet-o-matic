@@ -1,3 +1,9 @@
+* 2007/10/24 Guy Martin <gmsoft@tuxicoman.be>
+Fix bug when input_docsis doesn't find a docsis stream.
+Improve tuning timeout handling in input_docsis.
+Fixed displaying debug when issuing commands.
+Added checks when starting and stoping input.
+
 * 2007/10/23 Guy Martin <gmsoft@tuxicoman.be>
 Improved debug output in mgmt console to allow debug when issuing commands.
 Added struct ringbuffer to ease its handling.
