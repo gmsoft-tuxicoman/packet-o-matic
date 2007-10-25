@@ -3,6 +3,7 @@ Added the command "write config" in the management console.
 Added function ptype_get_op_sign() to get the operation sign.
 Function ptype_get_op_name() now returns the operation name.
 Fixed syntax in pom.xml.conf.example.
+Added commands to change input type, mode and parameter.
 
 * 2007/10/24 Guy Martin <gmsoft@tuxicoman.be>
 Fix bug when input_docsis doesn't find a docsis stream.

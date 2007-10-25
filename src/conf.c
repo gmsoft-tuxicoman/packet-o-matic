@@ -680,7 +680,10 @@ int config_write(struct conf *c, char *filename) {
 
 	while (rl) {
 		
-		strcat(buffer, "<rule>\n");
+		strcat(buffer, "<rule");
+		if (!rl->enabled)
+			strcat(buffer, " disabled=\"yes\"");
+		strcat(buffer, ">\n");
 
 		struct target *t = rl->target;
 		while (t) {

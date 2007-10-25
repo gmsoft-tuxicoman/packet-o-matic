@@ -3,7 +3,7 @@
 
 <!-- use the input_pcap module and tell it to sniff to eth0 (you need root privileges for this) -->
 <input type="pcap" mode="interface">
-	<param name="interface">eth0</param>
+	<param name="interface">dummy0</param>
 </input>
 
 <!-- each rule consist of a target and matches wich define what to do with the packet and which packet to match respectively -->

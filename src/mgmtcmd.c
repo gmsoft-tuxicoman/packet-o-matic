@@ -28,7 +28,9 @@
 #include "ptype.h"
 #include "main.h"
 
-#define MGMT_COMMANDS_NUM 22
+#include <pthread.h>
+
+#define MGMT_COMMANDS_NUM 25
 
 struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
@@ -172,6 +174,27 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.help = "Write the configuration file",
 		.callback_func = mgmtcmd_write_config,
 		.usage = "write config [filename]",
+	},
+
+	{
+		.words = { "set", "input", "type", NULL },
+		.help = "Select another type of input",
+		.callback_func = mgmtcmd_set_input_type,
+		.usage = "set input type <type>",
+	},
+
+	{
+		.words = { "set", "input", "mode", NULL },
+		.help = "Change the mode of the input",
+		.callback_func = mgmtcmd_set_input_mode,
+		.usage = "set input mode <mode>",
+	},
+
+	{
+		.words = { "set", "input", "parameter", NULL },
+		.help = "Change the value of a input parameter",
+		.callback_func = mgmtcmd_set_input_parameter,
+		.usage = "set input parameter <parameter> <value>",
 	},
 };
 
@@ -1146,4 +1169,99 @@ int mgmtcmd_write_config(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	return POM_OK;
 
+}
+
+int mgmtcmd_set_input_type(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	if (argc < 1)
+		return MGMT_USAGE;
+
+	if (rbuf->i->running) {
+		mgmtsrv_send(c, "Input is running. You need to stop it before doing any change\r\n");
+		return POM_OK;
+	}
+
+	if (pthread_mutex_lock(&rbuf->mutex)) {
+		pom_log(POM_LOG_ERR "Error while locking the buffer mutex\r\n");
+		return POM_ERR;
+	}
+
+	if (!strcmp(argv[0], input_get_name(rbuf->i->type))) {
+		mgmtsrv_send(c, "Input type is already %s\r\n", argv[0]);
+		return POM_OK;
+	}
+
+	struct input *i;
+	int input_type = input_register(argv[0]);
+	if (input_type == POM_ERR) {
+		mgmtsrv_send(c, "Unable to register input %s\r\n", argv[0]);
+		return POM_OK;
+	}
+
+	i = input_alloc(input_type);
+
+	if (!i) {
+		mgmtsrv_send(c, "Unable to allocate input %s\r\n", argv[0]);
+		return POM_OK;
+	}
+
+	input_cleanup(rbuf->i);
+	rbuf->i = i;
+	main_config->input = i;
+
+	if (pthread_mutex_unlock(&rbuf->mutex)) {
+		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex\r\n");
+		return POM_ERR;
+	}
+
+	return POM_OK;
+}
+
+int mgmtcmd_set_input_mode(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	if (argc < 1)
+		return MGMT_USAGE;
+
+	if (rbuf->i->running) {
+		mgmtsrv_send(c, "Input is running. You need to stop it before doing any change\r\n");
+		return POM_OK;
+	}
+
+	if (input_set_mode(rbuf->i, argv[0]) != POM_OK) {
+		mgmtsrv_send(c, "No mode %s for this input\r\n");
+		return POM_OK;
+	}
+
+	return POM_OK;
+}
+
+int mgmtcmd_set_input_parameter(struct mgmt_connection *c, int argc, char *argv[]) {
+	
+	if (argc < 2)
+		return MGMT_USAGE;
+
+	if (rbuf->i->running) {
+		mgmtsrv_send(c, "Input is running. You need to stop it before doing any change\r\n");
+		return POM_OK;
+	}
+
+	struct input_param *p = rbuf->i->mode->params;
+
+	while (p) {
+		if (!strcmp(p->name, argv[0]))
+			break;
+		p = p->next;
+	}
+
+	if (!p) {
+		mgmtsrv_send(c, "Parameter %s does not exists\r\n", argv[0]);
+		return POM_OK;
+	}
+	
+	if (ptype_parse_val(p->value, argv[1]) != POM_OK) {
+		mgmtsrv_send(c, "Could not parse \"%s\"\r\n", argv[1]);
+		return POM_OK;
+	}
+
+	return POM_OK;
 }
