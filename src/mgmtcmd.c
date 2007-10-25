@@ -28,7 +28,7 @@
 #include "ptype.h"
 #include "main.h"
 
-#define MGMT_COMMANDS_NUM 21
+#define MGMT_COMMANDS_NUM 22
 
 struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
@@ -165,6 +165,13 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.words = { "stop", "input", NULL },
 		.help = "Stop the input",
 		.callback_func = mgmtcmd_stop_input,
+	},
+
+	{
+		.words = { "write", "config", NULL },
+		.help = "Write the configuration file",
+		.callback_func = mgmtcmd_write_config,
+		.usage = "write config [filename]",
 	},
 };
 
@@ -410,7 +417,7 @@ int mgmtcmd_show_rule_print_node_flat(struct mgmt_connection *c, struct rule_nod
 					const int bufflen = 256;
 					char buff[bufflen];
 					ptype_print_val(n->match->value, buff, bufflen);
-					mgmtsrv_send(c, ".%s %s %s" , n->match->field->name, ptype_get_op_name(n->match->op), buff);
+					mgmtsrv_send(c, ".%s %s %s" , n->match->field->name, ptype_get_op_sign(n->match->op), buff);
 
 				}
 			}
@@ -474,7 +481,7 @@ int mgmtcmd_show_rule_print_node_tree(struct mgmt_connection *c, struct rule_nod
 					const int bufflen = 256;
 					char buff[bufflen];
 					ptype_print_val(n->match->value, buff, bufflen);
-					mgmtsrv_send(c, ".%s %s %s" , n->match->field->name, ptype_get_op_name(n->match->op), buff);
+					mgmtsrv_send(c, ".%s %s %s" , n->match->field->name, ptype_get_op_sign(n->match->op), buff);
 
 				}
 				mgmtsrv_send(c, "\r\n");
@@ -1112,7 +1119,8 @@ int mgmtcmd_start_input(struct mgmt_connection *c, int argc, char *argv[]) {
 		return POM_OK;
 	}
 
-	return start_input(rbuf);
+	start_input(rbuf);
+	return POM_OK;
 
 }
 
@@ -1124,6 +1132,18 @@ int mgmtcmd_stop_input(struct mgmt_connection *c, int argc, char *argv[]) {
 		return POM_OK;
 	}
 
-	return stop_input(rbuf);
+	stop_input(rbuf);
+	return POM_OK;
+
+}
+
+int mgmtcmd_write_config(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	if (argc < 1)
+		config_write(main_config, NULL);
+	else
+		config_write(main_config, argv[0]);
+
+	return POM_OK;
 
 }

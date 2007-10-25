@@ -1,3 +1,9 @@
+* 2007/10/25 Guy Martin <gmsoft@tuxicoman.be>
+Added the command "write config" in the management console.
+Added function ptype_get_op_sign() to get the operation sign.
+Function ptype_get_op_name() now returns the operation name.
+Fixed syntax in pom.xml.conf.example.
+
 * 2007/10/24 Guy Martin <gmsoft@tuxicoman.be>
 Fix bug when input_docsis doesn't find a docsis stream.
 Improve tuning timeout handling in input_docsis.
@@ -29,7 +35,7 @@ Get rid of dprint() in favor of pom_log().
 Added commands "enable/disable debug" and "set debug level" in management console.
 Fixed compilation warnings on amd64.
 
-* 2007/10/07 Guy Maritn <gmsoft@tuxicoman.be>
+* 2007/10/07 Guy Martin <gmsoft@tuxicoman.be>
 Added commands "set password" and "unset password" in management console.
 
 * 2007/10/05 Guy Martin <gmsot@tuxicoman.be>

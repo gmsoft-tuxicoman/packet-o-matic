@@ -21,6 +21,9 @@
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
 
+#include <fcntl.h>
+#include <errno.h>
+
 #include "conf.h"
 #include "input.h"
 #include "target.h"
@@ -449,7 +452,7 @@ int config_parse(struct conf *c, char * filename) {
 
 	if (!doc) {
 		pom_log(POM_LOG_ERR "Parse error when parsing %s!\r\n", filename);
-		return 0;
+		return POM_ERR;
 	}
 
 	root = xmlDocGetRootElement(doc);
@@ -457,12 +460,12 @@ int config_parse(struct conf *c, char * filename) {
 	if (!root) {
 		pom_log(POM_LOG_ERR "Hey dude, ya better gimme a non empty config file !\r\n");
 		xmlFreeDoc(doc);
-		return 0;
+		return POM_ERR;
 	}
 
 	if (xmlStrcmp(root->name, (const xmlChar *) "config")) {
 		pom_log(POM_LOG_ERR "The first node should be <config> !\r\n");
-		return 0;
+		return POM_ERR;
 	}
 
 	cur = root->xmlChildrenNode;
@@ -476,9 +479,17 @@ int config_parse(struct conf *c, char * filename) {
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "rule")) {
 			struct rule_list *r = parse_rule(doc, cur);
 			if (!r)
-				return 0;
-			r->next = c->rules;
-			c->rules = r;
+				return POM_ERR;
+
+			if (!c->rules) {
+				c->rules = r;
+			} else {
+				struct rule_list *tmpr = c->rules;
+				while (tmpr->next)
+					tmpr = tmpr->next;
+				tmpr->next = r;
+
+			}
 		}
 
 		cur = cur->next;
@@ -490,5 +501,257 @@ int config_parse(struct conf *c, char * filename) {
 
 	xmlCleanupParser();
 
-	return 1;
+	strncpy(c->filename, filename, NAME_MAX);
+
+	return POM_OK;
+}
+
+int config_write_rule(int fd, struct rule_node *n, struct rule_node *last, int tabs) {
+
+	if (n == last)
+		return 0;
+
+	char buffer[2048];
+	bzero(buffer, sizeof(buffer));
+
+	int i;
+
+	while (n != last) {
+
+		if (!n->b) {
+			if (n->op != RULE_OP_TAIL) {
+				for (i = 0; i < tabs; i++)
+					strcat(buffer, "\t");
+			
+				strcat(buffer, "<match layer=\"");
+				strcat(buffer, match_get_name(n->layer));
+				strcat(buffer, "\"");
+				if (n->op & RULE_OP_NOT)
+					strcat(buffer, " inv=\"yes\"");
+				if (n->match) {
+					char value[256];
+					ptype_print_val(n->match->value, value, sizeof(value));
+					strcat(buffer, " field=\"");
+					strcat(buffer, n->match->field->name);
+					strcat(buffer, "\"");
+					if (n->match->op != PTYPE_OP_EQUALS) {
+						strcat(buffer, " op=\"");
+						strcat(buffer, ptype_get_op_name(n->match->op));
+						strcat(buffer, "\"");
+					}
+					strcat(buffer, ">");
+					strcat(buffer, value);
+					strcat(buffer, "</match>\n");
+
+				} else
+					strcat(buffer, "/>\n");
+			}
+			n = n->a;
+
+		} else {
+			// fin the last one that needs to be processed
+			struct rule_node *new_last = NULL, *rn = n;
+			int depth = 0;
+			while (rn && rn != last) {
+				if (rn->b) {
+					depth++;
+				} else if (rn->op == RULE_OP_TAIL) {
+					depth--;
+					if (depth == 0) {
+						new_last = rn;
+						break;
+					}
+				}
+				rn = rn->a;
+			}
+
+			for (i = 0; i < tabs; i++)
+				strcat(buffer, "\t");
+			strcat(buffer, "<node op=\"");
+			if (n->op & RULE_OP_OR)
+				strcat(buffer, "or");
+			else if (n->op & RULE_OP_AND)
+				strcat(buffer, "and");
+			strcat(buffer, "\"");
+			if (n->op & RULE_OP_NOT)
+				strcat(buffer, " inv=\"yes\"");
+			strcat(buffer, ">\n");
+
+			for (i = 0; i < tabs; i++)
+				strcat(buffer, "\t");
+
+			strcat(buffer, "<a>\n");
+			if (write(fd, buffer, strlen(buffer)) == -1)
+				goto err;
+			bzero(buffer, sizeof(buffer));
+			
+			config_write_rule(fd, n->a, new_last, tabs + 1);
+
+			for (i = 0; i < tabs; i++)
+				strcat(buffer, "\t");
+			strcat(buffer, "</a>\n");
+			for (i = 0; i < tabs; i++)
+				strcat(buffer, "\t");
+			strcat(buffer, "<b>\n");
+			if (write(fd, buffer, strlen(buffer)) == -1)
+				goto err;
+			bzero(buffer, sizeof(buffer));
+
+			config_write_rule(fd, n->b, new_last, tabs + 1);
+
+			for (i = 0; i < tabs; i++)
+				strcat(buffer, "\t");
+			strcat(buffer, "</b>\n");
+
+			for (i = 0; i < tabs; i++)
+				strcat(buffer, "\t");
+
+			strcat(buffer, "</node>\n");
+			n = new_last;
+		}
+	}
+
+	if (write(fd, buffer, strlen(buffer)) == -1)
+		goto err;
+
+	return POM_OK;
+
+err:
+	close(fd);
+	char errbuff[256];
+	strerror_r(errno, errbuff, sizeof(errbuff));
+	pom_log(POM_LOG_ERR "Error while writing the config file : %s\r\n", errbuff);
+	return POM_ERR;
+}
+
+int config_write(struct conf *c, char *filename) {
+
+	if (!filename)
+		filename = c->filename;
+
+	int fd;
+	fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC);
+
+	if (fd == -1) {
+		char buffer[256];
+		strerror_r(errno, buffer, sizeof(buffer));
+		pom_log(POM_LOG_ERR "Error while opening config file for writing : %s\r\n", buffer);
+		return POM_ERR;
+	}
+
+	// write the header and first <config> tag
+
+	char buffer[4096]; // each element will not be 2048 bytes long
+	bzero(buffer, sizeof(buffer));
+	strcat(buffer, "<?xml version=\"1.0\"?>\n<config>\n\n");
+
+	// write the input config
+	if (c->input) {
+		strcat(buffer, "<input type=\"");
+		strcat(buffer, input_get_name(c->input->type));
+		strcat(buffer, "\" mode=\"");
+		strcat(buffer, c->input->mode->name);
+		strcat(buffer, "\">\n");
+
+		struct input_param *p = c->input->mode->params;
+		while (p) {
+			char value[1024];
+			ptype_print_val(p->value, value, sizeof(value));
+			if (strcmp(value, p->defval)) { // parameter doesn't have default value
+				strcat(buffer, "\t<param name=\"");
+				strcat(buffer, p->name);
+				strcat(buffer, "\">");
+				strcat(buffer, value);
+				strcat(buffer, "</param>\n");
+			}
+			p = p->next;
+		}
+
+		strcat(buffer, "</input>\n\n");
+	}
+
+	if (write(fd, buffer, strlen(buffer)) == -1)
+		goto err;
+	bzero(buffer, sizeof(buffer));
+
+	// write the rules
+	
+	struct rule_list *rl = c->rules;
+
+	while (rl) {
+		
+		strcat(buffer, "<rule>\n");
+
+		struct target *t = rl->target;
+		while (t) {
+			strcat(buffer, "\t<target type=\"");
+			strcat(buffer, target_get_name(t->type));
+			strcat(buffer, "\"");
+			if (t->mode) {
+				strcat(buffer, " mode=\"");
+				strcat(buffer, t->mode->name);
+				strcat(buffer, "\"");
+			}
+			strcat(buffer, ">\n");
+
+			struct target_param *tp = t->params;
+			while (tp) {
+				char value[1024];
+				ptype_print_val(tp->value, value, sizeof(value));
+				if (strcmp(value, tp->type->defval)) {
+					strcat(buffer, "\t\t<param name=\"");
+					strcat(buffer, tp->type->name);
+					strcat(buffer, "\">");
+					strcat(buffer, value);
+					strcat(buffer, "</param>\n");
+				}
+	
+				tp = tp->next;
+			}
+
+			strcat(buffer, "\t</target>\n\n");
+			t = t->next;
+
+			if (write(fd, buffer, strlen(buffer)) == -1)
+				goto err;
+			bzero(buffer, sizeof(buffer));
+		}
+
+		strcat(buffer, "\t<matches>\n");
+
+		if (write(fd, buffer, strlen(buffer)) == -1)
+			goto err;
+		bzero(buffer, sizeof(buffer));
+
+		config_write_rule(fd, rl->node, NULL, 2);
+
+		strcat(buffer, "\t</matches>\n");
+
+		strcat(buffer, "</rule>\n\n");
+		
+		rl = rl->next;
+	}
+
+	// finish the config
+
+	strcat(buffer, "</config>\n");
+
+	if (write(fd, buffer, strlen(buffer)) == -1)
+		goto err;
+
+	close(fd);
+
+	if (c->filename != filename)
+		strncpy(c->filename, filename, NAME_MAX);
+
+	return POM_OK;
+
+
+err:
+	close(fd);
+	char errbuff[256];
+	strerror_r(errno, errbuff, sizeof(errbuff));
+	pom_log(POM_LOG_ERR "Error while writing the config file : %s\r\n", errbuff);
+	return POM_ERR;
+
 }

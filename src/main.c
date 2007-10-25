@@ -391,7 +391,7 @@ int main(int argc, char *argv[]) {
 
 	main_config = config_alloc();
 
-	if (!config_parse(main_config, cfgfile)) {
+	if (config_parse(main_config, cfgfile) == POM_ERR) {
 		pom_log(POM_LOG_ERR "Error while parsing config\r\n");
 		goto err;
 	}

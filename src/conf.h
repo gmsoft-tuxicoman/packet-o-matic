@@ -29,6 +29,7 @@ struct conf {
 
 	struct input* input;
 	struct rule_list *rules;
+	char filename[NAME_MAX];
 
 };
 
@@ -37,6 +38,8 @@ struct conf *config_alloc();
 int config_parse(struct conf*, char *);
 
 int config_cleanup(struct conf*);
+
+int config_write(struct conf *c, char *filename);
 
 
 #endif

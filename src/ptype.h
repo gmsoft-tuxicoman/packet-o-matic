@@ -62,6 +62,7 @@ int ptype_parse_val(struct ptype *pt, char *val);
 int ptype_print_val(struct ptype *pt, char *val, size_t size);
 int ptype_get_op(struct ptype *pt, char *op);
 char *ptype_get_op_name(int op);
+char *ptype_get_op_sign(int op);
 int ptype_compare_val(int op, struct ptype *a, struct ptype *b);
 int ptype_cleanup_module(struct ptype* p);
 int ptype_unregister_all(void);

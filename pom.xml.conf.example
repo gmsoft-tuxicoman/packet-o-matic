@@ -28,10 +28,8 @@
 
 <!-- this second rule sends a tcp kill to either ipv4 or ipv6 in ipv4 tunnels for tcp port 1234 -->
 <rule>
-	<!-- target_tcpkill will fit our purpose -->
-	<target type="tcpkill">
-		<!-- use normal mode and not routed mode -->
-		<param name="mode">normal</param>
+	<!-- target_tcpkill will fit our purpose in interface mode -->
+	<target type="tcpkill" mode="interface">
 		<!-- send the rst packets on eth0 -->
 		<param name="interface">eth0</param>
 	</target>
@@ -78,7 +76,7 @@
 
 <!-- rule to inject all ipv4 packet to lo interface excluding tcp port 1234 -->
 <rule>
-        <target type="inject" mode="interface">
+        <target type="inject">
                 <!-- could be either ip or eth name -->
                 <param name="interface">127.0.0.1</param>
         </target>

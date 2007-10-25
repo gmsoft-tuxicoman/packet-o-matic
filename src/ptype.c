@@ -154,7 +154,7 @@ int ptype_get_op(struct ptype *pt, char *op) {
 	return POM_ERR;
 }
 
-char *ptype_get_op_name(int op) {
+char *ptype_get_op_sign(int op) {
 	switch (op) {
 		case PTYPE_OP_EQUALS:
 			return "==";
@@ -171,6 +171,23 @@ char *ptype_get_op_name(int op) {
 	return NULL;
 }
 
+char *ptype_get_op_name(int op) {
+	switch (op) {
+		case PTYPE_OP_EQUALS:
+			return "eq";
+		case PTYPE_OP_GT:
+			return "gt";
+		case PTYPE_OP_GE:
+			return "ge";
+		case PTYPE_OP_LT:
+			return "lt";
+		case PTYPE_OP_LE:
+			return "le";
+
+	}
+	return NULL;
+}
+
 int ptype_compare_val(int op, struct ptype *a, struct ptype *b) {
 	
 	if (a->type != b->type) {
@@ -179,7 +196,7 @@ int ptype_compare_val(int op, struct ptype *a, struct ptype *b) {
 	}
 
 	if (!(ptypes[a->type]->ops & op))
-		pom_log(POM_LOG_ERR "Invalid operation %s for ptype %s\r\n", ptype_get_op_name(op), ptypes[a->type]->name);
+		pom_log(POM_LOG_ERR "Invalid operation %s for ptype %s\r\n", ptype_get_op_sign(op), ptypes[a->type]->name);
 
 	return (*ptypes[a->type]->compare_val) (op, a->value, b->value);
 
