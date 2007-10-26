@@ -38,7 +38,7 @@ int conntrack_register_rtp(struct conntrack_reg *r, struct conntrack_functions *
 
 	ct_functions = ct_funcs;
 	
-	return 1;
+	return POM_OK;
 }
 
 
@@ -69,7 +69,7 @@ int conntrack_doublecheck_rtp(struct frame *f, unsigned int start, void *priv, u
 	p = priv;
 
 	if (p->ssrc != hdr->ssrc || p->payload_type != hdr->payload_type)
-		return 0;
+		return POM_ERR;
 
 	// Remove the timer from the queue
 	(*ct_functions->dequeue_timer) (p->timer);
@@ -78,7 +78,7 @@ int conntrack_doublecheck_rtp(struct frame *f, unsigned int start, void *priv, u
 	(*ct_functions->queue_timer) (p->timer, RTP_TIMEOUT);
 
 
-	return 1;
+	return POM_OK;
 }
 
 
@@ -119,7 +119,7 @@ int conntrack_cleanup_match_priv_rtp(void *priv) {
 	}
 
 	free(priv);
-	return 1;
+	return POM_OK;
 }
 
 

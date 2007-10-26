@@ -95,7 +95,7 @@ struct frame {
 
 int layer_init();
 
-unsigned int layer_find_start(struct layer *l, int header_type);
+int layer_find_start(struct layer *l, int header_type);
 
 struct layer* layer_pool_get();
 int layer_pool_discard();

@@ -30,7 +30,7 @@
 
 #include <pthread.h>
 
-#define MGMT_COMMANDS_NUM 25
+#define MGMT_COMMANDS_NUM 26
 
 struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
@@ -90,7 +90,7 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.words = { "set", "rule", NULL },
 		.help = "Change a rule",
 		.callback_func = mgmtcmd_set_rule,
-		.usage = "set rule <rule id> <rule>",
+		.usage = "set rule <rule_id> <rule>",
 	},
 
 	{
@@ -109,14 +109,14 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.words = { "disable", "rule", NULL },
 		.help = "Disable a rule",
 		.callback_func = mgmtcmd_disable_rule,
-		.usage = "disable rule <rule id>",
+		.usage = "disable rule <rule_id>",
 	},
 
 	{
 		.words = { "enable", "rule", NULL },
 		.help = "Enable a rule",
 		.callback_func = mgmtcmd_enable_rule,
-		.usage = "enable rule <rule id>",
+		.usage = "enable rule <rule_id>",
 	},
 
 	{
@@ -195,6 +195,13 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.help = "Change the value of a input parameter",
 		.callback_func = mgmtcmd_set_input_parameter,
 		.usage = "set input parameter <parameter> <value>",
+	},
+
+	{
+		.words = { "add", "rule", NULL },
+		.help = "Add a rule",
+		.callback_func = mgmtcmd_add_rule,
+		.usage = "add rule <rule>",
 	},
 };
 
@@ -566,6 +573,12 @@ int mgmtcmd_show_rule_print_node_tree(struct mgmt_connection *c, struct rule_nod
 int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	struct rule_list *rl = main_config->rules;
+
+	if (!rl) {
+		mgmtsrv_send(c, "No rules\r\n");
+		return POM_OK;
+	}
+
 
 	unsigned int rule_num = 0;
 
@@ -1265,3 +1278,55 @@ int mgmtcmd_set_input_parameter(struct mgmt_connection *c, int argc, char *argv[
 
 	return POM_OK;
 }
+
+
+int mgmtcmd_add_rule(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	if (argc < 1)
+		return MGMT_USAGE;
+
+	// reconstruct the rule
+	int rule_len = 0, i;
+	for (i = 0; i < argc; i++) {
+		rule_len += strlen(argv[i]) + 1;
+	}
+	char *rule_str = malloc(rule_len + 1);
+	bzero(rule_str, rule_len + 1);
+	for (i = 0; i < argc; i++) {
+		strcat(rule_str, argv[i]);
+		strcat(rule_str, " ");
+	}
+
+	struct rule_node *start, *end;
+	if (mgmtcmd_set_rule_split(c, rule_str, &start, &end) == POM_ERR) {
+		node_destroy(start, 0);
+		free(rule_str);
+		return POM_OK;
+	}
+
+	free(rule_str);
+
+	// rule parsed, let's add it
+
+	struct rule_list *rl;
+	rl = malloc(sizeof(struct rule_list));
+
+	bzero(rl, sizeof(struct rule_list));
+
+	reader_process_lock();
+	
+	if (!main_config->rules) {
+		main_config->rules = rl;
+	} else {
+		struct rule_list *tmprl = main_config->rules;
+		while (tmprl->next)
+			tmprl = tmprl->next;
+		tmprl->next = rl;
+	}
+	
+	rl->node = start;
+	reader_process_unlock();
+	
+	return POM_OK;
+}
+

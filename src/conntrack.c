@@ -52,7 +52,7 @@ int conntrack_init() {
 
 	pom_log(POM_LOG_DEBUG "Conntrack initialized\r\n");
 	
-	return 1;
+	return POM_OK;
 
 }
 
@@ -61,9 +61,9 @@ int conntrack_register(const char *conntrack_name) {
 
 	int id;
 	id = match_get_type(conntrack_name);
-	if (id == -1) {
+	if (id == POM_ERR) {
 		pom_log(POM_LOG_WARN "Unable to register conntrack %s. Corresponding match not found\r\n", conntrack_name);
-		return -1;
+		return POM_ERR;
 	}
 
 	if (conntracks[id])
@@ -75,17 +75,17 @@ int conntrack_register(const char *conntrack_name) {
 	register_my_conntrack = lib_get_register_func("conntrack", conntrack_name, &handle);
 	
 	if (!register_my_conntrack) {
-		return -1;
+		return POM_ERR;
 	}
 
 	struct conntrack_reg *my_conntrack = malloc(sizeof(struct conntrack_reg));
 	bzero(my_conntrack, sizeof(struct conntrack_reg));
 
 
-	if (!(*register_my_conntrack) (my_conntrack, ct_funcs)) {
+	if ((*register_my_conntrack) (my_conntrack, ct_funcs) != POM_OK) {
 		pom_log(POM_LOG_ERR "Error while loading conntrack %s. Could not register conntrack !\r\n", conntrack_name);
 		free(my_conntrack);
-		return -1;
+		return POM_ERR;
 	}
 
 	conntracks[id] = my_conntrack;
@@ -178,7 +178,7 @@ int conntrack_add_target_priv(void *priv, struct target *t, struct conntrack_ent
 	while (cp) {
 		if (cp->t == t) {
 			pom_log(POM_LOG_WARN "Warning. Target priv already added\r\n");
-			return 0;
+			return POM_ERR;
 		}
 		cp = cp->next;
 	}
@@ -199,7 +199,7 @@ int conntrack_add_target_priv(void *priv, struct target *t, struct conntrack_ent
 	pom_log(POM_LOG_TSHOOT "Target priv 0x%lx added to conntrack 0x%lx\r\n", (unsigned long) priv, (unsigned long) ce);
 
 	
-	return 1;
+	return POM_OK;
 }
 
 
@@ -214,7 +214,7 @@ int conntrack_add_helper_priv(void *priv, int type, struct conntrack_entry *ce, 
 	while (cp) {
 		if (cp->type == type) {
 			pom_log(POM_LOG_WARN "Warning. Helper priv already added\r\n");
-			return 0;
+			return POM_ERR;
 		}
 		cp = cp->next;
 	}
@@ -236,7 +236,7 @@ int conntrack_add_helper_priv(void *priv, int type, struct conntrack_entry *ce, 
 	pom_log(POM_LOG_TSHOOT "Helper priv 0x%lx added to conntrack 0x%lx\r\n", (unsigned long) priv, (unsigned long) ce);
 
 	
-	return 1;
+	return POM_OK;
 }
 
 void *conntrack_get_helper_priv(int type, struct conntrack_entry *ce) {
@@ -260,7 +260,7 @@ void *conntrack_get_helper_priv(int type, struct conntrack_entry *ce) {
 int conntrack_remove_helper_priv(void* priv, struct conntrack_entry *ce) {
 
 	if (!ce)
-		return 0;
+		return POM_ERR;
 	
 	struct conntrack_helper_priv *cp = ce->helper_privs;
 	
@@ -286,7 +286,7 @@ int conntrack_remove_helper_priv(void* priv, struct conntrack_entry *ce) {
 		conntrack_cleanup_connection(ce);
 	}
 
-	return 1;
+	return POM_OK;
 }
 
 void *conntrack_get_target_priv(struct target *t, struct conntrack_entry *ce) {
@@ -396,7 +396,7 @@ struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct frame *
 
 		if (!flags || (flags & conntracks[cp->priv_type]->flags)) { 
 
-			if (start == -1 || !(*conntracks[cp->priv_type]->doublecheck) (f, start, cp->priv, flags)) {
+			if (start == POM_ERR || (*conntracks[cp->priv_type]->doublecheck) (f, start, cp->priv, flags) == POM_ERR) {
 
 				cl = cl->next; // If it's not the right conntrack entry, go to next one
 				if (!cl)
@@ -410,7 +410,7 @@ struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct frame *
 		cp = cp->next;
 	}
 
-	pom_log(POM_LOG_TSHOOT "Found conntrack 0x%lx, hash 0x%lx\r\n", (unsigned long) ce, ce->full_hash);
+	//pom_log(POM_LOG_TSHOOT "Found conntrack 0x%lx, hash 0x%lx\r\n", (unsigned long) ce, ce->full_hash);
 
 	return ce;
 }
@@ -516,7 +516,7 @@ int conntrack_cleanup_connection(struct conntrack_entry *ce) {
 	free (ce);
 
 
-	return 1;
+	return POM_OK;
 }
 
 
@@ -529,13 +529,13 @@ int conntrack_close_connection(struct conntrack_entry *ce) {
 	while (hp) {
 		if (hp->priv && hp->flush_buffer)
 			if ((*hp->flush_buffer) (ce, hp->priv))
-				return 0; // There was stuff in the buffer. Let's not close it
+				return POM_ERR; // There was stuff in the buffer. Let's not close it
 		hp = hp->next;
 	}
 
 	// Now we can clean and close stuff out
 	
-	return 1;
+	return POM_OK;
 }
 
 int conntrack_close_connections(struct rule_list *r) {
@@ -562,7 +562,7 @@ int conntrack_close_connections(struct rule_list *r) {
 		}
 	}
 
-	return 1;
+	return POM_OK;
 
 }
 
@@ -580,7 +580,7 @@ int conntrack_cleanup() {
 
 	free(ct_funcs);
 
-	return 1;
+	return POM_OK;
 
 }
 
@@ -598,7 +598,7 @@ int conntrack_unregister_all() {
 
 	}
 
-	return 1;
+	return POM_OK;
 
 }
 
@@ -606,7 +606,7 @@ int conntrack_do_timer(void * ce) {
 
 	conntrack_close_connection(ce);
 	conntrack_cleanup_connection(ce);
-	return 1;
+	return POM_OK;
 }
 
 struct timer *conntrack_timer_alloc(struct conntrack_entry *ce, struct input *i) {

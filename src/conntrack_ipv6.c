@@ -32,7 +32,7 @@ int conntrack_register_ipv6(struct conntrack_reg *r, struct conntrack_functions 
 	r->flags = CT_DIR_BOTH;
 	
 	
-	return 1;
+	return POM_OK;
 }
 
 
@@ -90,20 +90,20 @@ int conntrack_doublecheck_ipv6(struct frame *f, unsigned int start, void *priv, 
 		case CT_DIR_FWD:
 			for (i = 0; i < 16; i++)
 				if (hdr->ip6_src.s6_addr[i] != p->saddr.s6_addr[i] || hdr->ip6_dst.s6_addr[i] != p->daddr.s6_addr[i])
-					return 0;
+					return POM_ERR;
 			break;
 
 		case CT_DIR_REV:
 			for (i = 0; i < 16; i++)
 				if (hdr->ip6_src.s6_addr[i] != p->daddr.s6_addr[i] || hdr->ip6_dst.s6_addr[i] != p->saddr.s6_addr[i])
-					return 0;
+					return POM_ERR;
 			break;
 		default:
-			return 0;
+			return POM_ERR;
 
 	}
 
-	return 1;
+	return POM_OK;
 }
 
 
@@ -124,5 +124,5 @@ void *conntrack_alloc_match_priv_ipv6(struct frame *f, unsigned int start, struc
 int conntrack_cleanup_match_priv_ipv6(void *priv) {
 
 	free(priv);
-	return 1;
+	return POM_OK;
 }

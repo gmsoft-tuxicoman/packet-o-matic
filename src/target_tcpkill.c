@@ -194,7 +194,7 @@ int target_process_tcpkill(struct target *t, struct frame *f) {
 	int ipv4start, ipv6start, tcpstart, i;
 
 	tcpstart = layer_find_start(f->l, match_tcp_id);
-	if (tcpstart == -1) {
+	if (tcpstart == POM_ERR) {
 		(*tf->pom_log) (POM_LOG_WARN "No TCP header found in this packet\r\n");
 		return POM_OK;
 	}
@@ -247,14 +247,14 @@ int target_process_tcpkill(struct target *t, struct frame *f) {
 	if (t->mode != mode_routed) {
 		int ethernetstart;
 		ethernetstart = layer_find_start(f->l, match_ethernet_id);
-		if (ethernetstart == -1) {
+		if (ethernetstart == POM_ERR) {
 			(*tf->pom_log) (POM_LOG_WARN "No ethernet header found in this packet\r\n");
 			return POM_OK;
 		}
 		
 		ipv6start = layer_find_start(f->l, match_ipv6_id);
 
-		if (ipv4start == -1 && ipv6start == -1) {
+		if (ipv4start == POM_ERR && ipv6start == POM_ERR) {
 			(*tf->pom_log) (POM_LOG_WARN "Neither IPv4 or IPv6 header found in this packet\r\n");
 			return POM_OK;
 		}
@@ -271,7 +271,7 @@ int target_process_tcpkill(struct target *t, struct frame *f) {
 	}
 
 	// Let's see if we have a IPv4 header. This can only be false in normal mode in case of an IPv6 packet
-	if (ipv4start != -1) {
+	if (ipv4start != POM_ERR) {
 
 		struct ip *dv4hdr = (struct ip*) (buffer + blen), *sv4hdr = (struct ip*) (f->buff + ipv4start);
 	
@@ -287,7 +287,7 @@ int target_process_tcpkill(struct target *t, struct frame *f) {
 
 		dv4hdr->ip_src = sv4hdr->ip_dst;
 		dv4hdr->ip_dst = sv4hdr->ip_src;
-		if (ipv6start != -1) { // IPv6 in IPv4
+		if (ipv6start != POM_ERR) { // IPv6 in IPv4
 			dv4hdr->ip_p = IPPROTO_IPV6;
 			dv4hdr->ip_len = htons(sizeof(struct ip) + sizeof(struct ip6_hdr) + sizeof(struct tcphdr));
 		} else {
@@ -314,7 +314,7 @@ int target_process_tcpkill(struct target *t, struct frame *f) {
 	} 
 
 	// Add the IPv6 header if any
-	if (ipv6start != -1) {
+	if (ipv6start != POM_ERR) {
 		
 		struct ip6_hdr *dv6hdr = (struct ip6_hdr *) (buffer + blen), *sv6hdr = (struct ip6_hdr *) (f->buff + ipv6start);
 		memcpy(dv6hdr->ip6_src.s6_addr, sv6hdr->ip6_dst.s6_addr, sizeof(dv6hdr->ip6_src));

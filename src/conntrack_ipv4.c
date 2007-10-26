@@ -41,7 +41,7 @@ int conntrack_register_ipv4(struct conntrack_reg *r, struct conntrack_functions 
 	r->flags = CT_DIR_BOTH;
 	
 	
-	return 1;
+	return POM_OK;
 }
 
 
@@ -90,19 +90,19 @@ int conntrack_doublecheck_ipv4(struct frame *f, unsigned int start, void *priv, 
 		case CT_DIR_ONEWAY:
 		case CT_DIR_FWD:
 			if (p->saddr != hdr->ip_src.s_addr || p->daddr != hdr->ip_dst.s_addr)
-				return 0;
+				return POM_ERR;
 			break;
 
 		case CT_DIR_REV:
 			if (p->saddr != hdr->ip_dst.s_addr || p->daddr != hdr->ip_src.s_addr)
-				return 0;
+				return POM_ERR;
 			break;
 
 		default:
-			return 0;
+			return POM_ERR;
 	}
 
-	return 1;
+	return POM_OK;
 }
 
 
@@ -123,5 +123,5 @@ void *conntrack_alloc_match_priv_ipv4(struct frame *f, unsigned int start, struc
 int conntrack_cleanup_match_priv_ipv4(void *priv) {
 
 	free(priv);
-	return 1;
+	return POM_OK;
 }

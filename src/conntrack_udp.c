@@ -40,7 +40,7 @@ int conntrack_register_udp(struct conntrack_reg *r, struct conntrack_functions *
 	
 	ct_functions = ct_funcs;
 	
-	return 1;
+	return POM_OK;
 }
 
 
@@ -85,16 +85,16 @@ int conntrack_doublecheck_udp(struct frame *f, unsigned int start, void *priv, u
 		case CT_DIR_ONEWAY:
 		case CT_DIR_FWD:
 			if (p->sport != hdr->uh_sport || p->dport != hdr->uh_dport)
-				return 0;
+				return POM_ERR;
 			break;
 
 		case CT_DIR_REV:
 			if (p->sport != hdr->uh_dport || p->dport != hdr->uh_sport)
-				return 0;
+				return POM_ERR;
 			break;
 		
 		default:
-			return 0;
+			return POM_ERR;
 	}
 
 
@@ -105,7 +105,7 @@ int conntrack_doublecheck_udp(struct frame *f, unsigned int start, void *priv, u
 	// And requeue it at the end
 	(*ct_functions->queue_timer) (p->timer, UDP_TIMEOUT);
 
-	return 1;
+	return POM_OK;
 }
 
 
@@ -146,7 +146,7 @@ int conntrack_cleanup_match_priv_udp(void *priv) {
 	}
 
 	free(priv);
-	return 1;
+	return POM_OK;
 }
 
 

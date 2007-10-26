@@ -204,10 +204,10 @@ int layer_cleanup() {
 }
 
 
-unsigned int layer_find_start(struct layer *l, int header_type) {
+int layer_find_start(struct layer *l, int header_type) {
 	
 	if (!l)
-		return -1;
+		return POM_ERR;
 
 	do {
 		if(l->type == header_type) {
@@ -219,7 +219,7 @@ unsigned int layer_find_start(struct layer *l, int header_type) {
 		l = l->next;
 	} while(l);
 
-	return -1;
+	return POM_ERR;
 }
 
 struct layer_info* layer_info_pool_get(struct layer* l) {

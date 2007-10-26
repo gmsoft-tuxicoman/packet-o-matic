@@ -1,3 +1,8 @@
+* 2007/10/26 Guy Martin <gmsoft@tuxicoman.be>
+Use POM_OK and POM_ERR in conntracks and for find_layer_start().
+Commented the "Found conntrack ..." debug.
+Added management command "add rule <rule>".
+
 * 2007/10/25 Guy Martin <gmsoft@tuxicoman.be>
 Added the command "write config" in the management console.
 Added function ptype_get_op_sign() to get the operation sign.

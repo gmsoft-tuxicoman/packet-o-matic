@@ -65,10 +65,10 @@ static inline int mask_compare2(unsigned char *value1, unsigned char *mask1, uns
 };
 
 
-unsigned int layer_find_start(struct layer *l, int header_type) {
+int layer_find_start(struct layer *l, int header_type) {
 	
 	if (!l)
-		return -1;
+		return POM_ERR;
 
 	do {
 		if(l->type == header_type) {
@@ -80,7 +80,7 @@ unsigned int layer_find_start(struct layer *l, int header_type) {
 		l = l->next;
 	} while(l);
 
-	return -1;
+	return POM_ERR;
 }
 
 

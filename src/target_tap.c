@@ -126,7 +126,7 @@ int target_process_tap(struct target *t, struct frame *f) {
 	
 	int start = layer_find_start(f->l, match_ethernet_id);
 
-	if (start == -1) {
+	if (start == POM_ERR) {
 		(*tf->pom_log) (POM_LOG_ERR "Unable to find the start of the packet\r\n");
 		return POM_OK;
 

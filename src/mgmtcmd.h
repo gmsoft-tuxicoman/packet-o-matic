@@ -50,5 +50,6 @@ int mgmtcmd_write_config(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_input_type(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_input_mode(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_input_parameter(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_add_rule(struct mgmt_connection *c, int argc, char *argv[]);
 
 #endif

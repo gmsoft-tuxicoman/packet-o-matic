@@ -44,7 +44,7 @@ int conntrack_register_tcp(struct conntrack_reg *r, struct conntrack_functions *
 
 	ct_functions = ct_funcs;
 	
-	return 1;
+	return POM_OK;
 }
 
 
@@ -101,14 +101,14 @@ int conntrack_tcp_update_timer(struct conntrack_priv_tcp *priv, struct tcphdr *h
 		(*ct_functions->dequeue_timer) (priv->timer);
 	        (*ct_functions->queue_timer) (priv->timer, TCP_TIME_WAIT_T);
 	} else if (priv->state == STATE_TCP_TIME_WAIT) {
-		return 1;
+		return POM_OK;
 	} else {
 	        priv->state = STATE_TCP_ESTABLISHED;
 		(*ct_functions->dequeue_timer) (priv->timer);
 	        (*ct_functions->queue_timer) (priv->timer, TCP_ESTABLISHED_T);
 	}
 
-	return 1;
+	return POM_OK;
 
 }
 
@@ -127,21 +127,21 @@ int conntrack_doublecheck_tcp(struct frame *f, unsigned int start, void *priv, u
 		case CT_DIR_ONEWAY:
 		case CT_DIR_FWD:
 			if (p->sport != hdr->th_sport || p->dport != hdr->th_dport ) 
-				return 0;
+				return POM_ERR;
 			break;
 
 		case CT_DIR_REV:
 			if (p->sport != hdr->th_dport || p->dport != hdr->th_sport)
-				return 0;
+				return POM_ERR;
 			break;
 
 		default:
-			return 0;
+			return POM_ERR;
 	}
 	
 	conntrack_tcp_update_timer(priv, hdr);
 
-	return 1;
+	return POM_OK;
 }
 
 
@@ -189,5 +189,5 @@ int conntrack_cleanup_match_priv_tcp(void *priv) {
 	}
 
 	free(priv);
-	return 1;
+	return POM_OK;
 }

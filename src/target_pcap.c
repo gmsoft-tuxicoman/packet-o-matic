@@ -141,7 +141,7 @@ int target_process_pcap(struct target *t, struct frame *f) {
 	
 	int start = layer_find_start(f->l, priv->last_layer_type);
 
-	if (start == -1) {
+	if (start == POM_ERR) {
 
 		(*tf->pom_log) (POM_LOG_WARN "target_pcap: Unable to find the start of the packet. You probably need to set the parameter \"layer\" to \"%s\"\r\n", (*tf->match_get_name) (f->l->type));
 		return POM_ERR;

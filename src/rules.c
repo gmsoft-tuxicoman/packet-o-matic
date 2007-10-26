@@ -29,7 +29,7 @@ int rules_init() {
 
 	match_undefined_id = match_register("undefined");
 
-	return 1;
+	return POM_OK;
 
 }
 
@@ -49,7 +49,7 @@ int dump_invalid_packet(struct frame *f) {
 	}
 	pom_log(POM_LOG_DEBUG "\r\n");
 
-	return 0;
+	return POM_OK;
 }
 
 /**
@@ -159,8 +159,7 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 	
 	struct rule_list *r = rules;
 	if (r == NULL) {
-		pom_log(POM_LOG_ERR "No rules given !\r\n");
-		return 1;
+		return POM_OK;
 	}
 
 
@@ -200,14 +199,14 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 
 
 		if (helper_need_help(f, new_start, new_len, l) == H_NEED_HELP) // If it needs help, we don't process it
-			return 1;
+			return POM_OK;
 	
 		// check the calculated size and adjust the max len of the packet
 		// the initial size may be too long as some padding could have been introduced by the input
 
 		if (l->prev && (l->payload_start + l->payload_size > l->prev->payload_start + l->prev->payload_size || l->payload_size > l->prev->payload_size)) {
 			dump_invalid_packet(f);
-			return 1;
+			return POM_OK;
 		}
 
 
@@ -273,7 +272,7 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 	// reset matched_conntrack value
 
 	
-	return 1;
+	return POM_OK;
 }
 
 
@@ -284,7 +283,7 @@ int node_destroy(struct rule_node *node, int sub) {
 	static struct rule_node **done_stack = NULL;
 
 	if (!node)
-		return 1;
+		return POM_ERR;
 
 	// We have to check for both nodes
 
@@ -327,14 +326,14 @@ int node_destroy(struct rule_node *node, int sub) {
 		done = 0;
 	}
 	
-	return 1;
+	return POM_OK;
 
 }
 
 int list_destroy(struct rule_list *list) {
 
 	if (!list)
-		return 1;
+		return POM_ERR;
 	
 	struct rule_list *tmp;
 	
@@ -356,7 +355,7 @@ int list_destroy(struct rule_list *list) {
 
 	} while (list);
 	
-	return 1;
+	return POM_OK;
 
 
 }
