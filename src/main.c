@@ -172,15 +172,17 @@ int start_input(struct ringbuffer *r) {
 
 	r->state = rb_state_opening;
 
+	if (ringbuffer_alloc(r) == POM_ERR) {
+		pom_log(POM_LOG_ERR "Error while allocating the ringbuffer\r\n");
+		r->state = rb_state_closed;
+		return POM_ERR;
+	}
+
 	int fd = input_open(r->i);
 
 	if (fd == POM_ERR) {
 		pom_log(POM_LOG_ERR "Error while opening input\r\n");
-		return POM_ERR;
-	}
-
-	if (ringbuffer_alloc(r) == POM_ERR) {
-		pom_log(POM_LOG_ERR "Error while allocating the ringbuffer\r\n");
+		r->state = rb_state_closed;
 		return POM_ERR;
 	}
 
@@ -188,12 +190,16 @@ int start_input(struct ringbuffer *r) {
 
 	if (pthread_mutex_unlock(&r->mutex)) {
 		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
+		input_close(r->i);
+		r->state = rb_state_closed;
 		return POM_ERR;
 	}
 
 	pthread_t input_thread;
 	if (pthread_create(&input_thread, NULL, input_thread_func, (void*)r)) {
 		pom_log(POM_LOG_ERR "Error when creating the input thread. Abording\r\n");
+		input_close(r->i);
+		r->state = rb_state_closed;
 		return POM_ERR;
 	}
 	

@@ -93,7 +93,7 @@ int input_register_docsis(struct input_reg *r, struct input_functions *i_funcs) 
 	
 	(*i_funcs->register_param) (mode_normal, "eurodocsis", "yes", p_eurodocsis, "Use EuroDOCSIS specification instead of normal DOCSIS specification");
 	(*i_funcs->register_param) (mode_normal, "frequency", "440000000", p_frequency, "Frequency of the DOCSIS stream in Hz");
-	(*i_funcs->register_param) (mode_normal, "modulation", "QAM216", p_modulation, "Modulation of the DOCSIS stream");
+	(*i_funcs->register_param) (mode_normal, "modulation", "QAM256", p_modulation, "Modulation of the DOCSIS stream");
 	(*i_funcs->register_param) (mode_normal, "adapter", "0", p_adapter, "ID of the DVB adapter to use");
 	(*i_funcs->register_param) (mode_normal, "frontend", "0", p_frontend, "ID of the DVB frontend to use for the specified adapter");
 	(*i_funcs->register_param) (mode_normal, "tuning_timeout", "3", p_tuning_timeout, "Timeout to wait until giving up when waiting for a lock");
@@ -101,7 +101,7 @@ int input_register_docsis(struct input_reg *r, struct input_functions *i_funcs) 
 
 	(*i_funcs->register_param) (mode_scan, "eurodocsis", "yes", p_eurodocsis, "Use EuroDOCSIS specification instead of normal DOCSIS specification");
 	(*i_funcs->register_param) (mode_scan, "startfreq", "0", p_startfreq, "Starting frequency. Will use the default of the specification if 0");
-	(*i_funcs->register_param) (mode_scan, "modulation", "QAM216", p_modulation, "Modulation of the DOCSIS stream");
+	(*i_funcs->register_param) (mode_scan, "modulation", "QAM256", p_modulation, "Modulation of the DOCSIS stream");
 	(*i_funcs->register_param) (mode_scan, "adapter", "0", p_adapter, "ID of the DVB adapter to use");
 	(*i_funcs->register_param) (mode_scan, "frontend", "0", p_frontend, "ID of the DVB frontend to use for the specified adapter");
 	(*i_funcs->register_param) (mode_scan, "frontend_reinit", "no", p_frontend_reinit, "Set to yes if the frontend needs to be closed and reopened between each scan");

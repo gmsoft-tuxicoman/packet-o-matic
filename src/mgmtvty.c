@@ -471,7 +471,6 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 		}
 
 		default: {
-			pom_log(POM_LOG_TSHOOT "Got key 0x%x\r\n", key);
 			size_t cmdlen = strlen(c->cmds[c->curcmd]) + 1;
 			c->cmds[c->curcmd] = realloc(c->cmds[c->curcmd], cmdlen + 1);
 			memmove(c->cmds[c->curcmd] + c->cursor_pos + 1, c->cmds[c->curcmd] + c->cursor_pos, cmdlen - c->cursor_pos);
