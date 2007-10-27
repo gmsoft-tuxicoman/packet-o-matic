@@ -173,7 +173,7 @@ int input_open_docsis(struct input *i) {
 		p->output_layer = match_docsis_id;
 	} else {
 		(*ifcs->pom_log) (POM_LOG_ERR "Invalid output layer :%s\r\n", PTYPE_STRING_GETVAL(p_outlayer));
-		return POM_ERR;
+		goto err;
 	}
 
 
@@ -188,7 +188,7 @@ int input_open_docsis(struct input *i) {
 		modulation = QAM_256;
 	else {
 		(*ifcs->pom_log) (POM_LOG_ERR "Invalid modulation. Valid modulation are QAM64 or QAM256\r\n");
-		return POM_ERR;
+		goto err;
 	}	
 	
 	// Open the frontend
@@ -205,7 +205,7 @@ int input_open_docsis(struct input *i) {
 	p->frontend_fd = open(frontend, O_RDWR);
 	if (p->frontend_fd == -1) {
 		(*ifcs->pom_log) (POM_LOG_ERR "Unable to open frontend %s\r\n", frontend);
-		return POM_ERR;
+		goto err;
 	}
 
 	// Check if we are really using a DVB-C device
@@ -213,12 +213,12 @@ int input_open_docsis(struct input *i) {
 	struct dvb_frontend_info info;
 	if (ioctl(p->frontend_fd, FE_GET_INFO, &info) != 0) {
 		(*ifcs->pom_log) (POM_LOG_ERR "Unable to get frontend type\r\n");
-		return POM_ERR;
+		goto err;
 	}
 
 	if (info.type != FE_QAM) {
 		(*ifcs->pom_log) (POM_LOG_ERR "Error, device %s is not a DVB-C device\r\n", frontend);
-		return POM_ERR;
+		goto err;
 	}
 
 	// Open the demux
@@ -229,7 +229,7 @@ int input_open_docsis(struct input *i) {
 	p->demux_fd = open(demux, O_RDWR);
 	if (p->demux_fd == -1) {
 		(*ifcs->pom_log) ("Unable to open demux\r\n");
-		return POM_ERR;
+		goto err;
 	}
 
 	// Let's use a larger buffer
@@ -249,7 +249,7 @@ int input_open_docsis(struct input *i) {
 
 	if (ioctl(p->demux_fd, DMX_SET_PES_FILTER, &filter) != 0) {
 		(*ifcs->pom_log) (POM_LOG_ERR "Unable to set demuxer\r\n");
-		return POM_ERR;
+		goto err;
 	}
 
 	// Let's open the dvr device
@@ -261,7 +261,7 @@ int input_open_docsis(struct input *i) {
 	p->dvr_fd = open(dvr, O_RDONLY);
 	if (p->dvr_fd == -1) {
 		(*ifcs->pom_log) (POM_LOG_ERR "Unable to open dvr interface\r\n");
-		return POM_ERR;
+		goto err;
 	}
 
 
@@ -287,11 +287,11 @@ int input_open_docsis(struct input *i) {
 		
 		if (tuned != 1) {
 			(*ifcs->pom_log) (POM_LOG_ERR "Error while tuning to the right freq\r\n");
-			return POM_ERR;
+			goto err;
 		}
 		if (input_docsis_check_downstream(i) == POM_ERR) {
 			(*ifcs->pom_log) ("Error, no DOCSIS SYNC message received within timeout\r\n");
-			return POM_ERR;
+			goto err;
 		}
 
 	} else if (i->mode == mode_scan) { // No frequency supplied. Scanning for downstream
@@ -323,8 +323,8 @@ int input_open_docsis(struct input *i) {
 			(*ifcs->pom_log) ("Tuning to %u Mz ...\r\n", j / 1000000);
 
 			int res = input_docsis_tune(i, j, symbolRate, modulation);
-			if (res == -1)
-				return POM_ERR;
+			if (res == POM_ERR)
+				goto err;
 			else if (res == 0) {
 				if (need_reinit) {
 					// Let's close and reopen the frontend to reinit it
@@ -334,7 +334,7 @@ int input_open_docsis(struct input *i) {
 					p->frontend_fd = open(frontend, O_RDWR);
 					if (p->frontend_fd == -1) {
 						(*ifcs->pom_log) (POM_LOG_ERR "Error while reopening frontend\r\n");
-						return -1;
+						goto err;
 					}
 				}
 				continue;
@@ -363,21 +363,30 @@ int input_open_docsis(struct input *i) {
 
 		if (j > end) {
 			(*ifcs->pom_log) (POM_LOG_WARN "No DOCSIS stream found\r\n");
-			return POM_ERR;
+			goto err;
 		}
 	} else {
 		(*ifcs->pom_log) (POM_LOG_ERR "Invalid input mode\r\n");
-		return POM_ERR;
+		goto err;
 	}
 
 	if (!tuned) {
 		(*ifcs->pom_log) (POM_LOG_ERR "Failed to open docsis input\r\n");
-		return POM_ERR;
+		goto err;
 	}
 
 	(*ifcs->pom_log) ("Docsis stream opened successfullly\r\n");
 	
 	return p->dvr_fd;
+
+err:
+
+	close(p->frontend_fd);
+	close(p->demux_fd);
+	close(p->dvr_fd);
+	
+	return POM_ERR;
+
 }
 
 

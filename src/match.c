@@ -234,6 +234,9 @@ int match_unregister(unsigned int match_type) {
 	
 	if (dlclose(r->dl_handle))
 		pom_log(POM_LOG_WARN "Error while closing library of match %s\r\n", r->name);
+
+	pom_log(POM_LOG_DEBUG "Match %s unregistered\r\n", r->name);
+
 	free(r->name);
 	free(r);
 

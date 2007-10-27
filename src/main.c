@@ -49,6 +49,7 @@
 
 
 pthread_mutex_t reader_mutex = PTHREAD_MUTEX_INITIALIZER; ///< Mutex used to lock the reader thread if changes are made or modules are loaded/unloaded
+pthread_t input_thread;
 
 int finish = 0;
 
@@ -177,6 +178,7 @@ int start_input(struct ringbuffer *r) {
 	if (fd == POM_ERR) {
 		pom_log(POM_LOG_ERR "Error while opening input\r\n");
 		r->state = rb_state_closed;
+		pthread_mutex_unlock(&r->mutex);
 		return POM_ERR;
 	}
 
@@ -184,6 +186,7 @@ int start_input(struct ringbuffer *r) {
 		pom_log(POM_LOG_ERR "Error while allocating the ringbuffer\r\n");
 		input_close(r->i);
 		r->state = rb_state_closed;
+		pthread_mutex_unlock(&r->mutex);
 		return POM_ERR;
 	}
 
@@ -196,7 +199,6 @@ int start_input(struct ringbuffer *r) {
 		return POM_ERR;
 	}
 
-	pthread_t input_thread;
 	if (pthread_create(&input_thread, NULL, input_thread_func, (void*)r)) {
 		pom_log(POM_LOG_ERR "Error when creating the input thread. Abording\r\n");
 		input_close(r->i);
@@ -226,6 +228,8 @@ int stop_input(struct ringbuffer *r) {
 		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
 		return POM_ERR;
 	}
+
+	pthread_join(input_thread, NULL);
 
 	return POM_OK;
 
@@ -297,6 +301,17 @@ void *input_thread_func(void *params) {
 
 
 	input_close(r->i);
+
+	while (r->usage > 0) {
+		pthread_mutex_unlock(&r->mutex);
+		pom_log(POM_LOG_TSHOOT "Waiting for ringbuffer to be empty\r\n");
+		usleep(50000);
+		pthread_mutex_lock(&r->mutex);
+		
+	}
+
+	ringbuffer_cleanup(r);
+
 	if (r->state != rb_state_closing && pthread_mutex_unlock(&r->mutex)) {
 		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
 		finish = 1;
@@ -306,8 +321,6 @@ void *input_thread_func(void *params) {
 
 	if (!r->ic.is_live) // if it's not a live input, we can stop the program
 		finish = 1;
-
-	ringbuffer_cleanup(r);
 
 	pom_log(POM_LOG_DEBUG "Input thread stopped\r\n");
 
@@ -460,7 +473,7 @@ int main(int argc, char *argv[]) {
 	}
 
 
-	while (!finish && rbuf->usage > 0) {
+	while (rbuf->usage > 0) {
 
 		
 		if (pthread_mutex_unlock(&rbuf->mutex)) {
@@ -538,7 +551,9 @@ int main(int argc, char *argv[]) {
 
 finish:
 	finish = 1;
-	//pthread_join(input_thread, NULL);
+
+	pthread_join(input_thread, NULL);
+
 	if (!disable_mgmtsrv)
 		pthread_join(mgmtsrv_thread, NULL);
 
@@ -546,8 +561,6 @@ finish:
 
 	// Process remaining queued frames
 	conntrack_close_connections(main_config->rules);
-
-	input_close(main_config->input);
 
 err:
 

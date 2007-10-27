@@ -1,6 +1,10 @@
 * 2007/10/27 Guy Martin <gmsoft@tuxicoman.be>
 Fixed typo in default value of input_docsis modulation parameter.
 Fix bug that prevent input to be restarted if it fails to be opened.
+Fix input_docsis keeping frontend open if it fails to open.
+Fix small mem leak when parsing config.
+Added debug message when unregistering a match.
+Improved input thread handling when stopping the application or input.
 
 * 2007/10/26 Guy Martin <gmsoft@tuxicoman.be>
 Use POM_OK and POM_ERR in conntracks and for find_layer_start().

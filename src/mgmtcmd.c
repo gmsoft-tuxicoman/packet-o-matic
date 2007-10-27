@@ -1155,7 +1155,8 @@ int mgmtcmd_start_input(struct mgmt_connection *c, int argc, char *argv[]) {
 		return POM_OK;
 	}
 
-	start_input(rbuf);
+	if (start_input(rbuf) == POM_ERR)
+		mgmtsrv_send(c, "Error while opening input\r\n");
 	return POM_OK;
 
 }
@@ -1201,6 +1202,7 @@ int mgmtcmd_set_input_type(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (!strcmp(argv[0], input_get_name(rbuf->i->type))) {
 		mgmtsrv_send(c, "Input type is already %s\r\n", argv[0]);
+		pthread_mutex_unlock(&rbuf->mutex);
 		return POM_OK;
 	}
 
@@ -1208,6 +1210,7 @@ int mgmtcmd_set_input_type(struct mgmt_connection *c, int argc, char *argv[]) {
 	int input_type = input_register(argv[0]);
 	if (input_type == POM_ERR) {
 		mgmtsrv_send(c, "Unable to register input %s\r\n", argv[0]);
+		pthread_mutex_unlock(&rbuf->mutex);
 		return POM_OK;
 	}
 
@@ -1215,6 +1218,7 @@ int mgmtcmd_set_input_type(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (!i) {
 		mgmtsrv_send(c, "Unable to allocate input %s\r\n", argv[0]);
+		pthread_mutex_unlock(&rbuf->mutex);
 		return POM_OK;
 	}
 

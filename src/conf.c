@@ -410,6 +410,7 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 		r->enabled = !PTYPE_BOOL_GETVAL(disabled_pt);
 	} else
 		r->enabled = 1;
+	xmlFree(disabled);
 
 	ptype_cleanup_module(disabled_pt);
 
