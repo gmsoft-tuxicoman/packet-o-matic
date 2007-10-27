@@ -172,16 +172,17 @@ int start_input(struct ringbuffer *r) {
 
 	r->state = rb_state_opening;
 
-	if (ringbuffer_alloc(r) == POM_ERR) {
-		pom_log(POM_LOG_ERR "Error while allocating the ringbuffer\r\n");
-		r->state = rb_state_closed;
-		return POM_ERR;
-	}
-
 	int fd = input_open(r->i);
 
 	if (fd == POM_ERR) {
 		pom_log(POM_LOG_ERR "Error while opening input\r\n");
+		r->state = rb_state_closed;
+		return POM_ERR;
+	}
+
+	if (ringbuffer_alloc(r) == POM_ERR) {
+		pom_log(POM_LOG_ERR "Error while allocating the ringbuffer\r\n");
+		input_close(r->i);
 		r->state = rb_state_closed;
 		return POM_ERR;
 	}
