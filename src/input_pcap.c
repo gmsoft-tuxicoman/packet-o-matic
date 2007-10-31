@@ -182,6 +182,11 @@ int input_read_pcap(struct input *i, struct frame *f) {
 		return POM_ERR;
 	}
 
+	if (result == 0) {
+		f->len = 0;
+		return POM_OK;
+	}
+
 	if (f->bufflen < phdr->caplen) {
 		(*ifcs->pom_log) (POM_LOG_WARN "Please increase your read buffer. Provided %u, needed %u\r\n", f->bufflen, phdr->caplen);
 		phdr->caplen = f->bufflen;

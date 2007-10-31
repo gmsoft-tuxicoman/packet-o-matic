@@ -1,3 +1,8 @@
+* 2007/10/31 Guy Martin <gmsoft@tuxicoman.be>
+Added command completion support in management command.
+Fixed input_pcap when capturing from lo.
+Added key 0x7F for backspace.
+
 * 2007/10/27 Guy Martin <gmsoft@tuxicoman.be>
 Fixed typo in default value of input_docsis modulation parameter.
 Fix bug that prevent input to be restarted if it fails to be opened.

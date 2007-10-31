@@ -391,32 +391,92 @@ int mgmtsrv_process_command(struct mgmt_connection *c, unsigned int cmdnum) {
 		return POM_OK;
 	}
 	
-	struct mgmt_command *tmpcmd = cmds;
 
-	while (tmpcmd) {
-		for (i = 0; i < words_count && tmpcmd->words[i]; i++) {
-			if (strcmp(words[i], tmpcmd->words[i]))
-				break;	
-		}
-		unsigned int cmd_words_count;
-		for (cmd_words_count = 0; tmpcmd->words[cmd_words_count] && cmd_words_count < MGMT_MAX_CMD_WORDS; cmd_words_count++);
-
-		if (words_count >= i && i == cmd_words_count) {
-			int res;
-			res = (*tmpcmd->callback_func) (c, words_count - cmd_words_count, words + cmd_words_count);
-
-			free(tmpcmdstr);
-			if (res == MGMT_USAGE)
-				return mgmtvty_print_usage(c, tmpcmd);
-			else
-				return res;
-		}
-		tmpcmd = tmpcmd->next;
+	struct mgmt_command *start, *end;
+	mgmtsrv_match_command(words, &start, &end);
+	if (!start) {
+		mgmtsrv_send(c, "No such command\r\n");
+		free(tmpcmdstr);
+		return POM_OK;
 	}
-	
-	mgmtsrv_send(c, "No such command\r\n");
+	if (start != end) {
+		mgmtsrv_send(c, "Ambiguous command\r\n");
+		free(tmpcmdstr);
+		return POM_OK;
+	}
+	unsigned int cmd_words_count;
+	for (cmd_words_count = 0; start->words[cmd_words_count] && cmd_words_count < MGMT_MAX_CMD_WORDS; cmd_words_count++);
+
+	int res;
+	res = (*start->callback_func) (c, words_count - cmd_words_count, words + cmd_words_count);
 
 	free(tmpcmdstr);
+	if (res == MGMT_USAGE)
+		return mgmtvty_print_usage(c, start);
+	else
+		return res;
+	
+
+	free(tmpcmdstr);
+	return POM_OK;
+
+}
+
+int mgmtsrv_match_command(char *words[MGMT_MAX_CMD_WORDS_ARGS], struct mgmt_command **start, struct mgmt_command **end) {
+
+
+	struct mgmt_command *cur = cmds;
+
+	int w = 0, l = 0;
+	*start = NULL;
+	*end = NULL;
+
+	while (cur) {
+
+		if (!words[w] && !cur->words[w]) { // No more word no each part
+			if (!*start)
+				*start = cur;
+			cur = cur->next;
+			w = 0;
+			l = 0;
+			continue;
+		}
+
+		if (!words[w]) { // No more word to match for this one
+			if (!*start)
+				*start = cur;
+			w = 0;
+			l = 0;
+			cur = cur->next;
+			continue;
+		}
+
+		if (words[w][l] && !cur->words[w][l]) { // Our word is longer
+			cur = cur->next;
+			continue;
+		}
+
+		if (!words[w][l]) { // End of our word, let's see next word
+			w++;
+			l = 0;
+			continue;
+		}
+
+		if (cur->words[w][l] != words[w][l]) {
+			if (*start) {
+				*end = cur->prev;
+				break;
+			}
+
+			cur = cur->next;
+			w = 0;
+			l = 0;
+			continue;
+		}
+
+		l++;
+	}
+
 	return POM_OK;
 
 }

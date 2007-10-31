@@ -313,6 +313,105 @@ int mgmtvty_process_telnet_option(struct mgmt_connection *c, unsigned char *opt,
 
 }
 
+int mgmtvty_completion(struct mgmt_connection *c, unsigned char key) {
+
+	// Let's start by splitting this line
+	char *words[MGMT_MAX_CMD_WORDS_ARGS];
+	unsigned int words_count = 0, i;
+	char *str, *saveptr = NULL, *token;
+
+	for (i = 0; i < MGMT_MAX_CMD_WORDS_ARGS; i++)
+		words[i] = 0;
+
+	// Use temporary buffer to avoid modifying the command history
+	char *tmpcmdstr = malloc(strlen(c->cmds[c->curcmd]) + 1);
+	strcpy(tmpcmdstr, c->cmds[c->curcmd]);
+
+	for (str = tmpcmdstr; ;str = NULL) {
+		if (words_count >= MGMT_MAX_CMD_WORDS_ARGS) {
+			mgmtsrv_send(c, "\r\nToo many arguments\r\n");
+			free(tmpcmdstr);
+			return POM_OK;
+		}
+		token = strtok_r(str, " ", &saveptr);
+		if (token == NULL)
+			break;
+		if (strlen(token) == 0)
+			continue;
+		words[words_count] = token;
+		words_count++;
+	}
+
+
+	struct mgmt_command *start, *end;
+	mgmtsrv_match_command(words, &start, &end);
+	free(tmpcmdstr);
+
+	if (!start)
+		return POM_OK;
+
+	if (key == '?' || (key == '\t' && c->cmds[c->curcmd][strlen(c->cmds[c->curcmd]) - 1] == ' ')) {
+		int word = words_count - 1;
+		struct mgmt_command *cur = start;
+		if (c->cmds[c->curcmd][strlen(c->cmds[c->curcmd]) - 1] == ' ') {
+			// first check all the previous words are the same
+			while (cur && cur->prev != end) {
+				for (i = 0; i < words_count; i++)
+					if (strcmp(cur->words[i], start->words[i]))
+						return POM_OK;
+				cur = cur->next;
+			}
+			word = words_count;
+			cur = start;
+		}
+
+		if (!start->words[word]) // there is no more word
+			return POM_OK;
+
+		mgmtsrv_send(c, "\r\n%s ", start->words[word]);
+		while (start && start->prev != end) {
+			if (cur->words[word] && strcmp(cur->words[word], start->words[word])) {
+				cur = start;
+				mgmtsrv_send(c, "%s ", cur->words[word]);
+			}
+			start = start->next;
+		}
+
+		mgmtsrv_send(c, "\r\n" MGMT_CMD_PROMPT "%s", c->cmds[c->curcmd]);
+		c->cursor_pos = strlen(c->cmds[c->curcmd]);
+
+	} else if (key == '\t') {
+		struct mgmt_command *cur = start;
+		// first check all the previous words are the same
+		while (cur && cur->prev != end) {
+			for (i = 0; i < words_count; i++)
+				if (strcmp(cur->words[i], start->words[i]))
+					return POM_OK;
+			cur = cur->next;
+		}
+
+		// compute len of last word we got already
+		int pos = strlen(c->cmds[c->curcmd]) - 1;
+		int len = 0;
+		while (pos >= 0 && c->cmds[c->curcmd][pos] != ' ') {
+			len++;
+			pos--;
+		}
+		
+		c->cmds[c->curcmd] = realloc(c->cmds[c->curcmd], strlen(c->cmds[c->curcmd]) + strlen(start->words[words_count - 1] + len) + 2);
+		strcat(c->cmds[c->curcmd], start->words[words_count - 1] + len);
+		strcat(c->cmds[c->curcmd], " ");
+		mgmtsrv_send(c, "%s ", start->words[words_count - 1] + len);
+		c->cursor_pos = strlen(c->cmds[c->curcmd]);
+
+	} else
+		return POM_ERR;
+
+
+	return POM_OK;
+
+}
+
 int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 
 	switch (key) {
@@ -371,6 +470,7 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 			break;
 		}
 
+		case 0x7F:
 		case '\b': { // backspace
 			size_t cmdlen = strlen(c->cmds[c->curcmd]);
 			if (cmdlen == 0 || c->cursor_pos == 0)
@@ -464,9 +564,9 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 
 		case '\t': // tab completion
 		case '?': { // completion
-			mgmtsrv_send(c, "\r\nCompletion not implemented (yet :)\r\n" MGMT_CMD_PROMPT);
-			mgmtsrv_send(c, c->cmds[c->curcmd]);
-			c->cursor_pos = strlen(c->cmds[c->curcmd]);
+			if (strlen(c->cmds[c->curcmd]) > 0)
+				mgmtvty_completion(c, key);
+
 			break;
 		}
 

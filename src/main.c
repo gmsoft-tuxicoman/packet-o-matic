@@ -261,7 +261,6 @@ void *input_thread_func(void *params) {
 			r->state = rb_state_closing;
 			break;
 		}
-		r->total_packets++;
 
 		if (pthread_mutex_lock(&r->mutex)) {
 			pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording\r\n");
@@ -269,6 +268,10 @@ void *input_thread_func(void *params) {
 			return NULL;
 		}
 
+		if (r->buffer[r->write_pos]->len == 0)
+			continue;
+
+		r->total_packets++;
 		r->usage++;
 
 		if (r->usage == 1) {

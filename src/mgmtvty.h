@@ -25,6 +25,7 @@
 int mgmtvty_init(struct mgmt_connection *c);
 int mgmtvty_process(struct mgmt_connection *c, unsigned char *buffer, unsigned int len);
 int mgmtvty_process_telnet_option(struct mgmt_connection *c, unsigned char *opt, unsigned int len);
+int mgmtvty_completion(struct mgmt_connection *c, unsigned char key);
 int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key);
 int mgmtvty_print_usage(struct mgmt_connection *c, struct mgmt_command *cmd);
 

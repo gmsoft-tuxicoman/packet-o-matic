@@ -96,6 +96,7 @@ int mgmtsrv_cleanup();
 int mgmtsrv_accept_connection(struct mgmt_connection *c);
 int mgmtsrv_register_command(struct mgmt_command *cmd);
 int mgmtsrv_process_command(struct mgmt_connection *c, unsigned int cmdnum);
+int mgmtsrv_match_command(char *words[MGMT_MAX_CMD_WORDS], struct mgmt_command **start, struct mgmt_command **end);
 int mgmtsrv_close_connection(struct mgmt_connection *c);
 
 int mgmtsrv_send(struct mgmt_connection *c, char* format, ...);
