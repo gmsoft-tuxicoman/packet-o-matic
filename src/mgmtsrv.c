@@ -442,7 +442,7 @@ int mgmtsrv_match_command(char *words[MGMT_MAX_CMD_WORDS_ARGS], struct mgmt_comm
 			continue;
 		}
 
-		if (!words[w]) { // No more word to match for this one
+		if (!words[w] || !cur->words[w]) { // No more word to match for this one
 			if (!*start)
 				*start = cur;
 			w = 0;
