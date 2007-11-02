@@ -51,5 +51,16 @@ int mgmtcmd_set_input_type(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_input_mode(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_input_parameter(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_add_rule(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_start_target(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_stop_target(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_add_target(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_remove_target(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_remove_rule(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_set_target_parameter(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_set_target_mode(struct mgmt_connection *c, int argc, char *argv[]);
+
+struct rule_list *mgmtcmd_get_rule(char *rule);
+struct target *mgmtcmd_get_target(struct rule_list *rl, char *target);
+
 
 #endif

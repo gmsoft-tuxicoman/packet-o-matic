@@ -70,6 +70,7 @@ int target_init_http(struct target *t);
 int target_open_http(struct target *t);
 int target_process_http(struct target *t, struct frame *f);
 int target_close_connection_http(struct target *t, struct conntrack_entry *ce, void *conntrack_priv);
+int target_close_http(struct target *t);
 int target_cleanup_http(struct target *t);
 
 #endif

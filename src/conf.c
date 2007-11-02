@@ -426,6 +426,7 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 					while (tmpt->next)
 						tmpt = tmpt->next;
 					tmpt->next = t;
+					t->prev = tmpt;
 				}		
 			}
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "matches")) {
@@ -489,6 +490,7 @@ int config_parse(struct conf *c, char * filename) {
 				while (tmpr->next)
 					tmpr = tmpr->next;
 				tmpr->next = r;
+				r->prev = tmpr;
 
 			}
 		}

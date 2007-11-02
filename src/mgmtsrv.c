@@ -399,7 +399,7 @@ int mgmtsrv_process_command(struct mgmt_connection *c, unsigned int cmdnum) {
 		free(tmpcmdstr);
 		return POM_OK;
 	}
-	if (start != end) {
+	if (start != end && end) {
 		mgmtsrv_send(c, "Ambiguous command\r\n");
 		free(tmpcmdstr);
 		return POM_OK;

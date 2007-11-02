@@ -111,6 +111,7 @@ int target_register_http(struct target_reg *r, struct target_functions *tg_funcs
 	r->init = target_init_http;
 	r->open = target_open_http;
 	r->process = target_process_http;
+	r->close = target_close_http;
 	r->cleanup = target_cleanup_http;
 
 	tf = tg_funcs;
@@ -175,16 +176,23 @@ int target_init_http(struct target *t) {
 	return POM_OK;
 }
 
+int target_close_http(struct target *t) {
+
+	struct target_priv_http *priv = t->target_priv;
+
+	while (priv->ct_privs) {
+		(*tf->conntrack_remove_priv) (priv->ct_privs, priv->ct_privs->ce);
+		target_close_connection_http(t, priv->ct_privs->ce, priv->ct_privs);
+	}
+
+	return POM_OK;
+}
+
 int target_cleanup_http(struct target *t) {
 
 	struct target_priv_http *priv = t->target_priv;
 
 	if (priv) {
-
-		while (priv->ct_privs) {
-			(*tf->conntrack_remove_priv) (priv->ct_privs, priv->ct_privs->ce);
-			target_close_connection_http(t, priv->ct_privs->ce, priv->ct_privs);
-		}
 
 		(*tf->ptype_cleanup) (priv->path);
 		(*tf->ptype_cleanup) (priv->dump_img);

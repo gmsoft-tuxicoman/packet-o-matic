@@ -71,7 +71,10 @@ struct target {
 	struct target_param *params;
 	struct target_mode *mode;
 	int matched_conntrack;
+	int started;
+
 	struct target *next;
+	struct target *prev;
 
 };
 

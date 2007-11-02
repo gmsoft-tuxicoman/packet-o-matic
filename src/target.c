@@ -277,11 +277,14 @@ char *target_get_name(int target_type) {
 
 int target_open(struct target *t) {
 
-	if (!t)
+	if (!t && t->started)
 		return POM_ERR;
 
 	if (targets[t->type] && targets[t->type]->open)
-		return (*targets[t->type]->open) (t);
+		if ((*targets[t->type]->open) (t) != POM_OK)
+			return POM_ERR;
+
+	t->started = 1;
 	return POM_OK;
 
 }
@@ -298,6 +301,8 @@ int target_close(struct target *t) {
 
 	if (!t)
 		return POM_ERR;
+
+	t->started = 0;
 
 	if (targets[t->type] && targets[t->type]->close)
 		return (*targets[t->type]->close) (t);

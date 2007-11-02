@@ -65,6 +65,7 @@ int target_register_wave(struct target_reg *r, struct target_functions *tg_funcs
 int target_init_wave(struct target *t);
 int target_process_wave(struct target *t, struct frame *f);
 int target_close_connection_wave(struct target *t, struct conntrack_entry *ce, void *conntrack_priv);
+int target_close_wave(struct target *t);
 int target_cleanup_wave(struct target *t);
 
 #endif

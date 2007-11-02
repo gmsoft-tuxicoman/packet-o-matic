@@ -39,6 +39,7 @@ int target_register_wave(struct target_reg *r, struct target_functions *tg_funcs
 
 	r->init = target_init_wave;
 	r->process = target_process_wave;
+	r->close = target_close_wave;
 	r->cleanup = target_cleanup_wave;
 
 	tf = tg_funcs;
@@ -75,16 +76,24 @@ int target_init_wave(struct target *t) {
 	return POM_OK;
 }
 
+
+int target_close_wave(struct target *t) {
+
+	struct target_priv_wave *priv = t->target_priv;
+
+	while (priv->ct_privs) {
+		(*tf->conntrack_remove_priv) (priv->ct_privs, priv->ct_privs->ce);
+		target_close_connection_wave(t, priv->ct_privs->ce, priv->ct_privs);
+	}
+
+	return POM_OK;
+}
+
 int target_cleanup_wave(struct target *t) {
 
 	struct target_priv_wave *priv = t->target_priv;
 
 	if (priv) {
-
-		while (priv->ct_privs) {
-			(*tf->conntrack_remove_priv) (priv->ct_privs, priv->ct_privs->ce);
-			target_close_connection_wave(t, priv->ct_privs->ce, priv->ct_privs);
-		}
 
 		(*tf->ptype_cleanup) (priv->prefix);
 		free(priv);

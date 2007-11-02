@@ -1,6 +1,10 @@
 * 2007/11/2 Guy Martin <gmsoft@tuxicoman.be>
 All the targets now keep track of their own conntrack.
 Added conntrack_remove_target_priv() so targets can remove their conntrack.
+Fix bug that prevented the last command in the cli to be used.
+Fix segfault when trying to complete a command with args.
+Added commands "add rule", "start target", "stop target", "add target",
+"remove target", "remove rule", "set target parameter" "set target mode".
 
 * 2007/10/31 Guy Martin <gmsoft@tuxicoman.be>
 Added command completion support in management command.

@@ -39,6 +39,7 @@ int target_register_dump_payload(struct target_reg *r, struct target_functions *
 
 	r->init = target_init_dump_payload;
 	r->process = target_process_dump_payload;
+	r->close = target_close_dump_payload;
 	r->cleanup = target_cleanup_dump_payload;
 
 	tf = tg_funcs;
@@ -78,17 +79,24 @@ int target_init_dump_payload(struct target *t) {
 	return POM_OK;
 }
 
+int target_close_dump_payload(struct target *t) {
+
+	struct target_priv_dump_payload *priv = t->target_priv;
+
+	while (priv->ct_privs) {
+		(*tf->conntrack_remove_priv) (priv->ct_privs, priv->ct_privs->ce);
+		target_close_connection_dump_payload(t, priv->ct_privs->ce, priv->ct_privs);
+	}
+
+	return POM_OK;
+}
+
 int target_cleanup_dump_payload(struct target *t) {
 
 	struct target_priv_dump_payload *priv = t->target_priv;
 
 	if (priv) {
 			
-		while (priv->ct_privs) {
-			(*tf->conntrack_remove_priv) (priv->ct_privs, priv->ct_privs->ce);
-			target_close_connection_dump_payload(t, priv->ct_privs->ce, priv->ct_privs);
-		}
-
 		(*tf->ptype_cleanup) (priv->prefix);
 		(*tf->ptype_cleanup) (priv->markdir);
 		free(priv);
