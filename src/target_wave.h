@@ -38,12 +38,6 @@ struct au_hdr {
 
 };
 
-struct target_priv_wave {
-
-	struct ptype *prefix;
-
-};
-
 struct target_conntrack_priv_wave {
 
 	int fd;
@@ -51,13 +45,26 @@ struct target_conntrack_priv_wave {
 	unsigned int total_size;
 	unsigned int payload_type;
 
+	struct conntrack_entry *ce;
+
+	struct target_conntrack_priv_wave *next;
+	struct target_conntrack_priv_wave *prev;
+
+};
+
+struct target_priv_wave {
+
+	struct ptype *prefix;
+
+	struct target_conntrack_priv_wave *ct_privs;
+
 };
 
 int target_register_wave(struct target_reg *r, struct target_functions *tg_funcs);
 
 int target_init_wave(struct target *t);
 int target_process_wave(struct target *t, struct frame *f);
-int target_close_connection_wave(struct conntrack_entry *ce, void *conntrack_priv);
+int target_close_connection_wave(struct target *t, struct conntrack_entry *ce, void *conntrack_priv);
 int target_cleanup_wave(struct target *t);
 
 #endif

@@ -32,6 +32,21 @@
 #define HTTP_HAVE_CTYPE	0x10 ///< We have the content type
 #define HTTP_HAVE_CLEN	0x20 ///< We have the content length
 
+struct target_conntrack_priv_http {
+
+	int fd;
+	unsigned int state;
+	unsigned int direction;
+	unsigned int pos;
+	unsigned int content_len;
+	unsigned int content_type; // index in the mime_type array
+
+	struct conntrack_entry *ce;
+	struct target_conntrack_priv_http *next;
+	struct target_conntrack_priv_http *prev;
+};
+
+
 struct target_priv_http {
 
 	int match_mask;
@@ -44,19 +59,9 @@ struct target_priv_http {
 	struct ptype *dump_bin;
 	struct ptype *dump_doc;
 
-};
-
-struct target_conntrack_priv_http {
-
-	int fd;
-	unsigned int state;
-	unsigned int direction;
-	unsigned int pos;
-	unsigned int content_len;
-	unsigned int content_type; // index in the mime_type array
+	struct target_conntrack_priv_http *ct_privs;
 
 };
-
 
 
 int target_register_http(struct target_reg *r, struct target_functions *tg_funcs);
@@ -64,7 +69,7 @@ int target_register_http(struct target_reg *r, struct target_functions *tg_funcs
 int target_init_http(struct target *t);
 int target_open_http(struct target *t);
 int target_process_http(struct target *t, struct frame *f);
-int target_close_connection_http(struct conntrack_entry *ce, void *conntrack_priv);
+int target_close_connection_http(struct target *t, struct conntrack_entry *ce, void *conntrack_priv);
 int target_cleanup_http(struct target *t);
 
 #endif

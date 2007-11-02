@@ -53,8 +53,8 @@ int helper_register_tcp(struct helper_reg *r, struct helper_functions *hlp_funcs
 
 err:
 
-	(hf->ptype_cleanup) (pkt_timeout);
-	(hf->ptype_cleanup) (conn_buff);
+	(*hf->ptype_cleanup) (pkt_timeout);
+	(*hf->ptype_cleanup) (conn_buff);
 	return POM_ERR;
 
 }
@@ -399,12 +399,12 @@ int helper_cleanup_connection_tcp(struct conntrack_entry *ce, void *conntrack_pr
 int helper_cleanup_tcp() {
 
 	while (conn_head) {
-		(hf->conntrack_remove_priv) (conn_head, conn_head->ce);	
+		(*hf->conntrack_remove_priv) (conn_head, conn_head->ce);	
 		helper_cleanup_connection_tcp(conn_head->ce, conn_head);
 	}
 
-	(hf->ptype_cleanup) (pkt_timeout);
-	(hf->ptype_cleanup) (conn_buff);
+	(*hf->ptype_cleanup) (pkt_timeout);
+	(*hf->ptype_cleanup) (conn_buff);
 	return POM_OK;
 }
 

@@ -167,7 +167,7 @@ int conntrack_create_entry(struct frame *f) {
 /**
 * The obj is a variable which is used to identify target. The value of the struct target should be given.
 **/
-int conntrack_add_target_priv(void *priv, struct target *t, struct conntrack_entry *ce, int (*cleanup_handler) (struct conntrack_entry *ce, void *priv)) {
+int conntrack_add_target_priv(void *priv, struct target *t, struct conntrack_entry *ce, int (*cleanup_handler) (struct target *t, struct conntrack_entry *ce, void *priv)) {
 
 	// Let's see if that priv_type is already present
 
@@ -202,6 +202,37 @@ int conntrack_add_target_priv(void *priv, struct target *t, struct conntrack_ent
 	return POM_OK;
 }
 
+int conntrack_remove_target_priv(void* priv, struct conntrack_entry *ce) {
+
+	if (!ce)
+		return POM_ERR;
+	
+	struct conntrack_target_priv *cp = ce->target_privs;
+	
+	// Remove the first element if it match
+	if (cp->priv == priv) {
+		ce->target_privs = cp->next;
+		free(cp);
+	} else {
+		struct conntrack_target_priv *prev;
+		while (cp) {
+			prev = cp;
+			cp = cp->next;
+			if (cp->priv == priv) {
+				prev->next = cp->next;
+				free(cp);
+			}
+			break;
+		}
+	}
+
+	if (!ce->helper_privs && !ce->target_privs) {
+		// No relevant info attached to this conntrack. We can safely clean it up
+		conntrack_cleanup_connection(ce);
+	}
+
+	return POM_OK;
+}
 
 int conntrack_add_helper_priv(void *priv, int type, struct conntrack_entry *ce, int (*flush_buffer) (struct conntrack_entry *ce, void *priv), int (*cleanup_handler) (struct conntrack_entry *ce, void *priv)) {
 
@@ -447,7 +478,7 @@ int conntrack_cleanup_connection(struct conntrack_entry *ce) {
 	tp = ce->target_privs;
 	while (tp) {
 		if (tp->priv && tp->cleanup_handler)
-			(*tp->cleanup_handler) (ce, tp->priv);
+			(*tp->cleanup_handler) (tp->t, ce, tp->priv);
 		tptmp = tp;
 		tp = tp->next;
 		free(tptmp);

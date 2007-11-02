@@ -83,6 +83,12 @@ int target_cleanup_dump_payload(struct target *t) {
 	struct target_priv_dump_payload *priv = t->target_priv;
 
 	if (priv) {
+			
+		while (priv->ct_privs) {
+			(*tf->conntrack_remove_priv) (priv->ct_privs, priv->ct_privs->ce);
+			target_close_connection_dump_payload(t, priv->ct_privs->ce, priv->ct_privs);
+		}
+
 		(*tf->ptype_cleanup) (priv->prefix);
 		(*tf->ptype_cleanup) (priv->markdir);
 		free(priv);
@@ -147,6 +153,13 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 		(*tf->pom_log) (POM_LOG_TSHOOT "%s opened\r\n", filename);
 
 		(*tf->conntrack_add_priv) (cp, t, f->ce, target_close_connection_dump_payload);
+
+		cp->ce = f->ce;
+		cp->next = priv->ct_privs;
+		if (priv->ct_privs)
+			priv->ct_privs->prev = cp;
+		priv->ct_privs = cp;
+
 	}
 
 	if (PTYPE_BOOL_GETVAL(priv->markdir)) {
@@ -163,7 +176,7 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 	return POM_OK;
 };
 
-int target_close_connection_dump_payload(struct conntrack_entry *ce, void *conntrack_priv) {
+int target_close_connection_dump_payload(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
 	(*tf->pom_log) (POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
 
@@ -171,6 +184,16 @@ int target_close_connection_dump_payload(struct conntrack_entry *ce, void *connt
 	cp = conntrack_priv;
 
 	close(cp->fd);
+
+	struct target_priv_dump_payload *priv = t->target_priv;
+
+	if (cp->prev)
+		cp->prev->next = cp->next;
+	else
+		priv->ct_privs = cp->next;
+
+	if (cp->next)
+		cp->next->prev = cp->prev;
 
 	free(cp);
 

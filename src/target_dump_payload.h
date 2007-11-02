@@ -26,16 +26,22 @@
 #include "modules_common.h"
 #include "rules.h"
 
+struct target_conntrack_priv_dump_payload {
+
+	int fd;
+
+	struct conntrack_entry *ce;
+
+	struct target_conntrack_priv_dump_payload *next;
+	struct target_conntrack_priv_dump_payload *prev;
+
+};
+
 struct target_priv_dump_payload {
 
 	struct ptype *prefix;
 	struct ptype *markdir;
-
-};
-
-struct target_conntrack_priv_dump_payload {
-
-	int fd;
+	struct target_conntrack_priv_dump_payload *ct_privs;
 
 };
 
@@ -43,7 +49,7 @@ int target_register_dump_payload(struct target_reg *r, struct target_functions *
 
 int target_init_dump_payload(struct target *t);
 int target_process_dump_payload(struct target *t, struct frame *f);
-int target_close_connection_dump_payload(struct conntrack_entry* ce, void *conntrack_priv);
+int target_close_connection_dump_payload(struct target *t, struct conntrack_entry* ce, void *conntrack_priv);
 int target_cleanup_dump_payload(struct target *t);
 
 #endif

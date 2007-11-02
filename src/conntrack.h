@@ -118,7 +118,7 @@ struct conntrack_target_priv {
 	struct conntrack_target_priv *next; ///< Next private stuff in the list
 	struct target *t;
 	void *priv; ///< The private data itself
-	int (*cleanup_handler) (struct conntrack_entry *ce, void *priv); ///< Handler used to cleanup the conntrack priv
+	int (*cleanup_handler) (struct target *t, struct conntrack_entry *ce, void *priv); ///< Handler used to cleanup the conntrack priv
 
 };
 
@@ -133,7 +133,8 @@ struct conntrack_helper_priv {
 };
 int conntrack_init();
 int conntrack_register(const char *name);
-int conntrack_add_target_priv(void *priv, struct target *t,  struct conntrack_entry *ce, int (*cleanup_handler) (struct conntrack_entry *ce, void *priv));
+int conntrack_add_target_priv(void *priv, struct target *t,  struct conntrack_entry *ce, int (*cleanup_handler) (struct target *t, struct conntrack_entry *ce, void *priv));
+int conntrack_remove_target_priv(void* priv, struct conntrack_entry *ce);
 int conntrack_add_helper_priv(void *priv, int type, struct conntrack_entry *ce, int (*flush_buffer) (struct conntrack_entry *ce, void *priv), int (*cleanup_handler) (struct conntrack_entry *ce, void *priv));
 void *conntrack_get_helper_priv(int type, struct conntrack_entry *ce);
 int conntrack_remove_helper_priv(void *priv, struct conntrack_entry *ce);

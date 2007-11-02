@@ -80,6 +80,12 @@ int target_cleanup_wave(struct target *t) {
 	struct target_priv_wave *priv = t->target_priv;
 
 	if (priv) {
+
+		while (priv->ct_privs) {
+			(*tf->conntrack_remove_priv) (priv->ct_privs, priv->ct_privs->ce);
+			target_close_connection_wave(t, priv->ct_privs->ce, priv->ct_privs);
+		}
+
 		(*tf->ptype_cleanup) (priv->prefix);
 		free(priv);
 	}
@@ -183,7 +189,12 @@ int target_process_wave(struct target *t, struct frame *f) {
 		(*tf->pom_log) (POM_LOG_TSHOOT "%s opened\r\n", filename);
 
 		(*tf->conntrack_add_priv) (cp, t, f->ce, target_close_connection_wave);
-
+		
+		cp->ce = f->ce;
+		cp->next = priv->ct_privs;
+		if (priv->ct_privs)
+			priv->ct_privs->prev = cp;
+		priv->ct_privs = cp;
 
 
 		cp->last_seq = ntohs(rtphdr->seq_num) - 1;
@@ -226,7 +237,7 @@ int target_process_wave(struct target *t, struct frame *f) {
 	return POM_OK;
 };
 
-int target_close_connection_wave(struct conntrack_entry *ce, void *conntrack_priv) {
+int target_close_connection_wave(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
 	(*tf->pom_log) (POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
 
@@ -238,6 +249,17 @@ int target_close_connection_wave(struct conntrack_entry *ce, void *conntrack_pri
 	write(cp->fd, &size , 4);
 
 	close(cp->fd);
+
+	struct target_priv_wave *priv = t->target_priv;
+
+	if (cp->prev)
+		cp->prev->next = cp->next;
+	else
+		priv->ct_privs = cp->next;
+
+	if (cp->next)
+		cp->next->prev = cp->prev;
+
 
 	free(cp);
 	
