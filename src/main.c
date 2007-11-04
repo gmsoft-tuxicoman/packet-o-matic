@@ -259,6 +259,8 @@ void *input_thread_func(void *params) {
 		if (input_read(r->i, r->buffer[r->write_pos]) == POM_ERR) {
 			pom_log(POM_LOG_ERR "Error while reading from input\r\n");
 			r->state = rb_state_closing;
+			// We need to aquire the lock
+			pthread_mutex_lock(&r->mutex);
 			break;
 		}
 
@@ -302,7 +304,6 @@ void *input_thread_func(void *params) {
 
 	}
 
-
 	input_close(r->i);
 
 	while (r->usage > 0) {
@@ -315,7 +316,7 @@ void *input_thread_func(void *params) {
 
 	ringbuffer_cleanup(r);
 
-	if (r->state != rb_state_closing && pthread_mutex_unlock(&r->mutex)) {
+	if (pthread_mutex_unlock(&r->mutex)) {
 		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
 		finish = 1;
 		return NULL;
@@ -658,5 +659,13 @@ int get_current_input_time(struct timeval *cur_time) {
 
 	memcpy(cur_time, &now, sizeof(struct timeval));
 	return 0;
+}
+
+int halt() {
+
+	pom_log("Stopping application ...\r\n");
+	finish = 1;
+	rbuf->state = rb_state_stopping;
+	return POM_OK;
 }
 

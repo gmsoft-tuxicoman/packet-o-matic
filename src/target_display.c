@@ -138,12 +138,14 @@ int target_process_display(struct target *t, struct frame *f) {
 	l = start_layer;
 
 	int start = 0;
-	unsigned int len = 0;
+	int len = f->len;
 	if (l->prev) {
 		start = l->prev->payload_start;
 		len = l->payload_size + l->payload_start - l->prev->payload_start;
 	}
 	
+	if (len < 0)
+		return POM_OK;
 
 	if (t->mode == mode_hex)
 		return target_display_print_hex(f->buff, start, len);

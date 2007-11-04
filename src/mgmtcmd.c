@@ -30,7 +30,7 @@
 
 #include <pthread.h>
 
-#define MGMT_COMMANDS_NUM 33
+#define MGMT_COMMANDS_NUM 34
 
 struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
@@ -251,6 +251,12 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.help = "Change the mode of a target",
 		.callback_func = mgmtcmd_set_target_mode,
 		.usage = "set target mode <rule_id> <target_id> <mode>",
+	},
+
+	{
+		.words = { "halt", NULL },
+		.help = "Halt the program",
+		.callback_func = mgmtcmd_halt,
 	},
 };
 
@@ -1712,4 +1718,10 @@ int mgmtcmd_set_target_mode(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	return POM_OK;
 
+}
+
+int mgmtcmd_halt(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	halt();
+	return POM_OK;
 }

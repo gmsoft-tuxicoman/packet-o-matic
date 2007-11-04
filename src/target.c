@@ -291,7 +291,7 @@ int target_open(struct target *t) {
 
 int target_process(struct target *t, struct frame *f) {
 
-	if (targets[t->type]->process)
+	if (t->started && targets[t->type]->process)
 		return (*targets[t->type]->process) (t, f);
 	return POM_OK;
 

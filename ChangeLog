@@ -1,4 +1,14 @@
-* 2007/11/2 Guy Martin <gmsoft@tuxicoman.be>
+* 2007/11/04 Guy Martin <gmsoft@tuxicoman.be>
+Switch payload_start and payload_size to signed int.
+Fix the way conntrack handles connection with packets in the helper buffer.
+Fix target_display when skip = 0 and fix possible segfault.
+Avoid processing the target if it's stopped.
+Change logic when handling input read error.
+Added management command "halt".
+Fix bug in target_dump_payload that causes segfault or random memory corruption.
+Use the -pthread CFLAGS for all the modules now.
+
+* 2007/11/02 Guy Martin <gmsoft@tuxicoman.be>
 All the targets now keep track of their own conntrack.
 Added conntrack_remove_target_priv() so targets can remove their conntrack.
 Fix bug that prevented the last command in the cli to be used.

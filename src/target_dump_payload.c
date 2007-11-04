@@ -132,6 +132,7 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 
 		// New connection
 		cp = malloc(sizeof(struct target_conntrack_priv_dump_payload));
+		bzero(cp, sizeof(struct target_conntrack_priv_dump_payload));
 
 		char filename[NAME_MAX];
 

@@ -208,7 +208,7 @@ int conntrack_remove_target_priv(void* priv, struct conntrack_entry *ce) {
 		return POM_ERR;
 	
 	struct conntrack_target_priv *cp = ce->target_privs;
-	
+
 	// Remove the first element if it match
 	if (cp->priv == priv) {
 		ce->target_privs = cp->next;
@@ -559,7 +559,7 @@ int conntrack_close_connection(struct conntrack_entry *ce) {
 	hp = ce->helper_privs;
 	while (hp) {
 		if (hp->priv && hp->flush_buffer)
-			if ((*hp->flush_buffer) (ce, hp->priv))
+			if ((*hp->flush_buffer) (ce, hp->priv) == POM_OK)
 				return POM_ERR; // There was stuff in the buffer. Let's not close it
 		hp = hp->next;
 	}
@@ -635,7 +635,8 @@ int conntrack_unregister_all() {
 
 int conntrack_do_timer(void * ce) {
 
-	conntrack_close_connection(ce);
+	if (conntrack_close_connection(ce) == POM_ERR)
+		return POM_OK;
 	conntrack_cleanup_connection(ce);
 	return POM_OK;
 }

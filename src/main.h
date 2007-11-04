@@ -73,4 +73,6 @@ int reader_process_unlock();
 
 void *input_thread_func(void *params);
 
+int halt();
+
 #endif

@@ -357,7 +357,7 @@ int mgmtvty_completion(struct mgmt_connection *c, unsigned char key) {
 			// first check all the previous words are the same
 			while (cur && cur->prev != end) {
 				for (i = 0; i < words_count; i++)
-					if (strcmp(cur->words[i], start->words[i]))
+					if (!cur->words[i] || !start->words[i] || strcmp(cur->words[i], start->words[i]))
 						return POM_OK;
 				cur = cur->next;
 			}
@@ -370,7 +370,7 @@ int mgmtvty_completion(struct mgmt_connection *c, unsigned char key) {
 
 		mgmtsrv_send(c, "\r\n%s ", start->words[word]);
 		while (start && start->prev != end) {
-			if (cur->words[word] && strcmp(cur->words[word], start->words[word])) {
+			if (cur->words[word] && start->words[word] && strcmp(cur->words[word], start->words[word])) {
 				cur = start;
 				mgmtsrv_send(c, "%s ", cur->words[word]);
 			}

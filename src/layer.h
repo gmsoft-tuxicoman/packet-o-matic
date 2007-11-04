@@ -73,8 +73,8 @@ struct layer {
 	struct layer *next; ///< next layer in the packet
 	struct layer *prev; ///< previous layer in the packet
 	int type; ///< type of this layer
-	unsigned int payload_start; ///< start of the payload
-	unsigned int payload_size; ///< size of the payload
+	int payload_start; ///< start of the payload
+	int payload_size; ///< size of the payload
 	struct layer_info *infos; ///< infos associated with this layer
 };
 
