@@ -20,6 +20,7 @@
 
 
 #include "match_ethernet.h"
+#include "ptype_mac.h"
 
 #include <net/ethernet.h>
 #include <sys/socket.h>
@@ -79,6 +80,10 @@ int match_identify_ethernet(struct frame *f, struct layer* l, unsigned int start
 
 	memcpy(match_src_info->val.c, ehdr->ether_shost, 6);
 	memcpy(match_dst_info->val.c, ehdr->ether_dhost, 6);
+
+	PTYPE_MAC_SETVAL(field_saddr, ehdr->ether_shost);
+	PTYPE_MAC_SETVAL(field_daddr, ehdr->ether_dhost);
+
 	
 
 	switch (ntohs(ehdr->ether_type)) {

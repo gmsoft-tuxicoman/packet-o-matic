@@ -23,6 +23,7 @@
 
 #include <fcntl.h>
 #include <errno.h>
+#include <sys/stat.h>
 
 #include "conf.h"
 #include "input.h"
@@ -633,7 +634,7 @@ int config_write(struct conf *c, char *filename) {
 		filename = c->filename;
 
 	int fd;
-	fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC);
+	fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
 
 	if (fd == -1) {
 		char buffer[256];

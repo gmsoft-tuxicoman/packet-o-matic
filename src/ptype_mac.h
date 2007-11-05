@@ -24,11 +24,16 @@
 #include "modules_common.h"
 #include "ptype.h"
 
-
 struct ptype_mac_val {
 	char addr[6];
 	char mask[6];
 };
+
+// x is the struct ptype, y the mac
+#define PTYPE_MAC_SETVAL(x, y) { \
+	struct ptype_mac_val *v = (x)->value;\
+	memcpy(v->addr, y, 6); \
+}
 
 
 int ptype_register_mac(struct ptype_reg *r);

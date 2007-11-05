@@ -18,8 +18,8 @@
  *
  */
 
-#ifndef __PTYPE_UINT8_H__
-#define __PTYPE_UINT8_H__
+#ifndef __PTYPE_BOOL_H__
+#define __PTYPE_BOOL_H__
 
 #include "modules_common.h"
 #include "ptype.h"

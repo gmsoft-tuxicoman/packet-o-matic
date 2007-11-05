@@ -53,18 +53,6 @@
 
 #include "rules.h"
 
-static inline int mask_compare2(unsigned char *value1, unsigned char *mask1, unsigned char *value2, unsigned char *mask2, unsigned int len) {
-
-	int i;
-	
-	for (i = 0; i < len; i++) 
-		if ((value1[i] & mask1[i]) != (value2[i] & mask2[i]))
-			return 0;
-	return 1;
-
-};
-
-
 int layer_find_start(struct layer *l, int header_type) {
 	
 	if (!l)
@@ -85,7 +73,5 @@ int layer_find_start(struct layer *l, int header_type) {
 
 
 #endif // __COMMON_H__
-
-#define mask_compare(a, b, c, d) mask_compare2(a, c, b, c, d)
 
 #endif // __MODULES_COMMON_H__
