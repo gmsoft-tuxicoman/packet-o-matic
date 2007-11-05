@@ -697,26 +697,37 @@ int config_write(struct conf *c, char *filename) {
 			if (t->mode) {
 				strcat(buffer, " mode=\"");
 				strcat(buffer, t->mode->name);
-				strcat(buffer, "\"");
-			}
-			strcat(buffer, ">\n");
+				strcat(buffer, "\">\n");
+				struct target_param_reg *tpr = t->mode->params;
+				while (tpr) {
+					
+					struct target_param *tp = t->params;
+					while (tp) {
+						if (tp->type == tpr)
+							break;
+						tp = tp->next;
+					}
+				
+					if (!tp)
+						continue;
 
-			struct target_param *tp = t->params;
-			while (tp) {
-				char value[1024];
-				ptype_print_val(tp->value, value, sizeof(value));
-				if (strcmp(value, tp->type->defval)) {
-					strcat(buffer, "\t\t<param name=\"");
-					strcat(buffer, tp->type->name);
-					strcat(buffer, "\">");
-					strcat(buffer, value);
-					strcat(buffer, "</param>\n");
+					char value[1024];
+					ptype_print_val(tp->value, value, sizeof(value));
+					if (strcmp(value, tp->type->defval)) {
+						strcat(buffer, "\t\t<param name=\"");
+						strcat(buffer, tp->type->name);
+						strcat(buffer, "\">");
+						strcat(buffer, value);
+						strcat(buffer, "</param>\n");
+					}
+		
+					tpr = tpr->next;
 				}
-	
-				tp = tp->next;
-			}
 
-			strcat(buffer, "\t</target>\n\n");
+				strcat(buffer, "\t</target>\n\n");
+			} else
+				strcat(buffer, "/>\n");
+
 			t = t->next;
 
 			if (write(fd, buffer, strlen(buffer)) == -1)

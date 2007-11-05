@@ -526,7 +526,7 @@ int main(int argc, char *argv[]) {
 
 
 		while (rbuf->usage <= 0) {
-			if (finish) {
+			if (finish && rbuf->state == rb_state_closed) {
 				pthread_mutex_unlock(&rbuf->mutex);
 				goto finish;
 			}

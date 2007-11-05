@@ -3,6 +3,9 @@ Get rid of useless mask_compare function.
 Give correct permission if writing config to a new file.
 Fix ptype_bool.h #ifndef.
 Make match_ethernet actually provide the macs.
+Fix bug when saving target's parameter.
+Fix possible race when stopping the program.
+Added status message when writing the config.
 
 * 2007/11/04 Guy Martin <gmsoft@tuxicoman.be>
 Switch payload_start and payload_size to signed int.

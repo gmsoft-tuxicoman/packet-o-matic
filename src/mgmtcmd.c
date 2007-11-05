@@ -1224,10 +1224,18 @@ int mgmtcmd_stop_input(struct mgmt_connection *c, int argc, char *argv[]) {
 
 int mgmtcmd_write_config(struct mgmt_connection *c, int argc, char *argv[]) {
 
+	int result;
+
 	if (argc < 1)
-		config_write(main_config, NULL);
+		result = config_write(main_config, NULL);
 	else
-		config_write(main_config, argv[0]);
+		result = config_write(main_config, argv[0]);
+	
+	if (result == POM_ERR)
+		mgmtsrv_send(c, "Error while writing configuration file %s\r\n", main_config->filename);
+	else
+		mgmtsrv_send(c, "Configuration written in %s\r\n", main_config->filename);
+
 
 	return POM_OK;
 
