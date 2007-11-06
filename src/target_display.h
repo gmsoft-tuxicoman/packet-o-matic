@@ -52,6 +52,7 @@ int target_register_display(struct target_reg *r, struct target_functions *tg_fu
 int target_init_display(struct target *t);
 int target_open_display(struct target *t);
 int target_process_display(struct target *t, struct frame *f);
+int target_close_display(struct target *t);
 int target_cleanup_display(struct target *t);
 
 int target_display_print_hex(void *frame, unsigned int start, unsigned int len, struct target_priv_display *p);

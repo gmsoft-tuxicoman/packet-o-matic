@@ -35,6 +35,7 @@ int target_register_display(struct target_reg *r, struct target_functions *tg_fu
 
 	r->init = target_init_display;
 	r->process = target_process_display;
+	r->close = target_close_display;
 	r->cleanup = target_cleanup_display;
 
 	tf = tg_funcs;
@@ -331,6 +332,19 @@ int target_display_print_ascii(void *frame, unsigned int start, unsigned int len
 
 }
 
+int target_close_display(struct target *t) {
+
+	struct target_priv_display *priv = t->target_priv;
+
+	while (priv->ct_privs) {
+		(*tf->conntrack_remove_priv) (priv->ct_privs, priv->ct_privs->ce);
+		target_close_connection_display(t, priv->ct_privs->ce, priv->ct_privs);
+
+	}
+	
+
+	return POM_OK;
+}
 
 int target_cleanup_display(struct target *t) {
 
