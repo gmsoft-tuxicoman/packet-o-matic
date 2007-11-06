@@ -19,26 +19,34 @@
  */
 
 #include "match_icmp.h"
+#include "ptype_uint8.h"
 #include <netinet/in_systm.h>
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
 
 int match_ipv4_id;
-struct match_functions *m_functions;
-struct layer_info *match_type_info, *match_code_info, *match_seq_info;
+struct match_functions *mf;
+struct match_field_reg *field_type, *field_code;
+
+struct ptype *ptype_uint8;
 
 int match_register_icmp(struct match_reg *r, struct match_functions *m_funcs) {
 
 	r->identify = match_identify_icmp;
+	r->unregister = match_unregister_icmp;
 
-	m_functions = m_funcs;
+	mf = m_funcs;
 	
-	match_ipv4_id = (*m_functions->match_register) ("ipv4");
+	match_ipv4_id = (*mf->match_register) ("ipv4");
 
-	match_type_info = (*m_funcs->layer_info_register) (r->type, "type", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_ZERO);
-	match_type_info->snprintf = match_layer_info_snprintf_icmp;
-	match_code_info = (*m_funcs->layer_info_register) (r->type, "code", LAYER_INFO_TYPE_UINT32);
-	match_seq_info = (*m_funcs->layer_info_register) (r->type, "seq", LAYER_INFO_TYPE_UINT32);
+	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
+
+	if (!ptype_uint8)
+		return POM_ERR;
+
+
+	field_type = (*mf->register_field) (r->type, "type", ptype_uint8, "Type");
+	field_code = (*mf->register_field) (r->type, "code", ptype_uint8, "Code");
 
 	return POM_OK;
 }
@@ -50,42 +58,23 @@ int match_identify_icmp(struct frame *f, struct layer* l, unsigned int start, un
 	l->payload_start = start + 8; 
 	l->payload_size = len - 8;
 
-	match_type_info->val.ui32 = ihdr->icmp_type;
-	match_code_info->val.ui32 = ihdr->icmp_code;
-
-	switch (ihdr->icmp_type) {
-		case ICMP_ECHOREPLY:
-		case ICMP_ECHO:
-			match_seq_info->val.ui32 = ntohs(ihdr->icmp_seq);
-			return -1;
-
-		case ICMP_TSTAMP:
-		case ICMP_TSTAMPREPLY:
-		case ICMP_IREQ:
-		case ICMP_IREQREPLY:
-			match_seq_info->val.ui32 = 0;
-			return -1;
+	struct layer_field *lf = l->fields;
+	while (lf) {
+		if (lf->type == field_type) {
+			PTYPE_UINT8_SETVAL(lf->value, ihdr->icmp_type);
+		} else if (lf->type == field_code) {
+			PTYPE_UINT8_SETVAL(lf->value, ihdr->icmp_code);
+		}
+		lf = lf->next;
 	}
 
-	match_seq_info->val.ui32 = 0;
-	// For now we don't advertise the ip layer
-	//return  match_ipv4_id;
-	return -1;
+	return POM_ERR;
 }
 
-int match_layer_info_snprintf_icmp(char *buff, unsigned int len, struct layer_info *inf) {
+int match_unregister_icmp(struct match_reg *r) {
 
-
-        switch (match_type_info->val.ui32) {
-                case ICMP_ECHO:
-                        strncpy(buff, "ping", len);
-                        return 4;
-                case ICMP_ECHOREPLY:
-                        strncpy(buff, "pong", len);
-                        return 4;
-        }
-
-        return snprintf(buff, len, "%u", match_type_info->val.ui32);
+	(*mf->ptype_cleanup) (ptype_uint8);
+	return POM_OK;
 
 }
 

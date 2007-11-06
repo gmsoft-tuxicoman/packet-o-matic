@@ -22,6 +22,7 @@
 #include "common.h"
 #include "match.h"
 #include "ptype.h"
+#include "conntrack.h"
 
 struct match_reg *matchs[MAX_MATCH];
 static struct match_functions *m_funcs;
@@ -70,6 +71,9 @@ int match_register(const char *match_name) {
 
 			pom_log(POM_LOG_DEBUG "Match %s registered\r\n", match_name);
 
+			// Automatically load the conntrack
+			conntrack_register(match_name);
+
 
 			return i;
 
@@ -81,36 +85,43 @@ int match_register(const char *match_name) {
 
 }
 
-int match_register_param(int match_type, char *name, struct ptype *value, char *descr) {
+struct match_field_reg* match_register_field(int match_type, char *name, struct ptype *type, char *descr) {
 
 	if (!matchs[match_type])
-		return POM_ERR;
+		return NULL;
 
-	struct match_param_reg *p = malloc(sizeof(struct match_param_reg));
-	bzero(p, sizeof(struct match_param_reg));
-	p->value = value;
+	struct match_field_reg *p = malloc(sizeof(struct match_field_reg));
+	bzero(p, sizeof(struct match_field_reg));
 
 	p->name = malloc(strlen(name) + 1);
 	strcpy(p->name, name);
 	p->descr = malloc(strlen(descr) + 1);
 	strcpy(p->descr, descr);
 
-	p->next = matchs[match_type]->params;
-	matchs[match_type]->params = p;
+	if (!matchs[match_type]->fields)
+		matchs[match_type]->fields = p;
+	else {
+		struct match_field_reg *tmp = matchs[match_type]->fields;
+		while (tmp->next)
+			tmp = tmp->next;
+		tmp->next = p;
+	}
 
-	return POM_OK;
+	p->type = type;
+
+	return p;
 
 }
 
-struct match_param *match_alloc_param(int match_type, char *param_type) {
+struct match_field *match_alloc_field(int match_type, char *field_type) {
 
 
 	if (!matchs[match_type])
 		return NULL;
 
-	struct match_param_reg *p = matchs[match_type]->params;
+	struct match_field_reg *p = matchs[match_type]->fields;
 	while (p) {
-		if (!strcmp(p->name, param_type))
+		if (!strcmp(p->name, field_type))
 			break;
 		p = p->next;
 	}
@@ -118,12 +129,12 @@ struct match_param *match_alloc_param(int match_type, char *param_type) {
 	if (!p)
 		return NULL;
 	
-	struct match_param *ret;
-	ret = malloc(sizeof(struct match_param));
-	bzero(ret, sizeof(struct match_param));
+	struct match_field *ret;
+	ret = malloc(sizeof(struct match_field));
+	bzero(ret, sizeof(struct match_field));
 
 
-	ret->value = ptype_alloc_from(p->value);
+	ret->value = ptype_alloc_from(p->type);
 	if (!ret->value) {
 		free(ret);
 		return NULL;
@@ -133,7 +144,7 @@ struct match_param *match_alloc_param(int match_type, char *param_type) {
 	return ret;
 }
 
-int match_cleanup_param(struct match_param *p) {
+int match_cleanup_field(struct match_field *p) {
 
 	ptype_cleanup_module(p->value);
 	free(p);
@@ -148,8 +159,7 @@ int match_init() {
 	m_funcs = malloc(sizeof(struct match_functions));
 	m_funcs->pom_log = pom_log;
 	m_funcs->match_register = match_register;
-	m_funcs->layer_info_register = layer_info_register;
-	m_funcs->register_param = match_register_param;
+	m_funcs->register_field = match_register_field;
 	m_funcs->ptype_alloc = ptype_alloc;
 	m_funcs->ptype_cleanup = ptype_cleanup_module;
 
@@ -162,6 +172,12 @@ char *match_get_name(int match_type) {
 		return matchs[match_type]->name;
 	
 	return NULL;
+
+}
+
+struct match_field_reg *match_get_fields(int match_type) {
+
+	return matchs[match_type]->fields;
 
 }
 
@@ -196,9 +212,19 @@ int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigne
  * This must be used after match_identify() identified the whole packet
  **/
 
-int match_eval(struct match_param *mp) {
+int match_eval(struct match_field *mf, struct layer *l) {
 
-	return ptype_compare_val(mp->op, mp->field->value, mp->value);
+	struct layer_field *lf = l->fields;
+	while (lf) {
+		if (mf->field == lf->type)
+			break;
+		lf = lf->next;
+	}
+
+	if (!lf)
+		return 0;
+
+	return ptype_compare_val(mf->op, mf->value, lf->value);
 	
 }
 
@@ -220,11 +246,11 @@ int match_unregister(unsigned int match_type) {
 	if (!r)
 		return POM_ERR;
 
-	while (r->params) {
-		struct match_param_reg *tmp = r->params;
+	while (r->fields) {
+		struct match_field_reg *tmp = r->fields;
 		free(tmp->name);
 		free(tmp->descr);
-		r->params = tmp->next;
+		r->fields = tmp->next;
 		free(tmp);
 
 	}
@@ -264,13 +290,13 @@ void match_print_help() {
 	for (i = 0; matchs[i]; i++) {
 		printf("* MATCH %s *\n", matchs[i]->name);
 		
-		if (!matchs[i]->params)
-			printf("No parameter for this match\n");
+		if (!matchs[i]->fields)
+			printf("No field for this match\n");
 		else {
-			struct match_param_reg *p;
-			p = matchs[i]->params;
+			struct match_field_reg *p;
+			p = matchs[i]->fields;
 			while (p) {
-				printf("%s : %s\n", p->name, p->descr);
+				printf("  %s : %s\n", p->name, p->descr);
 				p = p->next;
 			}
 		}

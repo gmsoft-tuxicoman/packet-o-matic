@@ -24,10 +24,11 @@
 #include "ptype_uint16.h"
 
 int match_undefined_id;
-struct match_functions *m_functions;
-struct layer_info *match_sport_info, *match_dport_info;
+struct match_functions *mf;
 
-struct ptype *field_sport, *field_dport;
+struct match_field_reg *field_sport, *field_dport;
+
+struct ptype *ptype_uint16;
 
 int match_register_udp(struct match_reg *r, struct match_functions *m_funcs) {
 
@@ -35,22 +36,17 @@ int match_register_udp(struct match_reg *r, struct match_functions *m_funcs) {
 	r->identify = match_identify_udp;
 	r->unregister = match_unregister_udp;
 
-	m_functions = m_funcs;
+	mf = m_funcs;
 
-	match_undefined_id = (*m_functions->match_register) ("undefined");
+	match_undefined_id = (*mf->match_register) ("undefined");
 
-	match_sport_info = (*m_funcs->layer_info_register) (r->type, "sport", LAYER_INFO_TYPE_UINT32);
-	match_dport_info = (*m_funcs->layer_info_register) (r->type, "dport", LAYER_INFO_TYPE_UINT32);
+	ptype_uint16 = (*mf->ptype_alloc) ("uint16", NULL);
 
-	field_sport = (*m_funcs->ptype_alloc) ("uint16", NULL);
-	field_dport = (*m_funcs->ptype_alloc) ("uint16", NULL);
-	if (!field_sport || !field_dport) {
-		match_unregister_udp(r);
+	if (!ptype_uint16)
 		return POM_ERR;
-	}
 
-	(*m_funcs->register_param) (r->type, "sport", field_sport, "Source port");
-	(*m_funcs->register_param) (r->type, "dport", field_dport, "Destination port");
+	field_sport = (*mf->register_field) (r->type, "sport", ptype_uint16, "Source port");
+	field_dport = (*mf->register_field) (r->type, "dport", ptype_uint16, "Destination port");
 
 
 	return POM_OK;
@@ -64,20 +60,24 @@ int match_identify_udp(struct frame *f, struct layer* l, unsigned int start, uns
 	l->payload_start = start + sizeof(struct udphdr);
 	l->payload_size = ntohs(hdr->uh_ulen) - sizeof(struct udphdr);
 
-	PTYPE_UINT16_SETVAL(field_sport, ntohs(hdr->uh_sport));
-	PTYPE_UINT16_SETVAL(field_dport, ntohs(hdr->uh_dport));
+	struct layer_field *lf = l->fields;
+	while (lf) {
+		if (lf->type == field_sport) {
+			PTYPE_UINT16_SETVAL(lf->value, ntohs(hdr->uh_sport));
+		} else if (lf->type == field_dport) {
+			PTYPE_UINT16_SETVAL(lf->value, ntohs(hdr->uh_dport));
+		}
+		lf = lf->next;
+	}
 
-	match_sport_info->val.ui32 = ntohs(hdr->uh_sport);
-	match_dport_info->val.ui32 = ntohs(hdr->uh_dport);
 
 	return match_undefined_id;
 
 }
 
-
 int match_unregister_udp(struct match_reg *r) {
 
-	(*m_functions->ptype_cleanup) (field_sport);
-	(*m_functions->ptype_cleanup) (field_dport);
+	(*mf->ptype_cleanup) (ptype_uint16);
 	return POM_OK;
+
 }

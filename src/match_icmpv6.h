@@ -28,7 +28,6 @@
 
 int match_register_icmpv6(struct match_reg *r, struct match_functions *m_funcs);
 int match_identify_icmpv6(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
-
-int match_layer_info_snprintf_icmpv6(char *buff, unsigned int len, struct layer_info *inf);
+int match_unregister_icmpv6(struct match_reg *r);
 
 #endif

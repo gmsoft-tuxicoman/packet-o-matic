@@ -144,12 +144,12 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 
 	if (frag_start + frag_size > len + start) {
 		(*hf->pom_log) (POM_LOG_DEBUG "Error, packet len missmatch dropping this frag : ipv4 [");
-		struct layer_info *li = l->infos;
-		while (li) {
+		struct layer_field *lf = l->fields;
+		while (lf) {
 			char buff[2048];
-			if((hf->layer_info_snprintf) (buff, 2048, li))
-				(*hf->pom_log) (POM_LOG_DEBUG "%s: %s, ", li->name, buff);
-			li = li->next;
+			if((*hf->ptype_print_val) (lf->value, buff, sizeof(buff)))
+				(*hf->pom_log) (POM_LOG_DEBUG "%s: %s, ", lf->type->name, buff);
+			lf = lf->next;
 		}
 		(*hf->pom_log) (POM_LOG_DEBUG "frag_off: 0x%X, id: %u, frag_start: %u, frag_size: %u, size: %u]\r\n", frag_off, ntohs(hdr->ip_id), frag_start, (unsigned int) frag_size, l->prev->payload_size);
 

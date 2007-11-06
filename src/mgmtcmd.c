@@ -735,8 +735,8 @@ struct rule_node *mgmtcmd_set_rule_parse_block(struct mgmt_connection *c, char *
 		return NULL;
 	}
 	
-	struct match_param *param;
-	param = match_alloc_param(layer, field);
+	struct match_field *param;
+	param = match_alloc_field(layer, field);
 	if (param == NULL) {
 		mgmtsrv_send(c, "Unknown field \"%s\" for match \"%s\"\r\n", field, words[0]);
 		return NULL;

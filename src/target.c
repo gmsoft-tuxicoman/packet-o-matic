@@ -37,12 +37,12 @@ int target_init() {
 	tg_funcs.register_param = target_register_param;
 	tg_funcs.register_param_value = target_register_param_value;
 	tg_funcs.ptype_alloc = ptype_alloc;
+	tg_funcs.ptype_print_val = ptype_print_val;
 	tg_funcs.ptype_cleanup = ptype_cleanup_module;
 	tg_funcs.conntrack_create_entry = conntrack_create_entry;
 	tg_funcs.conntrack_add_priv = conntrack_add_target_priv;
 	tg_funcs.conntrack_get_priv = conntrack_get_target_priv;
 	tg_funcs.conntrack_remove_priv = conntrack_remove_target_priv;
-	tg_funcs.layer_info_snprintf = layer_info_snprintf;
 	tg_funcs.match_get_name = match_get_name;
 
 	pom_log(POM_LOG_DEBUG "Targets initialized\r\n");

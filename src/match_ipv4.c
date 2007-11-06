@@ -25,44 +25,39 @@
 #include <netinet/in.h>
 
 #include "ptype_ipv4.h"
+#include "ptype_uint8.h"
 
 int match_icmp_id, match_tcp_id, match_udp_id, match_ipv6_id;
-struct match_functions *m_functions;
-struct layer_info *match_src_info, *match_dst_info, *match_tos_info, *match_ttl_info;
+struct match_functions *mf;
 
-struct ptype *field_saddr, *field_daddr;
+struct match_field_reg *field_saddr, *field_daddr, *field_tos, *field_ttl;
+
+struct ptype *ptype_ipv4, *ptype_uint8;
 
 int match_register_ipv4(struct match_reg *r, struct match_functions *m_funcs) {
 	
 	r->identify = match_identify_ipv4;
 	r->unregister = match_unregister_ipv4;
 
-	m_functions = m_funcs;
+	mf = m_funcs;
 
-	match_icmp_id = (*m_funcs->match_register) ("icmp");
-	match_tcp_id = (*m_funcs->match_register) ("tcp");
-	match_udp_id = (*m_funcs->match_register) ("udp");
-	match_ipv6_id = (*m_funcs->match_register) ("ipv6");
+	match_icmp_id = (*mf->match_register) ("icmp");
+	match_tcp_id = (*mf->match_register) ("tcp");
+	match_udp_id = (*mf->match_register) ("udp");
+	match_ipv6_id = (*mf->match_register) ("ipv6");
 
+	ptype_ipv4 = (*mf->ptype_alloc) ("ipv4", NULL);
+	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
 
-	match_src_info = (*m_funcs->layer_info_register) (r->type, "src", LAYER_INFO_TYPE_UINT32);
-	match_src_info->snprintf = match_layer_info_snprintf_ipv4;
-	match_dst_info = (*m_funcs->layer_info_register) (r->type, "dst", LAYER_INFO_TYPE_UINT32);
-	match_dst_info->snprintf = match_layer_info_snprintf_ipv4;
-	match_tos_info = (*m_funcs->layer_info_register) (r->type, "tos", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
-	match_ttl_info = (*m_funcs->layer_info_register) (r->type, "ttl", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_ZERO);
-
-
-	field_saddr = (*m_funcs->ptype_alloc) ("ipv4", NULL);
-	field_daddr = (*m_funcs->ptype_alloc) ("ipv4", NULL);
-	if (!field_saddr || !field_daddr) {
+	if (!ptype_ipv4 || !ptype_uint8) {
 		match_unregister_ipv4(r);
 		return POM_ERR;
 	}
-		
 
-	(*m_funcs->register_param) (r->type, "saddr", field_saddr, "Source address");
-	(*m_funcs->register_param) (r->type, "daddr", field_daddr, "Destination address");
+	field_saddr = (*mf->register_field) (r->type, "src", ptype_ipv4, "Source address");
+	field_daddr = (*mf->register_field) (r->type, "dst", ptype_ipv4, "Destination address");
+	field_tos = (*mf->register_field) (r->type, "tos", ptype_uint8, "Type of service");
+	field_ttl = (*mf->register_field) (r->type, "ttl", ptype_uint8, "Time to live");
 
 	return POM_OK;
 }
@@ -79,17 +74,24 @@ int match_identify_ipv4(struct frame *f, struct layer* l, unsigned int start, un
 
 	if (hdr->ip_hl < 5 || ntohs(hdr->ip_len) < hdr_len)
 	        return -1;
-	
-	match_src_info->val.ui32 = saddr.s_addr;
-	match_dst_info->val.ui32 = daddr.s_addr;
-	match_ttl_info->val.ui32 = hdr->ip_ttl;
-	match_tos_info->val.ui32 = hdr->ip_tos;
-
 	l->payload_start = start + hdr_len;
 	l->payload_size = ntohs(hdr->ip_len) - hdr_len;
 
-	PTYPE_IPV4_SETADDR(field_saddr, hdr->ip_src);
-	PTYPE_IPV4_SETADDR(field_daddr, hdr->ip_dst);
+	struct layer_field *lf = l->fields;
+	while (lf) {
+		if (lf->type == field_saddr) {
+			PTYPE_IPV4_SETADDR(lf->value, hdr->ip_src);
+		} else if (lf->type == field_daddr) {
+			PTYPE_IPV4_SETADDR(lf->value, hdr->ip_dst);
+		} else if (lf->type == field_tos) {
+			PTYPE_UINT8_SETVAL(lf->value, hdr->ip_tos);
+		} else if (lf->type == field_ttl) {
+			PTYPE_UINT8_SETVAL(lf->value, hdr->ip_ttl);
+		}
+		
+		lf = lf->next;
+	}
+
 
 	switch (hdr->ip_p) {
 
@@ -103,22 +105,13 @@ int match_identify_ipv4(struct frame *f, struct layer* l, unsigned int start, un
 			return match_ipv6_id;
 	}
 
-	return -1;
-}
-
-
-int match_layer_info_snprintf_ipv4(char *buff, unsigned int len, struct layer_info *inf) {
-
-	struct in_addr addr;
-	addr.s_addr = (uint32_t) inf->val.ui32;
-
-	strncpy(buff, inet_ntoa(addr), len);
-	return strlen(buff);
+	return POM_ERR;
 }
 
 int match_unregister_ipv4(struct match_reg *r) {
 
-	(*m_functions->ptype_cleanup) (field_saddr);
-	(*m_functions->ptype_cleanup) (field_daddr);
+	(*mf->ptype_cleanup) (ptype_ipv4);
+	(*mf->ptype_cleanup) (ptype_uint8);
+
 	return POM_OK;
 }

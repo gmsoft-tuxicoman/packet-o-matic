@@ -30,6 +30,5 @@ int match_register_ethernet(struct match_reg *r, struct match_functions *m_funcs
 int match_identify_ethernet(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
 int match_unregister_ethernet(struct match_reg *r);
 
-int match_layer_info_snprintf_ethernet(char *buff, unsigned int len, struct layer_info *inf);
 
 #endif

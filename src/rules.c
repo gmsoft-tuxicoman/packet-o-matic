@@ -77,13 +77,13 @@ int node_match(struct frame *f, struct rule_node *n, struct layer *l) {
 			}
 			unsigned int next_layer;
 			l->type = n->layer;
+			l->fields = layer_field_pool_get(l);
 			next_layer = match_identify(f, l, l->prev->payload_start, l->prev->payload_size);
 			if (next_layer < 0) {
 				// restore the original value
 				l->type = match_undefined_id;
 				return 0;
 			} else {
-				l->infos = layer_info_pool_get(l);
 				l->next = layer_pool_get();
 				l->next->type = next_layer;
 
@@ -113,7 +113,7 @@ int node_match(struct frame *f, struct rule_node *n, struct layer *l) {
 		}
 
 		if (n->match) {
-			result = match_eval(n->match);
+			result = match_eval(n->match, l);
 		}
 
 	} else { // If there is an operation specified, it means this node is a 'or' or 'and' operation
@@ -171,6 +171,7 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 
 	l = layer_pool_get();
 	l->type = f->first_layer;
+	l->fields = layer_field_pool_get(l);
 
 
 	f->l = l;
@@ -191,11 +192,11 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 
 		if (l->next->type == -1) {
 			l->next = NULL;
-		} else if (l->next->type != match_undefined_id)
+		} else if (l->next->type != match_undefined_id) {
 			// Next layer is new. Need to discard current conntrack entry
 			f->ce = NULL;
-		
-		l->infos = layer_info_pool_get(l);
+			l->next->fields = layer_field_pool_get(l->next);
+		}
 
 
 		if (helper_need_help(f, new_start, new_len, l) == H_NEED_HELP) // If it needs help, we don't process it
@@ -317,7 +318,7 @@ int node_destroy(struct rule_node *node, int sub) {
 		node_destroy(node->b, 1);
 
 	if (node->match)
-		match_cleanup_param(node->match);
+		match_cleanup_field(node->match);
 	free(node);
 
 	if (!sub && done_stack) {

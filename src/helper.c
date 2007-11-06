@@ -38,13 +38,13 @@ int helper_init() {
 	hlp_funcs->queue_timer = timer_queue;
 	hlp_funcs->dequeue_timer = timer_dequeue;
 	hlp_funcs->queue_frame = helper_queue_frame;
-	hlp_funcs->layer_info_snprintf = layer_info_snprintf;
 	hlp_funcs->conntrack_create_entry = conntrack_create_entry;
 	hlp_funcs->conntrack_get_entry = conntrack_get_entry;
 	hlp_funcs->conntrack_add_priv = conntrack_add_helper_priv;
 	hlp_funcs->conntrack_get_priv = conntrack_get_helper_priv;
 	hlp_funcs->conntrack_remove_priv = conntrack_remove_helper_priv;
 	hlp_funcs->ptype_alloc = ptype_alloc;
+	hlp_funcs->ptype_print_val = ptype_print_val;
 	hlp_funcs->ptype_cleanup = ptype_cleanup_module;
 
 	pom_log(POM_LOG_DEBUG "Helper initialized\r\n");

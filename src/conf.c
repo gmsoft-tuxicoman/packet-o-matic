@@ -242,21 +242,21 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 					pom_log(POM_LOG_WARN "Field specified for match %s but no value given\r\n", layer);
 					xmlFree(field);
 				} else {
-					struct match_param *mp = match_alloc_param(mt, field);
-					if (!mp) {
+					struct match_field *mf = match_alloc_field(mt, field);
+					if (!mf) {
 						pom_log(POM_LOG_ERR "No field %s for match %s\r\n", field, layer);
-					} else if (ptype_parse_val(mp->value, value) == POM_ERR) {
+					} else if (ptype_parse_val(mf->value, value) == POM_ERR) {
 						pom_log(POM_LOG_ERR "Unable to parse value \"%s\" for field %s and match %s\r\n", value, field, layer);
 					} else {
-						n->match = mp;
+						n->match = mf;
 						char *op = (char*) xmlGetProp(cur, (const xmlChar*) "op");
 						if (!op)
-							mp->op = ptype_get_op(mp->value, "==");
+							mf->op = ptype_get_op(mf->value, "==");
 						else
-							mp->op = ptype_get_op(mp->value, op);
-						if (mp->op == POM_ERR) {
+							mf->op = ptype_get_op(mf->value, op);
+						if (mf->op == POM_ERR) {
 							pom_log(POM_LOG_ERR "Invalid operation %s for field %s and layer %s\r\n", op, field, layer);
-							free(mp);
+							free(mf);
 							n->match = NULL;
 						}
 						xmlFree(op);
@@ -279,7 +279,6 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 			xmlFree(inv);
 
 			// Try to register corresponding conntrack and helper
-			conntrack_register(layer);
 			helper_register(layer);
 
 			xmlFree(layer);

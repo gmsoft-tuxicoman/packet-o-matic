@@ -22,30 +22,28 @@
 #include "ptype_uint8.h"
 
 int match_atm_id, match_ethernet_id;
-struct match_functions *m_functions;
-struct layer_info *match_fc_type_info, *match_ehdr_on_info, *match_fc_parm_info;
+struct match_functions *mf;
 
-struct ptype *field_fc_type;
+struct match_field_reg *field_fc_type, *field_fc_parm;
+
+struct ptype *ptype_uint8;
 
 int match_register_docsis(struct match_reg *r, struct match_functions *m_funcs) {
 
 	r->identify = match_identify_docsis;
 	r->unregister = match_unregister_docsis;
 
-	m_functions = m_funcs;
+	mf = m_funcs;
 	
-	match_atm_id = (*m_functions->match_register) ("atm");
-	match_ethernet_id = (*m_functions->match_register) ("ethernet");
+	match_atm_id = (*mf->match_register) ("atm");
+	match_ethernet_id = (*mf->match_register) ("ethernet");
 
-	match_fc_type_info = (*m_funcs->layer_info_register) (r->type, "fc_type", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_ZERO);
-	match_fc_parm_info = (*m_funcs->layer_info_register) (r->type, "fc_parm", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_ZERO);
-	match_ehdr_on_info = (*m_funcs->layer_info_register) (r->type, "ehdr_on", LAYER_INFO_TYPE_UINT32);
-
-	field_fc_type = (*m_funcs->ptype_alloc) ("uint8", NULL);
-	if (!field_fc_type)
+	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
+	if (!ptype_uint8) 
 		return POM_ERR;
 
-	(*m_funcs->register_param) (r->type, "fc_type", field_fc_type, "Frame control type");
+	field_fc_type = (*mf->register_field) (r->type, "fc_type", ptype_uint8, "Frame control type");
+	field_fc_parm = (*mf->register_field) (r->type, "fc_parm", ptype_uint8, "Frame control type");
 
 	return POM_OK;
 }
@@ -57,11 +55,6 @@ int match_identify_docsis(struct frame *f, struct layer* l, unsigned int start, 
 	
 
 	l->payload_start = start + sizeof(struct docsis_hdr);
-
-	match_fc_type_info->val.ui32 = dhdr->fc_type;
-	match_fc_parm_info->val.ui32 = dhdr->fc_parm;
-	match_ehdr_on_info->val.ui32 = dhdr->ehdr_on;
-
 	l->payload_size = ntohs(dhdr->len);
 
 	if (dhdr->ehdr_on) {
@@ -72,7 +65,15 @@ int match_identify_docsis(struct frame *f, struct layer* l, unsigned int start, 
 		// TODO : process the ehdr
 	}
 
-	PTYPE_UINT8_SETVAL(field_fc_type, dhdr->fc_type);
+	struct layer_field *lf = l->fields;
+	while (lf) {
+		if (lf->type == field_fc_type) {
+			PTYPE_UINT8_SETVAL(lf->value, dhdr->fc_type);
+		} else if (lf->type == field_fc_parm) {
+			PTYPE_UINT8_SETVAL(lf->value, dhdr->fc_parm);
+		}
+		lf = lf->next;
+	}
 
 	switch (dhdr->fc_type) {
 		case FC_TYPE_PKT_MAC:
@@ -82,7 +83,7 @@ int match_identify_docsis(struct frame *f, struct layer* l, unsigned int start, 
 		case FC_TYPE_ATM:
 			return match_atm_id;
 		case FC_TYPE_RSVD:
-			return -1;
+			return POM_ERR;
 	}
 
 	// At this point, only fc_type == FC_TYPE_MAC_SPC is left
@@ -98,11 +99,12 @@ int match_identify_docsis(struct frame *f, struct layer* l, unsigned int start, 
 			return -1;
 	}
 */
-	return -1;
+	return POM_ERR;
 }
 
 int match_unregister_docsis(struct match_reg *r) {
 
-	(*m_functions->ptype_cleanup) (field_fc_type);
+	(*mf->ptype_cleanup) (ptype_uint8);
 	return POM_OK;
+
 }

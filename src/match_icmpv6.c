@@ -23,22 +23,31 @@
 #include <netinet/icmp6.h>
 
 #include "match_icmpv6.h"
+#include "ptype_uint8.h"
 
 int match_ipv4_id, match_ipv6_id;
-struct match_functions *m_functions;
-struct layer_info *match_type_info, *match_code_info;
+struct match_functions *mf;
+
+struct match_field_reg *field_type, *field_code;
+
+struct ptype *ptype_uint8;
 
 int match_register_icmpv6(struct match_reg *r, struct match_functions *m_funcs) {
 
 	r->identify = match_identify_icmpv6;
+	r->unregister = match_unregister_icmpv6;
 
-	m_functions = m_funcs;
+	mf = m_funcs;
 	
-	match_ipv6_id = (*m_functions->match_register) ("ipv6");
+	match_ipv6_id = (*mf->match_register) ("ipv6");
 
-	match_type_info = (*m_funcs->layer_info_register) (r->type, "type", LAYER_INFO_TYPE_UINT32);
-	match_type_info->snprintf = match_layer_info_snprintf_icmpv6;
-	match_code_info = (*m_funcs->layer_info_register) (r->type, "code", LAYER_INFO_TYPE_UINT32);
+	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
+
+	if (!ptype_uint8)
+		return POM_ERR;
+
+	field_type = (*mf->register_field) (r->type, "type", ptype_uint8, "Type");
+	field_code = (*mf->register_field) (r->type, "code", ptype_uint8, "Code");
 
 	return POM_OK;
 }
@@ -50,28 +59,26 @@ int match_identify_icmpv6(struct frame *f, struct layer* l, unsigned int start, 
 	l->payload_start = start + sizeof(struct icmp6_hdr); 
 	l->payload_size = len - sizeof(struct icmp6_hdr);
 
-	match_type_info->val.ui32 = ihdr->icmp6_type;
-	match_code_info->val.ui32 = ihdr->icmp6_code;
+	struct layer_field *lf = l->fields;
+	while (lf) {
+		if (lf->type == field_type) {
+			PTYPE_UINT8_SETVAL(lf->value, ihdr->icmp6_type);
+		} else if (lf->type == field_code) {
+			PTYPE_UINT8_SETVAL(lf->value, ihdr->icmp6_code);
+		}
+		lf = lf->next;
+	}
 
 	if (!(ihdr->icmp6_type & ICMP6_INFOMSG_MASK))
 			// For now we don't advertise the ip layer
 			//return match_ipv6_id;
-			return -1;
-	return -1;
+			return POM_ERR;
+	return POM_ERR;
 }
 
-int match_layer_info_snprintf_icmpv6(char *buff, unsigned int len, struct layer_info *inf) {
+int match_unregister_icmpv6(struct match_reg *r) {
 
-
-	switch (match_type_info->val.ui32) {
-		case ICMP6_ECHO_REQUEST:
-			strncpy(buff, "ping", len);
-			return 4;
-		case ICMP6_ECHO_REPLY:
-			strncpy(buff, "pong", len);
-			return 4;
-	}
-
-	return snprintf(buff, len, "%u", match_type_info->val.ui32);
+	(*mf->ptype_cleanup) (ptype_uint8);
+	return POM_OK;
 
 }

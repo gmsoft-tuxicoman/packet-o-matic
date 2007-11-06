@@ -34,7 +34,7 @@ struct rule_node {
 	struct rule_node *b; ///< possible other rule to match
 	unsigned int op; ///< operator (and, or, not)
 	unsigned int layer; ///< ignore if op != 0
-	struct match_param *match; ///< how to match the current rule
+	struct match_field *match; ///< how to match the current rule
 
 };
 

@@ -70,13 +70,13 @@ struct helper_functions {
 	int (*queue_timer) (struct timer *t, unsigned int expiry);
 	int (*dequeue_timer) (struct timer *t);
 	int (*queue_frame) (struct frame *f);
-	int (*layer_info_snprintf) (char *buff, unsigned int maxlen, struct layer_info *inf);
 	int (*conntrack_create_entry) (struct frame *f);
 	int (*conntrack_get_entry) (struct frame *f);
 	int (*conntrack_add_priv) (void *priv, int type, struct conntrack_entry *ce, int (*flush_buffer) (struct conntrack_entry *ce, void *priv), int (*cleanup_handler) (struct conntrack_entry *ce, void *priv));
 	int (*conntrack_remove_priv) (void *priv, struct conntrack_entry *ce);
 	void *(*conntrack_get_priv) (int type, struct conntrack_entry *ce);
 	struct ptype* (*ptype_alloc) (const char* type, char* unit);
+	int (*ptype_print_val) (struct ptype *pt, char *val, size_t size);
 	int (*ptype_cleanup) (struct ptype* p);
 
 

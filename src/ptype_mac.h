@@ -30,7 +30,7 @@ struct ptype_mac_val {
 };
 
 // x is the struct ptype, y the mac
-#define PTYPE_MAC_SETVAL(x, y) { \
+#define PTYPE_MAC_SETADDR(x, y) { \
 	struct ptype_mac_val *v = (x)->value;\
 	memcpy(v->addr, y, 6); \
 }

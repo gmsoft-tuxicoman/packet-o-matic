@@ -587,10 +587,10 @@ err:
 
 	conntrack_unregister_all();
 	input_unregister_all();
-	ptype_unregister_all();
 
 	// Layers need to be cleaned up after the match
 	layer_cleanup();
+	ptype_unregister_all();
 
 	free(rbuf);
 

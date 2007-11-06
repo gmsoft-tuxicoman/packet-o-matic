@@ -25,9 +25,25 @@
 #include "modules_common.h"
 #include "target.h"
 
+
+struct target_conntrack_priv_display {
+
+	struct conntrack_entry *ce;
+
+	struct target_conntrack_priv_display *next;
+	struct target_conntrack_priv_display *prev;
+
+};
+
 struct target_priv_display {
 
 	struct ptype *skip;
+	struct ptype *debug_level;
+	struct ptype *print_hex;
+	struct ptype *print_ascii;
+	struct ptype *conntrack;
+
+	struct target_conntrack_priv_display *ct_privs;
 
 };
 
@@ -38,7 +54,10 @@ int target_open_display(struct target *t);
 int target_process_display(struct target *t, struct frame *f);
 int target_cleanup_display(struct target *t);
 
-int target_display_print_hex(void *frame, unsigned int start, unsigned int len);
-int target_display_print_ascii(void *frame, unsigned int start, unsigned int len);
+int target_display_print_hex(void *frame, unsigned int start, unsigned int len, struct target_priv_display *p);
+int target_display_print_ascii(void *frame, unsigned int start, unsigned int len, struct target_priv_display *p);
+
+int target_close_connection_display(struct target *t, struct conntrack_entry *ce, void *conntrack_priv);
+
 
 #endif

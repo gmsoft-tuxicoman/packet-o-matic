@@ -113,7 +113,8 @@ struct ptype* ptype_alloc_from(struct ptype *pt) {
 	struct ptype *ret = malloc(sizeof(struct ptype));
 	bzero(ret, sizeof(struct ptype));
 	ret->type = pt->type;
-	ptypes[pt->type]->alloc(ret);
+	if (ptypes[ret->type])
+		ptypes[pt->type]->alloc(ret);
 
 	if (pt->unit)
 		strncpy(ret->unit, pt->unit, PTYPE_MAX_UNIT);

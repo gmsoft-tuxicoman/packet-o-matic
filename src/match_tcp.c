@@ -22,40 +22,42 @@
 #include "match_tcp.h"
 #include <netinet/tcp.h>
 
+#include "ptype_uint8.h"
 #include "ptype_uint16.h"
+#include "ptype_uint32.h"
 
 int match_undefined_id;
-struct match_functions *m_functions;
-struct layer_info *match_sport_info, *match_dport_info, *match_flags_info, *match_seq_info, *match_ack_info, *match_win_info;
+struct match_functions *mf;
 
-struct ptype *field_sport, *field_dport;
+struct match_field_reg *field_sport, *field_dport, *field_flags, *field_seq, *field_ack, *field_win;
+
+struct ptype *ptype_uint8, *ptype_uint16, *ptype_uint32;
 
 int match_register_tcp(struct match_reg *r, struct match_functions *m_funcs) {
 
 	r->identify = match_identify_tcp;
 	r->unregister = match_unregister_tcp;
 
-	m_functions = m_funcs;
+	mf = m_funcs;
 
-	match_undefined_id = (*m_functions->match_register) ("undefined");
+	match_undefined_id = (*mf->match_register) ("undefined");
 
-	match_sport_info = (*m_funcs->layer_info_register) (r->type, "sport", LAYER_INFO_TYPE_UINT32);
-	match_dport_info = (*m_funcs->layer_info_register) (r->type, "dport", LAYER_INFO_TYPE_UINT32);
-	match_flags_info = (*m_funcs->layer_info_register) (r->type, "flags", LAYER_INFO_TYPE_UINT32);
-	match_flags_info->snprintf = match_layer_info_snprintf_tcp;
-	match_seq_info = (*m_funcs->layer_info_register) (r->type, "seq", LAYER_INFO_TYPE_UINT32);
-	match_ack_info = (*m_funcs->layer_info_register) (r->type, "ack", LAYER_INFO_TYPE_UINT32);
-	match_win_info = (*m_funcs->layer_info_register) (r->type, "win", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_ZERO);
-
-	field_sport = (*m_funcs->ptype_alloc) ("uint16", NULL);
-	field_dport = (*m_funcs->ptype_alloc) ("uint16", NULL);
-	if (!field_sport || !field_dport) {
+	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
+	ptype_uint16 = (*mf->ptype_alloc) ("uint16", NULL);
+	ptype_uint32 = (*mf->ptype_alloc) ("uint32", NULL);
+	
+	if (!ptype_uint8 || !ptype_uint16 || !ptype_uint32) {
 		match_unregister_tcp(r);
 		return POM_ERR;
 	}
 
-	(*m_funcs->register_param) (r->type, "sport", field_sport, "Source port");
-	(*m_funcs->register_param) (r->type, "dport", field_dport, "Destination port");
+	field_sport = (*mf->register_field) (r->type, "sport", ptype_uint16, "Source port");
+	field_dport = (*mf->register_field) (r->type, "dport", ptype_uint16, "Destination port");
+	field_flags = (*mf->register_field) (r->type, "flags", ptype_uint8, "Flags");
+	field_seq = (*mf->register_field) (r->type, "seq", ptype_uint32, "Sequence");
+	field_ack = (*mf->register_field) (r->type, "ack", ptype_uint32, "Sequence ACK");
+	field_win = (*mf->register_field) (r->type, "win", ptype_uint16, "Window");
+
 
 	return POM_OK;
 
@@ -70,68 +72,33 @@ int match_identify_tcp(struct frame *f, struct layer* l, unsigned int start, uns
 	l->payload_start = start + hdrlen;
 	l->payload_size = len - hdrlen;
 
-	match_sport_info->val.ui32 = ntohs(hdr->th_sport);
-	match_dport_info->val.ui32 = ntohs(hdr->th_dport);
-	match_flags_info->val.ui32 = hdr->th_flags;
-	match_seq_info->val.ui32 = ntohl(hdr->th_seq);
-	match_ack_info->val.ui32 = ntohl(hdr->th_ack);
-	match_win_info->val.ui32 = ntohs(hdr->th_win);
-
-	PTYPE_UINT16_SETVAL(field_sport, ntohs(hdr->th_sport));
-	PTYPE_UINT16_SETVAL(field_dport, ntohs(hdr->th_dport));
+	struct layer_field *lf = l->fields;
+	while (lf) {
+		if (lf->type == field_sport) {
+			PTYPE_UINT16_SETVAL(lf->value, ntohs(hdr->th_sport));
+		} else if (lf->type == field_dport) {
+			PTYPE_UINT16_SETVAL(lf->value, ntohs(hdr->th_dport));
+		} else if (lf->type == field_flags) {
+			PTYPE_UINT8_SETVAL(lf->value, hdr->th_flags);
+		} else if (lf->type == field_seq) {
+			PTYPE_UINT32_SETVAL(lf->value, ntohl(hdr->th_seq));
+		} else if (lf->type == field_ack) {
+			PTYPE_UINT32_SETVAL(lf->value, ntohl(hdr->th_ack));
+		} else if (lf->type == field_win) {
+			PTYPE_UINT16_SETVAL(lf->value, ntohs(hdr->th_win));
+		}
+		lf = lf->next;
+	}
 
 	return match_undefined_id;
 
 }
 
-int match_layer_info_snprintf_tcp(char *buff, unsigned int len, struct layer_info *inf) {
-
-	char buffer[24];
-	bzero(buffer, 24);
-
-	if (inf->val.ui32 & TH_FIN) {
-		strcat(buffer, "FIN");
-	}
-
-	if (inf->val.ui32 & TH_SYN) {
-		if (buffer[0])
-			strcat(buffer, ",");
-		strcat(buffer, "SYN");
-	}
-
-	if (inf->val.ui32 & TH_RST) {
-		if (buffer[0])
-			strcat(buffer, ",");
-		strcat(buffer, "RST");
-	}
-
-	if (inf->val.ui32 & TH_PUSH) {
-		if (buffer[0])
-			strcat(buffer, ",");
-		strcat(buffer, "PSH");
-	}
-
-	if (inf->val.ui32 & TH_ACK) {
-		if (buffer[0])
-			strcat(buffer, ",");
-		strcat(buffer, "ACK");
-	}
-
-	if (inf->val.ui32 & TH_URG) {
-		if (buffer[0])
-			strcat(buffer, ",");
-		strcat(buffer, "URG");
-	}
-
-	strncpy(buff, buffer, len - 1);
-
-	return strlen(buff);
-}
-
 int match_unregister_tcp(struct match_reg *r) {
 
-	(*m_functions->ptype_cleanup) (field_sport);
-	(*m_functions->ptype_cleanup) (field_dport);
-	return POM_OK;
+	(*mf->ptype_cleanup) (ptype_uint8);
+	(*mf->ptype_cleanup) (ptype_uint16);
+	(*mf->ptype_cleanup) (ptype_uint32);
 
+	return POM_OK;
 }

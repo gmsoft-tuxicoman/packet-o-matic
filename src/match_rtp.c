@@ -22,13 +22,15 @@
 
 #include "match_rtp.h"
 #include "ptype_uint8.h"
+#include "ptype_uint16.h"
 #include "ptype_uint32.h"
 
 int match_undefined_id;
 struct match_functions *mf;
-struct layer_info *match_payload_info, *match_seq_info, *match_timestamp_info, *match_ssrc_info;
 
-struct ptype *field_payload, *field_ssrc;
+struct match_field_reg *field_payload, *field_ssrc, *field_seq, *field_timestamp;
+
+struct ptype *ptype_uint8, *ptype_uint16, *ptype_uint32;
 
 int match_register_rtp(struct match_reg *r, struct match_functions *m_funcs) {
 
@@ -39,21 +41,19 @@ int match_register_rtp(struct match_reg *r, struct match_functions *m_funcs) {
 
 	match_undefined_id = (*mf->match_register) ("undefined");
 
-	match_payload_info = (*m_funcs->layer_info_register) (r->type, "payload_type", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
-	match_seq_info = (*m_funcs->layer_info_register) (r->type, "seq", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
-	match_timestamp_info = (*m_funcs->layer_info_register) (r->type, "timestamp", LAYER_INFO_TYPE_UINT32);
-	match_ssrc_info = (*m_funcs->layer_info_register) (r->type, "ssrc", LAYER_INFO_TYPE_UINT32 | LAYER_INFO_PRINT_HEX);
+	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
+	ptype_uint16 = (*mf->ptype_alloc) ("uint16", NULL);
+	ptype_uint32 = (*mf->ptype_alloc) ("uint32", NULL);
 
-	field_payload = (*m_funcs->ptype_alloc) ("uint8", NULL);
-	field_ssrc = (*m_funcs->ptype_alloc) ("uint32", NULL);
-
-	if (!field_payload || !field_ssrc) {
+	if (!ptype_uint8 || !ptype_uint16 || !ptype_uint32) {
 		match_unregister_rtp(r);
 		return POM_ERR;
 	}
 
-	(*m_funcs->register_param) (r->type, "payload_type", field_payload, "Payload type");
-	(*m_funcs->register_param) (r->type, "ssrc", field_ssrc, "Syncronization source");
+	field_payload = (*mf->register_field) (r->type, "payload", ptype_uint8, "Payload type");
+	field_ssrc = (*mf->register_field) (r->type, "ssrc", ptype_uint32, "Syncronization source");
+	field_seq = (*mf->register_field) (r->type, "seq", ptype_uint16, "Sequence");
+	field_timestamp = (*mf->register_field) (r->type, "ts", ptype_uint32, "Timestamp");
 
 	return POM_OK;
 
@@ -68,16 +68,22 @@ int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, uns
 
 	if (len - hdr_len <= 0) {
 		(*mf->pom_log) (POM_LOG_TSHOOT "Invalid size for RTP packet\r\n");
-		return -1;
+		return POM_ERR;
 	}
 
-	PTYPE_UINT8_SETVAL(field_payload, hdr->payload_type);
-	PTYPE_UINT32_SETVAL(field_ssrc, hdr->ssrc);
-
-	match_payload_info->val.ui32 =  hdr->payload_type;
-	match_seq_info->val.ui32 = ntohs(hdr->seq_num);
-	match_timestamp_info->val.ui32 = ntohl(hdr->timestamp);
-	match_ssrc_info->val.ui32 = hdr->ssrc;
+	struct layer_field *lf = l->fields;
+	while (lf) {
+		if (lf->type == field_payload) {
+			PTYPE_UINT8_SETVAL(lf->value, hdr->payload_type);
+		} else if (lf->type == field_ssrc) {
+			PTYPE_UINT32_SETVAL(lf->value, hdr->ssrc);
+		} else if (lf->type == field_seq) {
+			PTYPE_UINT16_SETVAL(lf->value, ntohs(hdr->seq_num));
+		} else if (lf->type == field_timestamp) {
+			PTYPE_UINT32_SETVAL(lf->value, ntohl(hdr->timestamp));
+		}
+		lf = lf->next;
+	}
 
 	if (hdr->extension) {
 		struct rtphdrext *ext;
@@ -85,7 +91,7 @@ int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, uns
 		hdr_len += ntohs(ext->length);
 		if (len < (hdr_len + start)) {
 			(*mf->pom_log) (POM_LOG_TSHOOT "Invalid size for RTP packet\r\n");
-			return -1;
+			return POM_ERR;
 		}
 	}
 	l->payload_start = start + hdr_len;
@@ -99,9 +105,12 @@ int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, uns
 	return match_undefined_id;
 
 }
-	
+
 int match_unregister_rtp(struct match_reg *r) {
-	(*mf->ptype_cleanup) (field_payload);
-	(*mf->ptype_cleanup) (field_ssrc);
+
+	(*mf->ptype_cleanup) (ptype_uint8);
+	(*mf->ptype_cleanup) (ptype_uint16);
+	(*mf->ptype_cleanup) (ptype_uint32);
+
 	return POM_OK;
 }

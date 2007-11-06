@@ -27,10 +27,9 @@
 #include "match.h"
 
 
-int match_register_ipv4();
+int match_register_ipv4(struct match_reg *r, struct match_functions *m_funcs);
 int match_identify_ipv4(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
 int match_unregister_ipv4(struct match_reg *r);
 
-int match_layer_info_snprintf_ipv4(char *buff, unsigned int len, struct layer_info *inf);
 
 #endif
