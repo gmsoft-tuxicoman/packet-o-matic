@@ -29,7 +29,7 @@ struct conf {
 
 	struct input* input;
 	struct rule_list *rules;
-	char filename[NAME_MAX];
+	char filename[NAME_MAX + 1];
 
 };
 

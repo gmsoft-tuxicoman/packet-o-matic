@@ -1,5 +1,8 @@
 * 2007/11/08 Guy Martin <gmsoft@tuxicoman.be>
 Use an array instead of linked list for the layer and match fields.
+Added -e parameter to start from an empty config.
+Removed unused FILE in struct mgmt_connection.
+Added message in mgmt consoles when apps shutdown.
 
 * 2007/11/06 Guy Martin <gmsoft@tuxicoman.be>
 Get rid of layer_info and replace it by match_field for match params and info.

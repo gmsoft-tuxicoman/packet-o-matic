@@ -991,12 +991,13 @@ int mgmtcmd_set_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 
 int mgmtcmd_show_input(struct mgmt_connection *c, int argc, char *argv[]) {
 
-	mgmtsrv_send(c, "Current input : ");
 	struct input* i = main_config->input;
 	if (!i) {
-		mgmtsrv_send(c, "none?!\r\n");
+		mgmtsrv_send(c, "No input configured yet. Use \"set input type <type>\" to choose an input\r\n");
 		return POM_OK;
 	}
+
+	mgmtsrv_send(c, "Current input : ");
 	mgmtsrv_send(c, input_get_name(i->type));
 	mgmtsrv_send(c, ", mode ");
 	mgmtsrv_send(c, i->mode->name);
@@ -1207,6 +1208,11 @@ int mgmtcmd_start_input(struct mgmt_connection *c, int argc, char *argv[]) {
 		return POM_OK;
 	}
 
+	if (!main_config->input) {
+		mgmtsrv_send(c, "No input configured yet. Use \"set input type <type>\" to choose an input\r\n");
+		return POM_OK;
+	}
+
 	if (start_input(rbuf) == POM_ERR)
 		mgmtsrv_send(c, "Error while opening input\r\n");
 	return POM_OK;
@@ -1250,7 +1256,7 @@ int mgmtcmd_set_input_type(struct mgmt_connection *c, int argc, char *argv[]) {
 	if (argc < 1)
 		return MGMT_USAGE;
 
-	if (rbuf->i->running) {
+	if (rbuf->i && rbuf->i->running) {
 		mgmtsrv_send(c, "Input is running. You need to stop it before doing any change\r\n");
 		return POM_OK;
 	}
@@ -1260,7 +1266,7 @@ int mgmtcmd_set_input_type(struct mgmt_connection *c, int argc, char *argv[]) {
 		return POM_ERR;
 	}
 
-	if (!strcmp(argv[0], input_get_name(rbuf->i->type))) {
+	if (rbuf->i && !strcmp(argv[0], input_get_name(rbuf->i->type))) {
 		mgmtsrv_send(c, "Input type is already %s\r\n", argv[0]);
 		pthread_mutex_unlock(&rbuf->mutex);
 		return POM_OK;
@@ -1281,8 +1287,8 @@ int mgmtcmd_set_input_type(struct mgmt_connection *c, int argc, char *argv[]) {
 		pthread_mutex_unlock(&rbuf->mutex);
 		return POM_OK;
 	}
-
-	input_cleanup(rbuf->i);
+	if (rbuf->i)
+		input_cleanup(rbuf->i);
 	rbuf->i = i;
 	main_config->input = i;
 
@@ -1298,6 +1304,11 @@ int mgmtcmd_set_input_mode(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (argc < 1)
 		return MGMT_USAGE;
+
+	if (!rbuf->i) {
+		mgmtsrv_send(c, "No input configured yet. Use \"set input type <type>\" to choose an input\r\n");
+		return POM_OK;
+	}
 
 	if (rbuf->i->running) {
 		mgmtsrv_send(c, "Input is running. You need to stop it before doing any change\r\n");
@@ -1316,6 +1327,11 @@ int mgmtcmd_set_input_parameter(struct mgmt_connection *c, int argc, char *argv[
 	
 	if (argc < 2)
 		return MGMT_USAGE;
+
+	if (!rbuf->i) {
+		mgmtsrv_send(c, "No input configured yet. Use \"set input type <type>\" to choose an input\r\n");
+		return POM_OK;
+	}
 
 	if (rbuf->i->running) {
 		mgmtsrv_send(c, "Input is running. You need to stop it before doing any change\r\n");

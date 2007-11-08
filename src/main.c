@@ -70,6 +70,7 @@ void print_usage() {
 		"\n"
 		"Options :\n"
 		" -c, --config=FILE          specify configuration file to use (default pom.xml.conf)\n"
+		" -e, --empty-config         start with an empty config\n"
 		" -h, --help                 display the help\n"
 		"     --no-cli               disable the CLI console\n"
 		" -p, --port=PORT            specify the CLI console port (default 4655)\n"
@@ -192,12 +193,6 @@ int start_input(struct ringbuffer *r) {
 
 	r->state = rb_state_open;
 
-	if (pthread_mutex_unlock(&r->mutex)) {
-		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
-		input_close(r->i);
-		r->state = rb_state_closed;
-		return POM_ERR;
-	}
 
 	if (pthread_create(&input_thread, NULL, input_thread_func, (void*)r)) {
 		pom_log(POM_LOG_ERR "Error when creating the input thread. Abording\r\n");
@@ -206,6 +201,12 @@ int start_input(struct ringbuffer *r) {
 		return POM_ERR;
 	}
 	
+	if (pthread_mutex_unlock(&r->mutex)) {
+		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
+		input_close(r->i);
+		r->state = rb_state_closed;
+		return POM_ERR;
+	}
 	return POM_OK;
 
 }
@@ -342,6 +343,7 @@ int main(int argc, char *argv[]) {
 	debug_level = *POM_LOG_INFO;
 
 	char *cfgfile = "pom.xml.conf";
+	int empty_config = 0;
 	int disable_mgmtsrv = 0;
 	char *cli_port = "4655";
 
@@ -350,7 +352,8 @@ int main(int argc, char *argv[]) {
 	while (1) {
 		static struct option long_options[] = {
 			{ "help", 0, 0, 'h' },
-			{ "conf", 1, 0, 'c'},
+			{ "config", 1, 0, 'c'},
+			{ "empty-config", 0, 0, 'e'},
 			{ "port", 1, 0, 'p'},
 			{ "password", 1, 0, 'w'},
 			{ "no-cli", 0, 0, 1},
@@ -358,7 +361,7 @@ int main(int argc, char *argv[]) {
 			{ 0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:p:w:d:", long_options, NULL);
+		c = getopt_long(argc, argv, "hc:ep:w:d:", long_options, NULL);
 
 		if (c == -1)
 			break;
@@ -378,6 +381,10 @@ int main(int argc, char *argv[]) {
 			case 'c':
 				cfgfile = optarg;
 				pom_log("Config file is %s\r\n", optarg);
+				break;
+			case 'e':
+				empty_config = 1;
+				pom_log("Starting with an empty configuration\r\n");
 				break;
 			case 'p':
 				cli_port = optarg;
@@ -414,10 +421,13 @@ int main(int argc, char *argv[]) {
 
 
 	main_config = config_alloc();
-
-	if (config_parse(main_config, cfgfile) == POM_ERR) {
-		pom_log(POM_LOG_ERR "Error while parsing config\r\n");
-		goto err;
+	if (empty_config) {
+		strncpy(main_config->filename, cfgfile, NAME_MAX);
+	} else {
+		if (config_parse(main_config, cfgfile) == POM_ERR) {
+			pom_log(POM_LOG_ERR "Error while parsing config\r\n");
+			goto err;
+		}
 	}
 
 	if (!disable_mgmtsrv && mgmtsrv_init(cli_port) == POM_ERR) {
@@ -442,7 +452,7 @@ int main(int argc, char *argv[]) {
 		goto err;
 	}
 
-	if (start_input(rbuf) == POM_ERR) {
+	if (main_config->input && start_input(rbuf) == POM_ERR) {
 		pom_log(POM_LOG_ERR "Error when starting the input. Abording\r\n");
 		goto err;
 	}
@@ -555,8 +565,8 @@ int main(int argc, char *argv[]) {
 
 finish:
 	finish = 1;
-
-	pthread_join(input_thread, NULL);
+	if (rbuf->i)
+		pthread_join(input_thread, NULL);
 
 	if (!disable_mgmtsrv)
 		pthread_join(mgmtsrv_thread, NULL);

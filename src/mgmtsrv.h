@@ -60,7 +60,6 @@ enum {
 
 struct mgmt_connection {
 	int fd; // fd of the socket
-	FILE *f; // file used by vfprintf
 	int flags; // attributes of the connection
 	int state; // current state of this connection
 	int auth_tries; // number of authentification tries

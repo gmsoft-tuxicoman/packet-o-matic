@@ -230,13 +230,6 @@ int mgmtsrv_accept_connection(struct mgmt_connection *c) {
 		return POM_ERR;
 	}
 
-	new_cc->f = fdopen(new_cc->fd, "rw");
-	if (!new_cc->f) {
-		pom_log(POM_LOG_ERR "Unable to open FILE from fd\r\n");
-		free(new_cc);
-		return POM_ERR;
-	}
-
 	char host[NI_MAXHOST], port[NI_MAXSERV];
 	bzero(host, NI_MAXHOST);
 	bzero(port, NI_MAXSERV);
@@ -486,8 +479,6 @@ int mgmtsrv_close_connection(struct mgmt_connection *c) {
 
 	c->state = MGMT_STATE_CLOSED;
 	pom_log("Management connection with socket %u closed\r\n", c->fd);
-	if (c->f)
-		fclose(c->f);
 	close(c->fd);
 
 	return POM_OK;
@@ -499,8 +490,8 @@ int mgmtsrv_cleanup() {
 
 	struct mgmt_connection *tmp;
 	while (conn_head) {
-		if (conn_head->f)
-			fclose(conn_head->f);
+		if (!(conn_head->flags & MGMT_FLAG_LISTENING))
+			mgmtsrv_send(conn_head, "\r\nShutdown request received. Thanks for using packet-o-matic !\r\n");
 		close(conn_head->fd);
 		int i;
 		for (i = 0; i < MGMT_CMD_HISTORY_SIZE; i++)
