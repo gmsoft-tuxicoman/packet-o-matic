@@ -118,7 +118,7 @@ int layer_field_pool_get(struct layer* l) {
 	int i;
 
 	if (lfp->usage >= lfp->size) {
-		if (lfp->size == MAX_SAME_LAYERS)
+		if (lfp->size >= MAX_SAME_LAYERS)
 			return POM_ERR;
 
 		lfp->size++;
@@ -132,7 +132,7 @@ int layer_field_pool_get(struct layer* l) {
 
 	}
 
-	for (i = 0; i< MAX_LAYER_FIELDS && lfp->pool[i]; i++)
+	for (i = 0; i< MAX_LAYER_FIELDS && lfp->pool[lfp->usage][i]; i++)
 		l->fields[i] = lfp->pool[lfp->usage][i];
 
 	lfp->usage++;

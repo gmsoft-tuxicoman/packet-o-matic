@@ -201,7 +201,7 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 		} else if (l->next->type != match_undefined_id) {
 			// Next layer is new. Need to discard current conntrack entry
 			f->ce = NULL;
-			if (layer_field_pool_get(l) != POM_OK) {
+			if (layer_field_pool_get(l->next) != POM_OK) {
 				pom_log(POM_LOG_WARN "Could not get a field pool for this packet. Ignoring\r\n");
 				return POM_OK;
 			}
