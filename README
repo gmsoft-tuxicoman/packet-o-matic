@@ -21,7 +21,7 @@ make install
 Running it :
 ------------
 If you make install, you are fine. The program will be able to find the libraries using automatic resolving or hardcoded library path.
-If you did not run make install, you have to export LD_LIBRARY_PATH=path/to/libdir. By default, libtool creates the libs into the src/.libs directory.
+If you did not run make install, you have to `export LD_LIBRARY_PATH=path/to/libdir`. By default, libtool creates the libs into the src/.libs directory.
 
 Some modules such as input_pcap requires root privileges in order to perform their operation.
 
@@ -43,14 +43,44 @@ If the packet has conntrack info, it is processed by the coresponding targets wh
 It the match result is positive, we process the packet with the targets defined for this rule.
 
 
-The config :
-------------
-The config is written in XML. The default config file is named pom.xml.conf.
-Everything is enclosed in the <config> tags. Then it consists of one <input> section and one or multiple <rule> section.
-The input section defines from where you want to read the packets. You certainly want the pcap input to read from an ethernet interface.
+Getting started :
+-----------------
+First, start packet-o-matic with the flag -e : `packet-o-matic -e`. This will start the program without any configuration.
+Once started, it will listen on port 4655. Simply telnet to that port and start issuing commands.
+You have to perform the following tasks to get a running configuration :
+ - choose an input type and configure it
+ - add the rules you need
+ - add the targets you need
+ - save the config
 
-Each rule contains one or more <target> section and one or more <match> section.
-See pom.xml.conf.example for an example. See `packet-o-matic -h` for parameter lists for each module.
+The following example start an input pcap on eth0 (the default) and dump all the images that goes over HTTP on port 80 :
+
+// we use input pcap
+pom> set input type pcap
+
+// we want to match everything destinated to the port 80
+pom> add rule ethernet | ipv4 | tcp.dport == 80
+Added rule with id 0
+
+// the rule needs to be enabled
+pom> enable rule 0
+
+// target_http will dump part of the http traffic into files
+pom> add target 0 http
+Added target with id 0 to rule 0
+
+// enable dumping the images
+pom> set target parameter 0 0 dump_img yes
+
+// start the target
+pom> start target 0 0
+
+// finaly start the input to capture packets and start dumping
+pom> start input
+
+// to save our changes we simply write the configuration
+pom> write config 
+Configuration written in pom.xml.conf
 
 
 The inputs :
@@ -105,11 +135,15 @@ The conntrack modules are automatically loaded if found, when the corresponding 
 The helpers :
 -------------
 The helper modules are used to recompose part of network packets which were splitted or modified by the network.
-The only helper module currently implemented is ipv4. TODO : ipv6, tcp.
+Helpers are processed before any matching is done with the rules.
+The helper module currently implemented are ipv4 and tcp. TODO : ipv6.
+ 
+- ipv4 : perform ip fragment reassembly
+- tcp : perform tcp reordering
 
 
-Bug :
------
+Bugs :
+------
 Please report bugs to <gmsoft@tuxicoman.be> with version info and os + architercture.
 If it's a crash, please provide a backtrace or a corefile.
 
