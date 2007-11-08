@@ -77,7 +77,10 @@ int node_match(struct frame *f, struct rule_node *n, struct layer *l) {
 			}
 			unsigned int next_layer;
 			l->type = n->layer;
-			layer_field_pool_get(l);
+			if (layer_field_pool_get(l) != POM_OK) {
+				pom_log(POM_LOG_WARN "Could not get a field pool for this packet. Ignoring\r\n");
+				return 0;
+			}
 			next_layer = match_identify(f, l, l->prev->payload_start, l->prev->payload_size);
 			if (next_layer < 0) {
 				// restore the original value
@@ -171,7 +174,10 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 
 	l = layer_pool_get();
 	l->type = f->first_layer;
-	layer_field_pool_get(l);
+	if (layer_field_pool_get(l) != POM_OK) {
+		pom_log(POM_LOG_WARN "Could not get a field pool for this packet. Ignoring\r\n");
+		return POM_OK;
+	}
 
 
 	f->l = l;
@@ -195,7 +201,10 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 		} else if (l->next->type != match_undefined_id) {
 			// Next layer is new. Need to discard current conntrack entry
 			f->ce = NULL;
-			layer_field_pool_get(l->next);
+			if (layer_field_pool_get(l) != POM_OK) {
+				pom_log(POM_LOG_WARN "Could not get a field pool for this packet. Ignoring\r\n");
+				return POM_OK;
+			}
 		}
 
 

@@ -118,6 +118,9 @@ int layer_field_pool_get(struct layer* l) {
 	int i;
 
 	if (lfp->usage >= lfp->size) {
+		if (lfp->size == MAX_SAME_LAYERS)
+			return POM_ERR;
+
 		lfp->size++;
 		for (i = 0; i < MAX_LAYER_FIELDS; i++) {
 			struct match_field_reg *field = match_get_field(l->type, i);
