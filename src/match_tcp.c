@@ -29,7 +29,7 @@
 int match_undefined_id;
 struct match_functions *mf;
 
-struct match_field_reg *field_sport, *field_dport, *field_flags, *field_seq, *field_ack, *field_win;
+int field_sport, field_dport, field_flags, field_seq, field_ack, field_win;
 
 struct ptype *ptype_uint8, *ptype_uint16, *ptype_uint32;
 
@@ -72,23 +72,12 @@ int match_identify_tcp(struct frame *f, struct layer* l, unsigned int start, uns
 	l->payload_start = start + hdrlen;
 	l->payload_size = len - hdrlen;
 
-	struct layer_field *lf = l->fields;
-	while (lf) {
-		if (lf->type == field_sport) {
-			PTYPE_UINT16_SETVAL(lf->value, ntohs(hdr->th_sport));
-		} else if (lf->type == field_dport) {
-			PTYPE_UINT16_SETVAL(lf->value, ntohs(hdr->th_dport));
-		} else if (lf->type == field_flags) {
-			PTYPE_UINT8_SETVAL(lf->value, hdr->th_flags);
-		} else if (lf->type == field_seq) {
-			PTYPE_UINT32_SETVAL(lf->value, ntohl(hdr->th_seq));
-		} else if (lf->type == field_ack) {
-			PTYPE_UINT32_SETVAL(lf->value, ntohl(hdr->th_ack));
-		} else if (lf->type == field_win) {
-			PTYPE_UINT16_SETVAL(lf->value, ntohs(hdr->th_win));
-		}
-		lf = lf->next;
-	}
+	PTYPE_UINT16_SETVAL(l->fields[field_sport], ntohs(hdr->th_sport));
+	PTYPE_UINT16_SETVAL(l->fields[field_dport], ntohs(hdr->th_dport));
+	PTYPE_UINT8_SETVAL(l->fields[field_flags], hdr->th_flags);
+	PTYPE_UINT32_SETVAL(l->fields[field_seq], ntohl(hdr->th_seq));
+	PTYPE_UINT32_SETVAL(l->fields[field_ack], ntohl(hdr->th_ack));
+	PTYPE_UINT16_SETVAL(l->fields[field_win], ntohs(hdr->th_win));
 
 	return match_undefined_id;
 

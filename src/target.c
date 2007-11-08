@@ -44,6 +44,7 @@ int target_init() {
 	tg_funcs.conntrack_get_priv = conntrack_get_target_priv;
 	tg_funcs.conntrack_remove_priv = conntrack_remove_target_priv;
 	tg_funcs.match_get_name = match_get_name;
+	tg_funcs.match_get_field = match_get_field;
 
 	pom_log(POM_LOG_DEBUG "Targets initialized\r\n");
 

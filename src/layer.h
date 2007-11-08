@@ -24,24 +24,18 @@
 
 #include "config.h"
 
+#define MAX_LAYER_FIELDS 8
+#define MAX_SAME_LAYERS 4
+
 #include <stdint.h>
 #include <time.h>
 #ifdef TIME_WITH_SYS_TIME
 #include <sys/time.h>
 #endif
 
-struct layer_field {
-
-	struct match_field_reg *type;
-	struct ptype *value;
-
-	struct layer_field *next;
-
-};
-
 struct layer_field_pool {
 
-	struct layer_field **pool;
+	struct ptype *pool[MAX_SAME_LAYERS][MAX_LAYER_FIELDS];
 	unsigned int usage;
 	unsigned int size;
 
@@ -54,7 +48,7 @@ struct layer {
 	int type; ///< type of this layer
 	int payload_start; ///< start of the payload
 	int payload_size; ///< size of the payload
-	struct layer_field *fields; ///< fields associated with this layer
+	struct ptype *fields[MAX_LAYER_FIELDS]; ///< fields associated with this layer
 };
 
 
@@ -79,7 +73,7 @@ int layer_find_start(struct layer *l, int header_type);
 struct layer* layer_pool_get();
 int layer_pool_discard();
 
-struct layer_field* layer_field_pool_get(struct layer* l);
+int layer_field_pool_get(struct layer* l);
 
 int layer_cleanup();
 

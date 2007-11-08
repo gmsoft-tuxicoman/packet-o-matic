@@ -46,6 +46,7 @@ int helper_init() {
 	hlp_funcs->ptype_alloc = ptype_alloc;
 	hlp_funcs->ptype_print_val = ptype_print_val;
 	hlp_funcs->ptype_cleanup = ptype_cleanup_module;
+	hlp_funcs->match_get_field = match_get_field;
 
 	pom_log(POM_LOG_DEBUG "Helper initialized\r\n");
 

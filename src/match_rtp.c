@@ -28,7 +28,7 @@
 int match_undefined_id;
 struct match_functions *mf;
 
-struct match_field_reg *field_payload, *field_ssrc, *field_seq, *field_timestamp;
+int field_payload, field_ssrc, field_seq, field_timestamp;
 
 struct ptype *ptype_uint8, *ptype_uint16, *ptype_uint32;
 
@@ -71,19 +71,10 @@ int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, uns
 		return POM_ERR;
 	}
 
-	struct layer_field *lf = l->fields;
-	while (lf) {
-		if (lf->type == field_payload) {
-			PTYPE_UINT8_SETVAL(lf->value, hdr->payload_type);
-		} else if (lf->type == field_ssrc) {
-			PTYPE_UINT32_SETVAL(lf->value, hdr->ssrc);
-		} else if (lf->type == field_seq) {
-			PTYPE_UINT16_SETVAL(lf->value, ntohs(hdr->seq_num));
-		} else if (lf->type == field_timestamp) {
-			PTYPE_UINT32_SETVAL(lf->value, ntohl(hdr->timestamp));
-		}
-		lf = lf->next;
-	}
+	PTYPE_UINT8_SETVAL(l->fields[field_payload], hdr->payload_type);
+	PTYPE_UINT32_SETVAL(l->fields[field_ssrc], hdr->ssrc);
+	PTYPE_UINT16_SETVAL(l->fields[field_seq], ntohs(hdr->seq_num));
+	PTYPE_UINT32_SETVAL(l->fields[field_timestamp], ntohl(hdr->timestamp));
 
 	if (hdr->extension) {
 		struct rtphdrext *ext;

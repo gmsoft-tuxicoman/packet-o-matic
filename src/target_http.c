@@ -416,13 +416,13 @@ int target_process_http(struct target *t, struct frame *f) {
 
 			// Check if the directory exists yet
 			if (lastl->prev) {
-				struct layer_field *lf = lastl->prev->fields;
-				while (lf) {
-					if (!strcmp(lf->type->name, "src")) {
-						(*tf->ptype_print_val) (lf->value, filename + strlen(filename), NAME_MAX - strlen(filename));
+				int i;
+				for (i = 0; i < MAX_LAYER_FIELDS && lastl->fields[i]; i++) {
+					struct match_field_reg *field = (*tf->match_get_field) (lastl->type, i);
+					if (!strcmp(field->name, "src")) {
+						(*tf->ptype_print_val) (lastl->fields[i], filename + strlen(filename), NAME_MAX - strlen(filename));
 						strcat(filename, "/");
 					}
-					lf = lf->next;
 				}
 
 				struct stat sbuf;

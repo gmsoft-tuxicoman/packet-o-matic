@@ -502,7 +502,9 @@ int mgmtcmd_show_rule_print_node_flat(struct mgmt_connection *c, struct rule_nod
 					const int bufflen = 256;
 					char buff[bufflen];
 					ptype_print_val(n->match->value, buff, bufflen);
-					mgmtsrv_send(c, ".%s %s %s" , n->match->field->name, ptype_get_op_sign(n->match->op), buff);
+
+					struct match_field_reg *field = match_get_field(n->layer, n->match->id);
+					mgmtsrv_send(c, ".%s %s %s" , field->name, ptype_get_op_sign(n->match->op), buff);
 
 				}
 			}
@@ -566,7 +568,9 @@ int mgmtcmd_show_rule_print_node_tree(struct mgmt_connection *c, struct rule_nod
 					const int bufflen = 256;
 					char buff[bufflen];
 					ptype_print_val(n->match->value, buff, bufflen);
-					mgmtsrv_send(c, ".%s %s %s" , n->match->field->name, ptype_get_op_sign(n->match->op), buff);
+
+					struct match_field_reg *field = match_get_field(n->layer, n->match->id);
+					mgmtsrv_send(c, ".%s %s %s" , field->name, ptype_get_op_sign(n->match->op), buff);
 
 				}
 				mgmtsrv_send(c, "\r\n");

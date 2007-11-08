@@ -78,6 +78,7 @@ struct helper_functions {
 	struct ptype* (*ptype_alloc) (const char* type, char* unit);
 	int (*ptype_print_val) (struct ptype *pt, char *val, size_t size);
 	int (*ptype_cleanup) (struct ptype* p);
+	struct match_field_reg *(*match_get_field) (int match_type, int field_id);
 
 
 

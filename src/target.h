@@ -94,6 +94,7 @@ struct target_functions {
 	void *(*conntrack_get_priv) (struct target *t, struct conntrack_entry *ce);
 	int (*conntrack_remove_priv) (void *priv, struct conntrack_entry *ce);
 	char *(*match_get_name) (int match_type);
+	struct match_field_reg *(*match_get_field) (int match_type, int field_id);
 
 };
 

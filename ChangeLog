@@ -1,3 +1,6 @@
+* 2007/11/08 Guy Martin <gmsoft@tuxicoman.be>
+Use an array instead of linked list for the layer and match fields.
+
 * 2007/11/06 Guy Martin <gmsoft@tuxicoman.be>
 Get rid of layer_info and replace it by match_field for match params and info.
 Make match_register() automatically load the corresponding conntrack.

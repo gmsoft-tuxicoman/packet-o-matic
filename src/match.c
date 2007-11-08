@@ -85,31 +85,32 @@ int match_register(const char *match_name) {
 
 }
 
-struct match_field_reg* match_register_field(int match_type, char *name, struct ptype *type, char *descr) {
+int match_register_field(int match_type, char *name, struct ptype *type, char *descr) {
 
 	if (!matchs[match_type])
-		return NULL;
+		return POM_ERR;
+	int i;
 
-	struct match_field_reg *p = malloc(sizeof(struct match_field_reg));
-	bzero(p, sizeof(struct match_field_reg));
+	for (i = 0; i < MAX_LAYER_FIELDS; i++) {
+		if (!matchs[match_type]->fields[i]) {
 
-	p->name = malloc(strlen(name) + 1);
-	strcpy(p->name, name);
-	p->descr = malloc(strlen(descr) + 1);
-	strcpy(p->descr, descr);
+			struct match_field_reg *p = malloc(sizeof(struct match_field_reg));
+			bzero(p, sizeof(struct match_field_reg));
 
-	if (!matchs[match_type]->fields)
-		matchs[match_type]->fields = p;
-	else {
-		struct match_field_reg *tmp = matchs[match_type]->fields;
-		while (tmp->next)
-			tmp = tmp->next;
-		tmp->next = p;
+			p->name = malloc(strlen(name) + 1);
+			strcpy(p->name, name);
+			p->descr = malloc(strlen(descr) + 1);
+			strcpy(p->descr, descr);
+			p->type = type;
+
+			matchs[match_type]->fields[i] = p;
+			
+			return i;
+		}
 	}
 
-	p->type = type;
 
-	return p;
+	return POM_ERR;
 
 }
 
@@ -119,14 +120,13 @@ struct match_field *match_alloc_field(int match_type, char *field_type) {
 	if (!matchs[match_type])
 		return NULL;
 
-	struct match_field_reg *p = matchs[match_type]->fields;
-	while (p) {
-		if (!strcmp(p->name, field_type))
+	int i;
+	for (i = 0; i < MAX_LAYER_FIELDS && matchs[match_type]->fields[i]; i++) {
+		if (!strcmp(matchs[match_type]->fields[i]->name, field_type))
 			break;
-		p = p->next;
 	}
 
-	if (!p)
+	if (!i >= MAX_LAYER_FIELDS || !matchs[match_type]->fields[i])
 		return NULL;
 	
 	struct match_field *ret;
@@ -134,13 +134,13 @@ struct match_field *match_alloc_field(int match_type, char *field_type) {
 	bzero(ret, sizeof(struct match_field));
 
 
-	ret->value = ptype_alloc_from(p->type);
+	ret->value = ptype_alloc_from(matchs[match_type]->fields[i]->type);
 	if (!ret->value) {
 		free(ret);
 		return NULL;
 	}
 
-	ret->field = p;
+	ret->id = i;
 	return ret;
 }
 
@@ -175,9 +175,9 @@ char *match_get_name(int match_type) {
 
 }
 
-struct match_field_reg *match_get_fields(int match_type) {
+struct match_field_reg *match_get_field(int match_type, int field_id) {
 
-	return matchs[match_type]->fields;
+	return matchs[match_type]->fields[field_id];
 
 }
 
@@ -214,17 +214,8 @@ int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigne
 
 int match_eval(struct match_field *mf, struct layer *l) {
 
-	struct layer_field *lf = l->fields;
-	while (lf) {
-		if (mf->field == lf->type)
-			break;
-		lf = lf->next;
-	}
 
-	if (!lf)
-		return 0;
-
-	return ptype_compare_val(mf->op, mf->value, lf->value);
+	return ptype_compare_val(mf->op, mf->value, l->fields[mf->id]);
 	
 }
 
@@ -246,12 +237,11 @@ int match_unregister(unsigned int match_type) {
 	if (!r)
 		return POM_ERR;
 
-	while (r->fields) {
-		struct match_field_reg *tmp = r->fields;
-		free(tmp->name);
-		free(tmp->descr);
-		r->fields = tmp->next;
-		free(tmp);
+	int i;
+	for (i = 0; i < MAX_LAYER_FIELDS && r->fields[i]; i++) {
+		free(r->fields[i]->name);
+		free(r->fields[i]->descr);
+		free(r->fields[i]);
 
 	}
 
@@ -290,15 +280,12 @@ void match_print_help() {
 	for (i = 0; matchs[i]; i++) {
 		printf("* MATCH %s *\n", matchs[i]->name);
 		
-		if (!matchs[i]->fields)
+		if (!matchs[i]->fields[0])
 			printf("No field for this match\n");
 		else {
-			struct match_field_reg *p;
-			p = matchs[i]->fields;
-			while (p) {
-				printf("  %s : %s\n", p->name, p->descr);
-				p = p->next;
-			}
+			int j;
+			for (j = 0; j < MAX_LAYER_FIELDS && matchs[i]->fields[j]; j++)
+				printf("  %s : %s\n", matchs[i]->fields[j]->name, matchs[i]->fields[j]->descr);
 		}
 		printf("\n");
 	}

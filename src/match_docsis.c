@@ -24,7 +24,7 @@
 int match_atm_id, match_ethernet_id;
 struct match_functions *mf;
 
-struct match_field_reg *field_fc_type, *field_fc_parm;
+int field_fc_type, field_fc_parm;
 
 struct ptype *ptype_uint8;
 
@@ -65,15 +65,9 @@ int match_identify_docsis(struct frame *f, struct layer* l, unsigned int start, 
 		// TODO : process the ehdr
 	}
 
-	struct layer_field *lf = l->fields;
-	while (lf) {
-		if (lf->type == field_fc_type) {
-			PTYPE_UINT8_SETVAL(lf->value, dhdr->fc_type);
-		} else if (lf->type == field_fc_parm) {
-			PTYPE_UINT8_SETVAL(lf->value, dhdr->fc_parm);
-		}
-		lf = lf->next;
-	}
+	PTYPE_UINT8_SETVAL(l->fields[field_fc_type], dhdr->fc_type);
+	PTYPE_UINT8_SETVAL(l->fields[field_fc_parm], dhdr->fc_parm);
+
 
 	switch (dhdr->fc_type) {
 		case FC_TYPE_PKT_MAC:

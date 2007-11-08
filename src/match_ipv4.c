@@ -30,7 +30,7 @@
 int match_icmp_id, match_tcp_id, match_udp_id, match_ipv6_id;
 struct match_functions *mf;
 
-struct match_field_reg *field_saddr, *field_daddr, *field_tos, *field_ttl;
+int field_saddr, field_daddr, field_tos, field_ttl;
 
 struct ptype *ptype_ipv4, *ptype_uint8;
 
@@ -77,21 +77,12 @@ int match_identify_ipv4(struct frame *f, struct layer* l, unsigned int start, un
 	l->payload_start = start + hdr_len;
 	l->payload_size = ntohs(hdr->ip_len) - hdr_len;
 
-	struct layer_field *lf = l->fields;
-	while (lf) {
-		if (lf->type == field_saddr) {
-			PTYPE_IPV4_SETADDR(lf->value, hdr->ip_src);
-		} else if (lf->type == field_daddr) {
-			PTYPE_IPV4_SETADDR(lf->value, hdr->ip_dst);
-		} else if (lf->type == field_tos) {
-			PTYPE_UINT8_SETVAL(lf->value, hdr->ip_tos);
-		} else if (lf->type == field_ttl) {
-			PTYPE_UINT8_SETVAL(lf->value, hdr->ip_ttl);
-		}
-		
-		lf = lf->next;
-	}
 
+	PTYPE_IPV4_SETADDR(l->fields[field_saddr], hdr->ip_src);
+	PTYPE_IPV4_SETADDR(l->fields[field_daddr], hdr->ip_dst);
+	PTYPE_UINT8_SETVAL(l->fields[field_tos], hdr->ip_tos);
+	PTYPE_UINT8_SETVAL(l->fields[field_ttl], hdr->ip_ttl);
+		
 
 	switch (hdr->ip_p) {
 

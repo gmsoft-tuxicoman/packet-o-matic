@@ -535,7 +535,8 @@ int config_write_rule(int fd, struct rule_node *n, struct rule_node *last, int t
 					char value[256];
 					ptype_print_val(n->match->value, value, sizeof(value));
 					strcat(buffer, " field=\"");
-					strcat(buffer, n->match->field->name);
+					struct match_field_reg *field = match_get_field(n->layer, n->match->id);
+					strcat(buffer, field->name);
 					strcat(buffer, "\"");
 					if (n->match->op != PTYPE_OP_EQUALS) {
 						strcat(buffer, " op=\"");

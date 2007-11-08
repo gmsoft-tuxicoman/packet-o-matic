@@ -82,16 +82,10 @@ int layer_cleanup() {
 	for (i = 0; i < MAX_MATCH; i++) {
 		int j;
 		for (j = 0; j < field_pool[i].size; j++) {
-			struct layer_field *lf = field_pool[i].pool[j];
-
-			while (lf) {
-				struct layer_field* tmp = lf;
-				ptype_cleanup_module(tmp->value);
-				lf = lf->next;
-				free(tmp);
-			}
+			int k;
+			for (k = 0; k < MAX_LAYER_FIELDS && field_pool[i].pool[j][k]; k++)
+				ptype_cleanup_module(field_pool[i].pool[j][k]);
 		}
-		free(field_pool[i].pool);
 	}
 	return POM_OK;
 
@@ -116,34 +110,31 @@ int layer_find_start(struct layer *l, int header_type) {
 	return POM_ERR;
 }
 
-struct layer_field* layer_field_pool_get(struct layer* l) {
+int layer_field_pool_get(struct layer* l) {
 
 	struct layer_field_pool *lfp = &field_pool[l->type];
-	lfp->usage++;
-	if (lfp->usage > lfp->size) {
-		lfp->size = lfp->usage;
-		lfp->pool = realloc(lfp->pool, sizeof(struct layer_field*) * lfp->size);
-		lfp->pool[lfp->usage - 1] = NULL;
-		struct match_field_reg *fields = match_get_fields(l->type);
-		while (fields) {
-			struct layer_field *tmp = malloc(sizeof(struct layer_field));
-			bzero(tmp, sizeof(struct layer_field));
-			tmp->type = fields;
-			tmp->value = ptype_alloc_from(fields->type);
-			if (!lfp->pool[lfp->usage - 1]) {
-				lfp->pool[lfp->usage - 1] = tmp;
-			} else {
-				struct layer_field *addtmp = lfp->pool[lfp->usage - 1];
-				while (addtmp->next)
-					addtmp = addtmp->next;
-				addtmp->next = tmp;
-			}
-			fields = fields->next;
+
+	
+	int i;
+
+	if (lfp->usage >= lfp->size) {
+		lfp->size++;
+		for (i = 0; i < MAX_LAYER_FIELDS; i++) {
+			struct match_field_reg *field = match_get_field(l->type, i);
+			if (!field)
+				break;
+
+			lfp->pool[lfp->usage][i] = ptype_alloc_from(field->type);
 		}
 
 	}
 
-	return lfp->pool[lfp->usage - 1];
+	for (i = 0; i< MAX_LAYER_FIELDS && lfp->pool[i]; i++)
+		l->fields[i] = lfp->pool[lfp->usage][i];
+
+	lfp->usage++;
+
+	return POM_OK;
 
 }
 

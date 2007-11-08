@@ -33,7 +33,7 @@
 int match_ipv4_id, match_ipv6_id, match_arp_id;
 struct match_functions *mf;
 
-struct match_field_reg *field_saddr, *field_daddr;
+int field_saddr, field_daddr;
 
 struct ptype *ptype_mac;
 
@@ -68,15 +68,8 @@ int match_identify_ethernet(struct frame *f, struct layer* l, unsigned int start
 	l->payload_size = len - sizeof(struct ether_header);
 
 
-	struct layer_field *lf = l->fields;
-	while (lf) {
-		if (lf->type == field_saddr) {
-			PTYPE_MAC_SETADDR(lf->value, ehdr->ether_shost);
-		} else if (lf->type == field_daddr) {
-			PTYPE_MAC_SETADDR(lf->value, ehdr->ether_dhost);
-		}
-		lf = lf->next;
-	}
+	PTYPE_MAC_SETADDR(l->fields[field_saddr], ehdr->ether_shost);
+	PTYPE_MAC_SETADDR(l->fields[field_daddr], ehdr->ether_dhost);
 
 	switch (ntohs(ehdr->ether_type)) {
 		case 0x0800:

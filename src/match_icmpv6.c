@@ -28,7 +28,7 @@
 int match_ipv4_id, match_ipv6_id;
 struct match_functions *mf;
 
-struct match_field_reg *field_type, *field_code;
+int field_type, field_code;
 
 struct ptype *ptype_uint8;
 
@@ -59,15 +59,8 @@ int match_identify_icmpv6(struct frame *f, struct layer* l, unsigned int start, 
 	l->payload_start = start + sizeof(struct icmp6_hdr); 
 	l->payload_size = len - sizeof(struct icmp6_hdr);
 
-	struct layer_field *lf = l->fields;
-	while (lf) {
-		if (lf->type == field_type) {
-			PTYPE_UINT8_SETVAL(lf->value, ihdr->icmp6_type);
-		} else if (lf->type == field_code) {
-			PTYPE_UINT8_SETVAL(lf->value, ihdr->icmp6_code);
-		}
-		lf = lf->next;
-	}
+	PTYPE_UINT8_SETVAL(l->fields[field_type], ihdr->icmp6_type);
+	PTYPE_UINT8_SETVAL(l->fields[field_code], ihdr->icmp6_code);
 
 	if (!(ihdr->icmp6_type & ICMP6_INFOMSG_MASK))
 			// For now we don't advertise the ip layer

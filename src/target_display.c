@@ -161,10 +161,9 @@ int target_process_display(struct target *t, struct frame *f) {
 		if (l->fields) {
 		
 
-			
-			struct layer_field *lf = l->fields;
-			while (lf) {
-				len = (*tf->ptype_print_val) (lf->value, buff, sizeof(buff) - 1);
+			int i;
+			for (i = 0; i < MAX_LAYER_FIELDS && l->fields[i]; i++) {
+				len = (*tf->ptype_print_val) (l->fields[i], buff, sizeof(buff) - 1);
 
 				if (len) {
 					if (!first_field) {
@@ -178,8 +177,10 @@ int target_process_display(struct target *t, struct frame *f) {
 						first_field = 0;
 					}
 					
-					strncat(line, lf->type->name, freesize);
-					freesize -= strlen(lf->type->name);
+					struct match_field_reg *field = (*tf->match_get_field) (l->type, i);
+						
+					strncat(line, field->name, freesize);
+					freesize -= strlen(field->name);
 
 					char *colon = ": ";
 					strncat(line, colon, freesize);
@@ -188,8 +189,6 @@ int target_process_display(struct target *t, struct frame *f) {
 					strncat(line, buff, freesize);
 					freesize -= len;
 				}
-
-				lf = lf->next;
 
 			}
 

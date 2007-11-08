@@ -30,7 +30,7 @@
 int match_icmpv6_id, match_tcp_id, match_udp_id;
 struct match_functions *mf;
 
-struct match_field_reg *field_saddr, *field_daddr, *field_flabel, *field_hlim;
+int field_saddr, field_daddr, field_flabel, field_hlim;
 
 struct ptype *ptype_ipv6, *ptype_uint8, *ptype_uint32;
 
@@ -73,20 +73,10 @@ int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int start, un
 	l->payload_size = ntohs(hdr->ip6_plen);
 	l->payload_start = start + hdrlen;
 
-	struct layer_field *lf = l->fields;
-	while (lf) {
-		if (lf->type == field_saddr) {
-			PTYPE_IPV6_SETADDR(lf->value, hdr->ip6_src);
-		} else if (lf->type == field_daddr) {
-			PTYPE_IPV6_SETADDR(lf->value, hdr->ip6_dst);
-		} else if (lf->type == field_flabel) {
-			PTYPE_UINT32_SETVAL(lf->value, ntohl(hdr->ip6_flow) & 0xfffff);
-		} else if (lf->type == field_hlim) {
-			PTYPE_UINT8_SETVAL(lf->value, hdr->ip6_hlim);
-		}
-
-		lf = lf->next;
-	}
+	PTYPE_IPV6_SETADDR(l->fields[field_saddr], hdr->ip6_src);
+	PTYPE_IPV6_SETADDR(l->fields[field_daddr], hdr->ip6_dst);
+	PTYPE_UINT32_SETVAL(l->fields[field_flabel], ntohl(hdr->ip6_flow) & 0xfffff);
+	PTYPE_UINT8_SETVAL(l->fields[field_hlim], hdr->ip6_hlim);
 
 	while (hdrlen < len) {
 

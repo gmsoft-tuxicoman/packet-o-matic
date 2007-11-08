@@ -24,7 +24,7 @@
 int match_ipv4_id, match_ipv6_id;
 struct match_functions *mf;
 
-struct match_field_reg *field_pkt_type, *field_dev_type, *field_saddr;
+int field_pkt_type, field_dev_type, field_saddr;
 
 struct ptype *ptype_uint16;
 
@@ -57,18 +57,9 @@ int match_identify_linux_cooked(struct frame *f, struct layer* l, unsigned int s
 	l->payload_start = start + sizeof(struct cooked_hdr);
 	l->payload_size = len - sizeof(struct cooked_hdr);
 
-	struct layer_field *lf = l->fields;
-	while (lf) {
-		if (lf->type == field_pkt_type) {
-			PTYPE_UINT16_SETVAL(lf->value, ntohs(chdr->pkt_type));
-		} else if (lf->type == field_dev_type) {
-			PTYPE_UINT16_SETVAL(lf->value, ntohs(chdr->dev_type));
-		} else if (lf->type == field_saddr) {
-			PTYPE_UINT16_SETVAL(lf->value, ntohs(chdr->ll_saddr));
-		}
-
-		lf = lf->next;
-	}
+	PTYPE_UINT16_SETVAL(l->fields[field_pkt_type], ntohs(chdr->pkt_type));
+	PTYPE_UINT16_SETVAL(l->fields[field_dev_type], ntohs(chdr->dev_type));
+	PTYPE_UINT16_SETVAL(l->fields[field_saddr], ntohs(chdr->ll_saddr));
 
 	switch (ntohs(chdr->ether_type)) {
 		case 0x0800:

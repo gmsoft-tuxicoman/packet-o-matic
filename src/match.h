@@ -33,7 +33,6 @@ struct match_field_reg {
 	char *name; ///< name of the field
 	struct ptype *type; ///< allocated ptype that will show how to allocate subsequent fields
 	char *descr; ///< description of the field
-	struct match_field_reg *next;
 
 };
 
@@ -42,7 +41,7 @@ struct match_reg {
 
 	char *name; ///< name of the match
 	unsigned int type; ///< type of the match
-	struct match_field_reg *fields; ///< possible fields for the match
+	struct match_field_reg *fields[MAX_LAYER_FIELDS]; ///< possible fields for the match
 	void *dl_handle; ///< handle of the library
 	int (*identify) (struct frame *f, struct layer*, unsigned int, unsigned int); ///< callled to identify the next layer of a packet
 	int (*unregister) (struct match_reg *r); ///< called when unregistering the match
@@ -51,7 +50,8 @@ struct match_reg {
 
 /// save info about a field
 struct match_field {
-	struct match_field_reg* field; ///< Field against which we should compare
+	//struct match_field_reg* field; ///< Field against which we should compare
+	int id;
 	struct ptype *value; ///< Value that we should compare with
 	int op; ///< Operator on the value
 
@@ -61,19 +61,19 @@ struct match_field {
 struct match_functions {
 	void (*pom_log) (const char *format, ...);
 	int (*match_register) (const char *); ///< register a match
-	struct match_field_reg* (*register_field) (int match_type, char *name, struct ptype *type, char *descr); ///< register a field for this match
+	int (*register_field) (int match_type, char *name, struct ptype *type, char *descr); ///< register a field for this match
 	struct ptype* (*ptype_alloc) (const char* type, char* unit);
 	int (*ptype_cleanup) (struct ptype* p);
 };
 
 int match_init();
 int match_register(const char *match_name);
-struct match_field_reg *match_register_field(int match_type, char *name, struct ptype *type, char *descr);
+int match_register_field(int match_type, char *name, struct ptype *type, char *descr);
 struct match_field *match_alloc_field(int match_type, char *field_type);
 int match_cleanup_field(struct match_field *p);
 int match_get_type(const char *match_name);
 char *match_get_name(int match_type);
-struct match_field_reg *match_get_fields(int match_type);
+struct match_field_reg *match_get_field(int match_type, int field_id);
 int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigned int len);
 int match_eval(struct match_field *mf, struct layer *l);
 int match_cleanup();
