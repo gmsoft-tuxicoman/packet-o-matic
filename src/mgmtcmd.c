@@ -1615,6 +1615,8 @@ int mgmtcmd_remove_target(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	reader_process_unlock();
 
+	mgmtsrv_send(c, "Target removed\r\n");
+
 	return POM_OK;
 
 }
@@ -1658,6 +1660,8 @@ int mgmtcmd_remove_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	free(rl);
 
 	reader_process_unlock();
+
+	mgmtsrv_send(c, "Rule removed\r\n");
 
 	return POM_OK;
 

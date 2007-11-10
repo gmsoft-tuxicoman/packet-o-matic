@@ -41,7 +41,7 @@ int target_register_pcap(struct target_reg *r, struct target_functions *tg_funcs
 		return POM_ERR;
 
 	(*tg_funcs->register_param) (mode_default, "filename", "dump.cap", "Filename to save packets to");
-	(*tg_funcs->register_param) (mode_default, "snaplen", "1552", "Maximum size of saved packets");
+	(*tg_funcs->register_param) (mode_default, "snaplen", "1522", "Maximum size of saved packets");
 	(*tg_funcs->register_param) (mode_default, "layer", "ethernet", "Type of layer to capture. Either ethernet, linux_cooked, docsis or ipv4");
 
 
