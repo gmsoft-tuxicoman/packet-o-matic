@@ -23,12 +23,15 @@
 #include "match.h"
 #include "ptype.h"
 #include "conntrack.h"
+#include "main.h"
+#include "ptype_bool.h"
 
 struct match_reg *matchs[MAX_MATCH];
 static struct match_functions *m_funcs;
 
 int match_undefined_id;
 
+struct ptype *param_autoload_helper;
 
 int match_register(const char *match_name) {
 
@@ -73,6 +76,9 @@ int match_register(const char *match_name) {
 
 			// Automatically load the conntrack
 			conntrack_register(match_name);
+
+			if (PTYPE_BOOL_GETVAL(param_autoload_helper))
+				helper_register(match_name);
 
 
 			return i;
@@ -154,14 +160,20 @@ int match_cleanup_field(struct match_field *p) {
 
 int match_init() {
 
-	match_undefined_id = match_register("undefined");
-
 	m_funcs = malloc(sizeof(struct match_functions));
 	m_funcs->pom_log = pom_log;
 	m_funcs->match_register = match_register;
 	m_funcs->register_field = match_register_field;
 	m_funcs->ptype_alloc = ptype_alloc;
 	m_funcs->ptype_cleanup = ptype_cleanup_module;
+
+	param_autoload_helper = ptype_alloc("bool", NULL);
+	if (!param_autoload_helper)
+		return POM_ERR;
+
+	core_register_param("match_autoload_helper", "yes",  param_autoload_helper, "Should the helper modules be loaded automatically when a match is loaded", NULL);
+
+	match_undefined_id = match_register("undefined");
 
 	return POM_OK;
 }
@@ -225,6 +237,8 @@ int match_cleanup() {
 	if (m_funcs)
 		free(m_funcs);
 	m_funcs = NULL;
+
+	ptype_cleanup_module(param_autoload_helper);
 
 	return POM_OK;
 }

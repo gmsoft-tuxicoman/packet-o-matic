@@ -32,6 +32,7 @@
 #include "conntrack.h"
 #include "helper.h"
 #include "ptype.h"
+#include "main.h"
 #include "ptype_bool.h"
 
 struct conf *config_alloc() {
@@ -277,10 +278,6 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 			}
 					
 			xmlFree(inv);
-
-			// Try to register corresponding conntrack and helper
-			helper_register(layer);
-
 			xmlFree(layer);
 			// Add the new node at the right place
 			if (!head)
@@ -493,6 +490,25 @@ int config_parse(struct conf *c, char * filename) {
 				r->prev = tmpr;
 
 			}
+		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "param")) {
+			char *name = (char *) xmlGetProp(cur, (const xmlChar*) "name");
+			if (name) {
+				char *value = (char *) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+				if (value) {
+					char buffer[2048];
+					if (core_set_param_value(name, value, buffer, sizeof(buffer) - 1) == POM_ERR) {
+						pom_log(POM_LOG_WARN, "Unable to set parameter %s to %s : %s\r\n", name, value, buffer);
+					}
+
+					xmlFree(value);
+				} else {
+					pom_log(POM_LOG_WARN "Warning, no value given for parameter %s\r\n", name);
+				}
+				xmlFree(name);
+			} else { 
+				pom_log(POM_LOG_WARN "Param found but no name given\r\n");
+			}
+
 		}
 
 		cur = cur->next;
@@ -638,7 +654,7 @@ int config_write(struct conf *c, char *filename) {
 
 	if (fd == -1) {
 		char buffer[256];
-		strerror_r(errno, buffer, sizeof(buffer));
+		strerror_r(errno, buffer, sizeof(buffer) - 1);
 		pom_log(POM_LOG_ERR "Error while opening config file for writing : %s\r\n", buffer);
 		return POM_ERR;
 	}
@@ -648,6 +664,26 @@ int config_write(struct conf *c, char *filename) {
 	char buffer[4096]; // each element will not be 2048 bytes long
 	bzero(buffer, sizeof(buffer));
 	strcat(buffer, "<?xml version=\"1.0\"?>\n<config>\n\n");
+
+	// write the core parameters
+	struct core_param *p = core_params;
+	while (p) {
+		char value[1024];
+		ptype_print_val(p->value, value, sizeof(value) - 1);
+		if (strcmp(value, p->defval)) {
+			strcat(buffer, "<param name=\"");
+			strcat(buffer, p->name);
+			strcat(buffer, "\">");
+			strcat(buffer, value);
+			strcat(buffer, "</param>\n");
+		}
+		p = p->next;
+	}
+	strcat(buffer, "\r\n");
+
+	if (write(fd, buffer, strlen(buffer)) == -1)
+		goto err;
+	bzero(buffer, sizeof(buffer));
 
 	// write the input config
 	if (c->input) {
@@ -660,7 +696,7 @@ int config_write(struct conf *c, char *filename) {
 		struct input_param *p = c->input->mode->params;
 		while (p) {
 			char value[1024];
-			ptype_print_val(p->value, value, sizeof(value));
+			ptype_print_val(p->value, value, sizeof(value) - 1);
 			if (strcmp(value, p->defval)) { // parameter doesn't have default value
 				strcat(buffer, "\t<param name=\"");
 				strcat(buffer, p->name);
@@ -712,7 +748,7 @@ int config_write(struct conf *c, char *filename) {
 						continue;
 
 					char value[1024];
-					ptype_print_val(tp->value, value, sizeof(value));
+					ptype_print_val(tp->value, value, sizeof(value) - 1);
 					if (strcmp(value, tp->type->defval)) {
 						strcat(buffer, "\t\t<param name=\"");
 						strcat(buffer, tp->type->name);

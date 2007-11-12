@@ -28,6 +28,7 @@
 
 #include "main.h"
 
+#include "ptype_uint32.h"
 
 #if defined DEBUG && defined HAVE_MCHECK_H
 #include <mcheck.h>
@@ -59,7 +60,8 @@ void signal_handler(int signal) {
 	
 	pom_log("Received signal. Finishing ... !\r\n");
 	finish = 1;
-	rbuf->state = rb_state_stopping;
+	if (rbuf->state != rb_state_closed)
+		rbuf->state = rb_state_stopping;
 
 }
 
@@ -174,7 +176,7 @@ int start_input(struct ringbuffer *r) {
 
 	r->state = rb_state_opening;
 
-	int fd = input_open(r->i);
+	int fd = input_open(main_config->input);
 
 	if (fd == POM_ERR) {
 		pom_log(POM_LOG_ERR "Error while opening input\r\n");
@@ -183,7 +185,7 @@ int start_input(struct ringbuffer *r) {
 		return POM_ERR;
 	}
 
-	if (ringbuffer_alloc(r) == POM_ERR) {
+	if (ringbuffer_alloc(r, main_config->input) == POM_ERR) {
 		pom_log(POM_LOG_ERR "Error while allocating the ringbuffer\r\n");
 		input_close(r->i);
 		r->state = rb_state_closed;
@@ -281,7 +283,7 @@ void *input_thread_func(void *params) {
 			pthread_cond_signal(&r->underrun_cond);
 		}
 
-		while (r->usage >= RINGBUFFER_SIZE - 1) {
+		while (r->usage >= PTYPE_UINT32_GETVAL(r->size) - 1) {
 			if (r->ic.is_live) {
 				//pom_log(POM_LOG_TSHOOT "Buffer overflow (%u). droping packet\r\n", r->usage);
 				r->write_pos--;
@@ -299,7 +301,7 @@ void *input_thread_func(void *params) {
 		}
 
 		r->write_pos++;
-		if (r->write_pos >= RINGBUFFER_SIZE)
+		if (r->write_pos >= PTYPE_UINT32_GETVAL(r->size))
 			r->write_pos = 0;
 
 
@@ -339,6 +341,7 @@ int main(int argc, char *argv[]) {
 	mtrace();
 #endif
 
+	core_params = NULL;
 
 	debug_level = *POM_LOG_INFO;
 
@@ -411,14 +414,24 @@ int main(int argc, char *argv[]) {
 
 
 	// Init the stuff
+	ptype_init();
 	layer_init();
 	match_init();
 	conntrack_init();
 	helper_init();
 	target_init();
 	rules_init();
-	ptype_init();
 
+
+	rbuf = malloc(sizeof(struct ringbuffer));
+
+	if (ringbuffer_init(rbuf) == POM_ERR) {
+		goto finish;
+	}
+
+	// Install the signal handler
+	signal(SIGHUP, signal_handler);
+	signal(SIGINT, signal_handler);
 
 	main_config = config_alloc();
 	if (empty_config) {
@@ -433,17 +446,6 @@ int main(int argc, char *argv[]) {
 	if (!disable_mgmtsrv && mgmtsrv_init(cli_port) == POM_ERR) {
 		pom_log(POM_LOG_ERR "Error when initializing the management console. Abording\r\n");
 		goto err;
-	}
-
-	// Install the signal handler
-	signal(SIGHUP, signal_handler);
-	signal(SIGINT, signal_handler);
-
-
-	rbuf = malloc(sizeof(struct ringbuffer));
-
-	if (ringbuffer_init(rbuf, main_config->input) == POM_ERR) {
-		goto finish;
 	}
 
 	pthread_t mgmtsrv_thread;
@@ -527,11 +529,11 @@ int main(int argc, char *argv[]) {
 			goto finish;
 		}
 		rbuf->usage--;
-		if (!rbuf->ic.is_live && rbuf->usage <= RINGBUFFER_SIZE - 1)
+		if (!rbuf->ic.is_live && rbuf->usage <= PTYPE_UINT32_GETVAL(rbuf->size) - 1)
 			pthread_cond_signal(&rbuf->overflow_cond);
 
 		rbuf->read_pos++;
-		if (rbuf->read_pos >= RINGBUFFER_SIZE)
+		if (rbuf->read_pos >= PTYPE_UINT32_GETVAL(rbuf->size))
 			rbuf->read_pos = 0;
 
 
@@ -600,26 +602,44 @@ err:
 
 	// Layers need to be cleaned up after the match
 	layer_cleanup();
-	ptype_unregister_all();
 
+	ringbuffer_deinit(rbuf);
 	free(rbuf);
+	core_param_unregister_all();
+
+	ptype_unregister_all();
 
 	return 0;
 }
 
-int ringbuffer_init(struct ringbuffer *r, struct input *i) {
+int ringbuffer_init(struct ringbuffer *r) {
 	bzero(r, sizeof(struct ringbuffer));
 	pthread_mutex_init(&r->mutex, NULL);
 	pthread_cond_init(&r->underrun_cond, NULL);
 	pthread_cond_init(&r->overflow_cond, NULL);
 
-	r->i = i;
+	r->size = ptype_alloc("uint32", "packets");
+	if (!r->size)
+		return POM_ERR;
+
+	core_register_param("ringbuffer_size", "10000", r->size, "Number of packets to hold in the ringbuffer", ringbuffer_can_change_size);
 
 	return POM_OK;
 
 }
 
-int ringbuffer_alloc(struct ringbuffer *r) {
+int ringbuffer_deinit(struct ringbuffer *r) {
+
+	if (!r)
+		return POM_ERR;
+
+	ptype_cleanup_module(r->size);
+	return POM_OK;
+}
+
+int ringbuffer_alloc(struct ringbuffer *r, struct input *in) {
+
+	r->i = in;
 
 	if (input_getcaps(r->i, &r->ic) == POM_ERR) {
 		pom_log(POM_LOG_ERR "Error while getting input capabilities\r\n");
@@ -627,9 +647,12 @@ int ringbuffer_alloc(struct ringbuffer *r) {
 	}
 
 	// Initialize the ring buffer
-	pom_log(POM_LOG_DEBUG "Using %u buffers of %u bytes\r\n", RINGBUFFER_SIZE, r->ic.snaplen);
+	pom_log(POM_LOG_DEBUG "Using %u buffers of %u bytes\r\n", PTYPE_UINT32_GETVAL(r->size), r->ic.snaplen);
+
+	r->buffer = malloc(sizeof(struct frame*) * PTYPE_UINT32_GETVAL(r->size));
+
 	int i;
-	for (i = 0; i < RINGBUFFER_SIZE; i++) {
+	for (i = 0; i < PTYPE_UINT32_GETVAL(r->size); i++) {
 		r->buffer[i] = malloc(sizeof(struct frame));
 		bzero(r->buffer[i], sizeof(struct frame));
 		r->buffer[i]->buff = malloc(r->ic.snaplen);
@@ -637,7 +660,7 @@ int ringbuffer_alloc(struct ringbuffer *r) {
 		r->buffer[i]->input = main_config->input;
 
 	}
-	r->read_pos = RINGBUFFER_SIZE - 1;
+	r->read_pos = PTYPE_UINT32_GETVAL(r->size) - 1;
 	r->write_pos = 0;
 
 	return POM_OK;
@@ -648,14 +671,25 @@ int ringbuffer_cleanup(struct ringbuffer *r) {
 
 	int i;
 
-	for (i = 0; i < RINGBUFFER_SIZE; i++) {
+	for (i = 0; i < PTYPE_UINT32_GETVAL(r->size); i++) {
 		free(r->buffer[i]->buff);
 		free(r->buffer[i]);
 	}
+	free(r->buffer);
 
 	return POM_OK;
 }
 
+int ringbuffer_can_change_size(struct ptype *value, char *msg, size_t size) {
+
+	if (rbuf->state != rb_state_closed) {
+		strncpy(msg, "Input must be stopped in order to changed the buffer size", size);
+		return POM_ERR;
+	}
+
+	return POM_OK;
+
+}
 
 int reader_process_lock() {
 	return pthread_mutex_lock(&reader_mutex);
@@ -675,7 +709,83 @@ int halt() {
 
 	pom_log("Stopping application ...\r\n");
 	finish = 1;
-	rbuf->state = rb_state_stopping;
+	if (rbuf->state != rb_state_closed)
+		rbuf->state = rb_state_stopping;
 	return POM_OK;
 }
 
+int core_register_param(char *name, char *defval, struct ptype *value, char *descr, int (*param_can_change) (struct ptype *value, char *msg, size_t size)) {
+
+	struct core_param *p = malloc(sizeof(struct core_param));
+	bzero(p, sizeof(struct core_param));
+
+	p->name = malloc(strlen(name) + 1);
+	strcpy(p->name, name);
+	p->defval = malloc(strlen(defval) + 1);
+	strcpy(p->defval, defval);
+	p->descr = malloc(strlen(descr) + 1);
+	strcpy(p->descr, descr);
+	p->value = value;
+
+	p->can_change = param_can_change;
+
+	if (ptype_parse_val(p->value, defval) == POM_ERR)
+		return POM_ERR;
+
+	p->next = core_params;
+	core_params = p;
+
+	return POM_OK;
+
+}
+
+struct ptype* core_get_param_value(char *param) {
+
+	struct core_param *p = core_params;
+	while (p) {
+		if (!strcmp(p->name, param))
+			return p->value;
+		p = p->next;
+	}
+
+	return NULL;
+
+}
+
+int core_set_param_value(char *param, char *value, char *msg, size_t size) {
+
+	struct core_param *p = core_params;
+	while (p) {
+		if (!strcmp(p->name, param))
+			break;
+		p = p->next;
+	}
+
+	if (!p) {
+		snprintf(msg, size, "No such parameter %s", param);
+		return POM_ERR;
+	}
+
+	if (p->can_change && (*p->can_change) (p->value, msg, size) == POM_ERR)
+		return POM_ERR;
+
+	if (ptype_parse_val(p->value, value) == POM_ERR) {
+		snprintf(msg, size, "Unable to parse %s for parameter %s", value, param);
+		return POM_ERR;
+	}
+
+	return POM_OK;
+}
+
+int core_param_unregister_all() {
+
+	while (core_params) {
+		struct core_param *p = core_params;
+		free(p->name);
+		free(p->defval);
+		free(p->descr);
+		core_params = core_params->next;
+		free(p);
+	}
+	return POM_OK;
+}

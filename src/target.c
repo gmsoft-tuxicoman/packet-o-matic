@@ -137,7 +137,7 @@ int target_register_param(struct target_mode *mode, char *name, char *defval, ch
 
 	param->name = malloc(strlen(name) + 1);
 	strcpy(param->name, name);
-	param->defval = malloc(strlen(name) + 1);
+	param->defval = malloc(strlen(defval) + 1);
 	strcpy(param->defval, defval);
 	param->descr = malloc(strlen(descr) + 1);
 	strcpy(param->descr, descr);

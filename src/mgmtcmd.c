@@ -30,7 +30,7 @@
 
 #include <pthread.h>
 
-#define MGMT_COMMANDS_NUM 34
+#define MGMT_COMMANDS_NUM 36
 
 struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
@@ -258,6 +258,20 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.help = "Halt the program",
 		.callback_func = mgmtcmd_halt,
 	},
+
+	{
+		.words = { "show", "core", "parameters", NULL },
+		.help = "Show the core parameters",
+		.callback_func = mgmtcmd_show_core_parameters,
+	},
+
+	{
+		.words = { "set", "core", "parameter", NULL },
+		.help = "Change the value of a core parameter",
+		.callback_func = mgmtcmd_set_core_parameter,
+		.usage = "set core parameter <parameter> <value>",
+	},
+		
 };
 
 int mgmtcmd_register_all() {
@@ -1755,5 +1769,32 @@ int mgmtcmd_set_target_mode(struct mgmt_connection *c, int argc, char *argv[]) {
 int mgmtcmd_halt(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	halt();
+	return POM_OK;
+}
+
+int mgmtcmd_show_core_parameters(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	struct core_param *p = core_params;
+
+	while (p) {
+		char buff[2048];
+		ptype_print_val(p->value, buff, sizeof(buff) - 1);
+		mgmtsrv_send(c, "  %s : %s %s\r\n", p->name, buff, p->value->unit);
+		p = p->next;
+	}
+
+	return POM_OK;
+}
+
+int mgmtcmd_set_core_parameter(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	if (argc < 2)
+		return MGMT_USAGE;
+
+	char buffer[2048];
+	if (core_set_param_value(argv[0], argv[1], buffer, sizeof(buffer) - 1) == POM_ERR) {
+		mgmtsrv_send(c, "Unable to change parameter : %s\r\n", buffer);
+	}
+
 	return POM_OK;
 }

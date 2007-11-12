@@ -303,14 +303,15 @@ int mgmtsrv_register_command(struct mgmt_command *cmd) {
 		if (!cmd->words[w])
 			break;
 
-		if (!tmp->words[w][l] && !cmd->words[w][l]) { // both words are the same
-			w++;
-			continue;
-		}
 		if (!tmp->words[w] || !tmp->words[w][l]) { // our command is longer. next one please
 			tmp = tmp->next;
 			w = 0;
 			l = 0;
+			continue;
+		}
+
+		if (!tmp->words[w][l] && !cmd->words[w][l]) { // both words are the same
+			w++;
 			continue;
 		}
 

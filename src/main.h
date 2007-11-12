@@ -26,7 +26,7 @@
 
 struct conf *main_config;
 
-#define RINGBUFFER_SIZE 10000
+struct core_param *core_params;
 
 enum ringbuffer_state {
 	rb_state_closed,
@@ -46,22 +46,35 @@ struct ringbuffer {
 	unsigned long total_packets; ///< Count the total number of packet that went trough the buffer
 
 
-	struct frame* buffer[RINGBUFFER_SIZE];
-	unsigned int read_pos; // Where the process thread WILL read the packets
-	unsigned int write_pos; // Where the input thread is CURRENTLY writing
-	unsigned int usage; // Number of packet in the buffer waiting to be processed
+	struct frame** buffer;
+	unsigned int read_pos; ///< Where the process thread WILL read the packets
+	unsigned int write_pos; ///< Where the input thread is CURRENTLY writing
+	unsigned int usage; ///< Number of packet in the buffer waiting to be processed
+	struct ptype *size; ///< Number of packets to allocate
 
-	enum ringbuffer_state state; // State of the ringbuffer
+	enum ringbuffer_state state; ///< State of the ringbuffer
 
-	struct input *i; // Input associated with this ringbuffer
-	struct input_caps ic; // Capabilities of the input
+	struct input *i; ///< Input associated with this ringbuffer
+	struct input_caps ic; ///< Capabilities of the input
+};
+
+struct core_param {
+
+	char *name; ///< Name of the parameter
+	char *defval; ///< Default value
+	char *descr; ///< Description
+	struct ptype *value; ///< User modifiable value
+	int (*can_change) (struct ptype *value, char *msg, size_t size); ///< Function that checks if parameter can be changed
+	struct core_param *next;
 };
 
 struct ringbuffer *rbuf; ///< The ring buffer
 
-int ringbuffer_init(struct ringbuffer *r, struct input *i);
-int ringbuffer_alloc(struct ringbuffer *r);
+int ringbuffer_init(struct ringbuffer *r);
+int ringbuffer_deinit(struct ringbuffer *r);
+int ringbuffer_alloc(struct ringbuffer *r, struct input *i);
 int ringbuffer_cleanup(struct ringbuffer *r);
+int ringbuffer_can_change_size(struct ptype *value, char *msg, size_t size);
 
 int start_input(struct ringbuffer *r);
 int stop_input(struct ringbuffer *r);
@@ -74,5 +87,10 @@ int reader_process_unlock();
 void *input_thread_func(void *params);
 
 int halt();
+
+int core_register_param(char *name, char *defval, struct ptype *value, char *descr, int (*param_can_change) (struct ptype *value, char *msg, size_t size));
+struct ptype* core_get_param_value(char *param);
+int core_set_param_value(char *param, char *value, char *msg, size_t size);
+int core_param_unregister_all();
 
 #endif

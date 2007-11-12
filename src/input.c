@@ -165,7 +165,7 @@ int input_register_param(struct input_mode *mode, char *name, char *defval, stru
 
 	param->name = malloc(strlen(name) + 1);
 	strcpy(param->name, name);
-	param->defval = malloc(strlen(name) + 1);
+	param->defval = malloc(strlen(defval) + 1);
 	strcpy(param->defval, defval);
 	param->descr = malloc(strlen(descr) + 1);
 	strcpy(param->descr, descr);
