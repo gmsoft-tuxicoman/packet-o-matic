@@ -33,6 +33,7 @@
 #include "helper.h"
 #include "ptype.h"
 #include "main.h"
+#include "mgmtsrv.h"
 #include "ptype_bool.h"
 
 struct conf *config_alloc() {
@@ -509,6 +510,13 @@ int config_parse(struct conf *c, char * filename) {
 				pom_log(POM_LOG_WARN "Param found but no name given\r\n");
 			}
 
+		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "password")) {
+			char *passwd = (char *) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+			if (passwd) {
+				mgmtsrv_set_password(passwd);
+				xmlFree(passwd);
+			}
+			
 		}
 
 		cur = cur->next;
@@ -665,6 +673,14 @@ int config_write(struct conf *c, char *filename) {
 	bzero(buffer, sizeof(buffer));
 	strcat(buffer, "<?xml version=\"1.0\"?>\n<config>\n\n");
 
+	// write the password if present
+	const char *passwd = mgmtsrv_get_password();
+	if (passwd) {
+		strcat(buffer, "<password>");
+		strcat(buffer, passwd);
+		strcat(buffer, "</password>\n\n");
+	}
+
 	// write the core parameters
 	struct core_param *p = core_params;
 	while (p) {
@@ -679,7 +695,7 @@ int config_write(struct conf *c, char *filename) {
 		}
 		p = p->next;
 	}
-	strcat(buffer, "\r\n");
+	strcat(buffer, "\n\n");
 
 	if (write(fd, buffer, strlen(buffer)) == -1)
 		goto err;

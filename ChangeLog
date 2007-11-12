@@ -4,6 +4,7 @@ Added core parameter match_autoload_helper and ringbuffer_size.
 Fix possible segfault when registering commands in mgmtsrv.c.
 Fix typo in target.c and input.c.
 Fix logic error when input read error occurs and application is being stopped.
+Store the password in the config when writing it.
 
 * 2007/11/10 Guy Martin <gmsoft@tuxicoman.be>
 Added confirmation message for commands remove rule and target.
