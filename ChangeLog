@@ -3,6 +3,8 @@ Fixed segfault when stopping and then restarting a target_pcap.
 Fix memory leak and segfault when displaying help.
 Fix compilation warning with gcc-4.2.
 Don't stop the target if they are already stopped.
+Added core parameter autosave_config_on_exit.
+When saving configuration, target stopped will stay stopped on next startup.
 
 * 2007/11/12 Guy Martin <gmsoft@tuxicoman.be>
 Added support for core parameters in mgmt command and config.

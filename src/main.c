@@ -28,6 +28,7 @@
 
 #include "main.h"
 
+#include "ptype_bool.h"
 #include "ptype_uint32.h"
 
 #if defined DEBUG && defined HAVE_MCHECK_H
@@ -434,6 +435,14 @@ int main(int argc, char *argv[]) {
 	rules_init();
 
 
+	struct ptype *param_autosave_on_exit = ptype_alloc("bool", NULL);
+	if (!param_autosave_on_exit) {
+		pom_log(POM_LOG_ERR "Cannot allocate ptype bool. Abording\r\n");
+		return -1;
+	}
+	core_register_param("autosave_config_on_exit", "yes", param_autosave_on_exit, "Automatically save the configuration when exiting", NULL);
+
+
 	rbuf = malloc(sizeof(struct ringbuffer));
 
 	if (ringbuffer_init(rbuf) == POM_ERR) {
@@ -589,6 +598,11 @@ finish:
 	// Process remaining queued frames
 	conntrack_close_connections(main_config->rules);
 
+	if (PTYPE_BOOL_GETVAL(param_autosave_on_exit)) {
+		pom_log("Autosaving configuration to %s\r\n", main_config->filename);
+		config_write(main_config, main_config->filename);
+	}
+
 err:
 
 	config_cleanup(main_config);
@@ -616,6 +630,7 @@ err:
 
 	ringbuffer_deinit(rbuf);
 	free(rbuf);
+	ptype_cleanup_module(param_autosave_on_exit);
 	core_param_unregister_all();
 
 	ptype_unregister_all();

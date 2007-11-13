@@ -199,7 +199,12 @@ struct target *parse_target(xmlDocPtr doc, xmlNodePtr cur) {
 	}
 	xmlFree(target_type);
 
-	target_open(tp);
+	char *target_start = (char *) xmlGetProp(cur, (const xmlChar*) "start");
+	if (!target_start || !strcmp(target_start, "yes"))
+		target_open(tp);
+	
+	if (target_start)
+		xmlFree(target_start);
 
 	return tp;
 
@@ -745,7 +750,13 @@ int config_write(struct conf *c, char *filename) {
 		while (t) {
 			strcat(buffer, "\t<target type=\"");
 			strcat(buffer, target_get_name(t->type));
+			strcat(buffer, "\" start=\"");
+			if (t->started)
+				strcat(buffer, "yes");
+			else
+				strcat(buffer, "no");
 			strcat(buffer, "\"");
+
 			if (t->mode) {
 				strcat(buffer, " mode=\"");
 				strcat(buffer, t->mode->name);
