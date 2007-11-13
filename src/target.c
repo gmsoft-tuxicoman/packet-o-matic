@@ -300,7 +300,7 @@ int target_process(struct target *t, struct frame *f) {
 
 int target_close(struct target *t) {
 
-	if (!t)
+	if (!t || !t->started)
 		return POM_ERR;
 
 	t->started = 0;

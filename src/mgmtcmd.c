@@ -695,7 +695,7 @@ struct rule_node *mgmtcmd_set_rule_parse_block(struct mgmt_connection *c, char *
 	char *words[3]; 
 	int wordcount = 0;
 
-	char *str, *saveptr, *token;
+	char *str, *token, *saveptr = NULL;
 
 	for (str = expr; ; str = NULL) {
 		token = strtok_r(str, " ", &saveptr);
