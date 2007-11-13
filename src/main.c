@@ -140,6 +140,7 @@ void print_help() {
 		}
 	}
 
+	closedir(d);
 
 	printf("\nINPUTS :\n--------\n\n");
 	input_print_help();
@@ -375,11 +376,21 @@ int main(int argc, char *argv[]) {
 				pom_log("Not starting CLI console because of --no-cli flag\r\n");
 				break;
 			case 'h':
+				ptype_init();
 				match_init();
 				target_init();
+				helper_init();
 				print_help();
+				input_unregister_all();
+				conntrack_unregister_all();
+				helper_unregister_all();
+				helper_cleanup();
+				match_unregister_all();
 				match_cleanup();
+				target_unregister_all();
 				target_cleanup();
+				core_param_unregister_all();
+				ptype_unregister_all();
 				return 0;
 			case 'c':
 				cfgfile = optarg;

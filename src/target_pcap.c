@@ -182,9 +182,9 @@ int target_close_pcap(struct target *t) {
 	(*tf->pom_log) ("0x%lx; PCAP : saved %u bytes\r\n", (unsigned long) priv, priv->size);
 
 	pcap_dump_close(priv->pdump);
+	priv->pdump = NULL;
 	pcap_close(priv->p);
-	free(priv);
-	t->target_priv = NULL;
+	priv->p = NULL;
 	return POM_OK;
 };
 

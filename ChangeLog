@@ -1,3 +1,7 @@
+* 2007/11/13 Guy Martin <gmsoft@tuxicoman.be>
+Fixed segfault when stopping and then restarting a target_pcap.
+Fix memory leak and segfault when displaying help.
+
 * 2007/11/12 Guy Martin <gmsoft@tuxicoman.be>
 Added support for core parameters in mgmt command and config.
 Added core parameter match_autoload_helper and ringbuffer_size.
