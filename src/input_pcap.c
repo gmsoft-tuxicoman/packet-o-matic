@@ -61,7 +61,7 @@ int input_register_pcap(struct input_reg *r, struct input_functions *i_funcs) {
 	(*i_funcs->register_param) (mode_interface, "snaplen", "1522", p_snaplen, "Snaplen");
 	(*i_funcs->register_param) (mode_interface, "promisc", "no", p_promisc, "Promiscuous");
 
-	(*i_funcs->register_param) (mode_file, "file", "", p_filename, "PCAP file");
+	(*i_funcs->register_param) (mode_file, "file", "dump.cap", p_filename, "PCAP file");
 
 	return POM_OK;
 }

@@ -380,7 +380,10 @@ void input_print_help() {
 					printf("  No parameter for this mode\n");
 				} else {
 					while (p) {
-						printf("  %s : %s\n", p->name, p->descr);
+						printf("  %s : %s (Default : %s", p->name, p->descr, p->defval);
+						if (strlen(p->value->unit) > 0)
+							printf(" %s", p->value->unit);
+						printf(")\n");
 						p = p->next;
 					}
 				}

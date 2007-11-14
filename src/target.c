@@ -407,7 +407,7 @@ void target_print_help() {
 					printf("  No parameter for this mode\n");
 				} else {
 					while (p) {
-						printf("  %s : %s\n", p->name, p->descr);
+						printf("  %s : %s (Default : %s)\n", p->name, p->descr, p->defval);
 						p = p->next;
 					}
 				}
