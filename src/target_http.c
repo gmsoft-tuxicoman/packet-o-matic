@@ -411,31 +411,6 @@ int target_process_http(struct target *t, struct frame *f) {
 			char filename[NAME_MAX];
 			strcpy(filename, PTYPE_STRING_GETVAL(priv->path));
 
-			if (filename[strlen(filename) - 1] != '/')
-				strcat(filename, "/");
-
-			// Check if the directory exists yet
-			if (lastl->prev) {
-				int i;
-				for (i = 0; i < MAX_LAYER_FIELDS && lastl->fields[i]; i++) {
-					struct match_field_reg *field = (*tf->match_get_field) (lastl->type, i);
-					if (!strcmp(field->name, "src")) {
-						(*tf->ptype_print_val) (lastl->fields[i], filename + strlen(filename), NAME_MAX - strlen(filename));
-						strcat(filename, "/");
-					}
-				}
-
-				struct stat sbuf;
-				if (stat(filename, &sbuf) == -1) {
-					if (mkdir(filename, 0777) == -1) {
-						(*tf->pom_log) (POM_LOG_ERR "Error while creating directory %s\r\n", filename);
-						return POM_ERR;
-					}
-				}
-
-			}
-			
-
 			char outstr[20];
 			bzero(outstr, 20);
 			// YYYYMMDD-HHMMSS-UUUUUU
