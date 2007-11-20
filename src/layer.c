@@ -18,6 +18,8 @@
  *
  */
 
+#include <regex.h>
+
 #include "common.h"
 #include "layer.h"
 #include "match.h"
@@ -26,6 +28,7 @@
 static struct layer** pool;
 static int poolsize, poolused;
 
+regex_t parse_regex;
 
 static struct layer_field_pool field_pool[MAX_MATCH];
 
@@ -34,6 +37,13 @@ int layer_init() {
 	pool = NULL;
 	poolused = 0;
 	poolsize = 0;
+
+	char *exp = "\\${[a-zA-Z0-9]*\\.[a-zA-Z0-9]*}";
+
+	if (regcomp(&parse_regex, exp, REG_ICASE)) {
+		pom_log(POM_LOG_ERR "Unable to compile regex for layer parsing\r\n");
+		return POM_ERR;
+	}
 
 	return POM_OK;
 
@@ -87,6 +97,9 @@ int layer_cleanup() {
 				ptype_cleanup_module(field_pool[i].pool[j][k]);
 		}
 	}
+
+	regfree(&parse_regex);
+
 	return POM_OK;
 
 }
@@ -141,4 +154,70 @@ int layer_field_pool_get(struct layer* l) {
 
 }
 
+int layer_field_parse(struct layer *l, char *expr, char *buff, size_t size) {
 
+	regmatch_t pmatch;
+
+	if (regexec(&parse_regex, expr, 1, &pmatch, 0)) {
+		strncpy(buff, expr, size);
+		return POM_OK;
+	}
+
+	bzero(buff, size);
+
+	int pos = 0;
+	do {
+		if (size < strlen(buff) + pmatch.rm_so)
+			break;
+		strncat(buff, expr + pos, pmatch.rm_so);
+		size_t len = pmatch.rm_eo - pmatch.rm_so;
+		char *expr_start = expr + pos + pmatch.rm_so + 2;
+		char *match = malloc(len);
+		bzero(match, len);
+		strncpy(match, expr_start, len - 3);
+		char *expr_sep = index(match, '.');
+		*expr_sep = 0;
+		expr_sep++;
+
+		int found = 0;
+		
+		struct layer *tmpl = l;
+		while (tmpl) {
+			if (!strcmp(match, match_get_name(tmpl->type))) {
+				int i;
+				for (i = 0; i < MAX_LAYER_FIELDS; i++) {
+					struct match_field_reg *field = match_get_field(tmpl->type, i);
+					if (!strcmp(field->name, expr_sep)) {
+						char vbuff[1024];
+						bzero(vbuff, sizeof(vbuff));
+						ptype_print_val(tmpl->fields[i], vbuff, sizeof(vbuff) - 1);
+						pom_log(POM_LOG_TSHOOT "Matched %s.%s -> %s\r\n", match, expr_sep, vbuff);
+						found = 1;
+						if (size < strlen(buff) + strlen(vbuff))
+							break;
+						strcat(buff, vbuff);
+						break;
+					}
+				}
+				break;
+			}
+			tmpl = tmpl->next;
+		}
+		if (!found) {
+			if (size < strlen(buff) + strlen(expr_start) + strlen(expr_sep) + 1) {
+				strcat(buff, expr_start);
+				strcat(buff, ".");
+				strcat(buff, expr_sep);
+			}
+		}
+
+		free(match);
+		pos += pmatch.rm_eo;
+	} while (!regexec(&parse_regex, expr + pos, 1, &pmatch, 0));
+	
+	if (size > strlen(buff) + strlen(expr + pos))
+		strcat(buff, expr + pos);
+
+	return POM_OK;
+
+}

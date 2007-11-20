@@ -43,7 +43,7 @@ int match_register_docsis(struct match_reg *r, struct match_functions *m_funcs) 
 		return POM_ERR;
 
 	field_fc_type = (*mf->register_field) (r->type, "fc_type", ptype_uint8, "Frame control type");
-	field_fc_parm = (*mf->register_field) (r->type, "fc_parm", ptype_uint8, "Frame control type");
+	field_fc_parm = (*mf->register_field) (r->type, "fc_parm", ptype_uint8, "Frame parameters");
 
 	return POM_OK;
 }

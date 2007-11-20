@@ -1,3 +1,10 @@
+* 2007/11/20 Guy Martin <gmsoft@tuxicoman.be>
+Filter out non printable characters when processing keys in the cli.
+Added target_file_open() that will create directories when opening a file.
+Fixed description of parameter fc_parm for match_docsis.
+Added layer_field_parse() to parse ${match.field} and replace it by layer fields value.
+Changed target dump_payload, http and wave to use the new target_file_open function.
+
 * 2007/11/14 Guy Martin <gmsoft@tuxicoman.be>
 Changed default input file of input_pcap in mode file to dump.cap
 Help now display the default of each input and target.

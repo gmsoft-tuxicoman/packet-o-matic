@@ -95,6 +95,8 @@ struct target_functions {
 	int (*conntrack_remove_priv) (void *priv, struct conntrack_entry *ce);
 	char *(*match_get_name) (int match_type);
 	struct match_field_reg *(*match_get_field) (int match_type, int field_id);
+	int (*file_open) (struct layer *l, char *filename, int flags, mode_t mode);
+
 
 };
 
@@ -115,6 +117,6 @@ int target_unregister(int target_type);
 int target_unregister_all();
 void target_print_help();
 int target_cleanup();
-
+int target_file_open(struct layer *l, char *filename, int flags, mode_t mode);
 
 #endif

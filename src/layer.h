@@ -77,6 +77,7 @@ int layer_field_pool_get(struct layer* l);
 
 int layer_cleanup();
 
+int layer_field_parse(struct layer *, char *expr, char *buff, size_t size);
 
 
 #endif

@@ -450,7 +450,7 @@ int target_process_http(struct target *t, struct frame *f) {
 			strcat(filename, outstr);
 			strcat(filename, ".");
 			strcat(filename, mime_types[cp->content_type][1]);
-			cp->fd = open(filename, O_RDWR | O_CREAT, 0666);
+			cp->fd = (*tf->file_open) (f->l, filename, O_RDWR | O_CREAT, 0666);
 
 			if (cp->fd == -1) {
 				char errbuff[256];

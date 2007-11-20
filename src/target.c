@@ -18,6 +18,9 @@
  *
  */
 
+#include <sys/stat.h>
+#include <errno.h>
+#include <fcntl.h>
 
 #include "target.h"
 #include "conntrack.h"
@@ -45,6 +48,7 @@ int target_init() {
 	tg_funcs.conntrack_remove_priv = conntrack_remove_target_priv;
 	tg_funcs.match_get_name = match_get_name;
 	tg_funcs.match_get_field = match_get_field;
+	tg_funcs.file_open = target_file_open;
 
 	pom_log(POM_LOG_DEBUG "Targets initialized\r\n");
 
@@ -419,3 +423,39 @@ void target_print_help() {
 		printf("\n");
 	}
 }
+
+int target_file_open(struct layer *l, char *filename, int flags, mode_t mode) {
+
+	char buffer[NAME_MAX + 1];
+
+	layer_field_parse(l, filename, buffer, NAME_MAX);
+
+	pom_log(POM_LOG_TSHOOT "Opening file %s\r\n", buffer);
+
+	char *slash = buffer;
+	if (*slash == '/') // we assume that the root directory exists :)
+		slash++;
+
+	slash = index(slash, '/');
+	while (slash) {
+		*slash = 0;
+		struct stat stats;
+		if (stat(buffer, &stats)) {
+			switch (errno) {
+				case ENOENT:
+					mkdir(buffer, 00777);
+					break;
+				default:
+					return -1;
+
+			}
+		}
+		*slash = '/';
+		slash = index(slash + 1, '/');
+	}
+
+	return open(buffer, flags, mode);
+
+
+}
+

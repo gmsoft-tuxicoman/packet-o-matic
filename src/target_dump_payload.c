@@ -149,7 +149,7 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 		strcat(filename, outstr);
 		sprintf(outstr, "%u", (unsigned int)f->tv.tv_usec);
 		strcat(filename, outstr);
-		cp->fd = open(filename, O_RDWR | O_CREAT, 0666);
+		cp->fd = (*tf->file_open) (f->l, filename, O_RDWR | O_CREAT, 0666);
 
 		if (cp->fd == -1) {
 			free(cp);
