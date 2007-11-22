@@ -1,3 +1,7 @@
+* 2007/11/22 Guy Martin <gmsoft@tuxicoman.be>
+Added unregister function and dynamic parameters to conntracks.
+Added cli commands "show conntracks" and "set conntrack parameter".
+
 * 2007/11/20 Guy Martin <gmsoft@tuxicoman.be>
 Filter out non printable characters when processing keys in the cli.
 Added target_file_open() that will create directories when opening a file.

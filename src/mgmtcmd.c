@@ -30,7 +30,7 @@
 
 #include <pthread.h>
 
-#define MGMT_COMMANDS_NUM 36
+#define MGMT_COMMANDS_NUM 38
 
 struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
@@ -270,6 +270,19 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.help = "Change the value of a core parameter",
 		.callback_func = mgmtcmd_set_core_parameter,
 		.usage = "set core parameter <parameter> <value>",
+	},
+
+	{
+		.words = { "show", "conntracks", NULL },
+		.help = "Show information about the loaded connection tracking modules",
+		.callback_func = mgmtcmd_show_conntracks,
+	},
+
+	{
+		.words = { "set", "conntrack", "parameter", NULL},
+		.help = "Change the value of a conntrack parameter",
+		.usage = "set conntrack parameter <conntrack> <parameter> <value>",
+		.callback_func = mgmtcmd_set_conntrack_param,
 	},
 		
 };
@@ -1798,3 +1811,55 @@ int mgmtcmd_set_core_parameter(struct mgmt_connection *c, int argc, char *argv[]
 
 	return POM_OK;
 }
+
+int mgmtcmd_show_conntracks(struct mgmt_connection *c, int argc, char *argv[]) {
+	
+	int i;
+	for (i = 0; i < MAX_CONNTRACK; i++) {
+		if (conntracks[i]) {
+			mgmtsrv_send(c, "  %s\r\n", match_get_name(i));
+			struct conntrack_param *p = conntracks[i]->params;
+			if (!p)
+				mgmtsrv_send(c, "   No parameter for this conntrack module\r\n");
+			while (p) {
+				char buffer[256];
+				bzero(buffer, sizeof(buffer));
+				ptype_print_val(p->value, buffer, sizeof(buffer));
+				mgmtsrv_send(c, "   %s = %s %s\r\n", p->name, buffer, p->value->unit);
+				p = p->next;
+			}
+
+		}
+
+	}
+
+
+	return POM_OK;
+}
+
+int mgmtcmd_set_conntrack_param(struct mgmt_connection *c, int argc, char *argv[]) {
+	
+	if (argc != 3) 
+		return MGMT_USAGE;
+
+	int id = match_get_type(argv[0]);
+	if (!conntracks[id]) {
+		mgmtsrv_send(c, "No conntrack with that name loaded\r\n");
+		return POM_OK;
+	}
+
+	struct conntrack_param *p = conntrack_get_param(id, argv[1]);
+	if (!p) {
+		mgmtsrv_send(c, "This parameter does not exists\r\n");
+		return POM_OK;
+	}
+
+	if (ptype_parse_val(p->value, argv[2]) != POM_OK) {
+		mgmtsrv_send(c, "Invalid value given\r\n");
+		return POM_OK;
+	}
+
+	return POM_OK;
+
+}
+

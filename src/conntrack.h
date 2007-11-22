@@ -29,6 +29,8 @@
 
 #include "jhash.h"
 
+#define MAX_CONNTRACK MAX_MATCH
+
 /// One way only conntrack.
 /***
  * The conntrack modules should set their flags to CT_DIR_ONEWAY
@@ -79,8 +81,18 @@ struct conntrack_list {
 
 };
 
+struct conntrack_param {
+
+	char *name;
+	char *defval;
+	char *descr;
+	struct ptype *value;
+	struct conntrack_param *next;
+};
+
 struct conntrack_reg {
 
+	int type;
 	void *dl_handle;
 	unsigned int flags;
 	uint32_t (*get_hash) (struct frame *f, unsigned int start, unsigned int flags);
@@ -88,7 +100,8 @@ struct conntrack_reg {
 	void* (*alloc_match_priv) (struct frame *f, unsigned int start, struct conntrack_entry *ce);
 	int (*cleanup_match_priv) (void *priv);
 	int (*conntrack_do_timeouts) (int (*conntrack_close_connection)(struct conntrack_entry *ce));
-
+	int (*unregister) (struct conntrack_reg *r);
+	struct conntrack_param *params;
 
 };
 
@@ -97,6 +110,10 @@ struct conntrack_functions {
 	int (*cleanup_timer) (struct timer *t);
 	int (*queue_timer) (struct timer *t, unsigned int expiry);
 	int (*dequeue_timer) (struct timer *t);
+	int (*register_param) (int conntrack_type, char *name, char *defval, struct ptype *alue, char *descr);
+	struct ptype* (*ptype_alloc) (const char* type, char* unit);
+	int (*ptype_print_val) (struct ptype *pt, char *val, size_t size);
+	int (*ptype_cleanup) (struct ptype* p);
 
 
 };
@@ -131,8 +148,15 @@ struct conntrack_helper_priv {
 	int (*cleanup_handler) (struct conntrack_entry *ce, void *priv); ///< Handler used to cleanup the conntrack priv
 
 };
+
+
+struct conntrack_reg *conntracks[MAX_CONNTRACK];
+
+
 int conntrack_init();
 int conntrack_register(const char *name);
+int conntrack_register_param(int conntrack_type, char *name, char *defval, struct ptype *alue, char *descr);
+struct conntrack_param *conntrack_get_param(int conntrack_type, char *param_name);
 int conntrack_add_target_priv(void *priv, struct target *t,  struct conntrack_entry *ce, int (*cleanup_handler) (struct target *t, struct conntrack_entry *ce, void *priv));
 int conntrack_remove_target_priv(void* priv, struct conntrack_entry *ce);
 int conntrack_add_helper_priv(void *priv, int type, struct conntrack_entry *ce, int (*flush_buffer) (struct conntrack_entry *ce, void *priv), int (*cleanup_handler) (struct conntrack_entry *ce, void *priv));

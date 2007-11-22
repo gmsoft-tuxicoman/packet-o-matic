@@ -41,6 +41,7 @@ int conntrack_doublecheck_udp(struct frame *f, unsigned int start, void *priv, u
 void *conntrack_alloc_match_priv_udp(struct frame *f, unsigned int start, struct conntrack_entry *ce);
 int conntrack_cleanup_match_priv_udp(void *priv);
 int conntrack_do_timeouts_udp( int (*conntrack_close_connection) (struct conntrack_entry *ce));
+int conntrack_unregister_udp(struct conntrack_reg *r);
 
 #endif
 

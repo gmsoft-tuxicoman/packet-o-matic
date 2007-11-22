@@ -53,6 +53,7 @@ uint32_t conntrack_get_hash_tcp(struct frame *f, unsigned int start, unsigned in
 int conntrack_doublecheck_tcp(struct frame *f, unsigned int start, void *priv, unsigned int flags);
 void *conntrack_alloc_match_priv_tcp(struct frame *f, unsigned int start, struct conntrack_entry *ce);
 int conntrack_cleanup_match_priv_tcp(void *priv);
+int conntrack_unregister_tcp(struct conntrack_reg *r);
 
 
 int conntrack_tcp_update_timer(struct conntrack_priv_tcp *priv, struct tcphdr *hdr);

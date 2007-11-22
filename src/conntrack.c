@@ -22,14 +22,12 @@
 #include "conntrack.h"
 #include "target.h"
 #include "timers.h"
-
-#define MAX_CONNTRACK MAX_MATCH
+#include "ptype.h"
 
 #define CONNTRACK_SIZE 1048576
 
 #define INITVAL 0xdf92b6eb
 
-struct conntrack_reg *conntracks[MAX_CONNTRACK];
 struct conntrack_list *ct_table[CONNTRACK_SIZE];
 struct conntrack_list *ct_table_rev[CONNTRACK_SIZE];
 struct conntrack_functions *ct_funcs;
@@ -49,6 +47,10 @@ int conntrack_init() {
 	ct_funcs->cleanup_timer = timer_cleanup;
 	ct_funcs->queue_timer = timer_queue;
 	ct_funcs->dequeue_timer = timer_dequeue;
+	ct_funcs->register_param = conntrack_register_param;
+	ct_funcs->ptype_alloc = ptype_alloc;
+	ct_funcs->ptype_print_val = ptype_print_val;
+	ct_funcs->ptype_cleanup = ptype_cleanup_module;
 
 	pom_log(POM_LOG_DEBUG "Conntrack initialized\r\n");
 	
@@ -80,22 +82,71 @@ int conntrack_register(const char *conntrack_name) {
 
 	struct conntrack_reg *my_conntrack = malloc(sizeof(struct conntrack_reg));
 	bzero(my_conntrack, sizeof(struct conntrack_reg));
-
+	my_conntrack->type = id;
+	conntracks[id] = my_conntrack;
+	conntracks[id]->dl_handle = handle;
 
 	if ((*register_my_conntrack) (my_conntrack, ct_funcs) != POM_OK) {
 		pom_log(POM_LOG_ERR "Error while loading conntrack %s. Could not register conntrack !\r\n", conntrack_name);
+		conntracks[id] = NULL;
 		free(my_conntrack);
 		return POM_ERR;
 	}
 
-	conntracks[id] = my_conntrack;
-	conntracks[id]->dl_handle = handle;
 
 	pom_log(POM_LOG_DEBUG "Conntrack %s registered\r\n", conntrack_name);
 
 
 	return id;
 
+
+}
+
+int conntrack_register_param(int conntrack_type, char *name, char *defval, struct ptype *value, char *descr) {
+
+	if (!conntracks[conntrack_type])
+		return POM_ERR;
+
+	if (ptype_parse_val(value, defval) == POM_ERR)
+		return POM_ERR;
+
+	struct conntrack_param *p = malloc(sizeof(struct conntrack_param));
+	bzero(p, sizeof(struct conntrack_param));
+	p->name = malloc(strlen(name) + 1);
+	strcpy(p->name, name);
+	p->defval = malloc(strlen(defval) + 1);
+	strcpy(p->defval, defval);
+	p->descr = malloc(strlen(descr) + 1);
+	strcpy(p->descr, descr);
+	p->value = value;
+
+	if (!conntracks[conntrack_type]->params) {
+		conntracks[conntrack_type]->params = p;
+	} else {
+		struct conntrack_param *tmp = conntracks[conntrack_type]->params;
+		while (tmp->next)
+			tmp = tmp->next;
+		tmp->next = p;
+	}
+
+	return POM_OK;
+
+}
+
+struct conntrack_param *conntrack_get_param(int conntrack_type, char *param_name) {
+
+	if (!conntracks[conntrack_type])
+		return NULL;
+
+	struct conntrack_param *p = conntracks[conntrack_type]->params;
+
+	while (p) {
+		if (!strcmp(p->name, param_name))
+			return p;
+		p = p->next;
+	}
+
+	return NULL;
 
 }
 
@@ -621,6 +672,16 @@ int conntrack_unregister_all() {
 
 	for (i = 0; i < MAX_CONNTRACK; i++) {
 		if (conntracks[i]) {
+			if (conntracks[i]->unregister)
+				(*conntracks[i]->unregister) (conntracks[i]);
+			while (conntracks[i]->params) {
+				free(conntracks[i]->params->name);
+				free(conntracks[i]->params->defval);
+				free(conntracks[i]->params->descr);
+				struct conntrack_param *next = conntracks[i]->params->next;
+				free(conntracks[i]->params);
+				conntracks[i]->params = next;
+			}
 			if (dlclose(conntracks[i]->dl_handle))
 				pom_log(POM_LOG_WARN "Error while closing library of conntrack %s\r\n", match_get_name(i));
 			free(conntracks[i]);

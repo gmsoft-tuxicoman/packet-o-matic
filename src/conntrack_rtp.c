@@ -21,12 +21,13 @@
 
 #include "match_rtp.h"
 #include "conntrack_rtp.h"
+#include "ptype_uint16.h"
 
 #define INITVAL 0x83f0e1b6
 
-#define RTP_TIMEOUT 10 // sec 10 of timeout for rtp connections
+struct conntrack_functions *cf;
 
-struct conntrack_functions *ct_functions;
+struct ptype *rtp_timeout;
 
 int conntrack_register_rtp(struct conntrack_reg *r, struct conntrack_functions *ct_funcs) {
 	
@@ -34,9 +35,16 @@ int conntrack_register_rtp(struct conntrack_reg *r, struct conntrack_functions *
 	r->doublecheck = conntrack_doublecheck_rtp;
 	r->alloc_match_priv = conntrack_alloc_match_priv_rtp;
 	r->cleanup_match_priv = conntrack_cleanup_match_priv_rtp;
+	r->unregister = conntrack_unregister_rtp;
 	r->flags = CT_DIR_ONEWAY;
 
-	ct_functions = ct_funcs;
+	cf = ct_funcs;
+
+	rtp_timeout = (*cf->ptype_alloc) ("uint16", "seconds");
+	if (!rtp_timeout)
+		return POM_ERR;
+
+	(*cf->register_param) (r->type, "timeout", "10", rtp_timeout, "Connection timeout");
 	
 	return POM_OK;
 }
@@ -72,10 +80,10 @@ int conntrack_doublecheck_rtp(struct frame *f, unsigned int start, void *priv, u
 		return POM_ERR;
 
 	// Remove the timer from the queue
-	(*ct_functions->dequeue_timer) (p->timer);
+	(*cf->dequeue_timer) (p->timer);
 
 	// And requeue it at the end
-	(*ct_functions->queue_timer) (p->timer, RTP_TIMEOUT);
+	(*cf->queue_timer) (p->timer, PTYPE_UINT16_GETVAL(rtp_timeout));
 
 
 	return POM_OK;
@@ -98,13 +106,13 @@ void *conntrack_alloc_match_priv_rtp(struct frame *f, unsigned int start, struct
 
 	// Allocate the timeout and set it up
 	struct timer *t;
-	t = (*ct_functions->alloc_timer) (ce, f->input);
+	t = (*cf->alloc_timer) (ce, f->input);
 
 	priv->timer = t;
 
 	// Put the timeout at the end of the list
 
-	(*ct_functions->queue_timer) (t, RTP_TIMEOUT);
+	(*cf->queue_timer) (t, PTYPE_UINT16_GETVAL(rtp_timeout));
 
 	return priv;
 
@@ -115,11 +123,15 @@ int conntrack_cleanup_match_priv_rtp(void *priv) {
 	struct conntrack_priv_rtp *p = priv;
 
 	if (p->timer) {
-		(*ct_functions->cleanup_timer) (p->timer);
+		(*cf->cleanup_timer) (p->timer);
 	}
 
 	free(priv);
 	return POM_OK;
 }
 
+int conntrack_unregister_rtp(struct conntrack_reg *r) {
 
+	(*cf->ptype_cleanup) (rtp_timeout);
+	return POM_OK;
+}

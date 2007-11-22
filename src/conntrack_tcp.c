@@ -20,29 +20,45 @@
 
 
 #include "conntrack_tcp.h"
-
+#include "ptype_uint16.h"
 
 
 #define INITVAL 0x84fa0b2c
 
-#define TCP_SYN_SENT_T	2 * 60
-#define TCP_SYN_RECV_T	60
-#define TCP_LAST_ACK_T	30
-#define TCP_CLOSE_T	10
-#define TCP_TIME_WAIT_T	2 * 60
-#define TCP_ESTABLISHED_T 2 * 60 * 60
+struct conntrack_functions *cf;
+struct ptype *tcp_syn_sent_t, *tcp_syn_recv_t, *tcp_last_ack_t, *tcp_close_t, *tcp_time_wait_t, *tcp_established_t;
 
-struct conntrack_functions *ct_functions;
 
-int conntrack_register_tcp(struct conntrack_reg *r, struct conntrack_functions *ct_funcs) {
+int conntrack_register_tcp(struct conntrack_reg *r, struct conntrack_functions *ct_functions) {
 	
 	r->get_hash = conntrack_get_hash_tcp;
 	r->doublecheck = conntrack_doublecheck_tcp;
 	r->alloc_match_priv = conntrack_alloc_match_priv_tcp;
 	r->cleanup_match_priv = conntrack_cleanup_match_priv_tcp;
+	r->unregister = conntrack_unregister_tcp;
 	r->flags = CT_DIR_BOTH;
 
-	ct_functions = ct_funcs;
+	cf = ct_functions;
+
+	tcp_syn_sent_t = (*cf->ptype_alloc) ("uint16", "seconds");
+	tcp_syn_recv_t = (*cf->ptype_alloc) ("uint16", "seconds");
+	tcp_last_ack_t = (*cf->ptype_alloc) ("uint16", "seconds");
+	tcp_close_t = (*cf->ptype_alloc) ("uint16", "seconds");
+	tcp_time_wait_t = (*cf->ptype_alloc) ("uint16", "seconds");
+	tcp_established_t = (*cf->ptype_alloc) ("uint16", "seconds");
+
+	if (!tcp_syn_sent_t || !tcp_syn_recv_t || !tcp_last_ack_t || !tcp_close_t || !tcp_time_wait_t || !tcp_established_t) {
+		conntrack_unregister_tcp(r);
+		return POM_ERR;
+	}
+
+
+	(*cf->register_param) (r->type, "syn_sent_timer", "180", tcp_syn_sent_t, "SYN sent timer");
+	(*cf->register_param) (r->type, "syn_recv_timer", "60", tcp_syn_recv_t, "SYN received timer");
+	(*cf->register_param) (r->type, "last_ack_timer", "30", tcp_last_ack_t, "Last ACK timer");
+	(*cf->register_param) (r->type, "close_timer", "10", tcp_close_t, "Close timer");
+	(*cf->register_param) (r->type, "time_wait_timer", "180", tcp_time_wait_t, "Time wait timer");
+	(*cf->register_param) (r->type, "established_timer", "7200", tcp_established_t, "Established timer");
 	
 	return POM_OK;
 }
@@ -80,32 +96,32 @@ int conntrack_tcp_update_timer(struct conntrack_priv_tcp *priv, struct tcphdr *h
 
 	if (hdr->th_flags & TH_SYN && hdr->th_flags & TH_ACK) {
 	        priv->state = STATE_TCP_SYN_RECV;
-		(*ct_functions->dequeue_timer) (priv->timer);
-	        (*ct_functions->queue_timer) (priv->timer, TCP_SYN_RECV_T);
+		(*cf->dequeue_timer) (priv->timer);
+	        (*cf->queue_timer) (priv->timer, PTYPE_UINT16_GETVAL(tcp_syn_recv_t));
 	} else if (hdr->th_flags & TH_SYN) {
 	        priv->state = STATE_TCP_SYN_SENT;
-		(*ct_functions->dequeue_timer) (priv->timer);
-	        (*ct_functions->queue_timer) (priv->timer, TCP_SYN_SENT_T);
+		(*cf->dequeue_timer) (priv->timer);
+	        (*cf->queue_timer) (priv->timer, PTYPE_UINT16_GETVAL(tcp_syn_sent_t));
 	} else if (hdr->th_flags & TH_RST || hdr->th_flags & TH_FIN) {
-		(*ct_functions->dequeue_timer) (priv->timer);
+		(*cf->dequeue_timer) (priv->timer);
 		if (hdr->th_flags & TH_ACK) {
 			priv->state = STATE_TCP_TIME_WAIT;
-			(*ct_functions->queue_timer) (priv->timer, TCP_TIME_WAIT_T);
+			(*cf->queue_timer) (priv->timer, PTYPE_UINT16_GETVAL(tcp_time_wait_t));
 		} else {
 			priv->state = STATE_TCP_LAST_ACK;
-			(*ct_functions->queue_timer) (priv->timer, TCP_LAST_ACK_T);
+			(*cf->queue_timer) (priv->timer, PTYPE_UINT16_GETVAL(tcp_last_ack_t));
 		}
 	} else if (priv->state == STATE_TCP_LAST_ACK && hdr->th_flags & TH_ACK) {
 		// Connection is closed now
 		priv->state = STATE_TCP_TIME_WAIT;
-		(*ct_functions->dequeue_timer) (priv->timer);
-	        (*ct_functions->queue_timer) (priv->timer, TCP_TIME_WAIT_T);
+		(*cf->dequeue_timer) (priv->timer);
+	        (*cf->queue_timer) (priv->timer, PTYPE_UINT16_GETVAL(tcp_time_wait_t));
 	} else if (priv->state == STATE_TCP_TIME_WAIT) {
 		return POM_OK;
 	} else {
 	        priv->state = STATE_TCP_ESTABLISHED;
-		(*ct_functions->dequeue_timer) (priv->timer);
-	        (*ct_functions->queue_timer) (priv->timer, TCP_ESTABLISHED_T);
+		(*cf->dequeue_timer) (priv->timer);
+	        (*cf->queue_timer) (priv->timer, PTYPE_UINT16_GETVAL(tcp_established_t));
 	}
 
 	return POM_OK;
@@ -158,22 +174,22 @@ void *conntrack_alloc_match_priv_tcp(struct frame *f, unsigned int start, struct
 
 	// Allocate the timer and set it up
 	struct timer *t;
-	t = (*ct_functions->alloc_timer) (ce, f->input);
+	t = (*cf->alloc_timer) (ce, f->input);
 	
 	priv->timer = t;
 
 	if (hdr->th_flags & TH_SYN && hdr->th_flags & TH_ACK) {
 	        priv->state = STATE_TCP_SYN_RECV;
-	        (*ct_functions->queue_timer) (priv->timer, TCP_SYN_RECV_T);
+	        (*cf->queue_timer) (priv->timer, PTYPE_UINT16_GETVAL(tcp_syn_recv_t));
 	} else if (hdr->th_flags & TH_SYN) {
 	        priv->state = STATE_TCP_SYN_SENT;
-	        (*ct_functions->queue_timer) (priv->timer, TCP_SYN_SENT_T);
+	        (*cf->queue_timer) (priv->timer, PTYPE_UINT16_GETVAL(tcp_syn_sent_t));
 	} else if (hdr->th_flags & TH_RST || hdr->th_flags & TH_FIN) {
 		priv->state = STATE_TCP_LAST_ACK;
-		(*ct_functions->queue_timer) (priv->timer, TCP_CLOSE_T);
+		(*cf->queue_timer) (priv->timer, PTYPE_UINT16_GETVAL(tcp_close_t));
 	} else {
 	        priv->state = STATE_TCP_ESTABLISHED;
-	        (*ct_functions->queue_timer) (priv->timer, TCP_ESTABLISHED_T);
+	        (*cf->queue_timer) (priv->timer, PTYPE_UINT16_GETVAL(tcp_established_t));
 	}
 
 	return priv;
@@ -185,9 +201,24 @@ int conntrack_cleanup_match_priv_tcp(void *priv) {
 	struct conntrack_priv_tcp *p = priv;
 
 	if (p->timer) {
-		(*ct_functions->cleanup_timer) (p->timer);
+		(*cf->cleanup_timer) (p->timer);
 	}
 
 	free(priv);
 	return POM_OK;
 }
+
+int conntrack_unregister_tcp(struct conntrack_reg *r) {
+
+	(*cf->ptype_cleanup) (tcp_syn_sent_t);
+	(*cf->ptype_cleanup) (tcp_syn_recv_t);
+	(*cf->ptype_cleanup) (tcp_last_ack_t);
+	(*cf->ptype_cleanup) (tcp_close_t);
+	(*cf->ptype_cleanup) (tcp_time_wait_t);
+	(*cf->ptype_cleanup) (tcp_established_t);
+
+	return POM_OK;
+}
+
+
+

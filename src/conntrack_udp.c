@@ -22,13 +22,13 @@
 #include "conntrack_udp.h"
 #include <netinet/udp.h>
 
+#include "ptype_uint16.h"
 
 #define INITVAL 0x7513adf4
 
-#define UDP_TIMEOUT 180 // 180 sec of timeout for udp connections
+struct conntrack_functions *cf;
 
-struct conntrack_functions *ct_functions;
-
+struct ptype *udp_timeout;
 
 int conntrack_register_udp(struct conntrack_reg *r, struct conntrack_functions *ct_funcs) {
 	
@@ -36,10 +36,18 @@ int conntrack_register_udp(struct conntrack_reg *r, struct conntrack_functions *
 	r->doublecheck = conntrack_doublecheck_udp;
 	r->alloc_match_priv = conntrack_alloc_match_priv_udp;
 	r->cleanup_match_priv = conntrack_cleanup_match_priv_udp;
+	r->unregister = conntrack_unregister_udp;
 	r->flags = CT_DIR_BOTH;
 	
-	ct_functions = ct_funcs;
-	
+	cf = ct_funcs;
+
+	udp_timeout = (*cf->ptype_alloc) ("uint16", "seconds");
+
+	if (!udp_timeout)
+		return POM_ERR;
+
+	(*cf->register_param) (r->type, "timeout", "180", udp_timeout, "Connection timeout");
+
 	return POM_OK;
 }
 
@@ -100,10 +108,10 @@ int conntrack_doublecheck_udp(struct frame *f, unsigned int start, void *priv, u
 
 
 	// Remove the timer from the queue
-	(*ct_functions->dequeue_timer) (p->timer);
+	(*cf->dequeue_timer) (p->timer);
 
 	// And requeue it at the end
-	(*ct_functions->queue_timer) (p->timer, UDP_TIMEOUT);
+	(*cf->queue_timer) (p->timer, PTYPE_UINT16_GETVAL(udp_timeout));
 
 	return POM_OK;
 }
@@ -125,13 +133,13 @@ void *conntrack_alloc_match_priv_udp(struct frame *f, unsigned int start, struct
 
 	// Allocate the timer and set it up
 	struct timer *t;
-	t = (*ct_functions->alloc_timer) (ce, f->input);
+	t = (*cf->alloc_timer) (ce, f->input);
 
 	priv->timer = t;
 
 	// Put the timeout at the end of the list
 	
-	(*ct_functions->queue_timer) (t, UDP_TIMEOUT);
+	(*cf->queue_timer) (t, PTYPE_UINT16_GETVAL(udp_timeout));
 
 	return priv;
 
@@ -142,11 +150,18 @@ int conntrack_cleanup_match_priv_udp(void *priv) {
 	struct conntrack_priv_udp *p = priv;
 	
 	if (p->timer) {
-		(*ct_functions->cleanup_timer) (p->timer);
+		(*cf->cleanup_timer) (p->timer);
 	}
 
 	free(priv);
 	return POM_OK;
 }
 
+
+int conntrack_unregister_udp(struct conntrack_reg *r) {
+
+	(*cf->ptype_cleanup) (udp_timeout);
+	return POM_OK;
+
+}
 

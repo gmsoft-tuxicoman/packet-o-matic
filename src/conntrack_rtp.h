@@ -40,6 +40,7 @@ int conntrack_doublecheck_rtp(struct frame *f, unsigned int start, void *priv, u
 void *conntrack_alloc_match_priv_rtp(struct frame *f, unsigned int start, struct conntrack_entry *ce);
 int conntrack_cleanup_match_priv_rtp(void *priv);
 int conntrack_do_timeouts_rtp( int (*conntrack_close_connection) (struct conntrack_entry *ce));
+int conntrack_unregister_rtp(struct conntrack_reg *r);
 
 #endif
 
