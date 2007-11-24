@@ -1,4 +1,4 @@
-CFLAGS += -Wall -Werror -DDEBUG -pthread
+CFLAGS += -Wall -DDEBUG -pthread
 
 bin_PROGRAMS = packet-o-matic
 packet_o_matic_SOURCES = main.c main.h rules.c rules.h input.c input.h match.c match.h conntrack.c conntrack.h jhash.h target.c target.h timers.c timers.h helper.c helper.h conf.c conf.h common.c common.h layer.c layer.h mgmtsrv.c mgmtsrv.h mgmtvty.c mgmtvty.h mgmtcmd.c mgmtcmd.h ptype.c ptype.h

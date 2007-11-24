@@ -1,3 +1,7 @@
+* 2007/11/24 Guy Martin <gmsoft@tuxicoman.be>
+Added support for conntrack parameters in the config file handling.
+Removed CFLAGS -Werror.
+
 * 2007/11/22 Guy Martin <gmsoft@tuxicoman.be>
 Added unregister function and dynamic parameters to conntracks.
 Added cli commands "show conntracks" and "set conntrack parameter".

@@ -522,6 +522,58 @@ int config_parse(struct conf *c, char * filename) {
 				xmlFree(passwd);
 			}
 			
+		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "conntrack")) {
+			char *type = (char *) xmlGetProp(cur, (const xmlChar*) "type");
+			if (!type) {
+				pom_log(POM_LOG_WARN "No type specified in the conntrack tab\r\n");
+				cur = cur->next;
+				continue;
+			}
+			int ct_type;
+			ct_type = match_register(type);
+			if (ct_type == POM_ERR) {
+				pom_log(POM_LOG_WARN "Unable to register match %s\r\n", type);
+				cur = cur->next;
+				xmlFree(type);
+				continue;
+			}
+			ct_type = conntrack_register(type);
+			if (ct_type == POM_ERR) {
+				pom_log(POM_LOG_WARN "Unable to register conntrack %s\r\n", type);
+				cur = cur->next;
+				xmlFree(type);
+				continue;
+
+			}
+
+			xmlNodePtr sub = cur->xmlChildrenNode;
+			while (sub) {
+				if (!xmlStrcmp(sub->name, (const xmlChar *) "param")) {
+					char *name = (char *) xmlGetProp(sub, (const xmlChar*) "name");
+					if (!name) {
+						pom_log(POM_LOG_WARN "No name given for the param tag\r\n");
+						sub = sub->next;
+						continue;
+					}
+					struct conntrack_param *param = conntrack_get_param(ct_type, name);
+					if (!param) {
+						pom_log(POM_LOG_WARN "No parameter %s for conntrack %s\r\n", type, name);
+						sub = sub->next;
+						continue;
+					}
+					char *value = (char *) xmlNodeListGetString(doc, sub->xmlChildrenNode, 1);
+					if (value) {
+						if (ptype_parse_val(param->value, value) == POM_ERR)
+							pom_log(POM_LOG_WARN "Unable to parse value '%s' for parameter %s of conntrack %s\r\n", value, name, type);
+					} else {
+						pom_log(POM_LOG_WARN "No value given for param %s of conntrack %s\r\n", name, type);
+					}
+
+
+				}
+				sub = sub->next;
+			}
+			xmlFree(type);
 		}
 
 		cur = cur->next;
@@ -705,6 +757,43 @@ int config_write(struct conf *c, char *filename) {
 	if (write(fd, buffer, strlen(buffer)) == -1)
 		goto err;
 	bzero(buffer, sizeof(buffer));
+
+	// write the conntrack parameters if needed
+	int i;
+	for (i = 0; i < MAX_CONNTRACK; i++) {
+		if (conntracks[i]) {
+			int some_param = 0;
+			struct conntrack_param *p = conntracks[i]->params;
+			while (p) {
+				char value[512];
+				bzero(value, 512);
+				ptype_print_val(p->value, value, sizeof(value));
+				if (strcmp(value, p->defval)) {
+					if (!some_param) {
+						strcat(buffer, "<conntrack type=\"");
+						strcat(buffer, match_get_name(i));
+						strcat(buffer, "\">\n");
+						some_param = 1;
+					}
+					strcat(buffer, "\t<param name=\"");
+					strcat(buffer, p->name);
+					strcat(buffer, "\">");
+					strcat(buffer, value);
+					strcat(buffer, "</param>\n");
+
+
+				}
+				p = p->next;
+			}
+			if (some_param) {
+				strcat(buffer, "</conntrack>\n\n");
+				if (write(fd, buffer, strlen(buffer)) == -1)
+					goto err;
+				bzero(buffer, sizeof(buffer));
+			}
+		}
+
+	}
 
 	// write the input config
 	if (c->input) {
