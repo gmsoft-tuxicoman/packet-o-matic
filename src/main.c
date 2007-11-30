@@ -380,12 +380,15 @@ int main(int argc, char *argv[]) {
 				ptype_init();
 				match_init();
 				target_init();
+				conntrack_init();
 				helper_init();
 				print_help();
 				input_unregister_all();
 				conntrack_unregister_all();
 				helper_unregister_all();
 				helper_cleanup();
+				conntrack_unregister_all();
+				conntrack_cleanup();
 				match_unregister_all();
 				match_cleanup();
 				target_unregister_all();
