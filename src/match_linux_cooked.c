@@ -20,13 +20,14 @@
 
 #include "match_linux_cooked.h"
 #include "ptype_uint16.h"
+#include "ptype_bytes.h"
 
 int match_ipv4_id, match_ipv6_id;
 struct match_functions *mf;
 
-int field_pkt_type, field_dev_type, field_saddr;
+int field_pkt_type, field_ha_type, field_addr;
 
-struct ptype *ptype_uint16;
+struct ptype *ptype_uint16, *ptype_bytes;
 
 int match_register_linux_cooked(struct match_reg *r, struct match_functions *m_funcs) {
 
@@ -39,29 +40,39 @@ int match_register_linux_cooked(struct match_reg *r, struct match_functions *m_f
 	match_ipv6_id = (*mf->match_register) ("ipv6");
 
 	ptype_uint16 = (*mf->ptype_alloc) ("uint16", NULL);
+	ptype_bytes = (*mf->ptype_alloc) ("bytes", NULL);
 
-	if (!ptype_uint16)
+	if (!ptype_uint16 || !ptype_bytes) {
+		match_unregister_linux_cooked(r);
 		return POM_ERR;
+	}
 
 	field_pkt_type = (*mf->register_field) (r->type, "pkt_type", ptype_uint16, "Packet type");
-	field_dev_type = (*mf->register_field) (r->type, "dev_type", ptype_uint16, "Device type");
-	field_saddr = (*mf->register_field) (r->type, "src", ptype_uint16, "Source address");
+	field_ha_type = (*mf->register_field) (r->type, "ha_type", ptype_uint16, "Address type");
+	field_addr = (*mf->register_field) (r->type, "src", ptype_bytes, "Source address");
+
 
 	return POM_OK;
 }
 
 int match_identify_linux_cooked(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
-	struct cooked_hdr *chdr = f->buff + start;
+	struct sll_header *chdr = f->buff + start;
 
-	l->payload_start = start + sizeof(struct cooked_hdr);
-	l->payload_size = len - sizeof(struct cooked_hdr);
+	uint16_t addr_len = ntohs(chdr->sll_halen);
+	if (addr_len > SLL_ADDRLEN)
+		return -1;
 
-	PTYPE_UINT16_SETVAL(l->fields[field_pkt_type], ntohs(chdr->pkt_type));
-	PTYPE_UINT16_SETVAL(l->fields[field_dev_type], ntohs(chdr->dev_type));
-	PTYPE_UINT16_SETVAL(l->fields[field_saddr], ntohs(chdr->ll_saddr));
+	l->payload_start = start + sizeof(struct sll_header);
+	l->payload_size = len - sizeof(struct sll_header);
 
-	switch (ntohs(chdr->ether_type)) {
+	PTYPE_UINT16_SETVAL(l->fields[field_pkt_type], ntohs(chdr->sll_pkttype));
+	PTYPE_UINT16_SETVAL(l->fields[field_ha_type], ntohs(chdr->sll_hatype));
+
+	PTYPE_BYTES_SETLEN(l->fields[field_addr], addr_len);
+	PTYPE_BYTES_SETVAL(l->fields[field_addr], chdr->sll_addr);
+
+	switch (ntohs(chdr->sll_protocol)) {
 		case 0x0800:
 			return  match_ipv4_id;
 		case 0x86dd:
@@ -74,6 +85,7 @@ int match_identify_linux_cooked(struct frame *f, struct layer* l, unsigned int s
 int match_unregister_linux_cooked(struct match_reg *r) {
 
 	(*mf->ptype_cleanup) (ptype_uint16);
+	(*mf->ptype_cleanup) (ptype_bytes);
 	return POM_OK;
 
 }

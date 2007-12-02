@@ -1,3 +1,8 @@
+* 2007/12/02 Guy Martin <gmsoft@tuxicoman.be>
+Imported sll.h from libpcap and updated match_linux_docsis.
+Added ptype_bytes to handle random number of bytes.
+Avoid to stop the program when reading a non live input.
+
 * 2007/11/30 Guy Martin <gmsoft@tuxicoman.be>
 Fix segfault when running packet-o-matic -h.
 

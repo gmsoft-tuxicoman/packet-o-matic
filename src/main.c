@@ -328,9 +328,6 @@ void *input_thread_func(void *params) {
 	}
 	r->state = rb_state_closed;
 
-	if (!r->ic.is_live) // if it's not a live input, we can stop the program
-		finish = 1;
-
 	pom_log(POM_LOG_DEBUG "Input thread stopped\r\n");
 
 	return NULL;

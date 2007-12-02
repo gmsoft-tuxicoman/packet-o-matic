@@ -25,16 +25,7 @@
 
 #include "modules_common.h"
 #include "match.h"
-
-
-struct cooked_hdr {
-	uint16_t pkt_type;
-	uint16_t dev_type;
-	uint16_t ll_saddr;
-	char ll_hdr[8];
-	uint16_t ether_type;
-
-};
+#include "sll.h"
 
 int match_register_linux_cooked(struct match_reg *r, struct match_functions *m_funcs);
 int match_identify_linux_cooked(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
