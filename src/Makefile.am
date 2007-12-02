@@ -43,7 +43,7 @@ match_rtp_la_SOURCES = match_rtp.c match_rtp.h modules_common.h
 match_rtp_la_LDFLAGS = -module -avoid-version
 match_undefined_la_SOURCES = match_undefined.c match_undefined.h modules_common.h
 match_undefined_la_LDFLAGS = -module -avoid-version
-match_linux_cooked_la_SOURCES = match_linux_cooked.c match_linux_cooked.h modules_common.h
+match_linux_cooked_la_SOURCES = match_linux_cooked.c match_linux_cooked.h modules_common.h sll.h
 match_linux_cooked_la_LDFLAGS = -module -avoid-version
 
 conntrack_ipv4_la_SOURCES = conntrack_ipv4.c conntrack_ipv4.h modules_common.h jhash.h
