@@ -227,7 +227,7 @@ int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigne
 int match_eval(struct match_field *mf, struct layer *l) {
 
 
-	return ptype_compare_val(mf->op, mf->value, l->fields[mf->id]);
+	return ptype_compare_val(mf->op, l->fields[mf->id], mf->value);
 	
 }
 

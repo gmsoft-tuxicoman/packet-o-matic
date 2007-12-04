@@ -1,3 +1,7 @@
+* 2007/12/04 Guy Martin <gmsoft@tuxicoman.be>
+Fix segfault when stopping pom while input is stopped.
+Change fields order in match_eval() to make comparison like > or < actually work.
+
 * 2007/12/02 Guy Martin <gmsoft@tuxicoman.be>
 Imported sll.h from libpcap and updated match_linux_docsis.
 Added ptype_bytes to handle random number of bytes.

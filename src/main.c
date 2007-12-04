@@ -588,7 +588,7 @@ int main(int argc, char *argv[]) {
 finish:
 	finish = 1;
 	if (rbuf->i)
-		pthread_join(input_thread, NULL);
+		stop_input(rbuf);
 
 	if (!disable_mgmtsrv)
 		pthread_join(mgmtsrv_thread, NULL);
