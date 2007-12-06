@@ -320,7 +320,7 @@ int input_open_docsis(struct input *i) {
 		(*ifcs->pom_log)  ("Starting a scan from %uMhz to %uMhz\r\n", start / 1000000, end / 1000000);
 		for (j = start; j <= end; j += step) {
 
-			(*ifcs->pom_log) ("Tuning to %u Mz ...\r\n", j / 1000000);
+			(*ifcs->pom_log) ("Tuning to %u Mhz ...\r\n", j / 1000000);
 
 			int res = input_docsis_tune(i, j, symbolRate, modulation);
 			if (res == POM_ERR)

@@ -1,3 +1,6 @@
+* 2007/12/06 Guy Martin <gmsoft@tuxicoman.be>
+Use preallocated table for conntrack functions. This fix illegal acces issue.
+
 * 2007/12/04 Guy Martin <gmsoft@tuxicoman.be>
 Fix segfault when stopping pom while input is stopped.
 Change fields order in match_eval() to make comparison like > or < actually work.
