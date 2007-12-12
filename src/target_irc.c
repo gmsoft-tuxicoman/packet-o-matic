@@ -52,7 +52,7 @@ int target_register_irc(struct target_reg *r, struct target_functions *tg_funcs)
 
 	match_undefined_id = (*tf->match_register) ("undefined");
 
-	mode_dump = (*tg_funcs->register_mode) (r->type, "dump", "Dump IRC connection into separate files with irssi-like log format.");
+	mode_dump = (*tg_funcs->register_mode) (r->type, "dump", "Dump IRC connection into separate files with irssi-like log format");
 
 	if (!mode_dump)
 		return POM_ERR;
