@@ -437,7 +437,7 @@ int main(int argc, char *argv[]) {
 
 	struct ptype *param_autosave_on_exit = ptype_alloc("bool", NULL);
 	if (!param_autosave_on_exit) {
-		pom_log(POM_LOG_ERR "Cannot allocate ptype bool. Abording\r\n");
+		pom_log(POM_LOG_ERR "Cannot allocate ptype bool. Abording\r\nDid you set LD_LIBRARY_PATH correctly ?\r\n");
 		return -1;
 	}
 	core_register_param("autosave_config_on_exit", "yes", param_autosave_on_exit, "Automatically save the configuration when exiting", NULL);

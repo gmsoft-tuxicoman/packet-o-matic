@@ -37,7 +37,7 @@ int ptype_register_ipv6(struct ptype_reg *r) {
 
 }
 
-int ptype_alloc_ipv6(struct ptype* p) {
+int ptype_alloc_ipv6(struct ptype *p) {
 
 	p->value = malloc(sizeof(struct ptype_ipv6_val));
 	struct ptype_ipv6_val *v = p->value;

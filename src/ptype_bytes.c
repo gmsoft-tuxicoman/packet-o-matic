@@ -37,7 +37,7 @@ int ptype_register_bytes(struct ptype_reg *r) {
 
 }
 
-int ptype_alloc_bytes(struct ptype* p) {
+int ptype_alloc_bytes(struct ptype *p) {
 
 	p->value = malloc(sizeof(struct ptype_bytes_val));
 	bzero(p->value, sizeof(struct ptype_bytes_val));

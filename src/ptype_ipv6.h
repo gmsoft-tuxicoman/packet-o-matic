@@ -42,7 +42,7 @@ struct ptype_ipv6_val {
 }
 
 int ptype_register_ipv6(struct ptype_reg *r);
-int ptype_alloc_ipv6(struct ptype* p);
+int ptype_alloc_ipv6(struct ptype *p);
 int ptype_cleanup_ipv6(struct ptype *p);
 int ptype_parse_ipv6(struct ptype *p, char *val);
 int ptype_print_ipv6(struct ptype *pt, char *val, size_t size);

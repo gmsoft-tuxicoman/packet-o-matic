@@ -37,7 +37,7 @@ int ptype_register_uint8(struct ptype_reg *r) {
 
 }
 
-int ptype_alloc_uint8(struct ptype* p) {
+int ptype_alloc_uint8(struct ptype *p) {
 
 	p->value = malloc(sizeof(uint8_t));
 	uint8_t *v = p->value;

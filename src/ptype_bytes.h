@@ -66,7 +66,7 @@ struct ptype_bytes_val {
 }
 
 int ptype_register_bytes(struct ptype_reg *r);
-int ptype_alloc_bytes(struct ptype* p);
+int ptype_alloc_bytes(struct ptype *p);
 int ptype_cleanup_bytes(struct ptype *p);
 int ptype_parse_bytes(struct ptype *p, char *val);
 int ptype_print_bytes(struct ptype *pt, char *val, size_t size);

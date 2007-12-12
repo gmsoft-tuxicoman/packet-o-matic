@@ -37,7 +37,7 @@ int ptype_register_bool(struct ptype_reg *r) {
 
 }
 
-int ptype_alloc_bool(struct ptype* p) {
+int ptype_alloc_bool(struct ptype *p) {
 
 	p->value = malloc(sizeof(int));
 	int *v = p->value;

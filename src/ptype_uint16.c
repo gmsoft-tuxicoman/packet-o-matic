@@ -37,7 +37,7 @@ int ptype_register_uint16(struct ptype_reg *r) {
 
 }
 
-int ptype_alloc_uint16(struct ptype* p) {
+int ptype_alloc_uint16(struct ptype *p) {
 
 	p->value = malloc(sizeof(uint16_t));
 	uint16_t *v = p->value;

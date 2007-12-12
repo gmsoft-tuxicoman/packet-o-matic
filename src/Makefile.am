@@ -10,7 +10,7 @@ INPUT_OBJS = @INPUT_OBJS@
 MATCH_OBJS = match_docsis.la match_ethernet.la match_ipv4.la match_icmp.la match_ipv6.la match_icmpv6.la match_tcp.la match_udp.la match_rtp.la match_undefined.la match_linux_cooked.la
 CONNTRACK_OBJS = conntrack_ipv4.la conntrack_ipv6.la conntrack_rtp.la conntrack_tcp.la conntrack_udp.la
 HELPER_OBJS = helper_ipv4.la helper_tcp.la
-TARGET_OBJS = target_display.la target_dump_payload.la target_http.la target_wave.la target_null.la @TARGET_OBJS@
+TARGET_OBJS = target_display.la target_dump_payload.la target_irc.la target_http.la target_wave.la target_null.la @TARGET_OBJS@
 PTYPES_OBJS = ptype_bool.la ptype_uint8.la ptype_uint16.la ptype_uint32.la ptype_mac.la ptype_ipv4.la ptype_ipv6.la ptype_string.la ptype_bytes.la
 
 
@@ -71,6 +71,8 @@ target_http_la_SOURCES = target_http.c target_http.h modules_common.h
 target_http_la_LDFLAGS = -module -avoid-version -rpath '$(libdir)'
 target_inject_la_SOURCES = target_inject.c target_inject.h modules_common.h
 target_inject_la_LDFLAGS = -module -avoid-version -lnet -rpath '$(libdir)'
+target_irc_la_SOURCES = target_irc.c target_irc.h modules_common.h
+target_irc_la_LDFLAGS = -module -avoid-version
 target_pcap_la_SOURCES = target_pcap.c target_pcap.h modules_common.h
 target_pcap_la_LDFLAGS = -module -avoid-version -lpcap -rpath '$(libdir)'
 target_tap_la_SOURCES = target_tap.c target_tap.h modules_common.h

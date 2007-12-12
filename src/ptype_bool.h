@@ -36,7 +36,7 @@
 
 
 int ptype_register_bool(struct ptype_reg *r);
-int ptype_alloc_bool(struct ptype* p);
+int ptype_alloc_bool(struct ptype *p);
 int ptype_cleanup_bool(struct ptype *p);
 int ptype_parse_bool(struct ptype *p, char *val);
 int ptype_print_bool(struct ptype *pt, char *val, size_t size);

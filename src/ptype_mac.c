@@ -37,7 +37,7 @@ int ptype_register_mac(struct ptype_reg *r) {
 
 }
 
-int ptype_alloc_mac(struct ptype* p) {
+int ptype_alloc_mac(struct ptype *p) {
 
 	p->value = malloc(sizeof(struct ptype_mac_val));
 	struct ptype_mac_val *v = p->value;

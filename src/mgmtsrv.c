@@ -62,8 +62,10 @@ int mgmtsrv_init(const char *port) {
 	struct addrinfo *tmpres = res;
 	int sockfd;
 	while (tmpres) {
-		if (tmpres->ai_family != AF_INET && tmpres->ai_family != AF_INET6)
+		if (tmpres->ai_family != AF_INET && tmpres->ai_family != AF_INET6) {
+			tmpres = tmpres->ai_next;
 			continue;
+		}
  
 		char host[NI_MAXHOST], port[NI_MAXSERV];
 		bzero(host, NI_MAXHOST);
@@ -86,7 +88,6 @@ int mgmtsrv_init(const char *port) {
 			close(sockfd);
 			tmpres = tmpres->ai_next;
 			continue;
-
 		}
 
 		if (bind(sockfd, tmpres->ai_addr, tmpres->ai_addrlen) < 0) {

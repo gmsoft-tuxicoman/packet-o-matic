@@ -1,3 +1,9 @@
+* 2007/12/12 Guy Martin <gmsoft@tuxicoman.be>
+Fixed possible infinite loop in mgmtsrv_init().
+Added message to point user to set LD_LIBRARY_PATH if ptypes are not found.
+Made function argument syntax more consistent in ptypes.
+Added target_irc by Thomas Gouverneur <wildcat@espix.org>.
+
 * 2007/12/06 Guy Martin <gmsoft@tuxicoman.be>
 Use preallocated table for conntrack functions. This fix illegal acces issue.
 
