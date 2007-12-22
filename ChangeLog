@@ -1,3 +1,6 @@
+* 2007/12/22 Guy Martin <gmsoft@tuxicoman.be>
+Added parameter persistent to target_tap.
+
 * 2007/12/12 Guy Martin <gmsoft@tuxicoman.be>
 Fixed possible infinite loop in mgmtsrv_init().
 Added message to point user to set LD_LIBRARY_PATH if ptypes are not found.

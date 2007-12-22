@@ -21,6 +21,7 @@
 
 #include "target_tap.h"
 #include "ptype_string.h"
+#include "ptype_bool.h"
 
 
 int match_ethernet_id;
@@ -46,6 +47,7 @@ int target_register_tap(struct target_reg *r, struct target_functions *tg_funcs)
 		return POM_ERR;
 	
 	(*tg_funcs->register_param) (mode_default, "ifname", "pom0", "Interface to create");
+	(*tg_funcs->register_param) (mode_default, "persistent", "no", "Create a persistent interface");
 
 
 	return POM_OK;
@@ -64,13 +66,15 @@ int target_init_tap(struct target *t) {
 	t->target_priv = priv;
 
 	priv->ifname = (*tf->ptype_alloc) ("string", NULL);
+	priv->persistent = (*tf->ptype_alloc) ("bool", NULL);
 
-	if (!priv->ifname) {
+	if (!priv->ifname || !priv->persistent) {
 		target_cleanup_tap(t);
 		return POM_ERR;
 	}
 
 	(*tf->register_param_value) (t, mode_default, "ifname", priv->ifname);
+	(*tf->register_param_value) (t, mode_default, "persistent", priv->persistent);
 	
 
 	return POM_OK;
@@ -82,6 +86,7 @@ int target_cleanup_tap(struct target *t) {
 
 	if (priv) {	
 		(*tf->ptype_cleanup) (priv->ifname);
+		(*tf->ptype_cleanup) (priv->persistent);
 		free(priv);
 	}
 
@@ -104,10 +109,14 @@ int target_open_tap(struct target *t) {
 	ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
 	strncpy(ifr.ifr_name, PTYPE_STRING_GETVAL(priv->ifname), IFNAMSIZ);
 	
-	if (ioctl(priv->fd, TUNSETIFF, (void *) &ifr) < 0 ) {
-		(*tf->pom_log) (POM_LOG_ERR "Unable to setup tap device\r\n");
+	if (ioctl(priv->fd, TUNSETIFF, (void *) &ifr) < 0) {
+		(*tf->pom_log) (POM_LOG_ERR "Unable to setup tap device %s\r\n", PTYPE_STRING_GETVAL(priv->ifname));
 		close(priv->fd);
 		return POM_ERR;
+	}
+
+	if (ioctl(priv->fd, TUNSETPERSIST, PTYPE_BOOL_GETVAL(priv->persistent)) < 0) {
+		(*tf->pom_log) (POM_LOG_WARN "Unable to set persistent mode to tap device %s\r\n", PTYPE_STRING_GETVAL(priv->ifname));
 	}
 
 
