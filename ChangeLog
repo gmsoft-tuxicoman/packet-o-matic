@@ -1,3 +1,11 @@
+* 2008/01/24 Guy Martin <gmsoft@tuxicoman.be>
+Added helper rtp.
+Change return value to appropriate constant in helper_tcp.
+Fix bug in rules.c that made packet processed twice under certain conditions.
+Make sure the clock is intialized for the first packet when input is not live.
+Fix segfault in mgmtcmd.c when passing invalid operation to rule parser.
+Updated README.
+
 * 2007/12/22 Guy Martin <gmsoft@tuxicoman.be>
 Added parameter persistent to target_tap.
 

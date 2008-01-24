@@ -844,6 +844,9 @@ int mgmtcmd_set_rule_parse_branch(struct mgmt_connection *c, char *expr, struct 
 
 			struct rule_node *the_end = NULL;
 			mgmtcmd_set_rule_split(c, expr, &my_start->a, &the_end);
+			if (!the_end)
+				return POM_ERR;
+
 			the_end->a = my_end;
 			mgmtcmd_set_rule_split(c, expr + i + found_len, &my_start->b, &the_end);
 			the_end->a = my_end;

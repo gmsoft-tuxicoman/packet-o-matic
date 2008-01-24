@@ -181,7 +181,10 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 
 
 	f->l = l;
+
+	struct conntrack_entry *old_ce = f->ce;
 	f->ce = NULL;
+
 
 	while (l && l->type != match_undefined_id) { // If it's undefined, it means we can't assume anything about the rest of the packet
 		l->next = layer_pool_get();
@@ -240,7 +243,7 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 
 	}
 
-	if (f->ce || conntrack_get_entry(f) == POM_OK) { // We got a conntrack_entry, process the corresponding targets
+	if (conntrack_get_entry(f) == POM_OK && f->ce == old_ce) { // We got a conntrack_entry, process the corresponding targets
 		struct conntrack_target_priv *cp = f->ce->target_privs;
 		while (cp) {
 			r = rules;

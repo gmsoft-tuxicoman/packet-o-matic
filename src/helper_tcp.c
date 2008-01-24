@@ -102,7 +102,7 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 	
 		if (new_seq + payload_size < cp->seq_expected[dir]) {
 			//(*hf->pom_log) (POM_LOG_TSHOOT "helper_tcp.c: %u.%u 0x%x-%u, expected seq %u < got seq %u, bufflen is %d. discarding packet\r\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, cp->seq_expected[dir], new_seq, cp->buff_len[dir]);
-			return 1;
+			return H_NEED_HELP;
 		} else if (new_seq > cp->seq_expected[dir]) {
 		
 
@@ -294,7 +294,7 @@ int helper_process_timer_tcp(void *priv) {
 	if (!p->priv->pkts[p->dir]) {
 		(*hf->pom_log) (POM_LOG_WARN "helper_tcp.c: wtf, timer poped up and there is no packet to dequeue\r\n");
 		(*hf->dequeue_timer) (p->priv->t[p->dir]);
-		return 0;
+		return POM_OK;
 	}
 
 	//(*hf->pom_log) (POM_LOG_TSHOOT "helper_tcp.c: 0x%x-%u, warning, timer expired for missing segment. processing anyway. lost %u bytes cp = 0x%x, seq %u, expected %u\r\n", (unsigned) p->priv->pkts[p->dir]->f->ce, p->dir, p->priv->seq_expected[p->dir] - p->priv->last_seq[p->dir], (unsigned) p->priv, p->priv->last_seq[p->dir], p->priv->seq_expected[p->dir]);

@@ -404,7 +404,7 @@ uint32_t conntrack_hash(struct frame *f, unsigned int flags) {
 			// We compute the hash in two case only :
 			//  - if flags = CT_DIR_ONEWAY
 			//  - if the direction provided in flags (fwd or rev) is present in the conntrack module flags
-			if (!flags || (flags & conntracks[l->type]->flags)) {
+			if (flags == CT_DIR_ONEWAY || (flags & conntracks[l->type]->flags)) {
 				int start = layer_find_start(l, l->type);
 				res = (*conntracks[l->type]->get_hash) (f, start, flags);
 				hash = jhash_2words(hash, res, INITVAL);

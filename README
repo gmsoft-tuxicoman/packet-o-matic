@@ -137,10 +137,11 @@ The helpers :
 -------------
 The helper modules are used to recompose part of network packets which were splitted or modified by the network.
 Helpers are processed before any matching is done with the rules.
-The helper module currently implemented are ipv4 and tcp. TODO : ipv6.
+The helper module currently implemented are ipv4, tcp and rtp. TODO : ipv6.
  
 - ipv4 : perform ip fragment reassembly
 - tcp : perform tcp reordering
+- rtp : perform rtp reordering
 
 
 Bugs :

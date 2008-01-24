@@ -519,6 +519,10 @@ int main(int argc, char *argv[]) {
 	
 		if (rbuf->ic.is_live)
 			gettimeofday(&now, NULL);
+		else {
+			memcpy(&now, &rbuf->buffer[rbuf->read_pos]->tv, sizeof(struct timeval));
+			now.tv_usec += 1;
+		}
 
 		if (pthread_mutex_lock(&reader_mutex)) {
 			pom_log(POM_LOG_ERR "Error while locking the reader mutex. Abording\r\n");
@@ -528,12 +532,6 @@ int main(int argc, char *argv[]) {
 		timers_process(); // This is not real-time timers but we don't really need it
 		if (rbuf->buffer[rbuf->read_pos]->len > 0) // Need to queue that in the buffer
 			do_rules(rbuf->buffer[rbuf->read_pos], main_config->rules);
-
-		if (!rbuf->ic.is_live) {
-			memcpy(&now, &rbuf->buffer[rbuf->read_pos]->tv, sizeof(struct timeval));
-			now.tv_usec += 1;
-		}
-
 
 		helper_process_queue(main_config->rules); // Process frames that needed some help
 
