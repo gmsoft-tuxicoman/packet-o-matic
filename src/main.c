@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -266,6 +266,13 @@ void *input_thread_func(void *params) {
 			r->state = rb_state_closing;
 			// We need to aquire the lock
 			pthread_mutex_lock(&r->mutex);
+
+			struct ptype* param_quit_on_input_error =  core_get_param_value("quit_on_input_error");
+			if (PTYPE_BOOL_GETVAL(param_quit_on_input_error)) {
+				pom_log("Terminating application. One moment ...\r\n");	
+				finish = 1;
+			}
+			
 			break;
 		}
 
@@ -436,11 +443,14 @@ int main(int argc, char *argv[]) {
 
 
 	struct ptype *param_autosave_on_exit = ptype_alloc("bool", NULL);
-	if (!param_autosave_on_exit) {
+	struct ptype *param_quit_on_input_error = ptype_alloc("bool", NULL);
+	if (!param_autosave_on_exit || !param_quit_on_input_error) {
+		// This is the very first module to be loaded
 		pom_log(POM_LOG_ERR "Cannot allocate ptype bool. Abording\r\nDid you set LD_LIBRARY_PATH correctly ?\r\n");
 		return -1;
 	}
 	core_register_param("autosave_config_on_exit", "yes", param_autosave_on_exit, "Automatically save the configuration when exiting", NULL);
+	core_register_param("quit_on_input_error", "no", param_autosave_on_exit, "Quit when there is an error on the input", NULL);
 
 
 	rbuf = malloc(sizeof(struct ringbuffer));

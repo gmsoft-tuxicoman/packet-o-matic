@@ -1,3 +1,6 @@
+* 2008/01/27 Guy Martin <gmsoft@tuxicoman.be>
+Added core parameter quit_on_input_error.
+
 * 2008/01/24 Guy Martin <gmsoft@tuxicoman.be>
 Added helper rtp.
 Change return value to appropriate constant in helper_tcp.
