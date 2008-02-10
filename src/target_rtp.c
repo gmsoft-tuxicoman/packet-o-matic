@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include "target_wave.h"
+#include "target_rtp.h"
 #include "match_rtp.h"
 
 #include "ptype_string.h"
@@ -35,12 +35,12 @@ unsigned int match_rtp_id;
 struct target_functions *tf;
 struct target_mode *mode_default;
 
-int target_register_wave(struct target_reg *r, struct target_functions *tg_funcs) {
+int target_register_rtp(struct target_reg *r, struct target_functions *tg_funcs) {
 
-	r->init = target_init_wave;
-	r->process = target_process_wave;
-	r->close = target_close_wave;
-	r->cleanup = target_cleanup_wave;
+	r->init = target_init_rtp;
+	r->process = target_process_rtp;
+	r->close = target_close_rtp;
+	r->cleanup = target_cleanup_rtp;
 
 	tf = tg_funcs;
 
@@ -57,16 +57,16 @@ int target_register_wave(struct target_reg *r, struct target_functions *tg_funcs
 
 }
 
-int target_init_wave(struct target *t) {
+int target_init_rtp(struct target *t) {
 
-	struct target_priv_wave *priv = malloc(sizeof(struct target_priv_wave));
-	bzero(priv, sizeof(struct target_priv_wave));
+	struct target_priv_rtp *priv = malloc(sizeof(struct target_priv_rtp));
+	bzero(priv, sizeof(struct target_priv_rtp));
 
 	t->target_priv = priv;
 
 	priv->prefix = (*tf->ptype_alloc) ("string", NULL);
 	if (!priv->prefix) {
-		target_cleanup_wave(t);
+		target_cleanup_rtp(t);
 		return POM_ERR;
 	}
 
@@ -77,21 +77,21 @@ int target_init_wave(struct target *t) {
 }
 
 
-int target_close_wave(struct target *t) {
+int target_close_rtp(struct target *t) {
 
-	struct target_priv_wave *priv = t->target_priv;
+	struct target_priv_rtp *priv = t->target_priv;
 
 	while (priv->ct_privs) {
 		(*tf->conntrack_remove_priv) (priv->ct_privs, priv->ct_privs->ce);
-		target_close_connection_wave(t, priv->ct_privs->ce, priv->ct_privs);
+		target_close_connection_rtp(t, priv->ct_privs->ce, priv->ct_privs);
 	}
 
 	return POM_OK;
 }
 
-int target_cleanup_wave(struct target *t) {
+int target_cleanup_rtp(struct target *t) {
 
-	struct target_priv_wave *priv = t->target_priv;
+	struct target_priv_rtp *priv = t->target_priv;
 
 	if (priv) {
 
@@ -105,9 +105,9 @@ int target_cleanup_wave(struct target *t) {
 
 
 
-int target_process_wave(struct target *t, struct frame *f) {
+int target_process_rtp(struct target *t, struct frame *f) {
 
-	struct target_priv_wave *priv = t->target_priv;
+	struct target_priv_rtp *priv = t->target_priv;
 
 	struct layer *rtpl = f->l;
 	while (rtpl) {
@@ -128,7 +128,7 @@ int target_process_wave(struct target *t, struct frame *f) {
 	if (!f->ce)
 		(*tf->conntrack_create_entry) (f);
 
-	struct target_conntrack_priv_wave *cp;
+	struct target_conntrack_priv_rtp *cp;
 
 	cp = (*tf->conntrack_get_priv) (t, f->ce);
 
@@ -157,7 +157,7 @@ int target_process_wave(struct target *t, struct frame *f) {
 				auhdr->encoding = htonl(24);
 				break;
 			default:
-				(*tf->pom_log) (POM_LOG_DEBUG "WAVE: Payload type %u not supported\r\n", rtphdr->payload_type);
+				(*tf->pom_log) (POM_LOG_DEBUG "RTP: Payload type %u not supported\r\n", rtphdr->payload_type);
 				free(auhdr);
 				return POM_OK;
 
@@ -166,8 +166,8 @@ int target_process_wave(struct target *t, struct frame *f) {
 		auhdr->channels = htonl(1);
 
 		// New connection
-		cp = malloc(sizeof(struct target_conntrack_priv_wave));
-		bzero(cp, sizeof(struct target_conntrack_priv_wave));
+		cp = malloc(sizeof(struct target_conntrack_priv_rtp));
+		bzero(cp, sizeof(struct target_conntrack_priv_rtp));
 
 		char filename[NAME_MAX];
 
@@ -197,7 +197,7 @@ int target_process_wave(struct target *t, struct frame *f) {
 
 		(*tf->pom_log) (POM_LOG_TSHOOT "%s opened\r\n", filename);
 
-		(*tf->conntrack_add_priv) (cp, t, f->ce, target_close_connection_wave);
+		(*tf->conntrack_add_priv) (cp, t, f->ce, target_close_connection_rtp);
 		
 		cp->ce = f->ce;
 		cp->next = priv->ct_privs;
@@ -246,11 +246,11 @@ int target_process_wave(struct target *t, struct frame *f) {
 	return POM_OK;
 };
 
-int target_close_connection_wave(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
+int target_close_connection_rtp(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
 	(*tf->pom_log) (POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
 
-	struct target_conntrack_priv_wave *cp;
+	struct target_conntrack_priv_rtp *cp;
 	cp = conntrack_priv;
 
 	lseek(cp->fd, 8, SEEK_SET);
@@ -259,7 +259,7 @@ int target_close_connection_wave(struct target *t, struct conntrack_entry *ce, v
 
 	close(cp->fd);
 
-	struct target_priv_wave *priv = t->target_priv;
+	struct target_priv_rtp *priv = t->target_priv;
 
 	if (cp->prev)
 		cp->prev->next = cp->next;

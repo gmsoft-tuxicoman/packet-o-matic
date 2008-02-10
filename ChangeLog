@@ -1,3 +1,9 @@
+* 2008/02/10 Guy Martin <gmsoft@tuxicoman.be>
+Added match_vlan.
+Added support for vlan in match_ethernet.
+Renamed target_wave to target_rtp.
+Added some debug msgs in lib_get_register_func().
+
 * 2008/01/27 Guy Martin <gmsoft@tuxicoman.be>
 Added core parameter quit_on_input_error.
 

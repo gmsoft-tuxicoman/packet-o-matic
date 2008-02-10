@@ -19,8 +19,8 @@
  */
 
 
-#ifndef __TARGET_WAVE_H__
-#define __TARGET_WAVE_H__
+#ifndef __TARGET_RTP_H__
+#define __TARGET_RTP_H__
 
 
 #include "modules_common.h"
@@ -38,7 +38,7 @@ struct au_hdr {
 
 };
 
-struct target_conntrack_priv_wave {
+struct target_conntrack_priv_rtp {
 
 	int fd;
 	uint16_t last_seq;
@@ -47,25 +47,25 @@ struct target_conntrack_priv_wave {
 
 	struct conntrack_entry *ce;
 
-	struct target_conntrack_priv_wave *next;
-	struct target_conntrack_priv_wave *prev;
+	struct target_conntrack_priv_rtp *next;
+	struct target_conntrack_priv_rtp *prev;
 
 };
 
-struct target_priv_wave {
+struct target_priv_rtp {
 
 	struct ptype *prefix;
 
-	struct target_conntrack_priv_wave *ct_privs;
+	struct target_conntrack_priv_rtp *ct_privs;
 
 };
 
-int target_register_wave(struct target_reg *r, struct target_functions *tg_funcs);
+int target_register_rtp(struct target_reg *r, struct target_functions *tg_funcs);
 
-int target_init_wave(struct target *t);
-int target_process_wave(struct target *t, struct frame *f);
-int target_close_connection_wave(struct target *t, struct conntrack_entry *ce, void *conntrack_priv);
-int target_close_wave(struct target *t);
-int target_cleanup_wave(struct target *t);
+int target_init_rtp(struct target *t);
+int target_process_rtp(struct target *t, struct frame *f);
+int target_close_connection_rtp(struct target *t, struct conntrack_entry *ce, void *conntrack_priv);
+int target_close_rtp(struct target *t);
+int target_cleanup_rtp(struct target *t);
 
 #endif

@@ -67,7 +67,7 @@ void *lib_get_register_func(const char *type, const char *name, void **handle) {
 	// Fallback on hardcoded LIBDIR
 	if (!*handle) {
 		
-		dlerror();
+		pom_log(POM_LOG_TSHOOT "Unable to load %s : %s\r\n", libname, dlerror());
 
 		bzero(buff, NAME_MAX);
 		strcat(buff, LIBDIR);
@@ -77,7 +77,7 @@ void *lib_get_register_func(const char *type, const char *name, void **handle) {
 	}
 
 	if (!*handle) {
-//		pom_log(POM_LOG_DEBUG "Unable to load %s %s : %s\r\n", type, name, dlerror());
+		pom_log(POM_LOG_TSHOOT "Unable to load %s : %s\r\n", buff, dlerror());
 		return NULL;
 	}
 	dlerror();

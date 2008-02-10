@@ -19,28 +19,20 @@
  */
 
 
-#include "match_ethernet.h"
-#include "ptype_mac.h"
-
-#include <net/ethernet.h>
-#include <sys/socket.h>
-#include <netinet/if_ether.h>
-
-#ifdef HAVE_LINUX_IF_ETHER_H
-#include <linux/if_ether.h>
-#endif
+#include "match_vlan.h"
+#include "ptype_uint16.h"
 
 int match_ipv4_id, match_ipv6_id, match_arp_id, match_vlan_id;
 struct match_functions *mf;
 
-int field_saddr, field_daddr;
+int field_vid;
 
-struct ptype *ptype_mac;
+struct ptype *ptype_vid;
 
-int match_register_ethernet(struct match_reg *r, struct match_functions *m_funcs) {
+int match_register_vlan(struct match_reg *r, struct match_functions *m_funcs) {
 
-	r->identify = match_identify_ethernet;
-	r->unregister = match_unregister_ethernet;
+	r->identify = match_identify_vlan;
+	r->unregister = match_unregister_vlan;
 	
 	mf = m_funcs;
 	
@@ -49,30 +41,28 @@ int match_register_ethernet(struct match_reg *r, struct match_functions *m_funcs
 	match_arp_id = (*mf->match_register) ("arp");
 	match_vlan_id = (*mf->match_register) ("vlan");
 
-	ptype_mac = (*mf->ptype_alloc) ("mac", NULL);
+	ptype_vid = (*mf->ptype_alloc) ("uint16", NULL);
 
-	if (!ptype_mac)
+	if (!ptype_vid)
 		return POM_ERR;
 
-	field_saddr = (*mf->register_field) (r->type, "src", ptype_mac, "Source MAC address");
-	field_daddr = (*mf->register_field) (r->type, "dst", ptype_mac, "Destination MAC address");
+	field_vid = (*mf->register_field) (r->type, "vid", ptype_vid, "Vlan ID");
 
 	return POM_OK;
 
 }
 
-int match_identify_ethernet(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
+int match_identify_vlan(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
-	struct ether_header *ehdr = f->buff + start;
+	struct vlan_header *vhdr = f->buff + start;
 
-	l->payload_start = start + sizeof(struct ether_header);
-	l->payload_size = len - sizeof(struct ether_header);
+	l->payload_start = start + sizeof(struct vlan_header);
+	l->payload_size = len - sizeof(struct vlan_header);
 
 
-	PTYPE_MAC_SETADDR(l->fields[field_saddr], ehdr->ether_shost);
-	PTYPE_MAC_SETADDR(l->fields[field_daddr], ehdr->ether_dhost);
+	PTYPE_UINT16_SETVAL(l->fields[field_vid], ntohs(vhdr->vid));
 
-	switch (ntohs(ehdr->ether_type)) {
+	switch (ntohs(vhdr->ether_type)) {
 		case 0x0800:
 			return  match_ipv4_id;
 		case 0x0806:
@@ -86,9 +76,9 @@ int match_identify_ethernet(struct frame *f, struct layer* l, unsigned int start
 	return POM_ERR;
 }
 
-int match_unregister_ethernet(struct match_reg *r) {
+int match_unregister_vlan(struct match_reg *r) {
 
-	(*mf->ptype_cleanup) (ptype_mac);
+	(*mf->ptype_cleanup) (ptype_vid);
 
 	return POM_OK;
 }
