@@ -115,7 +115,7 @@ int mgmtvty_process(struct mgmt_connection *c, unsigned char *buffer, unsigned i
 				break;
 
 			case 2: // Handle escape sequence
-				if (i + 1 > len || buffer[i] != '[') {
+				if (i + 1 > len || (buffer[i] != '[' && buffer[i] != 'O')) {
 					pom_log(POM_LOG_WARN "Invalid escape sequence\r\n");
 					msg_type = 0;
 					break;

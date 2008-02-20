@@ -172,7 +172,7 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 	}
 
 	if (PTYPE_BOOL_GETVAL(priv->markdir)) {
-		if (f->ce->direction == CT_DIR_FWD)
+		if (f->ce->direction == CE_DIR_FWD)
 			write(cp->fd, "\n> ", 3);
 		else
 			write(cp->fd, "\n< ", 3);

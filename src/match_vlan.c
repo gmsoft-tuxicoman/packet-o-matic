@@ -64,7 +64,7 @@ int match_identify_vlan(struct frame *f, struct layer* l, unsigned int start, un
 
 	switch (ntohs(vhdr->ether_type)) {
 		case 0x0800:
-			return  match_ipv4_id;
+			return match_ipv4_id;
 		case 0x0806:
 			return match_arp_id;
 		case 0x8100:

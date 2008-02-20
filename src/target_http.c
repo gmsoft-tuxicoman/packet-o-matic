@@ -261,7 +261,7 @@ int target_process_http(struct target *t, struct frame *f) {
 	
 	}
 
-	if ((cp->state == HTTP_MATCH || cp->state == HTTP_NO_MATCH) && cp->direction != CT_DIR_ONEWAY && (f->ce->direction != cp->direction)) {
+	if ((cp->state == HTTP_MATCH || cp->state == HTTP_NO_MATCH) && (f->ce->direction != cp->direction)) {
 		return POM_OK;
 	}
 
@@ -372,10 +372,7 @@ int target_process_http(struct target *t, struct frame *f) {
 					}
 					// One of the header matched
 
-					if (f->ce->direction != CT_DIR_ONEWAY)
-						cp->direction = f->ce->direction;
-					else if (f->ce->direction == CT_DIR_ONEWAY)
-						(*tf->pom_log) (POM_LOG_ERR "WTF ?!?\r\n");
+					cp->direction = f->ce->direction;
 
 				} else if (i - lstart == 1 && pload[lstart] == '\r') {
 					pstart = i + 1 + lastl->payload_start;

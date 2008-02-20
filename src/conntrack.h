@@ -59,6 +59,12 @@
 #define CT_DIR_BOTH 3
 
 
+/// Forward direction flag in conntrack_entry
+#define CE_DIR_FWD 0
+
+/// Reverse direction flag in conntrack_entry
+#define CE_DIR_REV 1
+
 /// This structure contains all that needs to be known about a connection.
 struct conntrack_entry {
 

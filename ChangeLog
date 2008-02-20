@@ -1,3 +1,16 @@
+* 2008/02/20 Guy Martin <gmsoft@tuxicoman.be>
+New values for direction in conntrack_entry.
+Fixed hanging when deleting first char in CLI.
+Added support for some more escape sequence in CLI.
+Function layer_field_parse() now available for targets.
+Made function target_file_open() accept NULL layer.
+Fix regression in conntrack that prevented reverse direction to be processed in specific scenario.
+Added bi directional stream support for target_rtp.
+Space cleanup in match_ethernet and match_vlan.
+Fixed output of target_display in CLI wrt new lines.
+Targets are now stopped if target_process gets an error back.
+Added extra checking in match_rtp.
+
 * 2008/02/10 Guy Martin <gmsoft@tuxicoman.be>
 Added match_vlan.
 Added support for vlan in match_ethernet.

@@ -313,10 +313,15 @@ int target_display_print_ascii(void *frame, unsigned int start, unsigned int len
 	int linepos = 0;
 
 	for (i = 0; i < len; i++) {
-		if ((f[i] >= ' ' && f[i] <= '~') || f[i] == '\n')
+		if (f[i] >= ' ' && f[i] <= '~') {
 			line[linepos] = f[i];
-		else
+		} else if (f[i] == '\n') {
+			line[linepos] = '\r';
+			linepos++;
+			line[linepos] = '\n';
+		} else {
 			line[linepos] = '.';
+		}
 		linepos++;
 		if (linepos >= sizeof(line) - 2)
 			break;

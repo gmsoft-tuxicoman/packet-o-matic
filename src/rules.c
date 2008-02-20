@@ -243,7 +243,7 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 
 	}
 
-	if (conntrack_get_entry(f) == POM_OK && f->ce == old_ce) { // We got a conntrack_entry, process the corresponding targets
+	if (conntrack_get_entry(f) == POM_OK && (old_ce == NULL || f->ce == old_ce)) { // We got a conntrack_entry, process the corresponding targets
 		struct conntrack_target_priv *cp = f->ce->target_privs;
 		while (cp) {
 			r = rules;

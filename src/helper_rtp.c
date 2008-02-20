@@ -90,7 +90,7 @@ int helper_need_help_rtp(struct frame *f, unsigned int start, unsigned int len, 
 		(*hf->conntrack_add_priv) (cp, l->type, f->ce, helper_flush_buffer_rtp, helper_cleanup_connection_rtp);
 	}
 
-	int dir = f->ce->direction != CT_DIR_REV ? 0 : 1;
+	int dir = f->ce->direction;
 
 	if (cp->flags[dir] & HELPER_RTP_SEQ_KNOWN) {
 	

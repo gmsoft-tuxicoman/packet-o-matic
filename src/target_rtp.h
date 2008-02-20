@@ -26,6 +26,23 @@
 #include "modules_common.h"
 #include "rules.h"
 
+
+
+#define RTP_CODEC_G711U	0
+#define RTP_CODEC_G721	2
+#define RTP_CODEC_G711A	8
+#define RTP_CODEC_G722	9
+
+
+#define AU_CODEC_MULAW		1
+#define AU_CODEC_ADPCM_G721	23
+#define AU_CODEC_ADPCM_G722	24
+#define AU_CODEC_ALAW		27
+
+#define AU_MAGIC ".snd"
+
+#define AU_UNKNOWN_SIZE (~0) // -1
+
 struct au_hdr {
 
 	char magic[4];
@@ -38,14 +55,28 @@ struct au_hdr {
 
 };
 
+struct rtp_buffer {
+
+	char *buff;
+	unsigned int buff_size;
+	unsigned int buff_pos;
+	int direction;
+
+};
+
+
 struct target_conntrack_priv_rtp {
 
+	char filename[NAME_MAX + 1];
 	int fd;
-	uint16_t last_seq;
-	unsigned int total_size;
-	unsigned int payload_type;
+	uint16_t last_seq[2];
+	uint32_t total_size;
+	uint32_t payload_type;
 
 	struct conntrack_entry *ce;
+
+	struct rtp_buffer buffer[2];
+	int channels;
 
 	struct target_conntrack_priv_rtp *next;
 	struct target_conntrack_priv_rtp *prev;
@@ -55,6 +86,7 @@ struct target_conntrack_priv_rtp {
 struct target_priv_rtp {
 
 	struct ptype *prefix;
+	struct ptype *jitter_buffer;
 
 	struct target_conntrack_priv_rtp *ct_privs;
 
@@ -67,5 +99,9 @@ int target_process_rtp(struct target *t, struct frame *f);
 int target_close_connection_rtp(struct target *t, struct conntrack_entry *ce, void *conntrack_priv);
 int target_close_rtp(struct target *t);
 int target_cleanup_rtp(struct target *t);
+
+int write_packet(struct target_conntrack_priv_rtp *cp, struct target_priv_rtp *priv, int dir, void *data, int len);
+int open_file(struct target_priv_rtp *priv, struct target_conntrack_priv_rtp *cp);
+int flush_buffers(struct target_conntrack_priv_rtp *cp, int dir);
 
 #endif

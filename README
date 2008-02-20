@@ -122,7 +122,7 @@ The target modules process the packet and most of the time, saves it or resend i
 - pcap : save the packets in a pcap file
 - tap : open a tap interface and send the packets trough it
 - tcpkill : works only with tcp packets. Send a TCP RST packet to any matched tcp packet
-- wave : save RTP payload into .au files. Supported payload types are G.711U, G711A and G.722
+- rtp : save RTP payload into .au files. Supported payload types are G.711U, G711A, G.721 and G.722
 - null : does nothing, used for debugging or as a template
 
 

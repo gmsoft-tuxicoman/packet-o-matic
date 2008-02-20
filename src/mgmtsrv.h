@@ -65,7 +65,7 @@ struct mgmt_connection {
 	int auth_tries; // number of authentification tries
 	char *cmds[MGMT_CMD_HISTORY_SIZE];
 	unsigned int curcmd; // current command in the history
-	unsigned int cursor_pos; // position of the cursor on the line
+	int cursor_pos; // position of the cursor on the line
 	struct mgmt_connection *prev;
 	struct mgmt_connection *next;
 	uint16_t win_x, win_y; // size of the remote window

@@ -49,6 +49,7 @@ int target_init() {
 	tg_funcs.match_get_name = match_get_name;
 	tg_funcs.match_get_field = match_get_field;
 	tg_funcs.file_open = target_file_open;
+	tg_funcs.layer_field_parse = layer_field_parse;
 
 	pom_log(POM_LOG_DEBUG "Targets initialized\r\n");
 
@@ -297,7 +298,11 @@ int target_open(struct target *t) {
 int target_process(struct target *t, struct frame *f) {
 
 	if (t->started && targets[t->type]->process)
-		return (*targets[t->type]->process) (t, f);
+		if ((*targets[t->type]->process) (t, f)  == POM_ERR) {
+			pom_log(POM_LOG_ERR, "Target %s returned an error. Stopping it\r\n", target_get_name(t->type));
+			target_close(t);
+			return POM_ERR;
+		}
 	return POM_OK;
 
 }
@@ -427,8 +432,12 @@ void target_print_help() {
 int target_file_open(struct layer *l, char *filename, int flags, mode_t mode) {
 
 	char buffer[NAME_MAX + 1];
+	memset(buffer, 0, NAME_MAX + 1);
 
-	layer_field_parse(l, filename, buffer, NAME_MAX);
+	if (l)
+		layer_field_parse(l, filename, buffer, NAME_MAX);
+	else
+		strncpy(buffer, filename, NAME_MAX);
 
 	pom_log(POM_LOG_TSHOOT "Opening file %s\r\n", buffer);
 

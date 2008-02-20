@@ -63,6 +63,10 @@ int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, uns
 
 	struct rtphdr *hdr = f->buff + start;
 
+
+	if (hdr->version != 2)
+		return POM_ERR;
+
 	int hdr_len = sizeof(struct rtphdr);
 	hdr_len += hdr->csrc_count * 4;
 
@@ -89,7 +93,10 @@ int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, uns
 	l->payload_size = len - hdr_len;
 
 	if (hdr->padding) {
-		l->payload_size = *(((unsigned char*) (f->buff)) + len - 1);
+		unsigned int pad = *(((unsigned char*) (f->buff)) + len - 1);
+		if (pad > len - sizeof(struct rtphdr))
+			return POM_ERR;
+		l->payload_size -= pad;
 	}
 
 

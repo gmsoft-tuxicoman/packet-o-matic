@@ -96,6 +96,8 @@ struct target_functions {
 	char *(*match_get_name) (int match_type);
 	struct match_field_reg *(*match_get_field) (int match_type, int field_id);
 	int (*file_open) (struct layer *l, char *filename, int flags, mode_t mode);
+	int (*layer_field_parse) (struct layer *, char *expr, char *buff, size_t size);
+
 
 
 };

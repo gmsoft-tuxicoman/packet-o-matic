@@ -207,7 +207,7 @@ int conntrack_create_entry(struct frame *f) {
 
 	pom_log(POM_LOG_TSHOOT "Conntrack entry 0x%lx created\r\n", (unsigned long) ce);
 
-	ce->direction = CT_DIR_FWD;
+	ce->direction = CE_DIR_FWD;
 	f->ce = ce;
 
 	return POM_OK;
@@ -436,7 +436,7 @@ int conntrack_get_entry(struct frame *f) {
 
 	if (ce) {
 
-		ce->direction = CT_DIR_FWD;
+		ce->direction = CE_DIR_FWD;
 
 	} else {// Conntrack not found. Let's try the opposite direction
 		// We need the match the forward hash in the reverse table
@@ -444,7 +444,7 @@ int conntrack_get_entry(struct frame *f) {
 		cl = ct_table_rev[hash_fwd];
 		ce = conntrack_find(cl, f, CT_DIR_REV);
 		if (ce)
-			ce->direction = CT_DIR_REV;
+			ce->direction = CE_DIR_REV;
 	}
 
 
