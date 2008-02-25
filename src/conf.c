@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -35,6 +35,7 @@
 #include "main.h"
 #include "mgmtsrv.h"
 #include "ptype_bool.h"
+#include "ptype_uint64.h"
 
 struct conf *config_alloc() {
 
@@ -104,7 +105,7 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 			struct input_param *param = ip->mode->params;
 			while (param) {
 				if (!strcmp(param->name, param_type)) {
-					if (ptype_parse_val(param->value, value) == POM_ERR) {
+					if (ptype_unserialize(param->value, value) == POM_ERR) {
 						pom_log(POM_LOG_ERR "Unable to parse \"%s\" for parameter %s of input %s\r\n", value, param_type, input_type);
 					}
 					break;
@@ -187,7 +188,7 @@ struct target *parse_target(xmlDocPtr doc, xmlNodePtr cur) {
 				else
 					pom_log(POM_LOG_WARN "Error, no parameter %s for target %s and mode %s\r\n", param_type, target_type, tp->mode->name);
 			} else { 
-				if (ptype_parse_val(value, param_value) != POM_OK) 
+				if (ptype_unserialize(value, param_value) != POM_OK) 
 					pom_log(POM_LOG_ERR "Error, could not parse value %s for parameter %s for target %s\r\n", param_value, param_type, target_type);
 			}
 
@@ -252,7 +253,7 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 					struct match_field *mf = match_alloc_field(mt, field);
 					if (!mf) {
 						pom_log(POM_LOG_ERR "No field %s for match %s\r\n", field, layer);
-					} else if (ptype_parse_val(mf->value, value) == POM_ERR) {
+					} else if (ptype_unserialize(mf->value, value) == POM_ERR) {
 						pom_log(POM_LOG_ERR "Unable to parse value \"%s\" for field %s and match %s\r\n", value, field, layer);
 					} else {
 						n->match = mf;
@@ -409,7 +410,7 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 
 	char *disabled = (char *) xmlGetProp(cur, (const xmlChar*) "disabled");
 	if (disabled) {
-		ptype_parse_val(disabled_pt, disabled);
+		ptype_unserialize(disabled_pt, disabled);
 		r->enabled = !PTYPE_BOOL_GETVAL(disabled_pt);
 	} else
 		r->enabled = 1;
@@ -441,6 +442,11 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 
 		cur = cur->next;
 	}
+
+	r->pkt_cnt = ptype_alloc("uint64", "pkts");
+	r->pkt_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
+	r->byte_cnt = ptype_alloc("uint64", "bytes");
+	r->byte_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
 
 	return r;
 
@@ -563,7 +569,7 @@ int config_parse(struct conf *c, char * filename) {
 					}
 					char *value = (char *) xmlNodeListGetString(doc, sub->xmlChildrenNode, 1);
 					if (value) {
-						if (ptype_parse_val(param->value, value) == POM_ERR)
+						if (ptype_unserialize(param->value, value) == POM_ERR)
 							pom_log(POM_LOG_WARN "Unable to parse value '%s' for parameter %s of conntrack %s\r\n", value, name, type);
 					} else {
 						pom_log(POM_LOG_WARN "No value given for param %s of conntrack %s\r\n", name, type);
@@ -614,7 +620,7 @@ int config_write_rule(int fd, struct rule_node *n, struct rule_node *last, int t
 					strcat(buffer, " inv=\"yes\"");
 				if (n->match) {
 					char value[256];
-					ptype_print_val(n->match->value, value, sizeof(value));
+					ptype_serialize(n->match->value, value, sizeof(value));
 					strcat(buffer, " field=\"");
 					struct match_field_reg *field = match_get_field(n->layer, n->match->id);
 					strcat(buffer, field->name);
@@ -742,7 +748,7 @@ int config_write(struct conf *c, char *filename) {
 	struct core_param *p = core_params;
 	while (p) {
 		char value[1024];
-		ptype_print_val(p->value, value, sizeof(value) - 1);
+		ptype_serialize(p->value, value, sizeof(value) - 1);
 		if (strcmp(value, p->defval)) {
 			strcat(buffer, "<param name=\"");
 			strcat(buffer, p->name);
@@ -767,7 +773,7 @@ int config_write(struct conf *c, char *filename) {
 			while (p) {
 				char value[512];
 				bzero(value, 512);
-				ptype_print_val(p->value, value, sizeof(value));
+				ptype_serialize(p->value, value, sizeof(value));
 				if (strcmp(value, p->defval)) {
 					if (!some_param) {
 						strcat(buffer, "<conntrack type=\"");
@@ -806,7 +812,7 @@ int config_write(struct conf *c, char *filename) {
 		struct input_param *p = c->input->mode->params;
 		while (p) {
 			char value[1024];
-			ptype_print_val(p->value, value, sizeof(value) - 1);
+			ptype_serialize(p->value, value, sizeof(value) - 1);
 			if (strcmp(value, p->defval)) { // parameter doesn't have default value
 				strcat(buffer, "\t<param name=\"");
 				strcat(buffer, p->name);
@@ -864,7 +870,7 @@ int config_write(struct conf *c, char *filename) {
 						continue;
 
 					char value[1024];
-					ptype_print_val(tp->value, value, sizeof(value) - 1);
+					ptype_serialize(tp->value, value, sizeof(value) - 1);
 					if (strcmp(value, tp->type->defval)) {
 						strcat(buffer, "\t\t<param name=\"");
 						strcat(buffer, tp->type->name);

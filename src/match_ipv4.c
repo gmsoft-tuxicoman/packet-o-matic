@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ struct match_functions *mf;
 
 int field_saddr, field_daddr, field_tos, field_ttl;
 
-struct ptype *ptype_ipv4, *ptype_uint8;
+struct ptype *ptype_ipv4, *ptype_uint8, *ptype_uint8_hex;
 
 int match_register_ipv4(struct match_reg *r, struct match_functions *m_funcs) {
 	
@@ -48,15 +48,17 @@ int match_register_ipv4(struct match_reg *r, struct match_functions *m_funcs) {
 
 	ptype_ipv4 = (*mf->ptype_alloc) ("ipv4", NULL);
 	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
+	ptype_uint8_hex = (*mf->ptype_alloc) ("uint8", NULL);
+	ptype_uint8_hex->print_mode = PTYPE_UINT8_PRINT_HEX;
 
-	if (!ptype_ipv4 || !ptype_uint8) {
+	if (!ptype_ipv4 || !ptype_uint8 || !ptype_uint8_hex) {
 		match_unregister_ipv4(r);
 		return POM_ERR;
 	}
 
 	field_saddr = (*mf->register_field) (r->type, "src", ptype_ipv4, "Source address");
 	field_daddr = (*mf->register_field) (r->type, "dst", ptype_ipv4, "Destination address");
-	field_tos = (*mf->register_field) (r->type, "tos", ptype_uint8, "Type of service");
+	field_tos = (*mf->register_field) (r->type, "tos", ptype_uint8_hex, "Type of service");
 	field_ttl = (*mf->register_field) (r->type, "ttl", ptype_uint8, "Time to live");
 
 	return POM_OK;
@@ -103,6 +105,7 @@ int match_unregister_ipv4(struct match_reg *r) {
 
 	(*mf->ptype_cleanup) (ptype_ipv4);
 	(*mf->ptype_cleanup) (ptype_uint8);
+	(*mf->ptype_cleanup) (ptype_uint8_hex);
 
 	return POM_OK;
 }

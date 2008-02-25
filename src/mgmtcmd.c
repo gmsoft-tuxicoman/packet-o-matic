@@ -30,6 +30,8 @@
 
 #include <pthread.h>
 
+#include "ptype_uint64.h"
+
 #define MGMT_COMMANDS_NUM 38
 
 struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
@@ -669,7 +671,10 @@ int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]) {
 	unsigned int rule_num = 0;
 
 	while (rl) {
-		mgmtsrv_send(c, "Rule %u", rule_num);
+		char pkts[16], bytes[16];
+		ptype_print_val(rl->pkt_cnt, pkts, sizeof(pkts));
+		ptype_print_val(rl->byte_cnt, bytes, sizeof(bytes));
+		mgmtsrv_send(c, "Rule %u (%s %s, %s %s)", rule_num, pkts, rl->pkt_cnt->unit, bytes, rl->byte_cnt->unit);
 		if (!rl->enabled)
 			mgmtsrv_send(c, " (disabled)");
 		mgmtsrv_send(c, " : \r\n");
@@ -692,7 +697,7 @@ int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]) {
 			} else
 				return MGMT_USAGE;
 		} else
-			mgmtcmd_show_rule_print_node_tree(c, rl->node, NULL, prepend);
+			mgmtcmd_show_rule_print_node_flat(c, rl->node, NULL);
 
 		mgmtsrv_send(c, "\r\n");
 
@@ -1058,7 +1063,10 @@ int mgmtcmd_show_targets(struct mgmt_connection *c, int argc, char *argv[]) {
 	unsigned int rule_num = 0, target_num;
 
 	while (rl) {
-		mgmtsrv_send(c, "Rule %u targets", rule_num);
+		char pkts[16], bytes[16];
+		ptype_print_val(rl->pkt_cnt, pkts, sizeof(pkts));
+		ptype_print_val(rl->byte_cnt, bytes, sizeof(bytes));
+		mgmtsrv_send(c, "Rule %u targets (%s %s, %s %s)", rule_num, pkts, rl->pkt_cnt->unit, bytes, rl->byte_cnt->unit);
 		if (!rl->enabled)
 			mgmtsrv_send(c, " (disabled)");
 		mgmtsrv_send(c, " : \r\n");
@@ -1070,7 +1078,9 @@ int mgmtcmd_show_targets(struct mgmt_connection *c, int argc, char *argv[]) {
 		while (t) {
 			mgmtsrv_send(c, "   %u) %s", target_num, target_get_name(t->type));
 			if (t->mode) {
-				mgmtsrv_send(c, ", mode %s", t->mode->name);
+				ptype_print_val(t->pkt_cnt, pkts, sizeof(pkts));
+				ptype_print_val(t->byte_cnt, bytes, sizeof(bytes));
+				mgmtsrv_send(c, ", mode %s (%s %s, %s %s)", t->mode->name, pkts, t->pkt_cnt->unit, bytes, t->byte_cnt->unit);
 				if (!t->started)
 					mgmtsrv_send(c, " (stopped)");
 				mgmtsrv_send(c, "\r\n");
@@ -1441,6 +1451,11 @@ int mgmtcmd_add_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	}
 	
 	rl->node = start;
+	rl->pkt_cnt = ptype_alloc("uint64", "pkts");
+	rl->pkt_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
+	rl->byte_cnt = ptype_alloc("uint64", "bytes");
+	rl->byte_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
+
 	reader_process_unlock();
 	
 	mgmtsrv_send(c, "Added rule with id %u\r\n", rule_id);
@@ -1687,6 +1702,8 @@ int mgmtcmd_remove_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 		
 	}
 
+	ptype_cleanup_module(rl->pkt_cnt);
+	ptype_cleanup_module(rl->byte_cnt);
 	free(rl);
 
 	reader_process_unlock();

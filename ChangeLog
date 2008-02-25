@@ -1,3 +1,8 @@
+* 2008/02/25 Guy Martin <gmsoft@tuxicoman.be>
+Added ptype uint64.
+Added print_mode to ptypes, serialize() and unserialize() funcs.
+Added match counters for rules and targets.
+
 * 2008/02/20 Guy Martin <gmsoft@tuxicoman.be>
 New values for direction in conntrack_entry.
 Fixed hanging when deleting first char in CLI.

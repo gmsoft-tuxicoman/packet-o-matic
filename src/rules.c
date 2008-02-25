@@ -22,6 +22,8 @@
 #include "rules.h"
 #include "helper.h"
 
+#include "ptype_uint64.h"
+
 int match_undefined_id;
 
 
@@ -236,8 +238,11 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 		if (r->node && r->enabled) {
 			// If there is a conntrack_entry, it means one of the target added it's priv, so the packet needs to be processed
 			r->result = node_match(f, r->node, f->l); // Get the result to fully populate layers
-			//if (r->result)
+			if (r->result) {
 			//	pom_log(POM_LOG_TSHOOT "Rule matched\r\n");
+				PTYPE_UINT64_INC(r->pkt_cnt, 1);
+				PTYPE_UINT64_INC(r->byte_cnt, f->len);
+			}
 		}
 		r = r->next;
 
@@ -251,6 +256,8 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 				struct target *t = r->target;
 				while (t) {
 					if (t == cp->t) {
+						PTYPE_UINT64_INC(t->pkt_cnt, 1);
+						PTYPE_UINT64_INC(t->byte_cnt, f->len);
 						target_process(t, f);
 						t->matched_conntrack = 1; // Do no process this target again if it matched here
 					}
@@ -268,8 +275,11 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 		struct target *t = r->target;
 		if (r->result) {
 			while (t) {
-				if (!t->matched_conntrack)
+				if (!t->matched_conntrack) {
+					PTYPE_UINT64_INC(t->pkt_cnt, 1);
+					PTYPE_UINT64_INC(t->byte_cnt, f->len);
 					target_process(t, f);
+				}
 				t = t->next;
 			}
 		}
@@ -363,7 +373,8 @@ int list_destroy(struct rule_list *list) {
 			target_cleanup_module(t);
 			t = next;
 		}
-			
+		ptype_cleanup_module(tmp->pkt_cnt);
+		ptype_cleanup_module(tmp->byte_cnt);
 		free(tmp);
 
 	} while (list);

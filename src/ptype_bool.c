@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,6 +30,9 @@ int ptype_register_bool(struct ptype_reg *r) {
 	r->parse_val = ptype_parse_bool;
 	r->print_val = ptype_print_bool;
 	r->compare_val = ptype_compare_bool;
+
+	r->serialize = ptype_print_bool;
+	r->unserialize = ptype_parse_bool;
 	
 	r->ops = PTYPE_OP_ALL;
 

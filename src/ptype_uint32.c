@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -31,6 +31,9 @@ int ptype_register_uint32(struct ptype_reg *r) {
 	r->print_val = ptype_print_uint32;
 	r->compare_val = ptype_compare_uint32;
 	
+	r->serialize = ptype_serialize_uint32;
+	r->unserialize = ptype_parse_uint32;
+	
 	r->ops = PTYPE_OP_ALL;
 
 	return POM_OK;
@@ -59,7 +62,9 @@ int ptype_parse_uint32(struct ptype *p, char *val) {
 
 
 	uint32_t *v = p->value;
-	if(sscanf(val, "%u", v) == 1)
+	if (sscanf(val, "0x%x", v) == 1)
+		return POM_OK;
+	if (sscanf(val, "%u", v) == 1)
 		return POM_OK;
 
 	return POM_ERR;
@@ -69,7 +74,29 @@ int ptype_parse_uint32(struct ptype *p, char *val) {
 int ptype_print_uint32(struct ptype *p, char *val, size_t size) {
 
 	uint32_t *v = p->value;
-	return snprintf(val, size, "%u", *v);
+
+	switch (p->print_mode) {
+		case PTYPE_UINT32_PRINT_HEX:
+			return snprintf(val, size, "0x%X", *v);
+		case PTYPE_UINT32_PRINT_HUMAN: {
+			uint32_t value = *v;
+			if (value > 99999) {
+				value = (value + 500) / 1000;
+				if (value > 9999) {
+					value = (value + 500) / 1000;
+					return snprintf(val, size, "%uM", value);
+				} else
+					return snprintf(val, size, "%uK", value);
+			} else
+				return snprintf(val, size, "%u", value);
+			break;
+		}
+		default:
+		case PTYPE_UINT32_PRINT_DECIMAL:
+			return snprintf(val, size, "%u", *v);
+	}
+
+	return 0;
 
 }
 
@@ -93,4 +120,10 @@ int ptype_compare_uint32(int op, void *val_a, void* val_b) {
 	}
 
 	return 0;
+}
+
+int ptype_serialize_uint32(struct ptype *p, char *val, size_t size) {
+
+	uint32_t *v = p->value;
+	return snprintf(val, size, "%u", *v);
 }

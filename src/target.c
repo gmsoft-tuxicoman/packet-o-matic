@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,6 +25,8 @@
 #include "target.h"
 #include "conntrack.h"
 #include "ptype.h"
+
+#include "ptype_uint64.h"
 
 #define MAX_TARGET 16
 
@@ -216,6 +218,11 @@ struct target *target_alloc(int target_type) {
 			return NULL;
 		}
 
+	t->pkt_cnt = ptype_alloc("uint64", "pkts");
+	t->pkt_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
+	t->byte_cnt = ptype_alloc("uint64", "bytes");
+	t->byte_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
+
 	// Default mode is the first one
 	t->mode = targets[target_type]->modes;
 		
@@ -335,7 +342,8 @@ int target_cleanup_module(struct target *t) {
 			t->params = p;
 		}
 	}
-	
+	ptype_cleanup_module(t->pkt_cnt);
+	ptype_cleanup_module(t->byte_cnt);
 	free (t);
 
 	return POM_OK;

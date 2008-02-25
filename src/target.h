@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -73,9 +73,11 @@ struct target {
 	int matched_conntrack;
 	int started;
 
+	struct ptype* pkt_cnt;
+	struct ptype* byte_cnt;
+
 	struct target *next;
 	struct target *prev;
-
 };
 
 

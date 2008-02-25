@@ -11,7 +11,7 @@ MATCH_OBJS = match_docsis.la match_ethernet.la match_vlan.la match_ipv4.la match
 CONNTRACK_OBJS = conntrack_ipv4.la conntrack_ipv6.la conntrack_rtp.la conntrack_tcp.la conntrack_udp.la
 HELPER_OBJS = helper_ipv4.la helper_tcp.la helper_rtp.la
 TARGET_OBJS = target_display.la target_dump_payload.la target_irc.la target_http.la target_rtp.la target_null.la @TARGET_OBJS@
-PTYPES_OBJS = ptype_bool.la ptype_uint8.la ptype_uint16.la ptype_uint32.la ptype_mac.la ptype_ipv4.la ptype_ipv6.la ptype_string.la ptype_bytes.la
+PTYPES_OBJS = ptype_bool.la ptype_uint8.la ptype_uint16.la ptype_uint32.la ptype_uint64.la ptype_mac.la ptype_ipv4.la ptype_ipv6.la ptype_string.la ptype_bytes.la
 
 
 lib_LTLIBRARIES = $(INPUT_OBJS) $(MATCH_OBJS) $(CONNTRACK_OBJS) $(HELPER_OBJS) $(TARGET_OBJS) $(PTYPES_OBJS)
@@ -96,6 +96,8 @@ ptype_uint16_la_SOURCES = ptype_uint16.c ptype_uint16.h modules_common.h
 ptype_uint16_la_LDFLAGS = -module -avoid-version
 ptype_uint32_la_SOURCES = ptype_uint32.c ptype_uint32.h modules_common.h
 ptype_uint32_la_LDFLAGS = -module -avoid-version
+ptype_uint64_la_SOURCES = ptype_uint64.c ptype_uint64.h modules_common.h
+ptype_uint64_la_LDFLAGS = -module -avoid-version
 ptype_mac_la_SOURCES = ptype_mac.c ptype_mac.h modules_common.h
 ptype_mac_la_LDFLAGS = -module -avoid-version
 ptype_ipv4_la_SOURCES = ptype_ipv4.c ptype_ipv4.h modules_common.h

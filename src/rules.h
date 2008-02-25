@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -48,6 +48,9 @@ struct rule_list {
 	struct target *target; ///< what to do if we match
 	unsigned int result; ///< true if the packet has to be processed
 	int enabled; ///< true if rule is enabled and has to be proccessed
+
+	struct ptype* pkt_cnt; ///< matched packet count
+	struct ptype* byte_cnt; ///< matched byte count
 
 	struct rule_list *next; ///< next rule in the list
 	struct rule_list *prev; ///< previous rule in the list

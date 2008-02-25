@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,6 +30,9 @@ int ptype_register_uint16(struct ptype_reg *r) {
 	r->parse_val = ptype_parse_uint16;
 	r->print_val = ptype_print_uint16;
 	r->compare_val = ptype_compare_uint16;
+
+	r->serialize = ptype_print_uint16;
+	r->unserialize = ptype_parse_uint16;
 	
 	r->ops = PTYPE_OP_ALL;
 	
@@ -59,7 +62,9 @@ int ptype_parse_uint16(struct ptype *p, char *val) {
 
 
 	uint16_t *v = p->value;
-	if(sscanf(val, "%hu", v) == 1)
+	if (sscanf(val, "0x%x", v) == 1)
+		return POM_OK;
+	if (sscanf(val, "%hu", v) == 1)
 		return POM_OK;
 
 	return POM_ERR;
@@ -69,7 +74,16 @@ int ptype_parse_uint16(struct ptype *p, char *val) {
 int ptype_print_uint16(struct ptype *p, char *val, size_t size) {
 
 	uint16_t *v = p->value;
-	return snprintf(val, size, "%u", *v);
+
+	switch (p->print_mode) {
+		case PTYPE_UINT16_PRINT_HEX:
+			return (snprintf(val, size, "0x%X", *v));
+		default:
+		case PTYPE_UINT16_PRINT_DECIMAL:
+			return snprintf(val, size, "%u", *v);
+	}
+
+	return 0;
 
 }
 

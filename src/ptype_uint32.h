@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,6 +24,10 @@
 #include "modules_common.h"
 #include "ptype.h"
 
+#define PTYPE_UINT32_PRINT_DECIMAL	0
+#define PTYPE_UINT32_PRINT_HEX		1
+#define PTYPE_UINT32_PRINT_HUMAN	2
+
 /// x the struct ptype
 #define PTYPE_UINT32_GETVAL(x) 			\
 	(uint32_t) *((uint32_t*) (x)->value)
@@ -34,6 +38,10 @@
 	*v = (y);			\
 }
 
+/// x is the struct ptype, y the increment
+#define PTYPE_UINT32_INC(x, y) 		\
+	*((uint32_t*)(x)->value) += (y)	
+
 
 int ptype_register_uint32(struct ptype_reg *r);
 int ptype_alloc_uint32(struct ptype *p);
@@ -41,6 +49,7 @@ int ptype_cleanup_uint32(struct ptype *p);
 int ptype_parse_uint32(struct ptype *p, char *val);
 int ptype_print_uint32(struct ptype *pt, char *val, size_t size);
 int ptype_compare_uint32(int op, void *val_a, void* val_b);
+int ptype_serialize_uint32(struct ptype *p, char *val, size_t size);
 
 
 #endif

@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@ struct match_functions *mf;
 
 int field_payload, field_ssrc, field_seq, field_timestamp;
 
-struct ptype *ptype_uint8, *ptype_uint16, *ptype_uint32;
+struct ptype *ptype_uint8, *ptype_uint16, *ptype_uint32, *ptype_uint32_hex;
 
 int match_register_rtp(struct match_reg *r, struct match_functions *m_funcs) {
 
@@ -44,8 +44,10 @@ int match_register_rtp(struct match_reg *r, struct match_functions *m_funcs) {
 	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
 	ptype_uint16 = (*mf->ptype_alloc) ("uint16", NULL);
 	ptype_uint32 = (*mf->ptype_alloc) ("uint32", NULL);
+	ptype_uint32_hex = (*mf->ptype_alloc) ("uint32", NULL);
+	ptype_uint32_hex->print_mode = PTYPE_UINT32_PRINT_HEX;
 
-	if (!ptype_uint8 || !ptype_uint16 || !ptype_uint32) {
+	if (!ptype_uint8 || !ptype_uint16 || !ptype_uint32 || !ptype_uint32_hex) {
 		match_unregister_rtp(r);
 		return POM_ERR;
 	}
@@ -109,6 +111,7 @@ int match_unregister_rtp(struct match_reg *r) {
 	(*mf->ptype_cleanup) (ptype_uint8);
 	(*mf->ptype_cleanup) (ptype_uint16);
 	(*mf->ptype_cleanup) (ptype_uint32);
+	(*mf->ptype_cleanup) (ptype_uint32_hex);
 
 	return POM_OK;
 }

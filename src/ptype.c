@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -119,6 +119,8 @@ struct ptype* ptype_alloc_from(struct ptype *pt) {
 	if (pt->unit)
 		strncpy(ret->unit, pt->unit, PTYPE_MAX_UNIT);
 
+	ret->print_mode = pt->print_mode;
+
 	return ret;
 
 }
@@ -203,6 +205,15 @@ int ptype_compare_val(int op, struct ptype *a, struct ptype *b) {
 
 }
 
+int ptype_serialize(struct ptype *pt, char *val, size_t size) {
+
+	return ptypes[pt->type]->serialize(pt, val, size);
+}
+
+int ptype_unserialize(struct ptype *pt, char *val) {
+
+	return ptypes[pt->type]->unserialize(pt, val);
+}
 
 int ptype_cleanup_module(struct ptype* p) {
 
