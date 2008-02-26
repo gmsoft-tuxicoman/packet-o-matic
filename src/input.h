@@ -51,6 +51,7 @@ struct input_mode {
 	char *descr; ///< Description of what it's used for
 	struct input_param *params; ///< Pointer to parameters associated with this mode
 	struct input_mode *next; ///< Used for linking
+
 };
 
 /// This structure saves infos about an input instances
@@ -59,6 +60,8 @@ struct input {
 	void *input_priv; ///< Private stuff, place to store a struct used by the input internaly
 	struct input_mode *mode; ///< Current input mode
 	int running; ///< Set to 1 if the input is running or 0 if not
+	struct ptype *pkt_cnt; ///< Read packet count
+	struct ptype *byte_cnt; ///< Read byte count
 };
 
 

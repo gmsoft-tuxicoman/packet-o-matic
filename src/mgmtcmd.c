@@ -1037,6 +1037,11 @@ int mgmtcmd_show_input(struct mgmt_connection *c, int argc, char *argv[]) {
 	mgmtsrv_send(c, ", mode ");
 	mgmtsrv_send(c, i->mode->name);
 
+	char pkts[16], bytes[16];
+	ptype_print_val(i->pkt_cnt, pkts, sizeof(pkts));
+	ptype_print_val(i->byte_cnt, bytes, sizeof(bytes));
+	mgmtsrv_send(c, " (%s %s, %s %s)", pkts, i->pkt_cnt->unit, bytes, i->byte_cnt->unit);
+
 	if (i->running)
 		mgmtsrv_send(c, " (running)\r\n");
 	else

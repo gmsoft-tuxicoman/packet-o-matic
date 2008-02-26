@@ -62,7 +62,7 @@ int ptype_parse_uint16(struct ptype *p, char *val) {
 
 
 	uint16_t *v = p->value;
-	if (sscanf(val, "0x%x", v) == 1)
+	if (sscanf(val, "0x%hx", v) == 1)
 		return POM_OK;
 	if (sscanf(val, "%hu", v) == 1)
 		return POM_OK;

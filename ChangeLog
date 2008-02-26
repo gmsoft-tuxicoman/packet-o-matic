@@ -1,3 +1,8 @@
+* 2008/02/26 Guy Martin <gmsoft@tuxicoman.be>
+Fix compilation warnings in ptype_uint64.c.
+Add stats to inputs.
+Moved target counters incrementation in target_process().
+
 * 2008/02/25 Guy Martin <gmsoft@tuxicoman.be>
 Added ptype uint64.
 Added print_mode to ptypes, serialize() and unserialize() funcs.

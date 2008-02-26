@@ -256,8 +256,6 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 				struct target *t = r->target;
 				while (t) {
 					if (t == cp->t) {
-						PTYPE_UINT64_INC(t->pkt_cnt, 1);
-						PTYPE_UINT64_INC(t->byte_cnt, f->len);
 						target_process(t, f);
 						t->matched_conntrack = 1; // Do no process this target again if it matched here
 					}
@@ -276,8 +274,6 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 		if (r->result) {
 			while (t) {
 				if (!t->matched_conntrack) {
-					PTYPE_UINT64_INC(t->pkt_cnt, 1);
-					PTYPE_UINT64_INC(t->byte_cnt, f->len);
 					target_process(t, f);
 				}
 				t = t->next;

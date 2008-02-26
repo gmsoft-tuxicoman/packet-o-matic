@@ -304,6 +304,9 @@ int target_open(struct target *t) {
 
 int target_process(struct target *t, struct frame *f) {
 
+	PTYPE_UINT64_INC(t->pkt_cnt, 1);
+	PTYPE_UINT64_INC(t->byte_cnt, f->len);
+
 	if (t->started && targets[t->type]->process)
 		if ((*targets[t->type]->process) (t, f)  == POM_ERR) {
 			pom_log(POM_LOG_ERR, "Target %s returned an error. Stopping it\r\n", target_get_name(t->type));

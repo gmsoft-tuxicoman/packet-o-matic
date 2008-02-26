@@ -24,6 +24,7 @@
 #include "match.h"
 #include "timers.h"
 #include "ptype.h"
+#include "ptype_uint64.h"
 
 struct input_reg *inputs[MAX_INPUT]; ///< Global variable which contains all the input registered in a table.
 static struct input_functions i_funcs; ///< Variable to hold the function pointers passed to the input.
@@ -218,6 +219,12 @@ struct input *input_alloc(int input_type) {
 			free(i);
 			return NULL;
 		}
+	
+	i->pkt_cnt = ptype_alloc("uint64", "packets");
+	i->pkt_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
+	i->byte_cnt = ptype_alloc("uint64", "bytes");
+	i->byte_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
+
 	// assign default mode
 	i->mode = inputs[input_type]->modes;
 	
@@ -257,6 +264,11 @@ int input_read(struct input *i, struct frame *f) {
 		input_close(i);
 		return POM_ERR;
 	}
+
+	if (f->len > 0) { // frames with 0 length must be ignored
+		PTYPE_UINT64_INC(i->pkt_cnt, 1);
+		PTYPE_UINT64_INC(i->byte_cnt, f->len);
+	}
 	return res;
 }
 
@@ -291,7 +303,8 @@ int input_cleanup(struct input *i) {
 	if (inputs[i->type] && inputs[i->type]->cleanup)
 		(*inputs[i->type]->cleanup) (i);
 
-
+	ptype_cleanup_module(i->pkt_cnt);
+	ptype_cleanup_module(i->byte_cnt);
 	free (i);
 	
 	return POM_ERR;

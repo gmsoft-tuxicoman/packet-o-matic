@@ -60,12 +60,14 @@ int ptype_cleanup_uint64(struct ptype *p) {
 
 int ptype_parse_uint64(struct ptype *p, char *val) {
 
+	unsigned long long value;
+	if (sscanf(val, "0x%llx", &value) == 1)
+		return POM_OK;
+	if (sscanf(val, "%llu", &value) == 1)
+		return POM_OK;
 
 	uint64_t *v = p->value;
-	if (sscanf(val, "0x%llx", v) == 1)
-		return POM_OK;
-	if (sscanf(val, "%llu", v) == 1)
-		return POM_OK;
+	*v = (uint64_t)value;
 
 	return POM_ERR;
 
@@ -74,12 +76,12 @@ int ptype_parse_uint64(struct ptype *p, char *val) {
 int ptype_print_uint64(struct ptype *p, char *val, size_t size) {
 
 	uint64_t *v = p->value;
+	unsigned long long value = *v;
 
 	switch (p->print_mode) {
 		case PTYPE_UINT64_PRINT_HEX:
 			return snprintf(val, size, "0x%llX", *v);
-		case PTYPE_UINT64_PRINT_HUMAN: {
-			uint64_t value = *v;
+		case PTYPE_UINT64_PRINT_HUMAN:
 			if (value > 99999) {
 				value = (value + 500) / 1000;
 				if (value > 9999) {
@@ -98,10 +100,9 @@ int ptype_print_uint64(struct ptype *p, char *val, size_t size) {
 			} else
 				snprintf(val, size, "%llu", value);
 			break;
-		}
 		case PTYPE_UINT64_PRINT_DECIMAL:
 		default :
-			return snprintf(val, size, "%llu", *v);
+			return snprintf(val, size, "%llu", value);
 	}
 
 	return 0;
@@ -133,6 +134,6 @@ int ptype_compare_uint64(int op, void *val_a, void* val_b) {
 int ptype_serialize_uint64(struct ptype *p, char *val, size_t size) {
 
 	uint64_t *v = p->value;
-	return snprintf(val, size, "%llu", *v);
+	return snprintf(val, size, "%llu", (unsigned long long)*v);
 }
 
