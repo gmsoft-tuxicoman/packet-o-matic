@@ -1,3 +1,14 @@
+* 2008/03/05 Guy Martin <gmsoft@tuxicoman.be>
+Updated copyright text when loging into CLI.
+Fixed typo in conf.c and target.c that pervented a debug message to be displayed.
+Added CE_DIR_UNK to provide a safe value if direction is unknown.
+Fixed last compilation warning for ptype uint64.
+Prevent target counters from increasing when target is stopped.
+Modified do_rules to avoid reading freed target_priv.
+Added target_pop.
+Various minor fix in target http for filename handling.
+Fixed small memory leak in main.c.
+
 * 2008/02/26 Guy Martin <gmsoft@tuxicoman.be>
 Fix compilation warnings in ptype_uint64.c.
 Add stats to inputs.

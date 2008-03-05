@@ -408,14 +408,17 @@ int target_process_http(struct target *t, struct frame *f) {
 			char filename[NAME_MAX];
 			strcpy(filename, PTYPE_STRING_GETVAL(priv->path));
 
+			if (*(filename + strlen(filename) - 1) != '/')
+				strcat(filename, "/");
+
 			char outstr[20];
-			bzero(outstr, 20);
+			bzero(outstr, sizeof(outstr));
 			// YYYYMMDD-HHMMSS-UUUUUU
 			char *format = "%Y%m%d-%H%M%S-";
 			struct tm *tmp;
 			tmp = localtime((time_t*)&f->tv.tv_sec);
 
-			strftime(outstr, 20, format, tmp);
+			strftime(outstr, sizeof(outstr), format, tmp);
 
 			strcat(filename, outstr);
 			sprintf(outstr, "%u", (unsigned int)f->tv.tv_usec);
@@ -426,7 +429,7 @@ int target_process_http(struct target *t, struct frame *f) {
 
 			if (cp->fd == -1) {
 				char errbuff[256];
-				strerror_r(errno, errbuff, 256);
+				strerror_r(errno, errbuff, sizeof(errbuff));
 				(*tf->pom_log) (POM_LOG_ERR "Unable to open file %s for writing : %s\r\n", filename, errbuff);
 				cp->state = HTTP_NO_MATCH;
 				return POM_ERR;

@@ -80,7 +80,7 @@ int ptype_print_uint64(struct ptype *p, char *val, size_t size) {
 
 	switch (p->print_mode) {
 		case PTYPE_UINT64_PRINT_HEX:
-			return snprintf(val, size, "0x%llX", *v);
+			return snprintf(val, size, "0x%llX", value);
 		case PTYPE_UINT64_PRINT_HUMAN:
 			if (value > 99999) {
 				value = (value + 500) / 1000;

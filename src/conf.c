@@ -509,7 +509,7 @@ int config_parse(struct conf *c, char * filename) {
 				if (value) {
 					char buffer[2048];
 					if (core_set_param_value(name, value, buffer, sizeof(buffer) - 1) == POM_ERR) {
-						pom_log(POM_LOG_WARN, "Unable to set parameter %s to %s : %s\r\n", name, value, buffer);
+						pom_log(POM_LOG_WARN "Unable to set parameter %s to %s : %s\r\n", name, value, buffer);
 					}
 
 					xmlFree(value);

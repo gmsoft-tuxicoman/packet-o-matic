@@ -59,6 +59,9 @@
 #define CT_DIR_BOTH 3
 
 
+/// Unknown direction flag in conntrack_entry. Provided to avoid matching known ones
+#define CE_DIR_UNK -1
+
 /// Forward direction flag in conntrack_entry
 #define CE_DIR_FWD 0
 

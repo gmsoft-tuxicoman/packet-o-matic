@@ -251,6 +251,8 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 	if (conntrack_get_entry(f) == POM_OK && (old_ce == NULL || f->ce == old_ce)) { // We got a conntrack_entry, process the corresponding targets
 		struct conntrack_target_priv *cp = f->ce->target_privs;
 		while (cp) {
+			// need buffer as the present cp can be deleted by target_process if an error occurs
+			struct conntrack_target_priv *cp_next = cp->next;
 			r = rules;
 			while (r) {
 				struct target *t = r->target;
@@ -263,7 +265,7 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 				}
 				r = r->next;
 			}
-			cp = cp->next;
+			cp = cp_next;
 		}
 	}
 

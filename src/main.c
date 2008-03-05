@@ -639,6 +639,7 @@ err:
 	ringbuffer_deinit(rbuf);
 	free(rbuf);
 	ptype_cleanup_module(param_autosave_on_exit);
+	ptype_cleanup_module(param_quit_on_input_error);
 	core_param_unregister_all();
 
 	ptype_unregister_all();
