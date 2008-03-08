@@ -24,7 +24,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
-
+#include <ctype.h>
 #include "target_pop.h"
 
 #include "ptype_bool.h"
@@ -249,6 +249,7 @@ int pop_process_line(struct target_conntrack_priv_pop *cp, char *line, int size,
 				}
 				cp->lastcmd = pop_cmd_other;
 				break;
+
 			case pop_cmd_retr_maybe:
 				if (!strncmp(".\r\n", line, strlen(".\r\n")) || reply != pop_reply_unk) {
 					cp->lastcmd = pop_cmd_other;
@@ -261,7 +262,7 @@ int pop_process_line(struct target_conntrack_priv_pop *cp, char *line, int size,
 						return POM_ERR;
 
 			case pop_cmd_retr:
-				if (!strcmp(".\r\n", line)) {
+				if (!strncmp(".\r\n", line, strlen(".\r\n"))) {
 					cp->lastcmd = pop_cmd_other;
 					pop_file_close(cp);
 					break;
@@ -286,23 +287,44 @@ int pop_process_line(struct target_conntrack_priv_pop *cp, char *line, int size,
 					} while (count < size);
 					
 				}
-					
-
-
-
 				break;
+				
 			case pop_cmd_multiline:
 				if (!strcmp(".\r\n", line))
 					cp->lastcmd = pop_cmd_other;
+				break;
+
 			default:
 				// Now let's catch messages when we don't have client side
 				if (reply == pop_reply_unk) {
-					unsigned long long uint;
+					unsigned long long lluint;
+					unsigned int uint, uint2;
 					char useless_buff[64];
-					if (sscanf(line, "%llu %63s", &uint, useless_buff) == 2) {
+					memset(useless_buff, 0, sizeof(useless_buff));
+					if (!memcmp(line, "\r\n", strlen("\r\n"))) // ignore empty line
+						break;
+
+					if (sscanf(line, "%63s", useless_buff) == 1) {
+						int i, is_all_up = 0;
+						for (i = 0; i < strlen(useless_buff); i++)
+							if (!isupper(useless_buff[i]) && useless_buff[i] != '-') {
+								is_all_up++;
+								break;
+							}
+						if (!is_all_up) {
+							// looks like CAPA command or alike
+							cp->lastcmd = pop_cmd_multiline;
+							break;
+						}
+						
+					}
+					if (sscanf(line, "%u %u", &uint, &uint2) == 2) {
+						// looks like a TOP command
+						cp->lastcmd = pop_cmd_multiline;
+					} else if (sscanf(line, "%llu %63s", &lluint, useless_buff) == 2) {
 						// looks like a UIDL or STAT command
 						cp->lastcmd = pop_cmd_multiline;
-					} else { // most probably a message
+					} else { // most probably a message :)
 						cp->lastcmd = pop_cmd_retr_maybe;
 						pop_process_line(cp, line, size, f);
 					}
@@ -431,6 +453,12 @@ int pop_file_close(struct target_conntrack_priv_pop *cp) {
 	strncpy(old_name, cp->parsed_path, NAME_MAX);
 	strncat(old_name, "tmp/", NAME_MAX - strlen(old_name));
 	strncat(old_name, cp->filename, NAME_MAX - strlen(old_name));
+	
+	char cur_dir[NAME_MAX + 1];
+	strcpy(cur_dir, cp->parsed_path);
+	strncat(cur_dir, "cur/", NAME_MAX - strlen(cur_dir));
+	// Ensure the cur directory exists
+	mkdir(cur_dir, 00777);
 
 
 	strncpy(new_name, cp->parsed_path, NAME_MAX);
@@ -454,6 +482,7 @@ int pop_file_close(struct target_conntrack_priv_pop *cp) {
 		return POM_ERR;
 	}
 
+	(*tf->pom_log) (POM_LOG_TSHOOT "%s closed and moved to directory new\r\n", old_name);
 	return POM_OK;
 
 }

@@ -1,4 +1,9 @@
 
+Packet-o-matic : the modular packet network processor.
+Author : Guy Martin <gmsoft@tuxicoman.be>
+Homepage : http://www.packet-o-matic.org 
+
+
 What it is :
 ------------
 Packet-o-matic is a modular network sniffer and packet processor. The modules consists of input, match, conntrack, helper and target.
@@ -120,6 +125,7 @@ The target modules process the packet and most of the time, saves it or resend i
 - inject : reinject the matched packets on an specific interface
 - irc : dump IRC connection into separate files with irssi-like log format
 - pcap : save the packets in a pcap file
+- pop : save emails and logins from POP connections into maildir
 - tap : open a tap interface and send the packets trough it
 - tcpkill : works only with tcp packets. Send a TCP RST packet to any matched tcp packet
 - rtp : save RTP payload into .au files. Supported payload types are G.711U, G711A, G.721 and G.722
