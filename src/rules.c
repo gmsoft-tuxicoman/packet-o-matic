@@ -328,7 +328,8 @@ int node_destroy(struct rule_node *node, int sub) {
 		done_stack = realloc(done_stack, sizeof(struct rule_node*) * (done + 1));
 		done_stack[done] = node;
 		done++;
-	}
+	} else if (node->op == 0)
+		match_refcount_dec(node->layer);
 	
 
 	if (node->a)

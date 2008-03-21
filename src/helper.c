@@ -187,8 +187,7 @@ int helper_unregister(int helper_type) {
 			pom_log(POM_LOG_WARN "Error while closing library of target %s\r\n", match_get_name(helper_type));
 
 		pom_log(POM_LOG_DEBUG "Helper %s unregistered\r\n", match_get_name(helper_type));
-	} else
-		return POM_ERR;
+	} 
 
 	return POM_OK;
 
@@ -197,13 +196,14 @@ int helper_unregister(int helper_type) {
 int helper_unregister_all() {
 
 	int i;
+	int result;
 
 	for (i = 0; i < MAX_HELPER; i++) {
-		if (helpers[i])
-			helper_unregister(i);
+		if (helpers[i] && helper_unregister(i) == POM_ERR)
+			result = POM_ERR;
 	}
 
-	return POM_OK;
+	return result;
 
 }
 

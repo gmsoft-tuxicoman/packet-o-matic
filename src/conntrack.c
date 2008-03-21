@@ -201,6 +201,7 @@ int conntrack_create_entry(struct frame *f) {
 			cp->priv = priv;
 			cp->next = ce->match_privs;
 			ce->match_privs = cp;
+			conntracks[l->type]->refcount++;
 		}
 		l = l->next;
 	}
@@ -504,7 +505,7 @@ int conntrack_cleanup_connection(struct conntrack_entry *ce) {
 	while (mp) {
 		if (conntracks[mp->priv_type] && conntracks[mp->priv_type]->cleanup_match_priv)
 			(*conntracks[mp->priv_type]->cleanup_match_priv) (mp->priv);
-
+		conntracks[mp->priv_type]->refcount--;
 		mptmp = mp;
 		mp = mp->next;
 		free(mptmp);
@@ -664,31 +665,48 @@ int conntrack_cleanup() {
 
 }
 
-int conntrack_unregister_all() {
 
-	int i;
+int conntrack_unregister(int conntrack_type) {
 
-	for (i = 0; i < MAX_CONNTRACK; i++) {
-		if (conntracks[i]) {
-			if (conntracks[i]->unregister)
-				(*conntracks[i]->unregister) (conntracks[i]);
-			while (conntracks[i]->params) {
-				free(conntracks[i]->params->name);
-				free(conntracks[i]->params->defval);
-				free(conntracks[i]->params->descr);
-				struct conntrack_param *next = conntracks[i]->params->next;
-				free(conntracks[i]->params);
-				conntracks[i]->params = next;
-			}
-			if (dlclose(conntracks[i]->dl_handle))
-				pom_log(POM_LOG_WARN "Error while closing library of conntrack %s\r\n", match_get_name(i));
-			free(conntracks[i]);
-			conntracks[i] = NULL;
+	if (conntracks[conntrack_type]) {
+		if (conntracks[conntrack_type]->refcount) {	
+			pom_log(POM_LOG_WARN "Warning, reference count not 0 for conntrack %s\r\n", match_get_name(conntrack_type));
+			return POM_ERR;
 		}
-
+		if (conntracks[conntrack_type]->unregister)
+			(*conntracks[conntrack_type]->unregister) (conntracks[conntrack_type]);
+		while (conntracks[conntrack_type]->params) {
+			free(conntracks[conntrack_type]->params->name);
+			free(conntracks[conntrack_type]->params->defval);
+			free(conntracks[conntrack_type]->params->descr);
+			struct conntrack_param *next = conntracks[conntrack_type]->params->next;
+			free(conntracks[conntrack_type]->params);
+			conntracks[conntrack_type]->params = next;
+		}
+		if (dlclose(conntracks[conntrack_type]->dl_handle))
+			pom_log(POM_LOG_WARN "Error while closing library of conntrack %s\r\n", match_get_name(conntrack_type));
+		free(conntracks[conntrack_type]);
+		conntracks[conntrack_type] = NULL;
+		pom_log(POM_LOG_DEBUG "Conntrack %s unregistered\r\n", match_get_name(conntrack_type));
 	}
 
 	return POM_OK;
+
+}
+
+
+int conntrack_unregister_all() {
+
+	int i;
+	int result = POM_OK;
+
+	for (i = 0; i < MAX_CONNTRACK; i++) {
+		if (conntracks[i])
+			if (conntrack_unregister(i) == POM_ERR)
+				result = POM_ERR;
+	}
+
+	return result;
 
 }
 

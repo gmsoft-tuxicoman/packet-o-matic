@@ -26,7 +26,6 @@
 #include "main.h"
 #include "ptype_bool.h"
 
-struct match_reg *matchs[MAX_MATCH];
 static struct match_functions *m_funcs;
 
 int match_undefined_id;
@@ -145,15 +144,22 @@ struct match_field *match_alloc_field(int match_type, char *field_type) {
 		free(ret);
 		return NULL;
 	}
-
+	matchs[match_type]->refcount++;
+	ret->type = match_type;
 	ret->id = i;
 	return ret;
 }
 
 int match_cleanup_field(struct match_field *p) {
 
+	if (!matchs[p->type])
+		pom_log(POM_LOG_ERR "Error, invalid match type %u for field\r\n", p->type);
+	else
+		matchs[p->type]->refcount--;
+
 	ptype_cleanup_module(p->value);
 	free(p);
+	
 
 	return POM_OK;
 }
@@ -197,8 +203,8 @@ struct match_field_reg *match_get_field(int match_type, int field_id) {
 int match_get_type(const char *match_name) {
 
 	int i;
-	for (i = 0; i < MAX_MATCH && matchs[i]; i++) {
-		if (strcmp(matchs[i]->name, match_name) == 0)
+	for (i = 0; i < MAX_MATCH; i++) {
+		if (matchs[i] && strcmp(matchs[i]->name, match_name) == 0)
 			return i;
 	}
 
@@ -231,6 +237,31 @@ int match_eval(struct match_field *mf, struct layer *l) {
 	
 }
 
+int match_refcount_inc(int match_type) {
+
+	if (!matchs[match_type])
+		return POM_ERR;
+	matchs[match_type]->refcount++;
+
+	return POM_OK;
+
+}
+
+int match_refcount_dec(int match_type) {
+
+	if (!matchs[match_type])
+		return POM_ERR;
+	
+	if (matchs[match_type]->refcount == 0) {
+		pom_log(POM_LOG_WARN "Warning, trying to decrease match %s reference count below 0\r\n", matchs[match_type]->name);
+		return POM_ERR;
+	}
+
+	matchs[match_type]->refcount--;
+
+	return POM_OK;
+
+}
 
 int match_cleanup() {
 
@@ -250,6 +281,21 @@ int match_unregister(unsigned int match_type) {
 
 	if (!r)
 		return POM_ERR;
+
+	if (conntrack_unregister(match_type) == POM_ERR) {
+		pom_log(POM_LOG_WARN "Warning, cannot unregister match %s since conntack is still registered\r\n", r->name);
+		return POM_ERR;
+	}
+
+	if (helper_unregister(match_type) == POM_ERR) {
+		pom_log(POM_LOG_WARN "Warning, cannot unregister match %s since helper is still registered\r\n", r->name);
+		return POM_ERR;
+	}
+
+	if (r->refcount) {
+		pom_log(POM_LOG_WARN "Warning, reference count not 0 for match %s\r\n", r->name);
+		return POM_ERR;
+	}
 
 	int i;
 	for (i = 0; i < MAX_LAYER_FIELDS && r->fields[i]; i++) {
@@ -278,9 +324,12 @@ int match_unregister(unsigned int match_type) {
 int match_unregister_all() {
 
 	int i = 0;
+	int result = POM_OK;
 
-	for (; i < MAX_MATCH && matchs[i]; i++)
-		match_unregister(i);
+	for (; i < MAX_MATCH; i++)
+		if (matchs[i])
+			if (match_unregister(i) == POM_ERR)
+				result = POM_ERR;
 
 	return POM_OK;
 
@@ -291,7 +340,9 @@ void match_print_help() {
 	int i;
 
 
-	for (i = 0; matchs[i]; i++) {
+	for (i = 0; i < MAX_MATCH; i++) {
+		if (!matchs[i])
+			continue;
 		printf("* MATCH %s *\n", matchs[i]->name);
 		
 		if (!matchs[i]->fields[0])

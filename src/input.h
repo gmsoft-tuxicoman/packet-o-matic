@@ -161,8 +161,11 @@ int input_set_mode(struct input *i, char *mode_name);
 // Register a parameter for a specific input mode
 int input_register_param(struct input_mode *mode, char *name, char *defval, struct ptype *value, char *descr);
 
-/// Give the input name from it's type
+/// Give the input name from its type
 char *input_get_name(int input_type);
+
+// Give the type of the input from its name
+int input_get_type(char *input_name);
 
 /// Create a new input and returns its structure.
 struct input *input_alloc(int input_type);

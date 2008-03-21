@@ -104,6 +104,7 @@ struct conntrack_reg {
 	int type;
 	void *dl_handle;
 	unsigned int flags;
+	unsigned int refcount;
 	uint32_t (*get_hash) (struct frame *f, unsigned int start, unsigned int flags);
 	int (*doublecheck) (struct frame *f, unsigned int start, void *priv, unsigned int flags);
 	void* (*alloc_match_priv) (struct frame *f, unsigned int start, struct conntrack_entry *ce);
@@ -181,6 +182,7 @@ int conntrack_do_timer(void * ce);
 struct timer *conntrack_timer_alloc(struct conntrack_entry *ce, struct input *i);
 int conntrack_close_connections(struct rule_list *r);
 int conntrack_cleanup();
+int conntrack_unregister(int conntrack_type);
 int conntrack_unregister_all();
 
 

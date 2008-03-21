@@ -26,6 +26,7 @@
 #include "match.h"
 #include "ptype.h"
 
+#define MAX_TARGET 16
 
 struct target_param_reg {
 
@@ -54,9 +55,10 @@ struct target_mode {
 };
 
 struct target_reg {
-	char *target_name;
+	char *name;
 	int type;
 	void *dl_handle;
+	unsigned int refcount;
 	struct target_mode *modes;
 	int (*init) (struct target*);
 	int (*open) (struct target*);
@@ -104,6 +106,8 @@ struct target_functions {
 
 };
 
+struct target_reg *targets[MAX_TARGET];
+
 int target_init();
 int target_register(const char *target_name);
 struct target_mode *target_register_mode(int target_type, const char *name, const char *descr);
@@ -113,6 +117,7 @@ struct target *target_alloc(int target_type);
 int target_set_mode(struct target *t, const char *mode_name);
 struct ptype *target_get_param_value(struct target *t, const char *param);
 char *target_get_name(int target_type);
+int target_get_type(char* target_name);
 int target_open(struct target *t);
 int target_process(struct target *t, struct frame *f);
 int target_close(struct target *t);

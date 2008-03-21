@@ -21,15 +21,11 @@
 #include "common.h"
 #include "ptype.h"
 
-#define MAX_P 256
-
-struct ptype_reg *ptypes[MAX_P];
-
 int ptype_init() {
 
 	int i;
 
-	for (i = 0; i < MAX_P; i ++) {
+	for (i = 0; i < MAX_PTYPE; i ++) {
 		ptypes[i] = NULL;
 	}
 
@@ -43,7 +39,7 @@ int ptype_register(const char *ptype_name) {
 	int i;
 
 	
-	for (i = 0; i < MAX_P; i++) {
+	for (i = 0; i < MAX_PTYPE; i++) {
 		if (ptypes[i] != NULL) {
 			if (strcmp(ptypes[i]->name, ptype_name) == 0) {
 				return i;
@@ -102,6 +98,8 @@ struct ptype* ptype_alloc(const char* type, char* unit) {
 	if (unit)
 		strncpy(ret->unit, unit, PTYPE_MAX_UNIT);
 
+	ptypes[idx]->refcount++;
+
 	return ret;
 }
 
@@ -120,6 +118,8 @@ struct ptype* ptype_alloc_from(struct ptype *pt) {
 		strncpy(ret->unit, pt->unit, PTYPE_MAX_UNIT);
 
 	ret->print_mode = pt->print_mode;
+
+	ptypes[pt->type]->refcount++;
 
 	return ret;
 
@@ -222,21 +222,49 @@ int ptype_cleanup_module(struct ptype* p) {
 
 	if (ptypes[p->type] && ptypes[p->type]->cleanup)
 		ptypes[p->type]->cleanup(p);
+	ptypes[p->type]->refcount--;
 	free(p);
 
 	return POM_OK;
 }
 
-int ptype_unregister_all() {
-
+int ptype_get_type(char* ptype_name) {
+	
 	int i;
-	for (i = 0; i < MAX_P && ptypes[i]; i++) {
-		dlclose(ptypes[i]->dl_handle);
-		free(ptypes[i]->name);
-		free(ptypes[i]);
-		ptypes[i] = NULL;
+	for (i = 0; i < MAX_PTYPE; i++) {
+		if (ptypes[i] && strcmp(ptypes[i]->name, ptype_name) == 0)
+			return i;
+	}
+
+	return POM_ERR;
+}
+
+int ptype_unregister(int ptype_type) {
+
+	if (ptypes[ptype_type]) {
+		if (ptypes[ptype_type]->refcount) {
+			pom_log(POM_LOG_WARN "Warning, reference count not 0 for ptype %s\r\n", ptypes[ptype_type]->name);
+			return POM_ERR;
+		}
+		dlclose(ptypes[ptype_type]->dl_handle);
+		free(ptypes[ptype_type]->name);
+		free(ptypes[ptype_type]);
+		ptypes[ptype_type] = NULL;
 	}
 
 	return POM_OK;
+
+}
+
+int ptype_unregister_all() {
+
+	int i;
+	int result = POM_OK;
+	for (i = 0; i < MAX_PTYPE; i++) {
+		if (ptypes[i] && ptype_unregister(i) == POM_ERR);
+			result = POM_ERR;
+	}
+
+	return result;
 
 }

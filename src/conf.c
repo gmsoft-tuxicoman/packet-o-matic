@@ -241,6 +241,7 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 			bzero(n, sizeof(struct rule_node));
 			pom_log(POM_LOG_TSHOOT "Creating new rule_node\r\n");
 			n->layer = mt;
+			match_refcount_inc(mt);
 
 			char *field = (char *) xmlGetProp(cur, (const xmlChar*) "field");
 			if (field) {

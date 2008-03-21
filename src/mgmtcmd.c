@@ -32,7 +32,7 @@
 
 #include "ptype_uint64.h"
 
-#define MGMT_COMMANDS_NUM 38
+#define MGMT_COMMANDS_NUM 43
 
 struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
@@ -286,7 +286,41 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.usage = "set conntrack parameter <conntrack> <parameter> <value>",
 		.callback_func = mgmtcmd_set_conntrack_param,
 	},
+
+	{
+		.words = { "unload", "match", NULL },
+		.help = "Unload a match from the system",
+		.usage = "unload match <match>",
+		.callback_func = mgmtcmd_unload_match,
+	},
+
+	{
+		.words = { "unload", "conntrack", NULL },
+		.help = "Unload a conntrack from the system",
+		.usage = "unload conntrack <conntrack>",
+		.callback_func = mgmtcmd_unload_conntrack,
+	},
 		
+	{
+		.words = { "unload", "target", NULL },
+		.help = "Unload a target from the system",
+		.usage = "unload target <target>",
+		.callback_func = mgmtcmd_unload_target,
+	},
+
+	{
+		.words = { "unload", "ptype", NULL },
+		.help = "Unload a ptype from the system",
+		.usage = "unload ptype <ptype>",
+		.callback_func = mgmtcmd_unload_ptype,
+	},
+
+	{
+		.words = { "unload", "input", NULL },
+		.help = "Unload an input from the system",
+		.usage = "unload input <input>",
+		.callback_func = mgmtcmd_unload_input,
+	},
 };
 
 int mgmtcmd_register_all() {
@@ -482,10 +516,11 @@ int mgmtcmd_unload_helper(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	int id = match_get_type(argv[0]);
 
-	if (!helpers[id]) {
+	if (id == POM_ERR || !helpers[id]) {
 		mgmtsrv_send(c, "Helper not loaded\r\n");
 		return POM_OK;
 	}
+
 	reader_process_lock();
 	if (helper_unregister(id) != POM_ERR) {
 		mgmtsrv_send(c, "Helper unloaded successfully\r\n");
@@ -750,6 +785,7 @@ struct rule_node *mgmtcmd_set_rule_parse_block(struct mgmt_connection *c, char *
 		bzero(rn, sizeof(struct rule_node));
 
 		rn->layer = layer;
+		match_refcount_inc(layer);
 		return rn;
 	}
 	
@@ -1888,3 +1924,157 @@ int mgmtcmd_set_conntrack_param(struct mgmt_connection *c, int argc, char *argv[
 
 }
 
+int mgmtcmd_unload_match(struct mgmt_connection *c, int argc, char *argv[]) {
+
+
+	if (argc != 1)
+		return MGMT_USAGE;
+
+	int id = match_get_type(argv[0]);
+
+	if (id == POM_ERR) {
+		mgmtsrv_send(c, "Match not loaded\r\n");
+		return POM_OK;
+	}
+
+	if (conntracks[id] && conntracks[id]->refcount) {
+		mgmtsrv_send(c, "Conntrack %s is still in use. Cannot unload match\r\n", argv[0]);
+		return POM_OK;
+	}
+
+	if (matchs[id]->refcount) {
+		mgmtsrv_send(c, "Match %s is still in use. Cannot unload it\r\n", argv[0]);
+		return POM_OK;
+	}
+
+	reader_process_lock();
+	if (match_unregister(id) != POM_ERR) {
+		mgmtsrv_send(c, "Match unloaded successfully\r\n");
+	} else {
+		mgmtsrv_send(c, "Error while unloading match\r\n");
+	}
+	reader_process_unlock();
+	
+	return POM_OK;
+
+}
+
+int mgmtcmd_unload_conntrack(struct mgmt_connection *c, int argc, char *argv[]) {
+
+
+	if (argc != 1)
+		return MGMT_USAGE;
+
+	int id = match_get_type(argv[0]);
+
+	if (id == POM_ERR || !conntracks[id]) {
+		mgmtsrv_send(c, "Conntrack not loaded\r\n");
+		return POM_OK;
+	}
+
+	if (conntracks[id]->refcount) {
+		mgmtsrv_send(c, "Conntrack %s is still in use. Cannot unload it\r\n", argv[0]);
+		return POM_OK;
+	}
+
+	reader_process_lock();
+	if (conntrack_unregister(id) != POM_ERR) {
+		mgmtsrv_send(c, "Conntrack unloaded successfully\r\n");
+	} else {
+		mgmtsrv_send(c, "Error while unloading conntrack\r\n");
+	}
+	reader_process_unlock();
+	
+	return POM_OK;
+
+}
+
+int mgmtcmd_unload_target(struct mgmt_connection *c, int argc, char *argv[]) {
+
+
+	if (argc != 1)
+		return MGMT_USAGE;
+
+	int id = target_get_type(argv[0]);
+
+	if (id == POM_ERR) {
+		mgmtsrv_send(c, "Target %s not loaded\r\n", argv[0]);
+		return POM_OK;
+	}
+
+	if (targets[id]->refcount) {
+		mgmtsrv_send(c, "Target %s is still in use. Cannot unload it\r\n", argv[0]);
+		return POM_OK;
+	}
+
+	reader_process_lock();
+	if (target_unregister(id) != POM_ERR) {
+		mgmtsrv_send(c, "Target unloaded successfully\r\n");
+	} else {
+		mgmtsrv_send(c, "Error while unloading target\r\n");
+	}
+	reader_process_unlock();
+	
+	return POM_OK;
+
+}
+
+int mgmtcmd_unload_ptype(struct mgmt_connection *c, int argc, char *argv[]) {
+
+
+	if (argc != 1)
+		return MGMT_USAGE;
+
+	int id = ptype_get_type(argv[0]);
+
+	if (id == POM_ERR) {
+		mgmtsrv_send(c, "Ptype %s not loaded\r\n", argv[0]);
+		return POM_OK;
+	}
+
+	if (ptypes[id]->refcount) {
+		mgmtsrv_send(c, "Ptype %s is still in use. Cannot unload it\r\n", argv[0]);
+		return POM_OK;
+	}
+
+	reader_process_lock();
+	if (ptype_unregister(id) != POM_ERR) {
+		mgmtsrv_send(c, "Ptype unloaded successfully\r\n");
+	} else {
+		mgmtsrv_send(c, "Error while unloading ptype\r\n");
+	}
+	reader_process_unlock();
+	
+	return POM_OK;
+
+}
+
+int mgmtcmd_unload_input(struct mgmt_connection *c, int argc, char *argv[]) {
+
+
+	if (argc != 1)
+		return MGMT_USAGE;
+
+	int id = input_get_type(argv[0]);
+
+	if (id == POM_ERR) {
+		mgmtsrv_send(c, "Input %s not loaded\r\n", argv[0]);
+		return POM_OK;
+	}
+
+	if (rbuf->i && rbuf->i->type == id) {
+		mgmtsrv_send(c, "Input %s is still in use. Cannot unload it\r\n", argv[0]);
+		return POM_OK;
+	}
+
+	reader_process_lock();
+	if (input_unregister(id) != POM_ERR) {
+		mgmtsrv_send(c, "Input unloaded successfully\r\n");
+	} else {
+		mgmtsrv_send(c, "Error while unloading input\r\n");
+	}
+	reader_process_unlock();
+	
+	return POM_OK;
+
+}

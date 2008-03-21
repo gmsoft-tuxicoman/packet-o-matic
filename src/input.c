@@ -198,6 +198,20 @@ char *input_get_name(int input_type) {
 }
 
 /**
+ * Return the type of the input.
+ **/
+int input_get_type(char* input_name) {
+
+	int i;
+	for (i = 0; i < MAX_INPUT; i++) {
+		if (inputs[i] && strcmp(inputs[i]->name, input_name) == 0)
+			return i;
+	}
+	
+	return POM_ERR;
+}
+
+/**
  * Allocate and return a struct *input.
  * It calls the init function of the input module corresponding to the type of module given in input_type.
  * On failure, it returns NULL.
@@ -342,6 +356,7 @@ int input_unregister(int input_type) {
 	}
 	if (dlclose(inputs[input_type]->dl_handle))
 		pom_log(POM_LOG_WARN "Error while closing library of input %s\r\n", inputs[input_type]->name);
+	pom_log(POM_LOG_DEBUG "Input %s unregistered\r\n", inputs[input_type]->name);
 	free(inputs[input_type]->name);
 	free(inputs[input_type]);
 	inputs[input_type] = NULL;
@@ -355,11 +370,13 @@ int input_unregister(int input_type) {
  **/
 int input_unregister_all() {
 
-	int i = 0;
+	int i;
+	int result;
 
-	for (; i < MAX_INPUT && inputs[i]; i++) 
-		input_unregister(i);
-	return POM_OK;
+	for (i = 0; i < MAX_INPUT; i++) 
+		if (inputs[i] && input_unregister(i) == POM_ERR)
+			result = POM_ERR;
+	return result;
 
 }
 
@@ -379,7 +396,10 @@ void input_print_help() {
 	int i;
 
 
-	for (i = 0; inputs[i]; i++) {
+	for (i = 0; i < MAX_INPUT; i++) {
+		if (!inputs[i])
+			continue;
+
 		printf("* INPUT %s *\n", inputs[i]->name);
 
 		if (!inputs[i]->modes) {

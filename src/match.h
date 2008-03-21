@@ -43,6 +43,7 @@ struct match_reg {
 	unsigned int type; ///< type of the match
 	struct match_field_reg *fields[MAX_LAYER_FIELDS]; ///< possible fields for the match
 	void *dl_handle; ///< handle of the library
+	unsigned int refcount; //< reference count
 	int (*identify) (struct frame *f, struct layer*, unsigned int, unsigned int); ///< callled to identify the next layer of a packet
 	int (*unregister) (struct match_reg *r); ///< called when unregistering the match
 
@@ -50,8 +51,8 @@ struct match_reg {
 
 /// save info about a field
 struct match_field {
-	//struct match_field_reg* field; ///< Field against which we should compare
-	int id;
+	unsigned int type; ///< Type of the corresponding match
+	int id; ///< Id of this field for this match
 	struct ptype *value; ///< Value that we should compare with
 	int op; ///< Operator on the value
 
@@ -66,6 +67,8 @@ struct match_functions {
 	int (*ptype_cleanup) (struct ptype* p);
 };
 
+struct match_reg *matchs[MAX_MATCH];
+
 int match_init();
 int match_register(const char *match_name);
 int match_register_field(int match_type, char *name, struct ptype *type, char *descr);
@@ -76,6 +79,8 @@ char *match_get_name(int match_type);
 struct match_field_reg *match_get_field(int match_type, int field_id);
 int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigned int len);
 int match_eval(struct match_field *mf, struct layer *l);
+int match_refcount_inc(int match_type);
+int match_refcount_dec(int match_type);
 int match_cleanup();
 int match_unregister(unsigned int match_type);
 int match_unregister_all();

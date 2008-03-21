@@ -28,10 +28,8 @@
 
 #include "ptype_uint64.h"
 
-#define MAX_TARGET 16
 
 
-struct target_reg *targets[MAX_TARGET];
 struct target_functions tg_funcs;
 
 int target_init() {
@@ -66,7 +64,7 @@ int target_register(const char *target_name) {
 	
 	for (i = 0; i < MAX_TARGET; i++) {
 		if (targets[i] != NULL) {
-			if (strcmp(targets[i]->target_name, target_name) == 0) {
+			if (strcmp(targets[i]->name, target_name) == 0) {
 				return i;
 			}
 		} else {
@@ -93,8 +91,8 @@ int target_register(const char *target_name) {
 			}
 
 
-			targets[i]->target_name = malloc(strlen(target_name) + 1);
-			strcpy(targets[i]->target_name, target_name);
+			targets[i]->name = malloc(strlen(target_name) + 1);
+			strcpy(targets[i]->name, target_name);
 			targets[i]->dl_handle = handle;
 
 			pom_log(POM_LOG_DEBUG "Target %s registered\r\n", target_name);
@@ -225,6 +223,8 @@ struct target *target_alloc(int target_type) {
 
 	// Default mode is the first one
 	t->mode = targets[target_type]->modes;
+
+	targets[target_type]->refcount++;
 		
 	return t;
 }
@@ -284,7 +284,18 @@ char *target_get_name(int target_type) {
 	if (!targets[target_type])
 		return NULL;
 
-	return targets[target_type]->target_name;
+	return targets[target_type]->name;
+
+}
+
+int target_get_type(char* target_name) {
+
+	int i;
+	for (i = 0; i < MAX_TARGET; i++)
+		if (targets[i] && strcmp(targets[i]->name, target_name) == 0)
+			return i;
+
+	return POM_ERR;
 
 }
 
@@ -344,6 +355,7 @@ int target_cleanup_module(struct target *t) {
 			free(t->params);
 			t->params = p;
 		}
+		targets[t->type]->refcount--;
 	}
 	ptype_cleanup_module(t->pkt_cnt);
 	ptype_cleanup_module(t->byte_cnt);
@@ -357,6 +369,11 @@ int target_unregister(int target_type) {
 
 	if (!targets[target_type])
 		return POM_ERR;
+
+	if (targets[target_type]->refcount) {
+		pom_log(POM_LOG_WARN "Warning, reference count not 0 for target %s\r\n", targets[target_type]->name);
+		return POM_ERR;
+	}
 
 	struct target_mode *mode = targets[target_type]->modes;
 
@@ -380,8 +397,8 @@ int target_unregister(int target_type) {
 	}
 
 	if(dlclose(targets[target_type]->dl_handle))
-		pom_log(POM_LOG_WARN "Error while closing library of target %s\r\n", targets[target_type]->target_name);
-	free(targets[target_type]->target_name);
+		pom_log(POM_LOG_WARN "Error while closing library of target %s\r\n", targets[target_type]->name);
+	free(targets[target_type]->name);
 	free(targets[target_type]);
 	targets[target_type] = NULL;
 
@@ -392,12 +409,14 @@ int target_unregister(int target_type) {
 int target_unregister_all() {
 
 	int i = 0;
+	int result = POM_OK;
 
-	for (; i < MAX_TARGET && targets[i]; i++) {
-		target_unregister(i);
+	for (; i < MAX_TARGET; i++) {
+		if (targets[i] && target_unregister(i) == POM_ERR)
+			result = POM_ERR;
 	}
 
-	return POM_OK;
+	return result;
 
 }
 
@@ -413,8 +432,10 @@ void target_print_help() {
 	int i;
 
 
-	for (i = 0; targets[i]; i++) {
-		printf("* TARGET %s *\n", targets[i]->target_name);
+	for (i = 0; i < MAX_TARGET; i++) {
+		if (!targets[i])
+			continue;
+		printf("* TARGET %s *\n", targets[i]->name);
 
 		if (!targets[i]->modes) {
 			printf("No parameter for this target\n");

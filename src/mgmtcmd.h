@@ -63,6 +63,11 @@ int mgmtcmd_show_core_parameters(struct mgmt_connection *c, int argc, char *argv
 int mgmtcmd_set_core_parameter(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_show_conntracks(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_conntrack_param(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_unload_match(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_unload_conntrack(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_unload_target(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_unload_ptype(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_unload_input(struct mgmt_connection *c, int argc, char *argv[]);
 
 struct rule_list *mgmtcmd_get_rule(char *rule);
 struct target *mgmtcmd_get_target(struct rule_list *rl, char *target);

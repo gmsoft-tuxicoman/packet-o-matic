@@ -1,3 +1,8 @@
+* 2008/03/21 Guy Martin <gmsoft@tuxicoman.be>
+Added reference count on modules.
+Changed target_name into name in struct target.
+Added unload command in CLI for remaining modules.
+
 * 2008/03/08 Guy Martin <gmsoft@tuxicoman.be>
 Improved detection of non-RETR command in target_pop.
 Updated README.

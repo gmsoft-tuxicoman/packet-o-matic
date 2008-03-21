@@ -23,6 +23,8 @@
 
 #include <unistd.h>
 
+#define MAX_PTYPE 256
+
 #define PTYPE_OP_EQUALS	0x01
 #define PTYPE_OP_GT	0x02
 #define PTYPE_OP_GE	0x04
@@ -46,6 +48,7 @@ struct ptype_reg {
 	char *name;
 	int ops; ///< operation handled by this ptype
 	void *dl_handle; ///< handle of the library
+	unsigned int refcount;
 	int (*alloc) (struct ptype*);
 	int (*cleanup) (struct ptype*);
 
@@ -59,12 +62,15 @@ struct ptype_reg {
 
 };
 
+struct ptype_reg *ptypes[MAX_PTYPE];
+
 int ptype_init(void);
 int ptype_register(const char *ptype_name);
 struct ptype* ptype_alloc(const char* type, char* unit);
 struct ptype* ptype_alloc_from(struct ptype *pt);
 int ptype_parse_val(struct ptype *pt, char *val);
 int ptype_print_val(struct ptype *pt, char *val, size_t size);
+int ptype_get_type(char* ptype_name);
 int ptype_get_op(struct ptype *pt, char *op);
 char *ptype_get_op_name(int op);
 char *ptype_get_op_sign(int op);
