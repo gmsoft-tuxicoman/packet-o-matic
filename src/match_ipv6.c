@@ -27,7 +27,7 @@
 #include "ptype_uint8.h"
 #include "ptype_ipv6.h"
 
-int match_icmpv6_id, match_tcp_id, match_udp_id;
+struct match_dep *match_icmpv6, *match_tcp, *match_udp;
 struct match_functions *mf;
 
 int field_saddr, field_daddr, field_flabel, field_hlim;
@@ -41,9 +41,9 @@ int match_register_ipv6(struct match_reg *r, struct match_functions *m_funcs) {
 
 	mf = m_funcs;
 
-	match_icmpv6_id = (*mf->match_register) ("icmpv6");
-	match_tcp_id = (*mf->match_register) ("tcp");
-	match_udp_id = (*mf->match_register) ("udp");
+	match_icmpv6 = (*mf->add_dependency) (r->type, "icmpv6");
+	match_tcp = (*mf->add_dependency) (r->type, "tcp");
+	match_udp = (*mf->add_dependency) (r->type, "udp");
 
 	ptype_ipv6 = (*mf->ptype_alloc) ("ipv6", NULL);
 	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
@@ -96,13 +96,13 @@ int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int start, un
 				break;
 		
 			case IPPROTO_TCP: // 6
-				return match_tcp_id;
+				return match_tcp->id;
 
 			case IPPROTO_UDP: // 17
-				return match_udp_id;
+				return match_udp->id;
 
 			case IPPROTO_ICMPV6: // 58
-				return match_icmpv6_id;
+				return match_icmpv6->id;
 
 			case IPPROTO_NONE: // 59
 				return -1;

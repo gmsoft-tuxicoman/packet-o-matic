@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,7 +30,7 @@
 #include <linux/if_ether.h>
 #endif
 
-int match_ipv4_id, match_ipv6_id, match_arp_id, match_vlan_id;
+struct match_dep *match_ipv4, *match_ipv6, *match_arp, *match_vlan;
 struct match_functions *mf;
 
 int field_saddr, field_daddr;
@@ -44,10 +44,10 @@ int match_register_ethernet(struct match_reg *r, struct match_functions *m_funcs
 	
 	mf = m_funcs;
 	
-	match_ipv4_id = (*mf->match_register) ("ipv4");
-	match_ipv6_id = (*mf->match_register) ("ipv6");
-	match_arp_id = (*mf->match_register) ("arp");
-	match_vlan_id = (*mf->match_register) ("vlan");
+	match_ipv4 = (*mf->add_dependency) (r->type, "ipv4");
+	match_ipv6 = (*mf->add_dependency) (r->type, "ipv6");
+	match_arp = (*mf->add_dependency) (r->type, "arp");
+	match_vlan = (*mf->add_dependency) (r->type, "vlan");
 
 	ptype_mac = (*mf->ptype_alloc) ("mac", NULL);
 
@@ -74,13 +74,13 @@ int match_identify_ethernet(struct frame *f, struct layer* l, unsigned int start
 
 	switch (ntohs(ehdr->ether_type)) {
 		case 0x0800:
-			return match_ipv4_id;
+			return match_ipv4->id;
 		case 0x0806:
-			return match_arp_id;
+			return match_arp->id;
 		case 0x8100:
-			return match_vlan_id;
+			return match_vlan->id;
 		case 0x86dd:
-			return match_ipv6_id;
+			return match_ipv6->id;
 	}
 
 	return POM_ERR;

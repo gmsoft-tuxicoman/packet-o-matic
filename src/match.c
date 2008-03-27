@@ -79,6 +79,21 @@ int match_register(const char *match_name) {
 			if (PTYPE_BOOL_GETVAL(param_autoload_helper))
 				helper_register(match_name);
 
+			// Update match dependencies
+			
+			int j, k;
+			for (j = 0; j < MAX_MATCH; j++) {
+				if (!matchs[j])
+					continue;
+				for (k = 0; k < MAX_MATCH; k++) {
+					if (!matchs[j]->match_deps[k].name)
+						break;
+					if (!strcmp(matchs[j]->match_deps[k].name, match_name) && matchs[j]->match_deps[k].id != i) {
+						matchs[j]->match_deps[k].id = i;
+						break;
+					}
+				}
+			}
 
 			return i;
 
@@ -88,6 +103,27 @@ int match_register(const char *match_name) {
 
 	return POM_ERR;
 
+}
+
+struct match_dep *match_add_dependency(int match_type, const char *dep_name) {
+
+	int i;
+
+	if (!matchs[match_type])
+		return NULL;
+
+	struct match_reg *r = matchs[match_type];
+
+	for (i = 0; i < MAX_MATCH; i++) {
+		if (!r->match_deps[i].name) {
+			r->match_deps[i].name = malloc(strlen(dep_name) + 1);
+			strcpy(r->match_deps[i].name, dep_name);
+			r->match_deps[i].id = match_register(dep_name);
+			return &r->match_deps[i];
+		}
+	}
+
+	return NULL;
 }
 
 int match_register_field(int match_type, char *name, struct ptype *type, char *descr) {
@@ -168,7 +204,7 @@ int match_init() {
 
 	m_funcs = malloc(sizeof(struct match_functions));
 	m_funcs->pom_log = pom_log;
-	m_funcs->match_register = match_register;
+	m_funcs->add_dependency = match_add_dependency;
 	m_funcs->register_field = match_register_field;
 	m_funcs->ptype_alloc = ptype_alloc;
 	m_funcs->ptype_cleanup = ptype_cleanup_module;
@@ -305,6 +341,21 @@ int match_unregister(unsigned int match_type) {
 
 	}
 
+	// update match dependencies
+	int j;
+	for (i = 0; i < MAX_MATCH; i++) {
+		if (!matchs[i])
+			continue;
+		for (j = 0; j < MAX_MATCH; j++) {
+			if (!matchs[i]->match_deps[j].name)
+				break;
+			if (!strcmp(matchs[i]->match_deps[j].name, r->name)) {
+				matchs[i]->match_deps[j].id = POM_ERR;
+				break;
+			}
+		}
+	}
+
 	if (r->unregister)
 		(*r->unregister) (r);
 	
@@ -312,6 +363,12 @@ int match_unregister(unsigned int match_type) {
 		pom_log(POM_LOG_WARN "Error while closing library of match %s\r\n", r->name);
 
 	pom_log(POM_LOG_DEBUG "Match %s unregistered\r\n", r->name);
+
+	for (i = 0; i < MAX_MATCH; i++) {
+		if (r->match_deps[i].name) {
+			free(r->match_deps[i].name);
+		}
+	}
 
 	free(r->name);
 	free(r);

@@ -27,7 +27,7 @@
 #include "ptype_ipv4.h"
 #include "ptype_uint8.h"
 
-int match_icmp_id, match_tcp_id, match_udp_id, match_ipv6_id;
+struct match_dep *match_icmp, *match_tcp, *match_udp, *match_ipv6;
 struct match_functions *mf;
 
 int field_saddr, field_daddr, field_tos, field_ttl;
@@ -41,10 +41,10 @@ int match_register_ipv4(struct match_reg *r, struct match_functions *m_funcs) {
 
 	mf = m_funcs;
 
-	match_icmp_id = (*mf->match_register) ("icmp");
-	match_tcp_id = (*mf->match_register) ("tcp");
-	match_udp_id = (*mf->match_register) ("udp");
-	match_ipv6_id = (*mf->match_register) ("ipv6");
+	match_icmp = (*mf->add_dependency) (r->type, "icmp");
+	match_tcp = (*mf->add_dependency) (r->type, "tcp");
+	match_udp = (*mf->add_dependency) (r->type, "udp");
+	match_ipv6 = (*mf->add_dependency) (r->type, "ipv6");
 
 	ptype_ipv4 = (*mf->ptype_alloc) ("ipv4", NULL);
 	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
@@ -89,13 +89,13 @@ int match_identify_ipv4(struct frame *f, struct layer* l, unsigned int start, un
 	switch (hdr->ip_p) {
 
 		case IPPROTO_ICMP: // 1
-			return match_icmp_id;
+			return match_icmp->id;
 		case IPPROTO_TCP: // 6
-			return match_tcp_id;
+			return match_tcp->id;
 		case IPPROTO_UDP: // 17
-			return match_udp_id;
+			return match_udp->id;
 		case IPPROTO_IPV6: //41
-			return match_ipv6_id;
+			return match_ipv6->id;
 	}
 
 	return POM_ERR;

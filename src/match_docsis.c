@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 #include "match_docsis.h"
 #include "ptype_uint8.h"
 
-int match_atm_id, match_ethernet_id;
+struct match_dep *match_atm, *match_ethernet;
 struct match_functions *mf;
 
 int field_fc_type, field_fc_parm;
@@ -35,8 +35,8 @@ int match_register_docsis(struct match_reg *r, struct match_functions *m_funcs) 
 
 	mf = m_funcs;
 	
-	match_atm_id = (*mf->match_register) ("atm");
-	match_ethernet_id = (*mf->match_register) ("ethernet");
+	match_atm = (*mf->add_dependency) (r->type, "atm");
+	match_ethernet = (*mf->add_dependency) (r->type, "ethernet");
 
 	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
 	if (!ptype_uint8) 
@@ -73,9 +73,9 @@ int match_identify_docsis(struct frame *f, struct layer* l, unsigned int start, 
 		case FC_TYPE_PKT_MAC:
 			// We don't need the 4 bytes of ethernet checksum
 			l->payload_size -= 4;
-			return match_ethernet_id;
+			return match_ethernet->id;
 		case FC_TYPE_ATM:
-			return match_atm_id;
+			return match_atm->id;
 		case FC_TYPE_RSVD:
 			return POM_ERR;
 	}

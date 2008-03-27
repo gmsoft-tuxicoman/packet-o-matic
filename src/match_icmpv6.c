@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 #include "match_icmpv6.h"
 #include "ptype_uint8.h"
 
-int match_ipv4_id, match_ipv6_id;
+struct match_dep *match_ipv6;
 struct match_functions *mf;
 
 int field_type, field_code;
@@ -39,7 +39,7 @@ int match_register_icmpv6(struct match_reg *r, struct match_functions *m_funcs) 
 
 	mf = m_funcs;
 	
-	match_ipv6_id = (*mf->match_register) ("ipv6");
+	match_ipv6 = (*mf->add_dependency) (r->type, "ipv6");
 
 	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
 
@@ -64,7 +64,7 @@ int match_identify_icmpv6(struct frame *f, struct layer* l, unsigned int start, 
 
 	if (!(ihdr->icmp6_type & ICMP6_INFOMSG_MASK))
 			// For now we don't advertise the ip layer
-			//return match_ipv6_id;
+			//return match_ipv6->id;
 			return POM_ERR;
 	return POM_ERR;
 }

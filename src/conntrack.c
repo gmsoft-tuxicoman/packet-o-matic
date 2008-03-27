@@ -184,10 +184,8 @@ int conntrack_create_entry(struct frame *f) {
 	cl_rev->next = ct_table_rev[hash_rev];
 	ct_table_rev[hash_rev] = cl_rev;
 
-
-	// TODO : add matches in the opposite direction for speed
-	
 	struct layer *l = f->l;
+	struct conntrack_match_priv *lastcp = NULL;
 
 	while (l) {
 		if (conntracks[l->type] && conntracks[l->type]->alloc_match_priv) {
@@ -197,10 +195,17 @@ int conntrack_create_entry(struct frame *f) {
 			void *priv = (*conntracks[l->type]->alloc_match_priv) (f, start, ce);
 			struct conntrack_match_priv *cp;
 			cp = malloc(sizeof(struct conntrack_match_priv));
+			memset(cp, 0, sizeof(struct conntrack_match_priv));
 			cp->priv_type = l->type;
 			cp->priv = priv;
-			cp->next = ce->match_privs;
-			ce->match_privs = cp;
+			
+			if (lastcp) 
+				lastcp->next = cp;
+			else 
+				ce->match_privs = cp;
+
+			lastcp = cp;
+
 			conntracks[l->type]->refcount++;
 		}
 		l = l->next;
@@ -471,25 +476,31 @@ struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct frame *
 	cp = ce->match_privs;
 
 	struct layer *l = f->l;
+	int start = 0;
 
-	while (cp) {
-
-		int start = layer_find_start(l, cp->priv_type);
-
-		if (!flags || (flags & conntracks[cp->priv_type]->flags)) { 
-
-			if (start == POM_ERR || (*conntracks[cp->priv_type]->doublecheck) (f, start, cp->priv, flags) == POM_ERR) {
-
-				cl = cl->next; // If it's not the right conntrack entry, go to next one
+	while (l) {
+		
+		if (l->type == cp->priv_type) {
+	
+			if ((*conntracks[cp->priv_type]->doublecheck) (f, start, cp->priv, flags) == POM_ERR) {
+				cl = cl->next;
 				if (!cl)
-					return NULL; // No entry matched
+					return NULL;
+				l = f->l;
+				start = 0;
 				ce = cl->ce;
 				cp = ce->match_privs;
 				continue;
+
 			}
+			cp = cp->next;
+
+			if (!cp)
+				return ce;
 		}
 
-		cp = cp->next;
+		start = l->payload_start;
+		l = l->next;
 	}
 
 	//pom_log(POM_LOG_TSHOOT "Found conntrack 0x%lx, hash 0x%lx\r\n", (unsigned long) ce, ce->full_hash);

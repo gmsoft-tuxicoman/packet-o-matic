@@ -1,3 +1,8 @@
+* 2008/03/28 Guy Martin <gmsoft@tuxicoman.be>
+Added dynamic match dependencies support.
+Changed match_register() into add_dependency() for match sublayer dependencies.
+Add match_priv in natural direction for faster analysis.
+
 * 2008/03/21 Guy Martin <gmsoft@tuxicoman.be>
 Added reference count on modules.
 Changed target_name into name in struct target.

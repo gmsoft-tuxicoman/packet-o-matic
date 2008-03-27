@@ -23,7 +23,7 @@
 
 #include "ptype_uint16.h"
 
-int match_undefined_id;
+struct match_dep *match_undefined;
 struct match_functions *mf;
 
 int field_sport, field_dport;
@@ -38,7 +38,7 @@ int match_register_udp(struct match_reg *r, struct match_functions *m_funcs) {
 
 	mf = m_funcs;
 
-	match_undefined_id = (*mf->match_register) ("undefined");
+	match_undefined = (*mf->add_dependency) (r->type, "undefined");
 
 	ptype_uint16 = (*mf->ptype_alloc) ("uint16", NULL);
 
@@ -63,7 +63,7 @@ int match_identify_udp(struct frame *f, struct layer* l, unsigned int start, uns
 	PTYPE_UINT16_SETVAL(l->fields[field_sport], ntohs(hdr->uh_sport));
 	PTYPE_UINT16_SETVAL(l->fields[field_dport], ntohs(hdr->uh_dport));
 
-	return match_undefined_id;
+	return match_undefined->id;
 
 }
 

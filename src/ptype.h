@@ -78,6 +78,7 @@ int ptype_compare_val(int op, struct ptype *a, struct ptype *b);
 int ptype_serialize(struct ptype *pt, char *val, size_t size);
 int ptype_unserialize(struct ptype *pt, char *val);
 int ptype_cleanup_module(struct ptype* p);
+int ptype_unregister(int ptype_type);
 int ptype_unregister_all(void);
 
 #endif

@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,7 +24,7 @@
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
 
-int match_ipv4_id;
+struct match_dep *match_ipv4;
 struct match_functions *mf;
 int field_type, field_code;
 
@@ -37,7 +37,7 @@ int match_register_icmp(struct match_reg *r, struct match_functions *m_funcs) {
 
 	mf = m_funcs;
 	
-	match_ipv4_id = (*mf->match_register) ("ipv4");
+	match_ipv4 = (*mf->add_dependency) (r->type, "ipv4");
 
 	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
 

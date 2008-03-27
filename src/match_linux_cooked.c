@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,7 +22,7 @@
 #include "ptype_uint16.h"
 #include "ptype_bytes.h"
 
-int match_ipv4_id, match_ipv6_id;
+struct match_dep *match_ipv4, *match_ipv6;
 struct match_functions *mf;
 
 int field_pkt_type, field_ha_type, field_addr;
@@ -36,8 +36,8 @@ int match_register_linux_cooked(struct match_reg *r, struct match_functions *m_f
 
 	mf = m_funcs;
 	
-	match_ipv4_id = (*mf->match_register) ("ipv4");
-	match_ipv6_id = (*mf->match_register) ("ipv6");
+	match_ipv4 = (*mf->add_dependency) (r->type, "ipv4");
+	match_ipv6 = (*mf->add_dependency) (r->type, "ipv6");
 
 	ptype_uint16 = (*mf->ptype_alloc) ("uint16", NULL);
 	ptype_bytes = (*mf->ptype_alloc) ("bytes", NULL);
@@ -74,9 +74,9 @@ int match_identify_linux_cooked(struct frame *f, struct layer* l, unsigned int s
 
 	switch (ntohs(chdr->sll_protocol)) {
 		case 0x0800:
-			return  match_ipv4_id;
+			return  match_ipv4->id;
 		case 0x86dd:
-			return match_ipv6_id;
+			return match_ipv6->id;
 	}
 
 	return POM_ERR;

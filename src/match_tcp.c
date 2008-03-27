@@ -26,7 +26,7 @@
 #include "ptype_uint16.h"
 #include "ptype_uint32.h"
 
-int match_undefined_id;
+struct match_dep *match_undefined;
 struct match_functions *mf;
 
 int field_sport, field_dport, field_flags, field_seq, field_ack, field_win;
@@ -40,7 +40,7 @@ int match_register_tcp(struct match_reg *r, struct match_functions *m_funcs) {
 
 	mf = m_funcs;
 
-	match_undefined_id = (*mf->match_register) ("undefined");
+	match_undefined = (*mf->add_dependency) (r->type, "undefined");
 
 	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
 	ptype_uint8->print_mode = PTYPE_UINT8_PRINT_HEX;
@@ -80,7 +80,7 @@ int match_identify_tcp(struct frame *f, struct layer* l, unsigned int start, uns
 	PTYPE_UINT32_SETVAL(l->fields[field_ack], ntohl(hdr->th_ack));
 	PTYPE_UINT16_SETVAL(l->fields[field_win], ntohs(hdr->th_win));
 
-	return match_undefined_id;
+	return match_undefined->id;
 
 }
 

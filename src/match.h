@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,12 +28,18 @@
 
 #include "layer.h"
 
-/// Contains info about the possible fields for this match
+/// contains info about the possible fields for this match
 struct match_field_reg {
 	char *name; ///< name of the field
 	struct ptype *type; ///< allocated ptype that will show how to allocate subsequent fields
 	char *descr; ///< description of the field
 
+};
+
+// contains info about match dependencies
+struct match_dep {
+	char *name; // name of the dependency
+	int id; // id of the match
 };
 
 /// save infos about a registered match
@@ -44,6 +50,7 @@ struct match_reg {
 	struct match_field_reg *fields[MAX_LAYER_FIELDS]; ///< possible fields for the match
 	void *dl_handle; ///< handle of the library
 	unsigned int refcount; //< reference count
+	struct match_dep match_deps[MAX_MATCH];
 	int (*identify) (struct frame *f, struct layer*, unsigned int, unsigned int); ///< callled to identify the next layer of a packet
 	int (*unregister) (struct match_reg *r); ///< called when unregistering the match
 
@@ -61,7 +68,7 @@ struct match_field {
 /// provide usefull fonction pointers to the inputs
 struct match_functions {
 	void (*pom_log) (const char *format, ...);
-	int (*match_register) (const char *); ///< register a match
+	struct match_dep* (*add_dependency) (int match_type, const char *); ///< add a match dependency
 	int (*register_field) (int match_type, char *name, struct ptype *type, char *descr); ///< register a field for this match
 	struct ptype* (*ptype_alloc) (const char* type, char* unit);
 	int (*ptype_cleanup) (struct ptype* p);
@@ -72,6 +79,7 @@ struct match_reg *matchs[MAX_MATCH];
 int match_init();
 int match_register(const char *match_name);
 int match_register_field(int match_type, char *name, struct ptype *type, char *descr);
+struct match_dep *match_add_dependency(int match_type, const char *dep_name);
 struct match_field *match_alloc_field(int match_type, char *field_type);
 int match_cleanup_field(struct match_field *p);
 int match_get_type(const char *match_name);

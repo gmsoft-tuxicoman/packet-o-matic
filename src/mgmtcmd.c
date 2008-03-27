@@ -1107,7 +1107,7 @@ int mgmtcmd_show_targets(struct mgmt_connection *c, int argc, char *argv[]) {
 		char pkts[16], bytes[16];
 		ptype_print_val(rl->pkt_cnt, pkts, sizeof(pkts));
 		ptype_print_val(rl->byte_cnt, bytes, sizeof(bytes));
-		mgmtsrv_send(c, "Rule %u targets (%s %s, %s %s)", rule_num, pkts, rl->pkt_cnt->unit, bytes, rl->byte_cnt->unit);
+		mgmtsrv_send(c, "Rule %u : targets (%s %s, %s %s)", rule_num, pkts, rl->pkt_cnt->unit, bytes, rl->byte_cnt->unit);
 		if (!rl->enabled)
 			mgmtsrv_send(c, " (disabled)");
 		mgmtsrv_send(c, " : \r\n");
