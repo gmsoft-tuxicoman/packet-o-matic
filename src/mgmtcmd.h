@@ -21,56 +21,24 @@
 #ifndef __MGMTCMD_H__
 #define __MGMTCMD_H__
 
-#include "rules.h"
+#include "ptype.h"
 
 int mgmtcmd_register_all();
 int mgmtcmd_exit(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_help(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_print_help(struct mgmt_connection *c, struct mgmt_command *start, struct mgmt_command *end);
 int mgmtcmd_show_license(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_show_helpers(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_load_helper(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_set_helper_param(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_unload_helper(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_set_rule_split(struct mgmt_connection *c, char *expr, struct rule_node **start, struct rule_node **end);
-int mgmtcmd_set_rule(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_show_input(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_show_targets(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_disable_rule(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_enable_rule(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_password(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_unset_password(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_enable_debug(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_disable_debug(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_debug_level(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_show_debug_level(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_start_input(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_stop_input(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_write_config(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_set_input_type(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_set_input_mode(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_set_input_parameter(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_add_rule(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_start_target(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_stop_target(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_add_target(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_remove_target(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_remove_rule(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_set_target_parameter(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_set_target_mode(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_halt(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_show_core_parameters(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_core_parameter(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_show_conntracks(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_set_conntrack_param(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_unload_match(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_unload_conntrack(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_unload_target(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_unload_ptype(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_unload_input(struct mgmt_connection *c, int argc, char *argv[]);
-
-struct rule_list *mgmtcmd_get_rule(char *rule);
-struct target *mgmtcmd_get_target(struct rule_list *rl, char *target);
-
 
 #endif

@@ -188,13 +188,22 @@ int mgmtvty_process(struct mgmt_connection *c, unsigned char *buffer, unsigned i
 							c->cursor_pos--;
 						}
 						break;
+					case '4':
+						i++; // ignore following ~
 					case 'F': // end
 						// same as Ctrl-E
 						mgmtvty_process_key(c, 0x5);
 						break;
+					case '1':
+						i++; // ignore following ~
 					case 'H': // home
 						//sameas Ctr-A
 						mgmtvty_process_key(c, 0x1);
+						break;
+					case '2':
+					case '5':
+					case '6':
+						i++; // ignore following ~
 						break;
 					default: // not handled
 						pom_log(POM_LOG_TSHOOT "Unknown escape sequence pressed : %c\r\n", buffer[i]);
@@ -342,6 +351,9 @@ int mgmtvty_completion(struct mgmt_connection *c, unsigned char key) {
 		words_count++;
 	}
 
+	if (c->cmds[c->curcmd][strlen(c->cmds[c->curcmd]) - 1] != ' ')
+		words_count--; // we have to deal with the currently being typed word
+
 
 	struct mgmt_command *start, *end;
 	mgmtsrv_match_command(words, &start, &end);
@@ -350,63 +362,65 @@ int mgmtvty_completion(struct mgmt_connection *c, unsigned char key) {
 	if (!start)
 		return POM_OK;
 
-	if (key == '?' || (key == '\t' && c->cmds[c->curcmd][strlen(c->cmds[c->curcmd]) - 1] == ' ')) {
-		int word = words_count - 1;
-		struct mgmt_command *cur = start;
-		if (c->cmds[c->curcmd][strlen(c->cmds[c->curcmd]) - 1] == ' ') {
-			// first check all the previous words are the same
-			while (cur && cur->prev != end) {
-				for (i = 0; i < words_count; i++)
-					if (!cur->words[i] || !start->words[i] || strcmp(cur->words[i], start->words[i]))
-						return POM_OK;
-				cur = cur->next;
-			}
-			word = words_count;
-			cur = start;
-		}
 
-		if (!start->words[word]) // there is no more word
-			return POM_OK;
-
-		mgmtsrv_send(c, "\r\n%s ", start->words[word]);
-		while (start && start->prev != end) {
-			if (cur->words[word] && start->words[word] && strcmp(cur->words[word], start->words[word])) {
-				cur = start;
-				mgmtsrv_send(c, "%s ", cur->words[word]);
-			}
-			start = start->next;
-		}
-
-		mgmtsrv_send(c, "\r\n" MGMT_CMD_PROMPT "%s", c->cmds[c->curcmd]);
-		c->cursor_pos = strlen(c->cmds[c->curcmd]);
+	if (key == '?') {
+		mgmtsrv_send(c, "\r\n");
+		mgmtcmd_print_help(c, start, end);
+		mgmtsrv_send(c, MGMT_CMD_PROMPT "%s", c->cmds[c->curcmd]);
 
 	} else if (key == '\t') {
+		// compute the ammount of possible matchs
+		int possible_match = 0;
 		struct mgmt_command *cur = start;
-		// first check all the previous words are the same
 		while (cur && cur->prev != end) {
-			for (i = 0; i < words_count; i++)
-				if (!cur->words[i] || !start->words[i] ||  strcmp(cur->words[i], start->words[i]))
-					return POM_OK;
-			cur = cur->next;
+
+			struct mgmt_command *cmdtmp = cur->next;
+			while (cmdtmp && cmdtmp->words[words_count] && cur->words[words_count] && !strcmp(cur->words[words_count], cmdtmp->words[words_count])) {
+				cmdtmp = cmdtmp->next;
+			}
+			cur = cmdtmp;
+			possible_match++;
 		}
 
-		// compute len of last word we got already
-		int pos = strlen(c->cmds[c->curcmd]) - 1;
-		int len = 0;
-		while (pos >= 0 && c->cmds[c->curcmd][pos] != ' ') {
-			len++;
-			pos--;
-		}
+		if (possible_match > 1) {
+			cur = start;
+
+			mgmtsrv_send(c, "\r\n%s ", start->words[words_count]);
+			while (start && start->prev != end) {
+				if (cur->words[words_count] && start->words[words_count] && cur->words[words_count] && strcmp(cur->words[words_count], start->words[words_count])) {
+					cur = start;
+					mgmtsrv_send(c, "%s ", cur->words[words_count]);
+				}
+				start = start->next;
+			}
+
+			mgmtsrv_send(c, "\r\n" MGMT_CMD_PROMPT "%s", c->cmds[c->curcmd]);
+			c->cursor_pos = strlen(c->cmds[c->curcmd]);
+
+		} else {
+
+			if (!start->words[words_count]) // we completed the whole command already
+				return POM_OK;
+
+			cur = start;
+
+			// compute len of last word we got already
+			int pos = strlen(c->cmds[c->curcmd]) - 1;
+			int len = 0;
+			while (pos >= 0 && c->cmds[c->curcmd][pos] != ' ') {
+				len++;
+				pos--;
+			}
+			
+
+			c->cmds[c->curcmd] = realloc(c->cmds[c->curcmd], strlen(c->cmds[c->curcmd]) + strlen(start->words[words_count] + len) + 2);
+			strcat(c->cmds[c->curcmd], start->words[words_count] + len);
+			strcat(c->cmds[c->curcmd], " ");
+			mgmtsrv_send(c, "%s ", start->words[words_count] + len);
+			c->cursor_pos = strlen(c->cmds[c->curcmd]);
 		
-		c->cmds[c->curcmd] = realloc(c->cmds[c->curcmd], strlen(c->cmds[c->curcmd]) + strlen(start->words[words_count - 1] + len) + 2);
-		strcat(c->cmds[c->curcmd], start->words[words_count - 1] + len);
-		strcat(c->cmds[c->curcmd], " ");
-		mgmtsrv_send(c, "%s ", start->words[words_count - 1] + len);
-		c->cursor_pos = strlen(c->cmds[c->curcmd]);
-
-	} else
-		return POM_ERR;
-
+		}
+	}
 
 	return POM_OK;
 

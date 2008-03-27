@@ -304,15 +304,22 @@ int mgmtsrv_register_command(struct mgmt_command *cmd) {
 		if (!cmd->words[w])
 			break;
 
-		if (!tmp->words[w] || !tmp->words[w][l]) { // our command is longer. next one please
+		if (!tmp->words[w]) {
 			tmp = tmp->next;
 			w = 0;
 			l = 0;
 			continue;
 		}
 
+		if (!tmp->words[w][l]) { // our command is longer. next one please
+			w++;
+			l = 0;
+			continue;
+		}
+
 		if (!tmp->words[w][l] && !cmd->words[w][l]) { // both words are the same
 			w++;
+			l = 0;
 			continue;
 		}
 
@@ -320,7 +327,7 @@ int mgmtsrv_register_command(struct mgmt_command *cmd) {
 			w++;
 		else if (tmp->words[w][l] > cmd->words[w][l]) // next word is before 
 			break;
-		else if (tmp->words[w][l] < cmd->words[w][l]) {
+		else if (tmp->words[w][l] < cmd->words[w][l]) { // our command comes after
 			tmp = tmp->next;
 			w = 0;
 			l = 0;
@@ -336,11 +343,12 @@ int mgmtsrv_register_command(struct mgmt_command *cmd) {
 		tmp->next = cmd;
 		cmd->prev = tmp;
 		return POM_OK;
+	} else {
+		cmd->prev = tmp->prev;
+		tmp->prev = cmd;
+		cmd->next = tmp;
 	}
 
-	cmd->prev = tmp->prev;
-	tmp->prev = cmd;
-	cmd->next = tmp;
 	if (!cmd->prev)
 		cmds = cmd;
 	else

@@ -2,6 +2,12 @@
 Added dynamic match dependencies support.
 Changed match_register() into add_dependency() for match sublayer dependencies.
 Add match_priv in natural direction for faster analysis.
+Split mgmtcmd.c in several files.
+Fix command order sorting in mgmtsrv_register_command().
+Added support for various keys in some terminals.
+Splitted mgmtcmd.c into multiple files.
+Improved command completion.
+Improved help command output on small terminals.
 
 * 2008/03/21 Guy Martin <gmsoft@tuxicoman.be>
 Added reference count on modules.

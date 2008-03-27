@@ -23,6 +23,7 @@
 #define __MAIN_H__
 
 #include "conf.h"
+#include "input.h"
 
 struct conf *main_config;
 
