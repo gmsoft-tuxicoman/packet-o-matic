@@ -154,8 +154,9 @@ int mgmtsrv_process() {
 			
 			int i;
 			for (i = 0; i < MGMT_CMD_HISTORY_SIZE; i++)
-				if (cc->cmds[i])
-					free(cc->cmds[i]);
+				if (cc->history[i])
+					free(cc->history[i]);
+			free(cc->curcmd);
 
 			struct mgmt_connection *tmp = cc->next;
 			if (!cc->prev)
@@ -238,8 +239,8 @@ int mgmtsrv_accept_connection(struct mgmt_connection *c) {
 	getnameinfo((struct sockaddr*)&remote_addr, remote_addr_len, host, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST);
 
 	// Init cmd line buffer
-	new_cc->cmds[0] = malloc(1);
-	new_cc->cmds[0][0] = 0;
+	new_cc->curcmd = malloc(1);
+	*new_cc->curcmd = 0;
 	
 	new_cc->state = MGMT_STATE_INIT;
 
@@ -358,7 +359,7 @@ int mgmtsrv_register_command(struct mgmt_command *cmd) {
 
 }
 
-int mgmtsrv_process_command(struct mgmt_connection *c, unsigned int cmdnum) {
+int mgmtsrv_process_command(struct mgmt_connection *c) {
 
 	// Let's start by splitting this line
 	char *words[MGMT_MAX_CMD_WORDS_ARGS];
@@ -369,8 +370,8 @@ int mgmtsrv_process_command(struct mgmt_connection *c, unsigned int cmdnum) {
 		words[i] = 0;
 
 	// Use temporary buffer to avoid modifying the command history
-	char *tmpcmdstr = malloc(strlen(c->cmds[cmdnum]) + 1);
-	strcpy(tmpcmdstr, c->cmds[cmdnum]);
+	char *tmpcmdstr = malloc(strlen(c->curcmd) + 1);
+	strcpy(tmpcmdstr, c->curcmd);
 
 	for (str = tmpcmdstr; ;str = NULL) {
 		if (words_count >= MGMT_MAX_CMD_WORDS_ARGS) {
@@ -505,8 +506,9 @@ int mgmtsrv_cleanup() {
 		close(conn_head->fd);
 		int i;
 		for (i = 0; i < MGMT_CMD_HISTORY_SIZE; i++)
-			if (conn_head->cmds[i])
-				free(conn_head->cmds[i]);
+			if (conn_head->history[i])
+				free(conn_head->history[i]);
+		free(conn_head->curcmd);
 		tmp = conn_head;
 		conn_head = conn_head->next;
 		free(tmp);
@@ -566,7 +568,7 @@ int mgmtsrv_send_debug(const char *format, va_list ap) {
 
 	while (c) {
 		if (c->state == MGMT_STATE_AUTHED && c->flags & MGMT_FLAG_MONITOR) {
-			int cmdlen = strlen(c->cmds[c->curcmd]) + strlen(MGMT_CMD_PROMPT);
+			int cmdlen = strlen(c->curcmd) + strlen(MGMT_CMD_PROMPT);
 			int loglen = strlen(buff) - 2;// do -2 to avoid counting /r/n
 			int pos = c->cursor_pos + strlen(MGMT_CMD_PROMPT);
 
@@ -582,8 +584,8 @@ int mgmtsrv_send_debug(const char *format, va_list ap) {
 					mgmtsrv_send(c, "\b");
 			}
 			mgmtsrv_send(c, buff);
-			mgmtsrv_send(c, MGMT_CMD_PROMPT "%s", c->cmds[c->curcmd]);
-			for (i = strlen(c->cmds[c->curcmd]); i > c->cursor_pos; i--)
+			mgmtsrv_send(c, MGMT_CMD_PROMPT "%s", c->curcmd);
+			for (i = strlen(c->curcmd); i > c->cursor_pos; i--)
 				mgmtsrv_send(c, "\b");
 
 		}

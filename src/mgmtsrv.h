@@ -63,8 +63,9 @@ struct mgmt_connection {
 	int flags; // attributes of the connection
 	int state; // current state of this connection
 	int auth_tries; // number of authentification tries
-	char *cmds[MGMT_CMD_HISTORY_SIZE];
-	unsigned int curcmd; // current command in the history
+	char *history[MGMT_CMD_HISTORY_SIZE];
+	unsigned int history_pos; // current command being looked up
+	char *curcmd; // current command
 	int cursor_pos; // position of the cursor on the line
 	struct mgmt_connection *prev;
 	struct mgmt_connection *next;
@@ -94,7 +95,7 @@ int mgmtsrv_cleanup();
 
 int mgmtsrv_accept_connection(struct mgmt_connection *c);
 int mgmtsrv_register_command(struct mgmt_command *cmd);
-int mgmtsrv_process_command(struct mgmt_connection *c, unsigned int cmdnum);
+int mgmtsrv_process_command(struct mgmt_connection *c);
 int mgmtsrv_match_command(char *words[MGMT_MAX_CMD_WORDS], struct mgmt_command **start, struct mgmt_command **end);
 int mgmtsrv_close_connection(struct mgmt_connection *c);
 

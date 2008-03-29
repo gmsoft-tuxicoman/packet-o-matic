@@ -163,7 +163,7 @@ int mgmtcmd_print_help(struct mgmt_connection *c, struct mgmt_command *start, st
 	int i, wordslen, wordslenmax = 0, helplenmax = 0;
 	struct mgmt_command *tmp = start;
 	// calculate max length of first part
-	while (tmp && tmp->prev != end) {
+	while (tmp && !(tmp->prev == end && end)) {
 		if (tmp->usage) {
 			wordslen = strlen(tmp->usage) + 1;
 		} else {
@@ -186,7 +186,7 @@ int mgmtcmd_print_help(struct mgmt_connection *c, struct mgmt_command *start, st
 
 	tmp = start;
 
-	while (tmp && tmp->prev != end) {
+	while (tmp && !(tmp->prev == end && end)) {
 
 		if (tmp->usage) {
 			mgmtsrv_send(c, tmp->usage);
