@@ -32,7 +32,7 @@
 
 #include "ptype_uint64.h"
 
-#define MGMT_COMMANDS_NUM 15
+#define MGMT_COMMANDS_NUM 17
 
 struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
@@ -119,10 +119,24 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 	},
 
 	{
+		.words = { "load", "match", NULL },
+		.help = "Load a match into the system",
+		.usage = "load match <match>",
+		.callback_func = mgmtcmd_load_match,
+	},
+
+	{
 		.words = { "unload", "match", NULL },
 		.help = "Unload a match from the system",
 		.usage = "unload match <match>",
 		.callback_func = mgmtcmd_unload_match,
+	},
+
+	{
+		.words = { "load", "ptype", NULL },
+		.help = "Load a ptype into the system",
+		.usage = "load ptype <ptype>",
+		.callback_func = mgmtcmd_load_ptype,
 	},
 
 	{
@@ -385,6 +399,32 @@ int mgmtcmd_set_core_parameter(struct mgmt_connection *c, int argc, char *argv[]
 	return POM_OK;
 }
 
+
+int mgmtcmd_load_match(struct mgmt_connection *c, int argc, char *argv[]) {
+
+
+	if (argc != 1)
+		return MGMT_USAGE;
+
+	int id = match_get_type(argv[0]);
+
+	if (id != POM_ERR) {
+		mgmtsrv_send(c, "Match %s already loaded\r\n", argv[0]);
+		return POM_OK;
+	}
+
+	reader_process_lock();
+	id = match_register(argv[0]);
+	if (id != POM_ERR) {
+		mgmtsrv_send(c, "Match %s registered with id %u\r\n", argv[0], id);
+	} else {
+		mgmtsrv_send(c, "Error while loading match %s\r\n", argv[0]);
+	}
+	reader_process_unlock();
+	
+	return POM_OK;
+
+}
 int mgmtcmd_unload_match(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
@@ -416,6 +456,26 @@ int mgmtcmd_unload_match(struct mgmt_connection *c, int argc, char *argv[]) {
 	}
 	reader_process_unlock();
 	
+	return POM_OK;
+
+}
+
+int mgmtcmd_load_ptype(struct mgmt_connection *c, int argc, char*argv[]) {
+
+	if (argc != 1)
+		return MGMT_USAGE;
+	
+	if (ptype_get_type(argv[0]) != POM_ERR) {
+		mgmtsrv_send(c, "Ptype %s is already registered\r\n", argv[0]);
+		return POM_OK;
+	}
+
+	int id = ptype_register(argv[0]);
+	if (id == POM_ERR)
+		mgmtsrv_send(c, "Error while loading ptype %s\r\n", argv[0]);
+	else
+		mgmtsrv_send(c, "Ptype %s regitered with id %u\r\n", argv[0], id);
+
 	return POM_OK;
 
 }

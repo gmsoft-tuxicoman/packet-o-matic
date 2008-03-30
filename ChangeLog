@@ -1,5 +1,6 @@
 * 2008/03/29 Guy Martin <gmsoft@tuxicoman.be>
 Improved history handling and completion in CLI.
+Added load function for all modules in CLI.
 
 * 2008/03/28 Guy Martin <gmsoft@tuxicoman.be>
 Added dynamic match dependencies support.

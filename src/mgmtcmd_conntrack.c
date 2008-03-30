@@ -21,7 +21,7 @@
 #include "mgmtcmd_conntrack.h"
 #include "conntrack.h"
 
-#define MGMT_CONNTRACK_COMMANDS_NUM 3
+#define MGMT_CONNTRACK_COMMANDS_NUM 4
 
 struct mgmt_command mgmt_conntrack_commands[MGMT_CONNTRACK_COMMANDS_NUM] = {
 
@@ -36,6 +36,13 @@ struct mgmt_command mgmt_conntrack_commands[MGMT_CONNTRACK_COMMANDS_NUM] = {
 		.help = "Change the value of a conntrack parameter",
 		.usage = "set conntrack parameter <conntrack> <parameter> <value>",
 		.callback_func = mgmtcmd_set_conntrack_param,
+	},
+
+	{
+		.words = { "load", "conntrack", NULL },
+		.help = "Load a conntrack from the system",
+		.usage = "load conntrack <conntrack>",
+		.callback_func = mgmtcmd_load_conntrack,
 	},
 
 	{
@@ -109,6 +116,35 @@ int mgmtcmd_set_conntrack_param(struct mgmt_connection *c, int argc, char *argv[
 
 }
 
+int mgmtcmd_load_conntrack(struct mgmt_connection *c, int argc, char *argv[]) {
+
+
+	if (argc != 1)
+		return MGMT_USAGE;
+
+	int id = match_get_type(argv[0]);
+
+	if (id == POM_ERR) {
+		mgmtsrv_send(c, "Cannot load conntrack %s : corresponding match not loaded yet\r\n", argv[0]);
+		return POM_OK;
+	}
+
+	if (conntracks[id]) {
+		mgmtsrv_send(c, "Conntrack %s already loaded\r\n", argv[0]);
+		return POM_OK;
+	}
+
+	reader_process_lock();
+	if (conntrack_register(argv[0]) != POM_ERR) {
+		mgmtsrv_send(c, "Conntrack %s registered successfully\r\n", argv[0]);
+	} else {
+		mgmtsrv_send(c, "Error while loading conntrack %s\r\n", argv[0]);
+	}
+	reader_process_unlock();
+	
+	return POM_OK;
+
+}
 int mgmtcmd_unload_conntrack(struct mgmt_connection *c, int argc, char *argv[]) {
 
 

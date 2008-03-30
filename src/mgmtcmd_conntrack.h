@@ -29,6 +29,7 @@
 int mgmtcmd_conntrack_register_all();
 int mgmtcmd_show_conntracks(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_conntrack_param(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_load_conntrack(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_unload_conntrack(struct mgmt_connection *c, int argc, char *argv[]);
 
 #endif

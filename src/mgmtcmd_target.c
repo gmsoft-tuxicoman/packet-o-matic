@@ -25,7 +25,7 @@
 #include "target.h"
 
 
-#define MGMT_TARGET_COMMANDS_NUM 8
+#define MGMT_TARGET_COMMANDS_NUM 9
 
 struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 
@@ -75,6 +75,13 @@ struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 		.help = "Change the mode of a target",
 		.callback_func = mgmtcmd_set_target_mode,
 		.usage = "set target mode <rule_id> <target_id> <mode>",
+	},
+
+	{
+		.words = { "load", "target", NULL },
+		.help = "Load a target into the system",
+		.usage = "load target <target>",
+		.callback_func = mgmtcmd_load_target,
 	},
 
 	{
@@ -423,6 +430,26 @@ int mgmtcmd_set_target_mode(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
+int mgmtcmd_load_target(struct mgmt_connection *c, int argc, char*argv[]) {
+
+	if (argc != 1)
+		return MGMT_USAGE;
+	
+	if (target_get_type(argv[0]) != POM_ERR) {
+		mgmtsrv_send(c, "Target %s is already registered\r\n", argv[0]);
+		return POM_OK;
+	}
+
+	int id = target_register(argv[0]);
+	if (id == POM_ERR)
+		mgmtsrv_send(c, "Error while loading target %s\r\n", argv[0]);
+	else
+		mgmtsrv_send(c, "Target %s regitered with id %u\r\n", argv[0], id);
+
+	return POM_OK;
+
+}
+
 int mgmtcmd_unload_target(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
@@ -443,9 +470,9 @@ int mgmtcmd_unload_target(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	reader_process_lock();
 	if (target_unregister(id) != POM_ERR) {
-		mgmtsrv_send(c, "Target unloaded successfully\r\n");
+		mgmtsrv_send(c, "Target % unloaded successfully\r\n", argv[0]);
 	} else {
-		mgmtsrv_send(c, "Error while unloading target\r\n");
+		mgmtsrv_send(c, "Error while unloading target %\r\n", argv[0]);
 	}
 	reader_process_unlock();
 	

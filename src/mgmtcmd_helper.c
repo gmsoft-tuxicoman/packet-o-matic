@@ -104,21 +104,21 @@ int mgmtcmd_load_helper(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	int id = match_get_type(argv[0]);
 
-	if (id == -1) {
-		mgmtsrv_send(c, "Cannot load helper : corresponding match not loaded yet\r\n");
+	if (id == POM_ERR) {
+		mgmtsrv_send(c, "Cannot load helper %s : corresponding match not loaded yet\r\n", argv[0]);
 		return POM_OK;
 	}
 
 	if (helpers[id]) {
-		mgmtsrv_send(c, "Helper already loaded\r\n");
+		mgmtsrv_send(c, "Helper %s already loaded\r\n", argv[0]);
 		return POM_OK;
 	}
 
 	reader_process_lock();
 	if (helper_register(argv[0]) != POM_ERR) {
-		mgmtsrv_send(c, "Helper registered successfully\r\n");
+		mgmtsrv_send(c, "Helper %s registered successfully\r\n", argv[0]);
 	} else {
-		mgmtsrv_send(c, "Error while loading helper\r\n");
+		mgmtsrv_send(c, "Error while loading helper %s\r\n", argv[0]);
 	}
 	reader_process_unlock();
 	

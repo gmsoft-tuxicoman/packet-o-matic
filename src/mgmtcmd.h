@@ -38,7 +38,9 @@ int mgmtcmd_write_config(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_halt(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_show_core_parameters(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_core_parameter(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_load_match(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_unload_match(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_load_ptype(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_unload_ptype(struct mgmt_connection *c, int argc, char *argv[]);
 
 #endif

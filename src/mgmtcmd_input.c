@@ -23,7 +23,7 @@
 
 #include <pthread.h>
 
-#define MGMT_INPUT_COMMANDS_NUM 7
+#define MGMT_INPUT_COMMANDS_NUM 8
 
 struct mgmt_command mgmt_input_commands[MGMT_INPUT_COMMANDS_NUM] = {
 
@@ -64,6 +64,13 @@ struct mgmt_command mgmt_input_commands[MGMT_INPUT_COMMANDS_NUM] = {
 		.help = "Change the value of a input parameter",
 		.callback_func = mgmtcmd_set_input_parameter,
 		.usage = "set input parameter <parameter> <value>",
+	},
+
+	{
+		.words = { "load", "input", NULL },
+		.help = "Load an input from the system",
+		.usage = "load input <input>",
+		.callback_func = mgmtcmd_load_input,
 	},
 
 	{
@@ -260,6 +267,26 @@ int mgmtcmd_set_input_parameter(struct mgmt_connection *c, int argc, char *argv[
 	}
 
 	return POM_OK;
+}
+
+int mgmtcmd_load_input(struct mgmt_connection *c, int argc, char*argv[]) {
+
+	if (argc != 1)
+		return MGMT_USAGE;
+	
+	if (input_get_type(argv[0]) != POM_ERR) {
+		mgmtsrv_send(c, "Input %s is already registered\r\n", argv[0]);
+		return POM_OK;
+	}
+
+	int id = input_register(argv[0]);
+	if (id == POM_ERR)
+		mgmtsrv_send(c, "Error while loading input %s\r\n", argv[0]);
+	else
+		mgmtsrv_send(c, "Input %s regitered with id %u\r\n", argv[0], id);
+
+	return POM_OK;
+
 }
 
 int mgmtcmd_unload_input(struct mgmt_connection *c, int argc, char *argv[]) {

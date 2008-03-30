@@ -34,6 +34,7 @@ int mgmtcmd_add_target(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_remove_target(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_target_parameter(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_target_mode(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_load_target(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_unload_target(struct mgmt_connection *c, int argc, char *argv[]);
 
 #endif
