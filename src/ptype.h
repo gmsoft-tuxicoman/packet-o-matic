@@ -25,6 +25,7 @@
 
 #define MAX_PTYPE 256
 
+#define PTYPE_OP_RSVD	0x00
 #define PTYPE_OP_EQUALS	0x01
 #define PTYPE_OP_GT	0x02
 #define PTYPE_OP_GE	0x04
@@ -60,6 +61,8 @@ struct ptype_reg {
 	int (*serialize) (struct ptype *pt, char *val, size_t size);
 	int (*unserialize) (struct ptype *pt, char *val);
 
+	int (*copy) (struct ptype *dst, struct ptype *src);
+
 };
 
 struct ptype_reg *ptypes[MAX_PTYPE];
@@ -77,6 +80,7 @@ char *ptype_get_op_sign(int op);
 int ptype_compare_val(int op, struct ptype *a, struct ptype *b);
 int ptype_serialize(struct ptype *pt, char *val, size_t size);
 int ptype_unserialize(struct ptype *pt, char *val);
+int ptype_copy(struct ptype *dst, struct ptype *src);
 int ptype_cleanup_module(struct ptype* p);
 int ptype_unregister(int ptype_type);
 int ptype_unregister_all(void);

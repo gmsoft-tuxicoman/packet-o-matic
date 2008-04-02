@@ -33,6 +33,8 @@ int ptype_register_bytes(struct ptype_reg *r) {
 
 	r->serialize = ptype_print_bytes;
 	r->unserialize = ptype_parse_bytes;
+
+	r->copy = ptype_copy_bytes;
 	
 	r->ops = PTYPE_OP_EQUALS;
 	
@@ -201,3 +203,23 @@ int ptype_compare_bytes(int op, void *val_a, void *val_b) {
 
 	return 1;
 }
+
+int ptype_copy_bytes(struct ptype *dst, struct ptype *src) {
+
+	struct ptype_bytes_val *d = dst->value;
+	struct ptype_bytes_val *s = src->value;
+
+	d->length = s->length;
+	d->value = realloc(d->value, d->length);
+	d->mask = realloc(d->mask, d->length);
+	if (d->length > 0) {
+		memcpy(d->value, s->value, d->length);
+		memcpy(d->mask, s->mask, d->length);
+	} else {
+		d->value = 0;
+		d->mask = 0;
+	}
+
+	return POM_OK;
+}
+

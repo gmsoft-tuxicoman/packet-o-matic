@@ -33,6 +33,8 @@ int ptype_register_bool(struct ptype_reg *r) {
 
 	r->serialize = ptype_print_bool;
 	r->unserialize = ptype_parse_bool;
+
+	r->copy = ptype_copy_bool;
 	
 	r->ops = PTYPE_OP_ALL;
 
@@ -98,4 +100,11 @@ int ptype_compare_bool(int op, void *val_a, void* val_b) {
 		return *a == *b;
 
 	return 0;
+}
+
+int ptype_copy_bool(struct ptype *dst, struct ptype *src) {
+
+	*((int*)dst->value) = *((int*) src->value);
+	return POM_OK;
+
 }

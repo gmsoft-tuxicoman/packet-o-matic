@@ -47,5 +47,6 @@ int ptype_cleanup_ipv6(struct ptype *p);
 int ptype_parse_ipv6(struct ptype *p, char *val);
 int ptype_print_ipv6(struct ptype *pt, char *val, size_t size);
 int ptype_compare_ipv6(int op, void *val_a, void *val_b);
+int ptype_copy_ipv6(struct ptype *dst, struct ptype *src);
 
 #endif

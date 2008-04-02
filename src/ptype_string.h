@@ -42,5 +42,6 @@ int ptype_cleanup_string(struct ptype *p);
 int ptype_parse_string(struct ptype *p, char *val);
 int ptype_print_string(struct ptype *pt, char *val, size_t size);
 int ptype_compare_string(int op, void *val_a, void *val_b);
+int ptype_copy_string(struct ptype *dst, struct ptype *src);
 
 #endif

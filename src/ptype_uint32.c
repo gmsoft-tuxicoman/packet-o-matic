@@ -33,6 +33,8 @@ int ptype_register_uint32(struct ptype_reg *r) {
 	
 	r->serialize = ptype_serialize_uint32;
 	r->unserialize = ptype_parse_uint32;
+
+	r->copy = ptype_copy_uint32;
 	
 	r->ops = PTYPE_OP_ALL;
 
@@ -126,4 +128,10 @@ int ptype_serialize_uint32(struct ptype *p, char *val, size_t size) {
 
 	uint32_t *v = p->value;
 	return snprintf(val, size, "%u", *v);
+}
+
+int ptype_copy_uint32(struct ptype *dst, struct ptype *src) {
+
+	*((uint32_t*)dst->value) = *((uint32_t*)src->value);
+	return POM_OK;
 }

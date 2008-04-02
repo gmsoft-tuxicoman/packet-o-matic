@@ -33,6 +33,8 @@ int ptype_register_ipv6(struct ptype_reg *r) {
 
 	r->serialize = ptype_print_ipv6;
 	r->unserialize = ptype_parse_ipv6;
+
+	r->copy = ptype_copy_ipv6;
 	
 	r->ops = PTYPE_OP_EQUALS;
 	
@@ -146,3 +148,14 @@ int ptype_compare_ipv6(int op, void *val_a, void *val_b) {
 		&& (a->addr.s6_addr32[2] & mask[2]) == (b->addr.s6_addr32[2] & mask[2])
 		&& (a->addr.s6_addr32[3] & mask[3]) == (b->addr.s6_addr32[3] & mask[3]));
 }
+
+int ptype_copy_ipv6(struct ptype *dst, struct ptype *src) {
+
+	struct ptype_ipv6_val *d = dst->value;
+	struct ptype_ipv6_val *s = src->value;
+	memcpy(d, s, sizeof(struct ptype_ipv6_val));
+
+	return POM_OK;
+
+}
+

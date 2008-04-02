@@ -50,6 +50,6 @@ int ptype_parse_uint64(struct ptype *p, char *val);
 int ptype_print_uint64(struct ptype *pt, char *val, size_t size);
 int ptype_compare_uint64(int op, void *val_a, void* val_b);
 int ptype_serialize_uint64(struct ptype *p, char *val, size_t size);
-
+int ptype_copy_uint64(struct ptype *dst, struct ptype *src);
 
 #endif

@@ -44,5 +44,6 @@ int ptype_cleanup_uint16(struct ptype *p);
 int ptype_parse_uint16(struct ptype *p, char *val);
 int ptype_print_uint16(struct ptype *pt, char *val, size_t size);
 int ptype_compare_uint16(int op, void *val_a, void* val_b);
+int ptype_copy_uint16(struct ptype *dst, struct ptype *src);
 
 #endif

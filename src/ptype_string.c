@@ -33,6 +33,8 @@ int ptype_register_string(struct ptype_reg *r) {
 	r->serialize = ptype_print_string;
 	r->unserialize = ptype_parse_string;
 
+	r->copy = ptype_copy_string;
+
 	r->ops = PTYPE_OP_EQUALS;
 	
 	return POM_OK;
@@ -50,10 +52,7 @@ int ptype_cleanup_string(struct ptype *p) {
 
 int ptype_parse_string(struct ptype *p, char *val) {
 
-	if (p->value)
-		free(p->value);
-
-	char *str = malloc(strlen(val) + 1);
+	char *str = realloc(p->value, strlen(val) + 1);
 	strcpy(str, val);
 	p->value = str;
 
@@ -78,4 +77,20 @@ int ptype_compare_string(int op, void *val_a, void *val_b) {
 		return !strcmp(a, b);
 	
 	return 0;
+}
+
+int ptype_copy_string(struct ptype *dst, struct ptype *src) {
+
+	if (!src->value) {
+		if (dst->value) {
+			free(dst->value);
+			dst->value = 0;
+		}
+		return POM_OK;
+	}
+
+	dst->value = realloc(dst->value, strlen(src->value) + 1);
+	strcpy(dst->value, src->value);
+
+	return POM_OK;
 }

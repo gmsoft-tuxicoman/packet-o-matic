@@ -34,6 +34,8 @@ int ptype_register_ipv4(struct ptype_reg *r) {
 	r->serialize = ptype_print_ipv4;
 	r->unserialize = ptype_parse_ipv4;
 
+	r->copy = ptype_copy_ipv4;
+
 	r->ops = PTYPE_OP_EQUALS;
 	
 	return POM_OK;
@@ -127,4 +129,13 @@ int ptype_compare_ipv4(int op, void *val_a, void *val_b) {
 	masked_addr_b &= (0xffffffff << (32 - mask));
 	return (masked_addr_a == masked_addr_b);
 
+}
+
+int ptype_copy_ipv4(struct ptype *dst, struct ptype *src) {
+
+	struct ptype_ipv4_val *d = dst->value;
+	struct ptype_ipv4_val *s = src->value;
+	memcpy(d, s, sizeof(struct ptype_ipv4_val));
+
+	return POM_OK;
 }

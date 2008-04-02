@@ -1,3 +1,8 @@
+* 2008/04/02 Guy Martin <gmsoft@tuxicoman.be>
+Added ptype_copy function to all ptypes.
+More checks on parameters into input_docsis.
+Make input_docsis change mode when scanning is over.
+
 * 2008/03/29 Guy Martin <gmsoft@tuxicoman.be>
 Improved history handling and completion in CLI.
 Added load function for all modules in CLI.

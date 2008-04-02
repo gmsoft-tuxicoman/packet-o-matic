@@ -41,5 +41,6 @@ int ptype_cleanup_bool(struct ptype *p);
 int ptype_parse_bool(struct ptype *p, char *val);
 int ptype_print_bool(struct ptype *pt, char *val, size_t size);
 int ptype_compare_bool(int op, void *val_a, void* val_b);
+int ptype_copy_bool(struct ptype *dst, struct ptype *src);
 
 #endif

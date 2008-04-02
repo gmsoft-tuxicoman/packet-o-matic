@@ -33,6 +33,8 @@ int ptype_register_uint64(struct ptype_reg *r) {
 	
 	r->serialize = ptype_serialize_uint64;
 	r->unserialize = ptype_parse_uint64;
+
+	r->copy = ptype_copy_uint64;
 	
 	r->ops = PTYPE_OP_ALL;
 
@@ -137,3 +139,8 @@ int ptype_serialize_uint64(struct ptype *p, char *val, size_t size) {
 	return snprintf(val, size, "%llu", (unsigned long long)*v);
 }
 
+int ptype_copy_uint64(struct ptype *dst, struct ptype *src) {
+
+	*((uint64_t*)dst->value) = *((uint64_t*)src->value);
+	return POM_OK;
+}

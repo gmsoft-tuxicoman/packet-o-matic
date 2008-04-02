@@ -34,6 +34,8 @@ int ptype_register_uint8(struct ptype_reg *r) {
 	r->serialize = ptype_print_uint8;
 	r->unserialize = ptype_parse_uint8;
 
+	r->copy = ptype_copy_uint8;
+
 	r->ops = PTYPE_OP_ALL;
 
 	return POM_OK;
@@ -107,4 +109,10 @@ int ptype_compare_uint8(int op, void *val_a, void* val_b) {
 	}
 
 	return 0;
+}
+
+int ptype_copy_uint8(struct ptype *dst, struct ptype *src) {
+
+	*((uint8_t*)dst->value) = *((uint8_t*)src->value);
+	return POM_OK;
 }

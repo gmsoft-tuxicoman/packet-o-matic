@@ -50,6 +50,7 @@ int ptype_parse_uint32(struct ptype *p, char *val);
 int ptype_print_uint32(struct ptype *pt, char *val, size_t size);
 int ptype_compare_uint32(int op, void *val_a, void* val_b);
 int ptype_serialize_uint32(struct ptype *p, char *val, size_t size);
+int ptype_copy_uint32(struct ptype *dst, struct ptype *src);
 
 
 #endif

@@ -33,6 +33,8 @@ int ptype_register_uint16(struct ptype_reg *r) {
 
 	r->serialize = ptype_print_uint16;
 	r->unserialize = ptype_parse_uint16;
+
+	r->copy = ptype_copy_uint16;
 	
 	r->ops = PTYPE_OP_ALL;
 	
@@ -107,4 +109,10 @@ int ptype_compare_uint16(int op, void *val_a, void* val_b) {
 	}
 
 	return 0;
+}
+
+int ptype_copy_uint16(struct ptype *dst, struct ptype *src) {
+
+	*((uint16_t*)dst->value) = *((uint16_t*)src->value);
+	return POM_OK;
 }

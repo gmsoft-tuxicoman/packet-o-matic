@@ -111,8 +111,11 @@ struct ptype* ptype_alloc_from(struct ptype *pt) {
 	struct ptype *ret = malloc(sizeof(struct ptype));
 	bzero(ret, sizeof(struct ptype));
 	ret->type = pt->type;
-	if (ptypes[ret->type])
+	if (ptypes[ret->type]) {
 		ptypes[pt->type]->alloc(ret);
+		ptypes[pt->type]->copy(ret, pt);
+	}
+
 
 	if (pt->unit)
 		strncpy(ret->unit, pt->unit, PTYPE_MAX_UNIT);
@@ -214,6 +217,17 @@ int ptype_unserialize(struct ptype *pt, char *val) {
 
 	return ptypes[pt->type]->unserialize(pt, val);
 }
+
+int ptype_copy(struct ptype *dst, struct ptype *src) {
+
+	if (dst->type != src->type) {
+		pom_log(POM_LOG_ERR "Error, trying to copy pytes of different type\r\n");
+		return POM_ERR;
+	}
+
+	return ptypes[src->type]->copy(dst, src);
+}
+
 
 int ptype_cleanup_module(struct ptype* p) {
 

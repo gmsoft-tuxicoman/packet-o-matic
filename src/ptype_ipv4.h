@@ -49,5 +49,6 @@ int ptype_cleanup_ipv4(struct ptype *p);
 int ptype_parse_ipv4(struct ptype *p, char *val);
 int ptype_print_ipv4(struct ptype *pt, char *val, size_t size);
 int ptype_compare_ipv4(int op, void *val_a, void *val_b);
+int ptype_copy_ipv4(struct ptype *dst, struct ptype *src);
 
 #endif

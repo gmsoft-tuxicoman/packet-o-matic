@@ -100,7 +100,7 @@ int input_register_docsis(struct input_reg *r, struct input_functions *i_funcs) 
 	(*i_funcs->register_param) (mode_normal, "outlayer", "ethernet", p_outlayer, "Type of the output layer wanted");
 
 	(*i_funcs->register_param) (mode_scan, "eurodocsis", "yes", p_eurodocsis, "Use EuroDOCSIS specification instead of normal DOCSIS specification");
-	(*i_funcs->register_param) (mode_scan, "startfreq", "0", p_startfreq, "Starting frequency. Will use the default of the specification if 0");
+	(*i_funcs->register_param) (mode_scan, "startfreq", "0", p_startfreq, "Starting frequency in Hz. Will use the default of the specification if 0");
 	(*i_funcs->register_param) (mode_scan, "modulation", "QAM256", p_modulation, "Modulation of the DOCSIS stream");
 	(*i_funcs->register_param) (mode_scan, "adapter", "0", p_adapter, "ID of the DVB adapter to use");
 	(*i_funcs->register_param) (mode_scan, "frontend", "0", p_frontend, "ID of the DVB frontend to use for the specified adapter");
@@ -180,6 +180,13 @@ int input_open_docsis(struct input *i) {
 	// Parse eurodocsis and frequency
 	int eurodocsis = PTYPE_BOOL_GETVAL(p_eurodocsis);
 	unsigned int frequency = PTYPE_UINT32_GETVAL(p_frequency);
+
+	if (eurodocsis && frequency < 112000000)
+		frequency = 112000000;
+	else if (frequency < 91000000)
+			frequency = 91000000;
+	if (frequency > 858000000)
+		frequency = 858000000;
 
 	fe_modulation_t modulation;
 	if (!strcmp(PTYPE_STRING_GETVAL(p_modulation), "QAM64"))
@@ -297,22 +304,28 @@ int input_open_docsis(struct input *i) {
 	} else if (i->mode == mode_scan) { // No frequency supplied. Scanning for downstream
 
 
-		unsigned int start, end, step;
+		unsigned int start = PTYPE_UINT32_GETVAL(p_startfreq);
+
+		unsigned int end, step;
 		int j;
 		if (eurodocsis) {
-			start = 112000000;
+			if (start < 112000000)
+				start = 112000000;
+			if (start > 858000000)
+				start = 858000000;
 			end = 858000000;
 			step = 1000000;
 
 		} else {
+			if (start < 91000000)
+				start = 91000000;
+			if (start > 858000000)
+				start = 858000000;
 			start = 91000000;
 			end = 857000000;
 			step = 1000000;
 		}
 
-		unsigned int scanstart = PTYPE_UINT32_GETVAL(p_startfreq);
-		if (scanstart)
-			start = scanstart;
 
 		unsigned int need_reinit = PTYPE_BOOL_GETVAL(p_frontend_reinit);
 
@@ -356,6 +369,8 @@ int input_open_docsis(struct input *i) {
 			(*ifcs->pom_log) ("\r\n");
 
 			PTYPE_UINT32_SETVAL(p_frequency, j);
+
+			i->mode = mode_normal;
 
 			break;
 

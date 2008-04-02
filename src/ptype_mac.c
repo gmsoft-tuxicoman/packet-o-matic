@@ -33,6 +33,8 @@ int ptype_register_mac(struct ptype_reg *r) {
 
 	r->serialize = ptype_print_mac;
 	r->unserialize = ptype_parse_mac;
+
+	r->copy = ptype_copy_mac;
 	
 	r->ops = PTYPE_OP_EQUALS;
 	
@@ -99,4 +101,14 @@ int ptype_compare_mac(int op, void *val_a, void *val_b) {
 		return (memcmp(a->addr, b->addr, sizeof(a->addr)) == 0);
 
 	return 0;
+}
+
+int ptype_copy_mac(struct ptype *dst, struct ptype *src) {
+
+	struct ptype_mac_val *d = dst->value;
+	struct ptype_mac_val *s = src->value;
+	memcpy(d, s, sizeof(struct ptype_mac_val));
+
+	return POM_OK;
+
 }
