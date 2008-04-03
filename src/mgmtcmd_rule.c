@@ -381,6 +381,7 @@ struct rule_node *mgmtcmd_set_rule_parse_block(struct mgmt_connection *c, char *
 	bzero(rn, sizeof(struct rule_node));
 	rn->layer = layer;
 	rn->match = param;
+	match_refcount_inc(layer);
 	return rn;
 
 }

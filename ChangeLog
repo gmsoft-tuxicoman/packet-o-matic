@@ -1,3 +1,6 @@
+* 2008/04/03 Guy Martin <gmsoft@tuxicoman.be>
+Fixed match reference count when using rules with fields.
+
 * 2008/04/02 Guy Martin <gmsoft@tuxicoman.be>
 Added ptype_copy function to all ptypes.
 More checks on parameters into input_docsis.
