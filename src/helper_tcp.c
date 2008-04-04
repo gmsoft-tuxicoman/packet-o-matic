@@ -150,13 +150,12 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 									//(*hf->pom_log) (POM_LOG_TSHOOT "helper_tcp.c: %u.%u 0x%x-%u, got seq %u, bufflen is %d. replacing duplicate already in the queue\r\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, new_seq, cp->buff_len[dir]);
 									cp->buff_len[dir] += payload_size - tmp_pkt->data_len;
 
-									free(tmp_pkt->f->buff);
+									free(tmp_pkt->f->buff_base);
 									free(tmp_pkt->f);
 									tmp_pkt->f = malloc(sizeof(struct frame));
 									memcpy(tmp_pkt->f, f, sizeof(struct frame));
-									tmp_pkt->f->buff = malloc(f->len);
+									(*hf->frame_alloc_aligned_buff) (f, f->len);
 									memcpy(tmp_pkt->f->buff, f->buff, f->len);
-									tmp_pkt->f->bufflen = f->len;
 									tmp_pkt->seq = new_seq;
 									tmp_pkt->ack = new_ack;
 									tmp_pkt->data_len = payload_size;
@@ -180,9 +179,8 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 			// This will be fred by the helper subsystem
 			pkt->f = malloc(sizeof(struct frame));
 			memcpy(pkt->f, f, sizeof(struct frame));
-			pkt->f->buff = malloc(f->len);
+			(*hf->frame_alloc_aligned_buff) (pkt->f, f->len);
 			memcpy(pkt->f->buff, f->buff, f->len);
-			pkt->f->bufflen = f->len;
 			
 			pkt->seq = new_seq;
 			pkt->ack = new_ack;
@@ -256,7 +254,7 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 			cp->pkts_tail[dir] = NULL;
 		}
 		cp->buff_len[dir] -= pkt->f->len;
-		free(pkt->f->buff);
+		free(pkt->f->buff_base);
 		free(pkt->f);
 		free(pkt);
 
@@ -364,7 +362,7 @@ int helper_cleanup_connection_tcp(struct conntrack_entry *ce, void *conntrack_pr
 			while (cp->pkts[i]) {
 				struct helper_priv_tcp_packet *pkt = cp->pkts[i];
 				cp->pkts[i] = cp->pkts[i]->next;
-				free(pkt->f->buff);
+				free(pkt->f->buff_base);
 				free(pkt->f);
 				free(pkt);
 			}

@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -209,8 +209,9 @@ int target_process_tcpkill(struct target *t, struct frame *f) {
 	ipv6start = layer_find_start(f->l, match_ipv6_id);
 
 	// init temp buffer
-	unsigned char buffer[1024];
-	bzero(buffer, 1024);
+	unsigned char buffer_base[1024];
+	bzero(buffer_base, 1024);
+	unsigned char *buffer = (unsigned char*) (((int)buffer_base & ~3) + 4);
 
 	int tcpsum = 0;
 	int blen = 0; // Buffer len
@@ -251,6 +252,9 @@ int target_process_tcpkill(struct target *t, struct frame *f) {
 			(*tf->pom_log) (POM_LOG_WARN "No ethernet header found in this packet\r\n");
 			return POM_OK;
 		}
+
+		// align the buffer on a 4+2 bytes boundary;
+		buffer += 2;
 		
 		ipv6start = layer_find_start(f->l, match_ipv6_id);
 

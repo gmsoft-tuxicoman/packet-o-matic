@@ -690,8 +690,8 @@ int ringbuffer_alloc(struct ringbuffer *r, struct input *in) {
 	for (i = 0; i < PTYPE_UINT32_GETVAL(r->size); i++) {
 		r->buffer[i] = malloc(sizeof(struct frame));
 		bzero(r->buffer[i], sizeof(struct frame));
-		r->buffer[i]->buff = malloc(r->ic.snaplen);
-		r->buffer[i]->bufflen = r->ic.snaplen;
+		r->buffer[i]->input = in;
+		frame_alloc_aligned_buff(r->buffer[i], r->ic.snaplen);
 		r->buffer[i]->input = main_config->input;
 
 	}
@@ -707,7 +707,7 @@ int ringbuffer_cleanup(struct ringbuffer *r) {
 	int i;
 
 	for (i = 0; i < PTYPE_UINT32_GETVAL(r->size); i++) {
-		free(r->buffer[i]->buff);
+		free(r->buffer[i]->buff_base);
 		free(r->buffer[i]);
 	}
 	free(r->buffer);

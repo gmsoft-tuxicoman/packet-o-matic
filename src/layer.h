@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -61,7 +61,8 @@ struct frame {
 	int first_layer; ///< first layer of the frame
 	struct timeval tv; ///< when the packet arrived
 	struct input *input; ///< The input from where the packet comes from
-	void *buff; ///< the frame itself
+	void *buff_base; ///< non aligned buffer for the frame
+	void *buff; ///< the frame itself in an aligned buffer
 	struct conntrack_entry *ce; ///< Conntrack entry associated with this packet if any
 
 };
@@ -79,5 +80,6 @@ int layer_cleanup();
 
 int layer_field_parse(struct layer *, char *expr, char *buff, size_t size);
 
+int frame_alloc_aligned_buff(struct frame *f, int length);
 
 #endif

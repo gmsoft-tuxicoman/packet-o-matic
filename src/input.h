@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,6 +32,7 @@ struct input_caps {
 
 	unsigned int snaplen; ///< Snaplen of the input
 	int is_live; ///< Define if the opened input is reading prerecorded pcakets or is capturing live traffic
+	unsigned int buff_align_offset; ///< Offset of the aligned buffer
 
 };
 

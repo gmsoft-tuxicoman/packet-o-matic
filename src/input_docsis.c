@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -929,6 +929,7 @@ int input_getcaps_docsis(struct input *i, struct input_caps *ic) {
 
 	ic->snaplen = 1800; /// Must be at least that high for internal processing
 	ic->is_live = 1;
+	ic->buff_align_offset = 0;
 
 	return POM_OK;
 

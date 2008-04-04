@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -71,8 +71,6 @@ int helper_ipv4_process_frags(struct helper_priv_ipv4 *p) {
 	}
 
 	f->len = f->bufflen;
-
-	f->buff = realloc(f->buff, f->bufflen); // The helper subsystem will free that and the struct frame for us
 
 	frg = p->frags;
 	while (frg) {
@@ -173,9 +171,7 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 		// Save the sublayer (ethernet or else) up to the start of the IPv4 payload
 		tmp->f = malloc(sizeof(struct frame));
 		memcpy(tmp->f, f, sizeof(struct frame));
-		tmp->f->buff = malloc(frag_start);
-		memcpy(tmp->f->buff, f->buff, frag_start);
-		tmp->f->bufflen = frag_start;
+		(*hf->frame_alloc_aligned_buff) (f, frag_start);
 		tmp->f->len = frag_start;
 		tmp->hdr_offset = start;
 
@@ -310,7 +306,7 @@ int helper_cleanup_ipv4_frag(void *priv) {
 		p->next->prev = p->prev;
 
 	if (p->f) {
-		free(p->f->buff);
+		free(p->f->buff_base);
 		free(p->f);
 	}
 	free(p);
@@ -324,7 +320,7 @@ int helper_cleanup_ipv4() {
 
 	while (frags_head) {
 /*		struct helper_priv_ipv4 *p = frags_head;
-		free(p->f->buff);
+		free(p->f->buff_base);
 		free(p->f);*/
 		helper_cleanup_ipv4_frag(frags_head);
 	}

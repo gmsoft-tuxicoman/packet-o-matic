@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -232,6 +232,14 @@ int input_getcaps_pcap(struct input *i, struct input_caps *ic) {
 		ic->is_live = 0;
 	else
 		ic->is_live = 1;
+
+	switch (pcap_datalink(p->p)) {
+		case DLT_EN10MB: // ethernet is 14 bytes long
+			ic->buff_align_offset = 2;
+			break;
+		default: 
+			ic->buff_align_offset = 0;
+	}
 
 	return POM_OK;
 

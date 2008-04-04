@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -47,6 +47,7 @@ int helper_init() {
 	hlp_funcs->ptype_print_val = ptype_print_val;
 	hlp_funcs->ptype_cleanup = ptype_cleanup_module;
 	hlp_funcs->match_get_field = match_get_field;
+	hlp_funcs->frame_alloc_aligned_buff = frame_alloc_aligned_buff;
 
 	pom_log(POM_LOG_DEBUG "Helper initialized\r\n");
 
@@ -251,7 +252,7 @@ int helper_process_queue(struct rule_list *list) {
 
 	while (frame_head) {
 		do_rules(frame_head->f, list);
-		free(frame_head->f->buff);
+		free(frame_head->f->buff_base);
 		free(frame_head->f);
 		struct helper_frame *tmpf = frame_head;
 		frame_head = frame_head->next;
