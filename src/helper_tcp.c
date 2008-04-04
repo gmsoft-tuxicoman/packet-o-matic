@@ -154,7 +154,7 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 									free(tmp_pkt->f);
 									tmp_pkt->f = malloc(sizeof(struct frame));
 									memcpy(tmp_pkt->f, f, sizeof(struct frame));
-									(*hf->frame_alloc_aligned_buff) (f, f->len);
+									(*hf->frame_alloc_aligned_buff) (tmp_pkt->f, f->len);
 									memcpy(tmp_pkt->f->buff, f->buff, f->len);
 									tmp_pkt->seq = new_seq;
 									tmp_pkt->ack = new_ack;

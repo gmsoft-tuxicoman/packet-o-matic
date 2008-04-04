@@ -171,7 +171,7 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 		// Save the sublayer (ethernet or else) up to the start of the IPv4 payload
 		tmp->f = malloc(sizeof(struct frame));
 		memcpy(tmp->f, f, sizeof(struct frame));
-		(*hf->frame_alloc_aligned_buff) (f, frag_start);
+		(*hf->frame_alloc_aligned_buff) (tmp->f, frag_start);
 		tmp->f->len = frag_start;
 		tmp->hdr_offset = start;
 

@@ -228,16 +228,15 @@ int layer_field_parse(struct layer *l, char *expr, char *buff, size_t size) {
 
 int frame_alloc_aligned_buff(struct frame *f, int length) {
 	struct input_caps ic;
-	if (input_getcaps(f->input, &ic) == POM_ERR)
+	if (input_getcaps(f->input, &ic) == POM_ERR) {	
+		pom_log(POM_LOG_ERR, "Error while trying to get input caps\r\n");
 		return POM_ERR;
+	}
 
 	int total_len = length + ic.buff_align_offset + 4;
 	f->buff_base = malloc(total_len);
 	f->buff = (void*) (((int)f->buff_base & ~3) + 4 + ic.buff_align_offset);
 	f->bufflen = total_len - ((int)f->buff - (int)f->buff_base);
-
-	if (f->bufflen < length)
-		pom_log(POM_LOG_WARN, "WTF, buffer is way too short!!!\r\n");
 
 	return POM_OK;
 
