@@ -234,7 +234,7 @@ int frame_alloc_aligned_buff(struct frame *f, int length) {
 	int total_len = length + ic.buff_align_offset + 4;
 	f->buff_base = malloc(total_len);
 	f->buff = (void*) (((int)f->buff_base & ~3) + 4 + ic.buff_align_offset);
-	f->bufflen = total_len - ((int)f->buff_base - (int)f->buff);
+	f->bufflen = total_len - ((int)f->buff - (int)f->buff_base);
 
 	if (f->bufflen < length)
 		pom_log(POM_LOG_WARN, "WTF, buffer is way too short!!!\r\n");
