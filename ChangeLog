@@ -1,5 +1,7 @@
 * 2008/04/04 Guy Martin <gmsoft@tuxicoman.be>
-Added support for non x86 architecture.
+Added support for non x86 architectures.
+Added display of current conntrack usage with show conntracks.
+Fixed bug that makes pom hangs when reaching maximum history usage.
 
 * 2008/04/03 Guy Martin <gmsoft@tuxicoman.be>
 Fixed match reference count when using rules with fields.

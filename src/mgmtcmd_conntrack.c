@@ -70,7 +70,7 @@ int mgmtcmd_show_conntracks(struct mgmt_connection *c, int argc, char *argv[]) {
 	int i;
 	for (i = 0; i < MAX_CONNTRACK; i++) {
 		if (conntracks[i]) {
-			mgmtsrv_send(c, "  %s\r\n", match_get_name(i));
+			mgmtsrv_send(c, "%s (tracking %u connections)\r\n", match_get_name(i), conntracks[i]->refcount);
 			struct conntrack_param *p = conntracks[i]->params;
 			if (!p)
 				mgmtsrv_send(c, "   No parameter for this conntrack module\r\n");

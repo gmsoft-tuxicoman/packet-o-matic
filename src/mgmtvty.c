@@ -141,6 +141,16 @@ int mgmtvty_process(struct mgmt_connection *c, unsigned char *buffer, unsigned i
 								c->history[c->history_pos] = malloc(strlen(c->curcmd) + 1);
 								strcpy(c->history[c->history_pos], c->curcmd);
 
+								// and make sure we still get a empty one
+								int next = c->history_pos + 1;
+								if (next >= MGMT_CMD_HISTORY_SIZE)
+									next = 0;
+								if (c->history[next]) {
+									free(c->history[next]);
+									c->history[next] = NULL;
+								}
+
+
 							}
 
 							int len = strlen(c->curcmd) - strlen(c->history[prev]);
@@ -596,6 +606,11 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 			c->history_pos++;
 			if (c->history_pos >= MGMT_CMD_HISTORY_SIZE)
 				c->history_pos = 0;
+
+			if (c->history[c->history_pos]) {
+				free(c->history[c->history_pos]);
+				c->history[c->history_pos] = NULL;
+			}
 
 			// Process the command
 			mgmtsrv_process_command(c);
