@@ -37,9 +37,11 @@ void pom_log(const char *format, ...) {
 	if (level > debug_level)
 		return;
 
-	va_start(arg_list, format);
-	vprintf(format, arg_list);
-	va_end(arg_list);
+	if (console_output) {
+		va_start(arg_list, format);
+		vprintf(format, arg_list);
+		va_end(arg_list);
+	}
 
 	va_start(arg_list, format);
 	mgmtsrv_send_debug(format, arg_list);

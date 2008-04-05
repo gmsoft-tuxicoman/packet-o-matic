@@ -89,6 +89,9 @@ void *lib_get_register_func(const char *type, const char *name, void **handle);
 /// Global debug level
 unsigned int debug_level;
 
+/// Should we output to console
+int console_output;
+
 void pom_log(const char *format, ...);
 
 #endif

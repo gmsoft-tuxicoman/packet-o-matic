@@ -73,6 +73,7 @@ void print_usage() {
 		"\n"
 		"Options :\n"
 		" -c, --config=FILE          specify configuration file to use (default pom.xml.conf)\n"
+		" -b, --background           run in the background as a daemon\n"
 		" -e, --empty-config         start with an empty config\n"
 		" -h, --help                 display the help\n"
 		"     --no-cli               disable the CLI console\n"
@@ -350,6 +351,7 @@ int main(int argc, char *argv[]) {
 	core_params = NULL;
 
 	debug_level = *POM_LOG_INFO;
+	console_output = 1;
 
 	char *cfgfile = "pom.xml.conf";
 	int empty_config = 0;
@@ -361,6 +363,7 @@ int main(int argc, char *argv[]) {
 	while (1) {
 		static struct option long_options[] = {
 			{ "help", 0, 0, 'h' },
+			{ "background", 0, 0, 'b' },
 			{ "config", 1, 0, 'c'},
 			{ "empty-config", 0, 0, 'e'},
 			{ "port", 1, 0, 'p'},
@@ -370,7 +373,7 @@ int main(int argc, char *argv[]) {
 			{ 0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hc:ep:w:d:", long_options, NULL);
+		c = getopt_long(argc, argv, "hbc:ep:w:d:", long_options, NULL);
 
 		if (c == -1)
 			break;
@@ -404,6 +407,16 @@ int main(int argc, char *argv[]) {
 				cfgfile = optarg;
 				pom_log("Config file is %s\r\n", optarg);
 				break;
+			case 'b': {
+				pid_t pid = fork();
+				if (pid == -1)
+					pom_log("Error while forking, can't go in background mode\r\n");
+				else if (pid != 0)
+					return 0;
+				console_output = 0;
+				break;
+			}
+				
 			case 'e':
 				empty_config = 1;
 				pom_log("Starting with an empty configuration\r\n");
@@ -450,7 +463,7 @@ int main(int argc, char *argv[]) {
 		return -1;
 	}
 	core_register_param("autosave_config_on_exit", "yes", param_autosave_on_exit, "Automatically save the configuration when exiting", NULL);
-	core_register_param("quit_on_input_error", "no", param_autosave_on_exit, "Quit when there is an error on the input", NULL);
+	core_register_param("quit_on_input_error", "no", param_quit_on_input_error, "Quit when there is an error on the input", NULL);
 
 
 	rbuf = malloc(sizeof(struct ringbuffer));

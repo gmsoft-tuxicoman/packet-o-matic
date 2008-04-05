@@ -745,6 +745,7 @@ int input_read_docsis(struct input *i, struct frame *f) {
 		while (p->last_seq != (mpeg_buff[3] & 0xF)) {
 			p->last_seq = (p->last_seq + 1) & 0xF;
 			p->missed_packets++;
+			p->total_packets++;
 			//(*ifcs->pom_log) (POM_LOG_TSHOOT "Filling1 %u bytes with 0xff at 0x%X-0x%X\r\n", MPEG_TS_LEN - 4,(unsigned) (f->buff + packet_pos), (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 4);
 			memset(f->buff + packet_pos, 0xff, MPEG_TS_LEN - 4); // Fill buffer with stuff byte
 			packet_pos += MPEG_TS_LEN - 4;
@@ -755,10 +756,15 @@ int input_read_docsis(struct input *i, struct frame *f) {
 				packet_pos = 0;
 				dlen = 0;
 
-				if (p->last_seq < (mpeg_buff[3] & 0xF))
-					p->missed_packets += (mpeg_buff[3] & 0xF) - p->last_seq;
-				else
-					p->missed_packets += (mpeg_buff[3] & 0xF) + 0x10 - p->last_seq;
+				if (p->last_seq < (mpeg_buff[3] & 0xF)) {
+					int inc = (mpeg_buff[3] & 0xF) - p->last_seq;
+					p->missed_packets += inc;
+					p->total_packets += inc;
+				} else {
+					int inc = (mpeg_buff[3] & 0xF) + 0x10 - p->last_seq;
+					p->missed_packets += inc;
+					p->total_packets += inc;
+				}
 
 				p->last_seq = mpeg_buff[3] & 0xF;
 				break;
@@ -908,7 +914,7 @@ int input_close_docsis(struct input *i) {
 
 	(*ifcs->pom_log) ("0x%02lx; DOCSIS : Total MPEG packet read %lu, missed %lu (%.1f%%), erroneous %lu (%.1f%%), invalid %lu (%.1f%%), total errors %lu (%.1f%%)\r\n", \
 		(unsigned long) i->input_priv, \
-		p->total_packets, \
+		p->total_packets - p->missed_packets, \
 		p->missed_packets, \
 		100.0 / (double) p->total_packets * (double) p->missed_packets, \
 		p->error_packets, \

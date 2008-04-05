@@ -368,6 +368,7 @@ int mgmtcmd_write_config(struct mgmt_connection *c, int argc, char *argv[]) {
 
 int mgmtcmd_halt(struct mgmt_connection *c, int argc, char *argv[]) {
 
+	mgmtsrv_send(c, "Please wait while packet-o-matic is stopping ...\r\n");
 	halt();
 	return POM_OK;
 }

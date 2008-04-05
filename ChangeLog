@@ -1,3 +1,9 @@
+* 2008/04/05 Guy Martin <gmsoft@tuxicoman.be>
+Added option -b to go into daemon mode.
+Improved packet stat calculation in input_docsis.
+Use the correct ptype for quit_on_input_error parameter.
+Added message when issuing the halt command.
+
 * 2008/04/04 Guy Martin <gmsoft@tuxicoman.be>
 Added support for non x86 architectures.
 Added display of current conntrack usage with show conntracks.
