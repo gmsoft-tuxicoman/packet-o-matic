@@ -1,3 +1,6 @@
+* 2008/04/07 Guy Martin <gmsoft@tuxicoman.be>
+Fix logic when matching rules with ! sign.
+
 * 2008/04/05 Guy Martin <gmsoft@tuxicoman.be>
 Added option -b to go into daemon mode.
 Improved packet stat calculation in input_docsis.

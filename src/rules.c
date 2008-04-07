@@ -118,7 +118,10 @@ int node_match(struct frame *f, struct rule_node *n, struct layer *l) {
 		}
 
 		if (n->match) {
-			result = match_eval(n->match, l);
+			if (n->op & RULE_OP_NOT)
+				result = !match_eval(n->match, l);
+			else
+				result = match_eval(n->match, l);
 		}
 
 	} else { // If there is an operation specified, it means this node is a 'or' or 'and' operation
@@ -126,34 +129,34 @@ int node_match(struct frame *f, struct rule_node *n, struct layer *l) {
 	}
 
 	if (result == 0)
-		return (n->op & RULE_OP_NOT); // It doesn't match
+		return 0; // It doesn't match
 
 	if (!n->a)
-		return !(n->op & RULE_OP_NOT); // There is nothing else to match
+		return result; // There is nothing else to match
 
 
 
 
 	if (!n->b) { // There is only one next node
-		if (n->op & RULE_OP_NOT)
-			return !node_match(f, n->a, next_layer);
-		else
-			return node_match(f, n->a, next_layer);
+		return node_match(f, n->a, next_layer);
 	}
 
 
 	// there is two node, let's see if we match one of them
-	if (n->op & RULE_OP_OR)
-		result = node_match(f, n->a, next_layer) || node_match(f, n->b, next_layer);
-	else if (n->op & RULE_OP_AND)
-		result = node_match(f, n->a, next_layer) && node_match(f, n->b, next_layer);
-	else {
+	if (n->op & RULE_OP_OR) {
+		if (n->op & RULE_OP_NOT)
+			result = !(node_match(f, n->a, next_layer) || node_match(f, n->b, next_layer));
+		else
+			result = node_match(f, n->a, next_layer) || node_match(f, n->b, next_layer);
+	} else if (n->op & RULE_OP_AND) {
+		if (n->op & RULE_OP_NOT)
+			result = !(node_match(f, n->a, next_layer) && node_match(f, n->b, next_layer));
+		else
+			result = node_match(f, n->a, next_layer) && node_match(f, n->b, next_layer);
+	} else {
 		pom_log(POM_LOG_ERR "Invalid rule specified for node with two subnodes.\r\n");
 		return 0;
 	}
-
-	if (n->op & RULE_OP_NOT)
-		return !result;
 
 	return result;
 }
