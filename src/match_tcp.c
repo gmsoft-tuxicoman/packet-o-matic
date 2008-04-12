@@ -36,6 +36,7 @@ struct ptype *ptype_uint8, *ptype_uint16, *ptype_uint32;
 int match_register_tcp(struct match_reg *r, struct match_functions *m_funcs) {
 
 	r->identify = match_identify_tcp;
+	r->get_expectation = match_get_expectation_tcp;
 	r->unregister = match_unregister_tcp;
 
 	mf = m_funcs;
@@ -82,6 +83,25 @@ int match_identify_tcp(struct frame *f, struct layer* l, unsigned int start, uns
 
 	return match_undefined->id;
 
+}
+
+int match_get_expectation_tcp(int field_id, int direction) {
+
+	if (field_id == field_sport) {
+		if (direction == EXPT_DIR_FWD) {
+			return field_sport;
+		} else {
+			return field_dport;
+		}
+	} else if (field_id == field_dport) {
+		if (direction == EXPT_DIR_FWD) {
+			return field_dport;
+		} else {
+			return field_sport;
+		}
+
+	}
+	return POM_ERR;
 }
 
 int match_unregister_tcp(struct match_reg *r) {

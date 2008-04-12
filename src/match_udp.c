@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@ int match_register_udp(struct match_reg *r, struct match_functions *m_funcs) {
 
 
 	r->identify = match_identify_udp;
+	r->get_expectation = match_get_expectation_udp;
 	r->unregister = match_unregister_udp;
 
 	mf = m_funcs;
@@ -65,6 +66,25 @@ int match_identify_udp(struct frame *f, struct layer* l, unsigned int start, uns
 
 	return match_undefined->id;
 
+}
+
+int match_get_expectation_udp(int field_id, int direction) {
+
+	if (field_id == field_sport) {
+		if (direction == EXPT_DIR_FWD) {
+			return field_sport;
+		} else {
+			return field_dport;
+		}
+	} else if (field_id == field_dport) {
+		if (direction == EXPT_DIR_FWD) {
+			return field_dport;
+		} else {
+			return field_sport;
+		}
+
+	}
+	return POM_ERR;
 }
 
 int match_unregister_udp(struct match_reg *r) {

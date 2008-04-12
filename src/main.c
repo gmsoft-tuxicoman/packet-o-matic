@@ -453,6 +453,7 @@ int main(int argc, char *argv[]) {
 	helper_init();
 	target_init();
 	rules_init();
+	expectation_init();
 
 
 	struct ptype *param_autosave_on_exit = ptype_alloc("bool", NULL);
@@ -618,6 +619,8 @@ finish:
 
 	// Process remaining queued frames
 	conntrack_close_connections(main_config->rules);
+
+	expectation_cleanup_all();
 
 	if (PTYPE_BOOL_GETVAL(param_autosave_on_exit)) {
 		pom_log("Autosaving configuration to %s\r\n", main_config->filename);

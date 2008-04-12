@@ -1,9 +1,9 @@
-CFLAGS += -Wall -DDEBUG -pthread
+CFLAGS += -Wall -pthread
 
 MGMT_OBJS = mgmtsrv.c mgmtsrv.h mgmtvty.c mgmtvty.h mgmtcmd.c mgmtcmd.h mgmtcmd_helper.c mgmtcmd_helper.h mgmtcmd_conntrack.c mgmtcmd_conntrack.h mgmtcmd_input.c mgmtcmd_input.h mgmtcmd_rule.c mgmtcmd_rule.h mgmtcmd_target.c mgmtcmd_target.h
 
 bin_PROGRAMS = packet-o-matic
-packet_o_matic_SOURCES = main.c main.h rules.c rules.h input.c input.h match.c match.h conntrack.c conntrack.h jhash.h target.c target.h timers.c timers.h helper.c helper.h conf.c conf.h common.c common.h layer.c layer.h ptype.c ptype.h $(MGMT_OBJS)
+packet_o_matic_SOURCES = main.c main.h rules.c rules.h input.c input.h match.c match.h conntrack.c conntrack.h jhash.h target.c target.h timers.c timers.h helper.c helper.h conf.c conf.h common.c common.h layer.c layer.h ptype.c ptype.h expectation.c expectation.h $(MGMT_OBJS)
 
 packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"'
 packet_o_matic_LDFLAGS = @LIBS@ @libxml2_LIBS@
@@ -12,7 +12,7 @@ INPUT_OBJS = @INPUT_OBJS@
 MATCH_OBJS = match_docsis.la match_ethernet.la match_vlan.la match_ipv4.la match_icmp.la match_ipv6.la match_icmpv6.la match_tcp.la match_udp.la match_rtp.la match_undefined.la match_linux_cooked.la
 CONNTRACK_OBJS = conntrack_ipv4.la conntrack_ipv6.la conntrack_rtp.la conntrack_tcp.la conntrack_udp.la
 HELPER_OBJS = helper_ipv4.la helper_tcp.la helper_rtp.la
-TARGET_OBJS = target_display.la target_dump_payload.la target_irc.la target_http.la target_pop.la target_rtp.la target_null.la @TARGET_OBJS@
+TARGET_OBJS = target_display.la target_dump_payload.la target_irc.la target_http.la target_pop.la target_rtp.la target_tftp.la target_null.la @TARGET_OBJS@
 PTYPES_OBJS = ptype_bool.la ptype_uint8.la ptype_uint16.la ptype_uint32.la ptype_uint64.la ptype_mac.la ptype_ipv4.la ptype_ipv6.la ptype_string.la ptype_bytes.la
 
 
@@ -89,6 +89,8 @@ target_pop_la_SOURCES = target_pop.c target_pop.h modules_common.h
 target_pop_la_LDFLAGS = -module -avoid-version
 target_rtp_la_SOURCES = target_rtp.c target_rtp.h modules_common.h
 target_rtp_la_LDFLAGS = -module -avoid-version
+target_tftp_la_SOURCES = target_tftp.c target_tftp.h modules_common.h
+target_tftp_la_LDFLAGS = -module -avoid-version
 target_null_la_SOURCES = target_null.c target_null.h modules_common.h
 target_null_la_LDFLAGS = -module -avoid-version
 

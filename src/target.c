@@ -50,6 +50,10 @@ int target_init() {
 	tg_funcs.match_get_field = match_get_field;
 	tg_funcs.file_open = target_file_open;
 	tg_funcs.layer_field_parse = layer_field_parse;
+	tg_funcs.expectation_alloc = expectation_alloc;
+	tg_funcs.expectation_add = expectation_add;
+	tg_funcs.expectation_cleanup = expectation_cleanup;
+	tg_funcs.expectation_set_priv = expectation_set_target_priv;
 
 	pom_log(POM_LOG_DEBUG "Targets initialized\r\n");
 

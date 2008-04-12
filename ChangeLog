@@ -1,3 +1,7 @@
+* 2008/04/12 Guy Martin <gmsoft@tuxicoman.be>
+Added expectation interface that allow targets to expect new connections.
+Added target_tftp.
+
 * 2008/04/07 Guy Martin <gmsoft@tuxicoman.be>
 Fix logic when matching rules with ! sign.
 

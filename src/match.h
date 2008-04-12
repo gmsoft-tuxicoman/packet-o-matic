@@ -52,6 +52,7 @@ struct match_reg {
 	unsigned int refcount; //< reference count
 	struct match_dep match_deps[MAX_MATCH];
 	int (*identify) (struct frame *f, struct layer*, unsigned int, unsigned int); ///< callled to identify the next layer of a packet
+	int (*get_expectation) (int field_id, int direction);
 	int (*unregister) (struct match_reg *r); ///< called when unregistering the match
 
 };
@@ -86,6 +87,7 @@ int match_get_type(const char *match_name);
 char *match_get_name(int match_type);
 struct match_field_reg *match_get_field(int match_type, int field_id);
 int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigned int len);
+int match_get_expectation(int match_type, int field_id, int direction);
 int match_eval(struct match_field *mf, struct layer *l);
 int match_refcount_inc(int match_type);
 int match_refcount_dec(int match_type);

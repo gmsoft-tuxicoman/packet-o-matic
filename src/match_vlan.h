@@ -45,6 +45,7 @@ struct vlan_header {
 
 int match_register_vlan(struct match_reg *r, struct match_functions *m_funcs);
 int match_identify_vlan(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
+int match_get_expectation_vlan(int field_id, int direction);
 int match_unregister_vlan(struct match_reg *r);
 
 

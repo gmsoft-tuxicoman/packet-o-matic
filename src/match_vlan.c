@@ -32,6 +32,7 @@ struct ptype *ptype_vid;
 int match_register_vlan(struct match_reg *r, struct match_functions *m_funcs) {
 
 	r->identify = match_identify_vlan;
+	r->get_expectation = match_get_expectation_vlan;
 	r->unregister = match_unregister_vlan;
 	
 	mf = m_funcs;
@@ -72,6 +73,14 @@ int match_identify_vlan(struct frame *f, struct layer* l, unsigned int start, un
 		case 0x86dd:
 			return match_ipv6->id;
 	}
+
+	return POM_ERR;
+}
+
+int match_get_expectation_vlan(int field_id, int direction) {
+
+	if (field_id == field_vid)
+		return field_vid;
 
 	return POM_ERR;
 }

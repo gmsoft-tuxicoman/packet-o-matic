@@ -35,6 +35,7 @@ struct ptype *ptype_uint8, *ptype_uint16, *ptype_uint32, *ptype_uint32_hex;
 int match_register_rtp(struct match_reg *r, struct match_functions *m_funcs) {
 
 	r->identify = match_identify_rtp;
+	r->get_expectation = match_get_expectation_rtp;
 	r->unregister = match_unregister_rtp;
 
 	mf = m_funcs;
@@ -104,6 +105,14 @@ int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, uns
 
 	return match_undefined->id;
 
+}
+
+int match_get_expectation_rtp(int field_id, int direction) {
+
+	if (field_id == field_ssrc && direction == EXPT_DIR_FWD)
+		return field_ssrc;
+
+	return POM_ERR;
 }
 
 int match_unregister_rtp(struct match_reg *r) {

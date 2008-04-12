@@ -273,6 +273,15 @@ int match_eval(struct match_field *mf, struct layer *l) {
 	
 }
 
+int match_get_expectation(int match_type, int field_id, int direction) {
+
+	if (matchs[match_type]->get_expectation)
+		return (*matchs[match_type]->get_expectation) (field_id, direction);
+	
+	return POM_ERR;
+
+}
+
 int match_refcount_inc(int match_type) {
 
 	if (!matchs[match_type])
@@ -412,3 +421,4 @@ void match_print_help() {
 		printf("\n");
 	}
 }
+

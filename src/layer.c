@@ -229,7 +229,7 @@ int layer_field_parse(struct layer *l, char *expr, char *buff, size_t size) {
 int frame_alloc_aligned_buff(struct frame *f, int length) {
 	struct input_caps ic;
 	if (input_getcaps(f->input, &ic) == POM_ERR) {	
-		pom_log(POM_LOG_ERR, "Error while trying to get input caps\r\n");
+		pom_log(POM_LOG_ERR "Error while trying to get input caps\r\n");
 		return POM_ERR;
 	}
 

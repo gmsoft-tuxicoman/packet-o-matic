@@ -25,6 +25,7 @@
 #include "conntrack.h"
 #include "match.h"
 #include "ptype.h"
+#include "expectation.h"
 
 #define MAX_TARGET 16
 
@@ -72,7 +73,7 @@ struct target {
 	void *target_priv;
 	struct target_param *params;
 	struct target_mode *mode;
-	int matched_conntrack;
+	int matched;
 	int started;
 
 	struct ptype* pkt_cnt;
@@ -101,7 +102,10 @@ struct target_functions {
 	struct match_field_reg *(*match_get_field) (int match_type, int field_id);
 	int (*file_open) (struct layer *l, char *filename, int flags, mode_t mode);
 	int (*layer_field_parse) (struct layer *, char *expr, char *buff, size_t size);
-
+	struct expectation_list *(*expectation_alloc) (struct frame *f, struct target *t, struct conntrack_entry *ce, int direction);
+	int (*expectation_add) (struct expectation_list *l, unsigned int expiry);
+	int (*expectation_cleanup) (struct expectation_list *l);
+	int (*expectation_set_priv) (struct expectation_list *l, void *target_priv, int (*cleanup_handler) (struct target *t, struct conntrack_entry *ce, void *priv));
 
 
 };

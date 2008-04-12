@@ -37,6 +37,7 @@ struct ptype *ptype_ipv6, *ptype_uint8, *ptype_uint32;
 int match_register_ipv6(struct match_reg *r, struct match_functions *m_funcs) {
 
 	r->identify = match_identify_ipv6;
+	r->get_expectation = match_get_expectation_ipv6;
 	r->unregister = match_unregister_ipv6;
 
 	mf = m_funcs;
@@ -114,6 +115,26 @@ int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int start, un
 	}
 
 
+	return POM_ERR;
+
+}
+
+int match_get_expectation_ipv6(int field_id, int direction) {
+
+	if (field_id == field_saddr) {
+		if (direction == EXPT_DIR_FWD) {
+			return field_saddr;
+		} else {
+			return field_daddr;
+		}
+	} else if (field_id == field_daddr) {
+		if (direction == EXPT_DIR_FWD) {
+			return field_daddr;
+		} else {
+			return field_saddr;
+		}
+
+	}
 	return POM_ERR;
 
 }

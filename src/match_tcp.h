@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 
 int match_register_tcp(struct match_reg *r, struct match_functions *m_funcs);
 int match_identify_tcp(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
+int match_get_expectation_tcp(int field_id, int direction);
 int match_unregister_tcp(struct match_reg *r);
 
 #endif

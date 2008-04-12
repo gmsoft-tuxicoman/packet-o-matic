@@ -251,6 +251,8 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 
 	}
 
+	expectation_process(f);
+
 	if (conntrack_get_entry(f) == POM_OK && (old_ce == NULL || f->ce == old_ce)) { // We got a conntrack_entry, process the corresponding targets
 		struct conntrack_target_priv *cp = f->ce->target_privs;
 		while (cp) {
@@ -260,9 +262,9 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 			while (r) {
 				struct target *t = r->target;
 				while (t) {
-					if (t == cp->t) {
+					if (t == cp->t && !t->matched) {
 						target_process(t, f);
-						t->matched_conntrack = 1; // Do no process this target again if it matched here
+						t->matched = 1; // Do no process this target again if it matched here
 					}
 					t = t->next;
 				}
@@ -278,24 +280,31 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 		struct target *t = r->target;
 		if (r->result) {
 			while (t) {
-				if (!t->matched_conntrack) {
+				if (!t->matched) {
 					target_process(t, f);
+					t->matched = 1;
 				}
 				t = t->next;
 			}
 		}
+		r = r->next;
 
-		t = r->target;
+	}
+
+
+
+	// reset matched_conntrack value
+	
+	r = rules;
+	while (r) {
+		struct target *t = r->target;
 		while (t) {
-			t->matched_conntrack = 0;
+			t->matched = 0;
 			t = t->next;
 		}
 		r = r->next;
 	}
 
-	// reset matched_conntrack value
-
-	
 	return POM_OK;
 }
 
@@ -331,7 +340,7 @@ int node_destroy(struct rule_node *node, int sub) {
 		done_stack = realloc(done_stack, sizeof(struct rule_node*) * (done + 1));
 		done_stack[done] = node;
 		done++;
-	} else if (node->op == 0)
+	} else if (node->op != RULE_OP_AND && node->op != RULE_OP_OR)
 		match_refcount_dec(node->layer);
 	
 

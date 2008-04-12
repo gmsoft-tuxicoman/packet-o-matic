@@ -32,6 +32,7 @@ struct ptype *ptype_uint16, *ptype_bytes;
 int match_register_linux_cooked(struct match_reg *r, struct match_functions *m_funcs) {
 
 	r->identify = match_identify_linux_cooked;
+	r->get_expectation = match_get_expectation_linux_cooked;
 	r->unregister = match_unregister_linux_cooked;
 
 	mf = m_funcs;
@@ -80,6 +81,15 @@ int match_identify_linux_cooked(struct frame *f, struct layer* l, unsigned int s
 	}
 
 	return POM_ERR;
+}
+
+int match_get_expectation_linux_cooked(int field_id, int direction) {
+	
+	if (field_id == field_addr && direction == EXPT_DIR_FWD)
+		return field_addr;
+
+	return POM_ERR;
+
 }
 
 int match_unregister_linux_cooked(struct match_reg *r) {
