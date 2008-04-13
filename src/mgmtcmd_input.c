@@ -260,12 +260,26 @@ int mgmtcmd_set_input_parameter(struct mgmt_connection *c, int argc, char *argv[
 		mgmtsrv_send(c, "Parameter %s does not exists\r\n", argv[0]);
 		return POM_OK;
 	}
-	
-	if (ptype_parse_val(p->value, argv[1]) != POM_OK) {
-		mgmtsrv_send(c, "Could not parse \"%s\"\r\n", argv[1]);
-		return POM_OK;
+
+	int i;
+	int len = 0;
+	for (i = 1; i < argc; i++) 
+		len += strlen(argv[i]) + 1;
+	char *param = malloc(len);
+	memset(param, 0, len);
+	for (i = 1; i < argc; i++) {
+		strcat(param, argv[i]);
+		if (i != argc - 1)
+			strcat(param, " ");
+
 	}
 
+	
+	if (ptype_parse_val(p->value, param) != POM_OK) {
+		mgmtsrv_send(c, "Could not parse \"%s\"\r\n", param);
+	}
+
+	free(param);
 	return POM_OK;
 }
 

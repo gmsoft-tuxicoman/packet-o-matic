@@ -183,6 +183,13 @@ int input_open_pcap(struct input *i) {
 		
 		}
 
+		if (pcap_setfilter(p->p, &p->fp) == -1) {
+			(*ifcs->pom_log) (POM_LOG_ERR "Unable to set the BFP filter \"%s\"\r\n", PTYPE_STRING_GETVAL(p_filter));
+			pcap_freecode(&p->fp);
+			pcap_close(p->p);
+			return POM_ERR;
+		}
+
 	}
 
 
