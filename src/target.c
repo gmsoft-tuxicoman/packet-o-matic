@@ -82,7 +82,7 @@ int target_register(const char *target_name) {
 			}
 
 			struct target_reg *my_target = malloc(sizeof(struct target_reg));
-			bzero(my_target, sizeof(struct target_reg));
+			memset(my_target, 0, sizeof(struct target_reg));
 
 			targets[i] = my_target;
 			my_target->type = i;
@@ -116,7 +116,7 @@ struct target_mode *target_register_mode(int target_type, const char *name, cons
 		return NULL;
 
 	struct target_mode *mode = malloc(sizeof(struct target_mode));
-	bzero(mode, sizeof(struct target_mode));
+	memset(mode, 0, sizeof(struct target_mode));
 	
 	mode->name = malloc(strlen(name) + 1);
 	strcpy(mode->name, name);
@@ -142,7 +142,7 @@ int target_register_param(struct target_mode *mode, char *name, char *defval, ch
 		return POM_ERR;
 
 	struct target_param_reg *param = malloc(sizeof(struct target_param_reg));
-	bzero(param, sizeof(struct target_param_reg));
+	memset(param, 0, sizeof(struct target_param_reg));
 
 	param->name = malloc(strlen(name) + 1);
 	strcpy(param->name, name);
@@ -181,7 +181,7 @@ int target_register_param_value(struct target *t, struct target_mode *mode, cons
 		return POM_ERR;
 
 	struct target_param *tp = malloc(sizeof(struct target_param));
-	bzero(tp, sizeof(struct target_param));
+	memset(tp, 0, sizeof(struct target_param));
 
 	tp->type = p;
 	tp->value = value;
@@ -210,7 +210,7 @@ struct target *target_alloc(int target_type) {
 		return NULL;
 	}
 	struct target *t = malloc(sizeof(struct target));
-	bzero(t, sizeof(struct target));
+	memset(t, 0, sizeof(struct target));
 
 	t->type = target_type;
 	
@@ -481,7 +481,7 @@ int target_file_open(struct layer *l, char *filename, int flags, mode_t mode) {
 	if (*slash == '/') // we assume that the root directory exists :)
 		slash++;
 
-	slash = index(slash, '/');
+	slash = strchr(slash, '/');
 	while (slash) {
 		*slash = 0;
 		struct stat stats;
@@ -496,7 +496,7 @@ int target_file_open(struct layer *l, char *filename, int flags, mode_t mode) {
 			}
 		}
 		*slash = '/';
-		slash = index(slash + 1, '/');
+		slash = strchr(slash + 1, '/');
 	}
 
 	return open(buffer, flags, mode);

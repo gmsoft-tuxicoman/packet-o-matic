@@ -82,7 +82,7 @@ int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int start, un
 
 	while (hdrlen < len) {
 
-		struct ip6_ext *ehdr;
+		struct ip6_ehdr *ehdr;
 		switch (nhdr) {
 			case IPPROTO_HOPOPTS: // 0
 			case IPPROTO_ROUTING: // 43

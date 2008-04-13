@@ -104,7 +104,7 @@ int target_init_tcpkill(struct target *t) {
 		return POM_ERR;
 
 	struct target_priv_tcpkill *priv = malloc(sizeof(struct target_priv_tcpkill));
-	bzero(priv, sizeof(struct target_priv_tcpkill));
+	memset(priv, 0, sizeof(struct target_priv_tcpkill));
 
 	t->target_priv = priv;
 	
@@ -210,7 +210,7 @@ int target_process_tcpkill(struct target *t, struct frame *f) {
 
 	// init temp buffer
 	unsigned char buffer_base[1024];
-	bzero(buffer_base, 1024);
+	memset(buffer_base, 0, 1024);
 	unsigned char *buffer = (unsigned char*) (((int)buffer_base & ~3) + 4);
 
 	int tcpsum = 0;
@@ -220,7 +220,7 @@ int target_process_tcpkill(struct target *t, struct frame *f) {
 	// init sockaddr
 	struct sockaddr_storage addr;
 	socklen_t addrlen = 0;
-	bzero(&addr, sizeof(struct sockaddr_storage));
+	memset(&addr, 0, sizeof(struct sockaddr_storage));
 
 
 	// In routed mode, we can only send ipv4 packets. linux API doesn't allow random souce addr for ipv6

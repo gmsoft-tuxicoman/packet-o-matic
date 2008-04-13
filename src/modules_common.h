@@ -39,6 +39,10 @@
 #define s6_addr32 __u6_addr.__u6_addr32
 #endif
 
+#if defined (__SVR4) && defined (__sun)
+#define s6_addr32 _S6_un._S6_u32
+#endif
+
 // Those two collide // TOBE REMOVED
 #ifndef __COMMON_H__
 

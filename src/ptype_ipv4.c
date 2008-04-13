@@ -46,7 +46,7 @@ int ptype_alloc_ipv4(struct ptype *p) {
 
 	p->value = malloc(sizeof(struct ptype_ipv4_val));
 	struct ptype_ipv4_val *v = p->value;
-	bzero(v, sizeof(struct ptype_ipv4_val));
+	memset(v, 0, sizeof(struct ptype_ipv4_val));
 	v->mask = 32;
 
 	return POM_OK;
@@ -71,7 +71,7 @@ int ptype_parse_ipv4(struct ptype *p, char *val) {
 	for (i = 0; i < strlen(val); i++) {
 		if (val[i] == '/') {
 			char ip[INET_ADDRSTRLEN];
-			bzero(ip, INET_ADDRSTRLEN);
+			memset(ip, 0, INET_ADDRSTRLEN);
 			strncpy(ip, val, i);
 			unsigned char mask;
 			if (sscanf(val + i + 1, "%hhu", &mask) != 1)

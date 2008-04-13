@@ -99,7 +99,7 @@ void *conntrack_alloc_match_priv_rtp(struct frame *f, unsigned int start, struct
 	// Allocate the rtp priv
 	struct conntrack_priv_rtp *priv;
 	priv = malloc(sizeof(struct conntrack_priv_rtp));
-	bzero(priv, sizeof(struct conntrack_priv_rtp));
+	memset(priv, 0, sizeof(struct conntrack_priv_rtp));
 	priv->ssrc = hdr->ssrc;
 	priv->payload_type = hdr->payload_type;
 

@@ -48,7 +48,7 @@ AC_CHECK_HEADERS([arpa/inet.h fcntl.h stdint.h stdlib.h string.h sys/ioctl.h sys
 AC_CHECK_HEADERS([netinet/ip_var.h sys/endian.h])
 
 # Linux specidic header files
-AC_CHECK_HEADERS([mcheck.h linux/if_ether.h endian.h])
+AC_CHECK_HEADERS([mcheck.h endian.h])
 
 
 # Checks for typedefs, structures, and compiler characteristics.
@@ -68,13 +68,53 @@ AC_FUNC_MALLOC
 AC_FUNC_REALLOC
 AC_TYPE_SIGNAL
 AC_FUNC_STRFTIME
-AC_CHECK_FUNCS([bzero gettimeofday inet_ntoa memmove memset socket strerror])
+AC_CHECK_FUNCS([bzero gettimeofday inet_ntoa memmove memset strerror])
+
+# Try to find a good CFLAGS/LDFLAGS for pthreads
+AC_CHECK_HEADERS(pthread.h, [], [AC_MSG_ERROR([pthread support required])])
+CFLAGS="$CFLAGS -D_REENTRANT"
+checkpthread=yes
+
+AC_MSG_CHECKING([for pthread_create with libc])
+AC_TRY_LINK([], [pthread_create();], 
+                [pthflag=yes; checkpthread=no], 
+                [pthflag=no])
+AC_MSG_RESULT($pthflag)
+
+for flag in "pthreads" "pthread"; do
+  if test "x$checkpthread" = "xyes"; then
+    AC_MSG_CHECKING([for pthread_create with -$flag])
+    OLDFLAGS="$LDFLAGS"
+    LDFLAGS="-$flag $LDFLAGS"
+    AC_TRY_LINK([], [pthread_create();], 
+                    [pthflag=yes; checkpthread=no], 
+                    [pthflag=no; LDFLAGS="$OLDCFLAGS"])
+    AC_MSG_RESULT($pthflag)
+  fi
+done
+
+for lib in "c_r" "pthread"; do
+  if test "x$checkpthread" = "xyes"; then
+     case "x$LIBS" in
+        *-l$lib*);;
+        *) AC_CHECK_LIB($lib, pthread_create, [LIBS="$LIBS -l$lib"; checkpthread=no]) ;;
+     esac
+   fi
+done
+
+if test "x$checkpthread" = "xyes"; then
+  AC_CHECK_FUNC(pthread_create, checkpthread=no)
+  text "x$checkpthread" = "xyes" && AC_MSG_ERROR([pthread library required])
+fi
 
 
 LIB_DL=''
 AC_CHECK_LIB([dl], [dlopen], [LIB_DL='-ldl'])
 LIBS=[$LIB_DL $LIBS]
 AC_SUBST(d[LIB_DL])
+
+AC_CHECK_LIB([nsl], [gethostbyname])
+AC_CHECK_LIB([socket], [socket])
 
 AC_CHECK_HEADER([pcap.h])
 AC_CHECK_LIB([pcap], [pcap_open_offline, pcap_open_dead, pcap_close], [want_pcap=yes], [want_pcap=no])
@@ -141,3 +181,4 @@ AC_SUBST(TARGET_OBJS)
 
 
 AC_OUTPUT
+

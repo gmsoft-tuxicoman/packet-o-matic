@@ -81,7 +81,7 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 	if (!cp) {
 		// We don't know anything about this connection. let it go
 		cp = malloc(sizeof(struct helper_priv_tcp));
-		bzero(cp, sizeof(struct helper_priv_tcp));
+		memset(cp, 0, sizeof(struct helper_priv_tcp));
 
 		cp->ce = f->ce;
 
@@ -174,7 +174,7 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 			//(*hf->pom_log) (POM_LOG_TSHOOT "helper_tcp.c: %u.%u 0x%x-%u, expected seq %u > got seq %u, bufflen is %d. queuing packet\r\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, cp->seq_expected[dir], new_seq, cp->buff_len[dir]);
 
 			struct helper_priv_tcp_packet *pkt = malloc(sizeof(struct helper_priv_tcp_packet));
-			bzero(pkt, sizeof(struct helper_priv_tcp_packet));
+			memset(pkt, 0, sizeof(struct helper_priv_tcp_packet));
 
 			// This will be fred by the helper subsystem
 			pkt->f = malloc(sizeof(struct frame));
@@ -228,7 +228,7 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 	} else {
 		cp->flags[dir] |= HELPER_TCP_SEQ_KNOWN;
 		struct helper_timer_priv_tcp *tmp = malloc(sizeof(struct helper_timer_priv_tcp));
-		bzero(tmp, sizeof(struct helper_timer_priv_tcp));
+		memset(tmp, 0, sizeof(struct helper_timer_priv_tcp));
 		tmp->priv = cp;
 		tmp->dir = dir;
 		cp->t[dir] = (*hf->alloc_timer) (tmp, f->input, helper_process_timer_tcp);

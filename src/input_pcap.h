@@ -34,6 +34,7 @@
 struct input_priv_pcap {
 
 	pcap_t *p; ///< Pcap instance
+	struct bpf_program fp; ///< Filter for pcap
 	int output_layer; ///< Layer type to use
 
 };

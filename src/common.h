@@ -32,6 +32,7 @@
 
 #include <sys/types.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 
 #include <dlfcn.h>
 
@@ -70,6 +71,10 @@
 
 #ifndef NAME_MAX
 #define NAME_MAX 255
+#endif
+
+#if ! defined HOST_NAME_MAX && defined MAXHOSTNAMELEN
+#define HOST_NAME_MAX MAXHOSTNAMELEN
 #endif
 
 // Default return values

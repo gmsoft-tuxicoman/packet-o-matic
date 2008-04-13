@@ -82,7 +82,7 @@ int mgmtcmd_show_helpers(struct mgmt_connection *c, int argc, char *argv[]) {
 		struct helper_param *tmp = helpers[i]->params;
 		while (tmp) {
 			char buff[256];
-			bzero(buff, sizeof(buff));
+			memset(buff, 0, sizeof(buff));
 			ptype_print_val(tmp->value, buff, sizeof(buff));
 
 			mgmtsrv_send(c, "   %s = %s %s\r\n", tmp->name, buff, tmp->value->unit);

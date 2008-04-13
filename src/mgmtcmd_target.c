@@ -135,7 +135,7 @@ int mgmtcmd_show_targets(struct mgmt_connection *c, int argc, char *argv[]) {
 				struct target_param_reg *pr = t->mode->params;
 				while (pr) {
 					char buff[256];
-					bzero(buff, sizeof(buff));
+					memset(buff, 0, sizeof(buff));
 					struct ptype *value = target_get_param_value(t, pr->name);
 					ptype_print_val(value , buff, sizeof(buff));
 					mgmtsrv_send(c, "        %s = %s %s\r\n", pr->name, buff, value->unit);

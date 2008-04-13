@@ -162,7 +162,7 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 		
 
 		tmp = malloc(sizeof(struct helper_priv_ipv4));
-		bzero(tmp,  sizeof(struct helper_priv_ipv4));
+		memset(tmp, 0,  sizeof(struct helper_priv_ipv4));
 		tmp->next = frags_head;
 		if (tmp->next)
 			tmp->next->prev = tmp;
@@ -210,7 +210,7 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 	(*hf->pom_log) (POM_LOG_TSHOOT "Helper ipv4 : adding fragment %u for id %u in memory (start %u, len %u)\r\n", offset, ntohs(hdr->ip_id), frag_start, (unsigned int) frag_size);
 
 	struct helper_priv_ipv4_frag *ftmp = malloc(sizeof(struct helper_priv_ipv4_frag));
-	bzero(ftmp, sizeof(struct helper_priv_ipv4_frag));
+	memset(ftmp, 0, sizeof(struct helper_priv_ipv4_frag));
 	ftmp->offset = offset;
 	ftmp->buffer = malloc(frag_size);
 	memcpy(ftmp->buffer, f->buff + frag_start, frag_size);

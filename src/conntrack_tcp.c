@@ -168,7 +168,7 @@ void *conntrack_alloc_match_priv_tcp(struct frame *f, unsigned int start, struct
 	
 	struct conntrack_priv_tcp *priv;
 	priv = malloc(sizeof(struct conntrack_priv_tcp));
-	bzero(priv, sizeof(struct conntrack_priv_tcp));
+	memset(priv, 0, sizeof(struct conntrack_priv_tcp));
 	priv->sport = hdr->th_sport;
 	priv->dport = hdr->th_dport;
 

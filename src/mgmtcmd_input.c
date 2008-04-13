@@ -119,7 +119,7 @@ int mgmtcmd_show_input(struct mgmt_connection *c, int argc, char *argv[]) {
 	struct input_param *p = i->mode->params;
 	while (p) {
 		char buff[256];
-		bzero(buff, sizeof(buff));
+		memset(buff, 0, sizeof(buff));
 		ptype_print_val(p->value, buff, sizeof(buff));
 		mgmtsrv_send(c, "  %s = %s %s\r\n", p->name, buff, p->value->unit);
 		p = p->next;

@@ -46,7 +46,7 @@ int ptype_alloc_ipv6(struct ptype *p) {
 
 	p->value = malloc(sizeof(struct ptype_ipv6_val));
 	struct ptype_ipv6_val *v = p->value;
-	bzero(v, sizeof(struct ptype_ipv6_val));
+	memset(v, 0, sizeof(struct ptype_ipv6_val));
 	v->mask = 128;
 
 	return POM_OK;
@@ -70,7 +70,7 @@ int ptype_parse_ipv6(struct ptype *p, char *val) {
 	for (i = 0; i < strlen(val); i++) {
 		if (val[i] == '/') {
 			char ip[INET6_ADDRSTRLEN];
-			bzero(ip, INET6_ADDRSTRLEN);
+			memset(ip, 0, INET6_ADDRSTRLEN);
 			strncpy(ip, val, i);
 			unsigned char mask;
 			if (sscanf(val + i + 1, "%hhu", &mask) != 1)

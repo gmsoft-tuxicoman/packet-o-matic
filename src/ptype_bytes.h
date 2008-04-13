@@ -45,7 +45,7 @@ struct ptype_bytes_val {
 			}					\
 		} else {					\
 			v->value = realloc(v->value, (y));	\
-			bzero(v->value, (y));			\
+			memset(v->value, 0, (y));			\
 			v->mask = realloc(v->mask, (y));	\
 			memset(v->mask, 0xff, (y));		\
 		}						\

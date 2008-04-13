@@ -54,7 +54,7 @@ void pom_log(const char *format, ...) {
 void *lib_get_register_func(const char *type, const char *name, void **handle) {
 
 	char libname[NAME_MAX];
-	bzero(libname, NAME_MAX);
+	memset(libname, 0, NAME_MAX);
 
 	strcat(libname, type);
 	strcat(libname, "_");
@@ -71,7 +71,7 @@ void *lib_get_register_func(const char *type, const char *name, void **handle) {
 		
 		pom_log(POM_LOG_TSHOOT "Unable to load %s : %s\r\n", libname, dlerror());
 
-		bzero(buff, NAME_MAX);
+		memset(buff, 0, NAME_MAX);
 		strcat(buff, LIBDIR);
 		strcat(buff, "/");
 		strcat(buff, libname);
@@ -84,7 +84,7 @@ void *lib_get_register_func(const char *type, const char *name, void **handle) {
 	}
 	dlerror();
 
-	bzero(buff, NAME_MAX);
+	memset(buff, 0, NAME_MAX);
 	strcat(buff, type);
 	strcat(buff, "_register_");
 	strcat(buff, name);

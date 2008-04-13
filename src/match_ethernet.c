@@ -22,13 +22,8 @@
 #include "match_ethernet.h"
 #include "ptype_mac.h"
 
-#include <net/ethernet.h>
 #include <sys/socket.h>
-#include <netinet/if_ether.h>
 
-#ifdef HAVE_LINUX_IF_ETHER_H
-#include <linux/if_ether.h>
-#endif
 
 struct match_dep *match_ipv4, *match_ipv6, *match_arp, *match_vlan;
 struct match_functions *mf;

@@ -61,7 +61,7 @@ int target_register_dump_payload(struct target_reg *r, struct target_functions *
 int target_init_dump_payload(struct target *t) {
 
 	struct target_priv_dump_payload *priv = malloc(sizeof(struct target_priv_dump_payload));
-	bzero(priv, sizeof(struct target_priv_dump_payload));
+	memset(priv, 0, sizeof(struct target_priv_dump_payload));
 
 	t->target_priv = priv;
 
@@ -132,12 +132,12 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 
 		// New connection
 		cp = malloc(sizeof(struct target_conntrack_priv_dump_payload));
-		bzero(cp, sizeof(struct target_conntrack_priv_dump_payload));
+		memset(cp, 0, sizeof(struct target_conntrack_priv_dump_payload));
 
 		char filename[NAME_MAX];
 
 		char outstr[20];
-		bzero(outstr, 20);
+		memset(outstr, 0, 20);
 		// YYYYMMDD-HHMMSS-UUUUUU
 		char *format = "-%Y%m%d-%H%M%S-";
 		struct tm *tmp;

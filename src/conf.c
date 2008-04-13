@@ -41,7 +41,7 @@ struct conf *config_alloc() {
 
 	struct conf *c;
 	c = malloc(sizeof(struct conf));
-	bzero(c, sizeof(struct conf));
+	memset(c, 0, sizeof(struct conf));
 	return c;
 
 }
@@ -238,7 +238,7 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 			}
 
 			n = malloc(sizeof(struct rule_node));
-			bzero(n, sizeof(struct rule_node));
+			memset(n, 0, sizeof(struct rule_node));
 			pom_log(POM_LOG_TSHOOT "Creating new rule_node\r\n");
 			n->layer = mt;
 			match_refcount_inc(mt);
@@ -304,7 +304,7 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 
 
 			n = malloc(sizeof(struct rule_node));
-			bzero(n, sizeof(struct rule_node));
+			memset(n, 0, sizeof(struct rule_node));
 			pom_log(POM_LOG_TSHOOT "Creating new rule_node\r\n");
 
 			char *op =(char *)  xmlGetProp(cur, (const xmlChar *)"op");
@@ -350,7 +350,7 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 			// Attach the last node of each part to one single now
 			struct rule_node *tmpn, *nextn;
 			nextn = malloc(sizeof(struct rule_node));
-			bzero(nextn, sizeof(struct rule_node));
+			memset(nextn, 0, sizeof(struct rule_node));
 			nextn->op = RULE_OP_TAIL;
 
 			if (n->a && n->b) {  // both matched
@@ -401,7 +401,7 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 
 	struct rule_list *r;
 	r = malloc(sizeof(struct rule_list));
-	bzero(r, sizeof(struct rule_list));
+	memset(r, 0, sizeof(struct rule_list));
 	
 	struct ptype *disabled_pt = ptype_alloc("bool", NULL);
 	if (!disabled_pt) {
@@ -603,7 +603,7 @@ int config_write_rule(int fd, struct rule_node *n, struct rule_node *last, int t
 		return 0;
 
 	char buffer[2048];
-	bzero(buffer, sizeof(buffer));
+	memset(buffer, 0, sizeof(buffer));
 
 	int i;
 
@@ -675,7 +675,7 @@ int config_write_rule(int fd, struct rule_node *n, struct rule_node *last, int t
 			strcat(buffer, "<a>\n");
 			if (write(fd, buffer, strlen(buffer)) == -1)
 				goto err;
-			bzero(buffer, sizeof(buffer));
+			memset(buffer, 0, sizeof(buffer));
 			
 			config_write_rule(fd, n->a, new_last, tabs + 1);
 
@@ -687,7 +687,7 @@ int config_write_rule(int fd, struct rule_node *n, struct rule_node *last, int t
 			strcat(buffer, "<b>\n");
 			if (write(fd, buffer, strlen(buffer)) == -1)
 				goto err;
-			bzero(buffer, sizeof(buffer));
+			memset(buffer, 0, sizeof(buffer));
 
 			config_write_rule(fd, n->b, new_last, tabs + 1);
 
@@ -734,7 +734,7 @@ int config_write(struct conf *c, char *filename) {
 	// write the header and first <config> tag
 
 	char buffer[4096]; // each element will not be 2048 bytes long
-	bzero(buffer, sizeof(buffer));
+	memset(buffer, 0, sizeof(buffer));
 	strcat(buffer, "<?xml version=\"1.0\"?>\n<config>\n\n");
 
 	// write the password if present
@@ -763,7 +763,7 @@ int config_write(struct conf *c, char *filename) {
 
 	if (write(fd, buffer, strlen(buffer)) == -1)
 		goto err;
-	bzero(buffer, sizeof(buffer));
+	memset(buffer, 0, sizeof(buffer));
 
 	// write the conntrack parameters if needed
 	int i;
@@ -773,7 +773,7 @@ int config_write(struct conf *c, char *filename) {
 			struct conntrack_param *p = conntracks[i]->params;
 			while (p) {
 				char value[512];
-				bzero(value, 512);
+				memset(value, 0, 512);
 				ptype_serialize(p->value, value, sizeof(value));
 				if (strcmp(value, p->defval)) {
 					if (!some_param) {
@@ -796,7 +796,7 @@ int config_write(struct conf *c, char *filename) {
 				strcat(buffer, "</conntrack>\n\n");
 				if (write(fd, buffer, strlen(buffer)) == -1)
 					goto err;
-				bzero(buffer, sizeof(buffer));
+				memset(buffer, 0, sizeof(buffer));
 			}
 		}
 
@@ -829,7 +829,7 @@ int config_write(struct conf *c, char *filename) {
 
 	if (write(fd, buffer, strlen(buffer)) == -1)
 		goto err;
-	bzero(buffer, sizeof(buffer));
+	memset(buffer, 0, sizeof(buffer));
 
 	// write the rules
 	
@@ -891,14 +891,14 @@ int config_write(struct conf *c, char *filename) {
 
 			if (write(fd, buffer, strlen(buffer)) == -1)
 				goto err;
-			bzero(buffer, sizeof(buffer));
+			memset(buffer, 0, sizeof(buffer));
 		}
 
 		strcat(buffer, "\t<matches>\n");
 
 		if (write(fd, buffer, strlen(buffer)) == -1)
 			goto err;
-		bzero(buffer, sizeof(buffer));
+		memset(buffer, 0, sizeof(buffer));
 
 		config_write_rule(fd, rl->node, NULL, 2);
 

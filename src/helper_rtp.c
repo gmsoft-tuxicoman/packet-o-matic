@@ -75,7 +75,7 @@ int helper_need_help_rtp(struct frame *f, unsigned int start, unsigned int len, 
 	if (!cp) {
 		// We don't know anything about this connection. let it go
 		cp = malloc(sizeof(struct helper_priv_rtp));
-		bzero(cp, sizeof(struct helper_priv_rtp));
+		memset(cp, 0, sizeof(struct helper_priv_rtp));
 
 		cp->ce = f->ce;
 
@@ -122,7 +122,7 @@ int helper_need_help_rtp(struct frame *f, unsigned int start, unsigned int len, 
 			// At this point we need to queue the packet before tmp_pkt or at the end of the list if empty
 
 			struct helper_priv_rtp_packet *pkt = malloc(sizeof(struct helper_priv_rtp_packet));
-			bzero(pkt, sizeof(struct helper_priv_rtp_packet));
+			memset(pkt, 0, sizeof(struct helper_priv_rtp_packet));
 
 			// This will be fred by the helper subsystem
 			pkt->f = malloc(sizeof(struct frame));
@@ -173,7 +173,7 @@ int helper_need_help_rtp(struct frame *f, unsigned int start, unsigned int len, 
 	} else {
 		cp->flags[dir] |= HELPER_RTP_SEQ_KNOWN;
 		struct helper_timer_priv_rtp *tmp = malloc(sizeof(struct helper_timer_priv_rtp));
-		bzero(tmp, sizeof(struct helper_timer_priv_rtp));
+		memset(tmp, 0, sizeof(struct helper_timer_priv_rtp));
 		tmp->priv = cp;
 		tmp->dir = dir;
 		cp->t[dir] = (*hf->alloc_timer) (tmp, f->input, helper_process_timer_rtp);

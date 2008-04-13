@@ -76,7 +76,7 @@ int mgmtcmd_show_conntracks(struct mgmt_connection *c, int argc, char *argv[]) {
 				mgmtsrv_send(c, "   No parameter for this conntrack module\r\n");
 			while (p) {
 				char buffer[256];
-				bzero(buffer, sizeof(buffer));
+				memset(buffer, 0, sizeof(buffer));
 				ptype_print_val(p->value, buffer, sizeof(buffer));
 				mgmtsrv_send(c, "   %s = %s %s\r\n", p->name, buffer, p->value->unit);
 				p = p->next;

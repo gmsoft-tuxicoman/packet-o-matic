@@ -28,6 +28,12 @@
 #include <netinet/in.h>
 #include <netinet/ip6.h>
 
+// Generic extension header
+struct ip6_ehdr {
+	uint8_t ip6e_nxt; // next header
+	uint8_t ip6e_len; // length in units of 8 bytes
+};
+
 int match_register_ipv6(struct match_reg *r, struct match_functions *m_funcs);
 int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
 int match_get_expectation_ipv6(int field_id, int direction);

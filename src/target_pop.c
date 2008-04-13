@@ -71,7 +71,7 @@ int target_register_pop(struct target_reg *r, struct target_functions *tg_funcs)
 int target_init_pop(struct target *t) {
 
 	struct target_priv_pop *priv = malloc(sizeof(struct target_priv_pop));
-	bzero(priv, sizeof(struct target_priv_pop));
+	memset(priv, 0, sizeof(struct target_priv_pop));
 
 	t->target_priv = priv;
 
@@ -137,7 +137,7 @@ int target_process_pop(struct target *t, struct frame *f) {
 
 		// New connection
 		cp = malloc(sizeof(struct target_conntrack_priv_pop));
-		bzero(cp, sizeof(struct target_conntrack_priv_pop));
+		memset(cp, 0, sizeof(struct target_conntrack_priv_pop));
 		cp->fd = -1;
 		cp->server_dir = CE_DIR_UNK;
 

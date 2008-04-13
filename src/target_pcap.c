@@ -52,7 +52,7 @@ int target_register_pcap(struct target_reg *r, struct target_functions *tg_funcs
 int target_init_pcap(struct target *t) {
 
 	struct target_priv_pcap *priv = malloc(sizeof(struct target_priv_pcap));
-	bzero(priv, sizeof(struct target_priv_pcap));
+	memset(priv, 0, sizeof(struct target_priv_pcap));
 	t->target_priv = priv;
 
 	priv->filename = (*tf->ptype_alloc) ("string", NULL);

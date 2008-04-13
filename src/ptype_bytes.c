@@ -45,7 +45,7 @@ int ptype_register_bytes(struct ptype_reg *r) {
 int ptype_alloc_bytes(struct ptype *p) {
 
 	p->value = malloc(sizeof(struct ptype_bytes_val));
-	bzero(p->value, sizeof(struct ptype_bytes_val));
+	memset(p->value, 0, sizeof(struct ptype_bytes_val));
 
 	return POM_OK;
 
@@ -146,7 +146,7 @@ int ptype_parse_bytes(struct ptype *p, char *val) {
 
 int ptype_print_bytes(struct ptype *p, char *val, size_t size) {
 
-	bzero(val, size);
+	memset(val, 0, size);
 
 	struct ptype_bytes_val *v = p->value;
 

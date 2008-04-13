@@ -82,7 +82,7 @@ struct timer *timer_alloc(void* priv, struct input *i, int (*handler) (void*)) {
 
 	struct timer *t;
 	t = malloc(sizeof(struct timer));
-	bzero(t, sizeof(struct timer));
+	memset(t, 0, sizeof(struct timer));
 
 	t->priv = priv;
 	t->handler = handler;
@@ -128,7 +128,7 @@ int timer_queue(struct timer *t, unsigned int expiry) {
 
 		// There is no queue yet
 		tq = malloc(sizeof(struct timer_queue));
-		bzero(tq, sizeof(struct timer_queue));
+		memset(tq, 0, sizeof(struct timer_queue));
 		timer_queues = tq;
 
 		tq->expiry = expiry;
@@ -145,7 +145,7 @@ int timer_queue(struct timer *t, unsigned int expiry) {
 
 				struct timer_queue *tmp;
 				tmp = malloc(sizeof(struct timer_queue));
-				bzero(tmp, sizeof(struct timer_queue));
+				memset(tmp, 0, sizeof(struct timer_queue));
 
 				tmp->prev = tq->prev;
 				tmp->next = tq;
@@ -166,7 +166,7 @@ int timer_queue(struct timer *t, unsigned int expiry) {
 
 				struct timer_queue *tmp;
 				tmp = malloc(sizeof(struct timer_queue));
-				bzero(tmp, sizeof(struct timer_queue));
+				memset(tmp, 0, sizeof(struct timer_queue));
 
 				tmp->prev = tq;
 				

@@ -61,7 +61,7 @@ int target_init_tap(struct target *t) {
 		return POM_ERR;
 
 	struct target_priv_tap *priv = malloc(sizeof(struct target_priv_tap));
-	bzero(priv, sizeof(struct target_priv_tap));
+	memset(priv, 0, sizeof(struct target_priv_tap));
 
 	t->target_priv = priv;
 
@@ -105,7 +105,7 @@ int target_open_tap(struct target *t) {
 	}
 
 	struct ifreq ifr;
-	bzero(&ifr, sizeof(ifr));
+	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
 	strncpy(ifr.ifr_name, PTYPE_STRING_GETVAL(priv->ifname), IFNAMSIZ);
 	

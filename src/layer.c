@@ -62,7 +62,7 @@ struct layer* layer_pool_get() {
 
 	l = pool[poolused];
 	poolused++;
-	bzero(l, sizeof(struct layer));
+	memset(l, 0, sizeof(struct layer));
 
 	return l;
 
@@ -164,7 +164,7 @@ int layer_field_parse(struct layer *l, char *expr, char *buff, size_t size) {
 		return POM_OK;
 	}
 
-	bzero(buff, size);
+	memset(buff, 0, size);
 
 	int pos = 0;
 	do {
@@ -174,9 +174,9 @@ int layer_field_parse(struct layer *l, char *expr, char *buff, size_t size) {
 		size_t len = pmatch.rm_eo - pmatch.rm_so;
 		char *expr_start = expr + pos + pmatch.rm_so + 2;
 		char *match = malloc(len);
-		bzero(match, len);
+		memset(match, 0, len);
 		strncpy(match, expr_start, len - 3);
-		char *expr_sep = index(match, '.');
+		char *expr_sep = strchr(match, '.');
 		*expr_sep = 0;
 		expr_sep++;
 
@@ -190,7 +190,7 @@ int layer_field_parse(struct layer *l, char *expr, char *buff, size_t size) {
 					struct match_field_reg *field = match_get_field(tmpl->type, i);
 					if (!strcmp(field->name, expr_sep)) {
 						char vbuff[1024];
-						bzero(vbuff, sizeof(vbuff));
+						memset(vbuff, 0, sizeof(vbuff));
 						ptype_print_val(tmpl->fields[i], vbuff, sizeof(vbuff) - 1);
 						pom_log(POM_LOG_TSHOOT "Matched %s.%s -> %s\r\n", match, expr_sep, vbuff);
 						found = 1;

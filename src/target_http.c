@@ -119,7 +119,7 @@ int target_register_http(struct target_reg *r, struct target_functions *tg_funcs
 	match_undefined_id = (*tf->match_register) ("undefined");
 
 	// compute the stupidest hash ever
-	bzero(mime_types_hash, MIME_TYPES_COUNT);
+	memset(mime_types_hash, 0, MIME_TYPES_COUNT);
 	int i, j;
 	for (i = 0; i < MIME_TYPES_COUNT; i++) 
 		for (j = 0; *(mime_types[i][0] + j); j++)
@@ -147,7 +147,7 @@ int target_register_http(struct target_reg *r, struct target_functions *tg_funcs
 int target_init_http(struct target *t) {
 
 	struct target_priv_http *priv = malloc(sizeof(struct target_priv_http));
-	bzero(priv, sizeof(struct target_priv_http));
+	memset(priv, 0, sizeof(struct target_priv_http));
 
 	t->target_priv = priv;
 
@@ -248,7 +248,7 @@ int target_process_http(struct target *t, struct frame *f) {
 	if (!cp) { // We need to track all connections
 
 		cp = malloc(sizeof(struct target_conntrack_priv_http));
-		bzero(cp, sizeof(struct target_conntrack_priv_http));
+		memset(cp, 0, sizeof(struct target_conntrack_priv_http));
 		cp->state = HTTP_HEADER;
 		cp->fd = -1;
 		(*tf->conntrack_add_priv) (cp, t, f->ce, target_close_connection_http);
@@ -412,7 +412,7 @@ int target_process_http(struct target *t, struct frame *f) {
 				strcat(filename, "/");
 
 			char outstr[20];
-			bzero(outstr, sizeof(outstr));
+			memset(outstr, 0, sizeof(outstr));
 			// YYYYMMDD-HHMMSS-UUUUUU
 			char *format = "%Y%m%d-%H%M%S-";
 			struct tm *tmp;

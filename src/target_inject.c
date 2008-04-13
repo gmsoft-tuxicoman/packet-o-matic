@@ -60,7 +60,7 @@ int target_init_inject(struct target *t) {
 		return POM_ERR;
 
 	struct target_priv_inject *priv = malloc(sizeof(struct target_priv_inject));
-	bzero(priv, sizeof(struct target_priv_inject));
+	memset(priv, 0, sizeof(struct target_priv_inject));
 	t->target_priv = priv;
 
 	priv->iface = (*tf->ptype_alloc) ("string", NULL);

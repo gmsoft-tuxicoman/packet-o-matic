@@ -63,7 +63,7 @@ int target_register_display(struct target_reg *r, struct target_functions *tg_fu
 int target_init_display(struct target *t) {
 
 	struct target_priv_display *priv = malloc(sizeof(struct target_priv_display));
-	bzero(priv, sizeof(struct target_priv_display));
+	memset(priv, 0, sizeof(struct target_priv_display));
 
 	t->target_priv = priv;
 
@@ -113,7 +113,7 @@ int target_process_display(struct target *t, struct frame *f) {
 
 		if (!cp) {
 			cp = malloc(sizeof(struct target_conntrack_priv_display));
-			bzero(cp, sizeof(struct target_conntrack_priv_display));
+			memset(cp, 0, sizeof(struct target_conntrack_priv_display));
 			(*tf->conntrack_add_priv) (cp, t, f->ce, target_close_connection_display);
 
 			cp->ce = f->ce;
@@ -129,7 +129,7 @@ int target_process_display(struct target *t, struct frame *f) {
 
 	struct layer *start_layer = l;
 	char line[2048];
-	bzero(line, sizeof(line));
+	memset(line, 0, sizeof(line));
 	int freesize = sizeof(line) - 1;
 
 	if (t->mode == mode_connection) {
@@ -246,10 +246,10 @@ int target_display_print_hex(void *frame, unsigned int start, unsigned int len, 
 
 	int pos = 0, linepos = 1;
 	char line[256];
-	bzero(line, sizeof(line));
+	memset(line, 0, sizeof(line));
 
 	while (pos < len) {
-		bzero(line, sizeof(line));
+		memset(line, 0, sizeof(line));
 		linepos = 0;
 
 		linepos += sprintf(line + linepos, "\t0x%04x:  ", pos);
@@ -309,7 +309,7 @@ int target_display_print_ascii(void *frame, unsigned int start, unsigned int len
 	unsigned char *f = frame + start;
 	int i;
 	char line[2048];
-	bzero(line, sizeof(line));
+	memset(line, 0, sizeof(line));
 	int linepos = 0;
 
 	for (i = 0; i < len; i++) {

@@ -332,7 +332,7 @@ struct rule_node *mgmtcmd_set_rule_parse_block(struct mgmt_connection *c, char *
 			return NULL;
 		}
 		struct rule_node *rn = malloc(sizeof(struct rule_node));
-		bzero(rn, sizeof(struct rule_node));
+		memset(rn, 0, sizeof(struct rule_node));
 
 		rn->layer = layer;
 		match_refcount_inc(layer);
@@ -378,7 +378,7 @@ struct rule_node *mgmtcmd_set_rule_parse_block(struct mgmt_connection *c, char *
 	}
 
 	struct rule_node *rn = malloc(sizeof(struct rule_node));
-	bzero(rn, sizeof(struct rule_node));
+	memset(rn, 0, sizeof(struct rule_node));
 	rn->layer = layer;
 	rn->match = param;
 	match_refcount_inc(layer);
@@ -424,10 +424,10 @@ int mgmtcmd_set_rule_parse_branch(struct mgmt_connection *c, char *expr, struct 
 			expr[i] = 0;
 
 			struct rule_node *my_start = malloc(sizeof(struct rule_node));
-			bzero(my_start, sizeof(struct rule_node));
+			memset(my_start, 0, sizeof(struct rule_node));
 
 			struct rule_node *my_end = malloc(sizeof(struct rule_node));
-			bzero(my_end, sizeof(struct rule_node));
+			memset(my_end, 0, sizeof(struct rule_node));
 			my_start->op = found;
 			my_end->op = RULE_OP_TAIL;
 
@@ -584,7 +584,7 @@ int mgmtcmd_set_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 		rule_len += strlen(argv[i]) + 1;
 	}
 	char *rule_str = malloc(rule_len + 1);
-	bzero(rule_str, rule_len + 1);
+	memset(rule_str, 0, rule_len + 1);
 	for (i = 1; i < argc; i++) {
 		strcat(rule_str, argv[i]);
 		strcat(rule_str, " ");
@@ -668,7 +668,7 @@ int mgmtcmd_add_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 		rule_len += strlen(argv[i]) + 1;
 	}
 	char *rule_str = malloc(rule_len + 1);
-	bzero(rule_str, rule_len + 1);
+	memset(rule_str, 0, rule_len + 1);
 	for (i = 0; i < argc; i++) {
 		strcat(rule_str, argv[i]);
 		strcat(rule_str, " ");
@@ -688,7 +688,7 @@ int mgmtcmd_add_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	struct rule_list *rl;
 	rl = malloc(sizeof(struct rule_list));
 
-	bzero(rl, sizeof(struct rule_list));
+	memset(rl, 0, sizeof(struct rule_list));
 
 	reader_process_lock();
 	

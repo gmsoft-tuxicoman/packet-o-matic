@@ -48,7 +48,7 @@ int mgmtsrv_init(const char *port) {
 	char errbuff[256];
 
 	struct addrinfo hints, *res;
-	bzero(&hints, sizeof(struct addrinfo));
+	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_flags = AI_PASSIVE;
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_socktype = SOCK_STREAM;
@@ -68,8 +68,8 @@ int mgmtsrv_init(const char *port) {
 		}
  
 		char host[NI_MAXHOST], port[NI_MAXSERV];
-		bzero(host, NI_MAXHOST);
-		bzero(port, NI_MAXSERV);
+		memset(host, 0, NI_MAXHOST);
+		memset(port, 0, NI_MAXSERV);
 
 		getnameinfo((struct sockaddr*)tmpres->ai_addr, tmpres->ai_addrlen, host, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST);
 
@@ -107,7 +107,7 @@ int mgmtsrv_init(const char *port) {
 		}
 
 		struct mgmt_connection *conn = malloc(sizeof(struct mgmt_connection));
-		bzero(conn, sizeof(struct mgmt_connection));
+		memset(conn, 0, sizeof(struct mgmt_connection));
 		conn->fd = sockfd;
 		conn->flags = MGMT_FLAG_LISTENING;
 
@@ -206,7 +206,7 @@ int mgmtsrv_process() {
 int mgmtsrv_accept_connection(struct mgmt_connection *c) {
 
 	struct mgmt_connection *new_cc = malloc(sizeof(struct mgmt_connection));
-	bzero(new_cc, sizeof(struct mgmt_connection));
+	memset(new_cc, 0, sizeof(struct mgmt_connection));
 
 	struct sockaddr_storage remote_addr;
 	socklen_t remote_addr_len = sizeof(struct sockaddr_storage);
@@ -233,8 +233,8 @@ int mgmtsrv_accept_connection(struct mgmt_connection *c) {
 	}
 
 	char host[NI_MAXHOST], port[NI_MAXSERV];
-	bzero(host, NI_MAXHOST);
-	bzero(port, NI_MAXSERV);
+	memset(host, 0, NI_MAXHOST);
+	memset(port, 0, NI_MAXSERV);
 
 	getnameinfo((struct sockaddr*)&remote_addr, remote_addr_len, host, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST);
 
@@ -262,10 +262,11 @@ int mgmtsrv_accept_connection(struct mgmt_connection *c) {
 int mgmtsrv_read_socket(struct mgmt_connection *c) {
 
 	
-	int res;
+	int res = 0;
 	unsigned int len = 0;
 	unsigned char buffer[READ_BUFF_LEN];
 
+	errno = EAGAIN; // Solaris is too lazy to set it itself
 	while ((res = read(c->fd, buffer + len,  READ_BUFF_LEN - len)) > 0) {
 		len += res;
 	}

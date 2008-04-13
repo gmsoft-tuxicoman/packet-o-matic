@@ -27,7 +27,7 @@
 struct input_functions *ifcs;
 
 struct input_mode *mode_interface, *mode_file;
-struct ptype *p_filename, *p_interface, *p_snaplen, *p_promisc;
+struct ptype *p_filename, *p_interface, *p_snaplen, *p_promisc, *p_filter;
 
 int input_register_pcap(struct input_reg *r, struct input_functions *i_funcs) {
 
@@ -51,17 +51,25 @@ int input_register_pcap(struct input_reg *r, struct input_functions *i_funcs) {
 	p_interface = (*i_funcs->ptype_alloc) ("string", NULL);
 	p_snaplen = (*i_funcs->ptype_alloc) ("uint16", "bytes");
 	p_promisc = (*i_funcs->ptype_alloc) ("bool", NULL);
+	p_filter = (*i_funcs->ptype_alloc) ("string", NULL);
 
-	if (!p_filename || !p_interface || !p_snaplen || !p_promisc) {
+	if (!p_filename || !p_interface || !p_snaplen || !p_promisc || !p_filter) {
 		input_unregister_pcap(r);
 		return POM_ERR;
 	}
 
-	(*i_funcs->register_param) (mode_interface, "interface", "eth0", p_interface, "Interface to listen from");
+	char err[PCAP_ERRBUF_SIZE];
+	char *dev = pcap_lookupdev(err);
+	if (!dev)
+		dev = "none";
+
+	(*i_funcs->register_param) (mode_interface, "interface", dev, p_interface, "Interface to listen from");
 	(*i_funcs->register_param) (mode_interface, "snaplen", "1522", p_snaplen, "Snaplen");
 	(*i_funcs->register_param) (mode_interface, "promisc", "no", p_promisc, "Promiscuous");
+	(*i_funcs->register_param) (mode_interface, "filter", "", p_filter, "BFP filter");
 
 	(*i_funcs->register_param) (mode_file, "file", "dump.cap", p_filename, "PCAP file");
+	(*i_funcs->register_param) (mode_file, "filter", "", p_filter, "BFP filter");
 
 	return POM_OK;
 }
@@ -70,7 +78,7 @@ int input_register_pcap(struct input_reg *r, struct input_functions *i_funcs) {
 int input_init_pcap(struct input *i) {
 
 	i->input_priv = malloc(sizeof(struct input_priv_pcap));
-	bzero(i->input_priv, sizeof(struct input_priv_pcap));
+	memset(i->input_priv, 0, sizeof(struct input_priv_pcap));
 
 	return POM_OK;
 
@@ -91,6 +99,7 @@ int input_unregister_pcap(struct input_reg *r) {
 	(*ifcs->ptype_cleanup) (p_snaplen);
 	(*ifcs->ptype_cleanup) (p_promisc);
 	(*ifcs->ptype_cleanup) (p_filename);
+	(*ifcs->ptype_cleanup) (p_filter);
 	return POM_OK;
 }
 
@@ -163,7 +172,20 @@ int input_open_pcap(struct input *i) {
 		(*ifcs->pom_log) (POM_LOG_ERR "Error while opening pcap input\r\n");
 		return POM_ERR;
 	}
+
+	if (strlen(PTYPE_STRING_GETVAL(p_filter)) > 0) {
 	
+		if (pcap_compile(p->p, &p->fp, PTYPE_STRING_GETVAL(p_filter), 1, 0) == -1) {
+
+			(*ifcs->pom_log) (POM_LOG_ERR "Unable to compile BFP filter \"%s\"\r\n", PTYPE_STRING_GETVAL(p_filter));
+			pcap_close(p->p);
+			return POM_ERR;
+		
+		}
+
+	}
+
+
 	return pcap_get_selectable_fd(p->p);
 }
 
@@ -209,6 +231,8 @@ int input_close_pcap(struct input *i) {
 
 	if (!p->p)
 		return POM_OK;
+
+	pcap_freecode(&p->fp);
 
 	struct pcap_stat ps;
 	if (!pcap_stats(p->p, &ps)) 

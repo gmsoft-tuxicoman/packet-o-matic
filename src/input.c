@@ -59,7 +59,7 @@ int input_register(const char *input_name) {
 			}
 
 			struct input_reg *my_input = malloc(sizeof(struct input_reg));
-			bzero(my_input, sizeof(struct input_reg));
+			memset(my_input, 0, sizeof(struct input_reg));
 			my_input->type = i;
 			inputs[i] = my_input;
 			inputs[i]->dl_handle = handle;
@@ -109,7 +109,7 @@ struct input_mode *input_register_mode(int input_type, const char *name, const c
 		return NULL;
 	
 	struct input_mode *mode = malloc(sizeof(struct input_mode));
-	bzero(mode, sizeof(struct input_mode));
+	memset(mode, 0, sizeof(struct input_mode));
 	
 	mode->name = malloc(strlen(name) + 1);
 	strcpy(mode->name, name);
@@ -162,7 +162,7 @@ int input_register_param(struct input_mode *mode, char *name, char *defval, stru
 		return POM_ERR;
 
 	struct input_param *param = malloc(sizeof(struct input_param));
-	bzero(param, sizeof(struct input_param));
+	memset(param, 0, sizeof(struct input_param));
 
 	param->name = malloc(strlen(name) + 1);
 	strcpy(param->name, name);
@@ -224,7 +224,7 @@ struct input *input_alloc(int input_type) {
 	}
 
 	struct input *i = malloc(sizeof(struct input));
-	bzero(i, sizeof(struct input));
+	memset(i, 0, sizeof(struct input));
 
 	i->type = input_type;
 	

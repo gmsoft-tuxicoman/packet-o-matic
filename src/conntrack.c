@@ -80,7 +80,7 @@ int conntrack_register(const char *conntrack_name) {
 	}
 
 	struct conntrack_reg *my_conntrack = malloc(sizeof(struct conntrack_reg));
-	bzero(my_conntrack, sizeof(struct conntrack_reg));
+	memset(my_conntrack, 0, sizeof(struct conntrack_reg));
 	my_conntrack->type = id;
 	conntracks[id] = my_conntrack;
 	conntracks[id]->dl_handle = handle;
@@ -110,7 +110,7 @@ int conntrack_register_param(int conntrack_type, char *name, char *defval, struc
 		return POM_ERR;
 
 	struct conntrack_param *p = malloc(sizeof(struct conntrack_param));
-	bzero(p, sizeof(struct conntrack_param));
+	memset(p, 0, sizeof(struct conntrack_param));
 	p->name = malloc(strlen(name) + 1);
 	strcpy(p->name, name);
 	p->defval = malloc(strlen(defval) + 1);
@@ -154,10 +154,10 @@ int conntrack_create_entry(struct frame *f) {
 	struct conntrack_list *cl, *cl_rev;
 
 	cl = malloc(sizeof(struct conntrack_list));
-	bzero(cl, sizeof(struct conntrack_list));
+	memset(cl, 0, sizeof(struct conntrack_list));
 
 	cl_rev = malloc(sizeof(struct conntrack_list));
-	bzero(cl_rev, sizeof(struct conntrack_list));
+	memset(cl_rev, 0, sizeof(struct conntrack_list));
 
 	// Make those two conntrack_list linked
 	cl->rev = cl_rev;
@@ -170,7 +170,7 @@ int conntrack_create_entry(struct frame *f) {
 	struct conntrack_entry *ce;
 
 	ce = malloc(sizeof(struct conntrack_entry));
-	bzero(ce, sizeof(struct conntrack_entry));
+	memset(ce, 0, sizeof(struct conntrack_entry));
 
 	ce->full_hash = hash;
 
@@ -243,7 +243,7 @@ int conntrack_add_target_priv(void *priv, struct target *t, struct conntrack_ent
 	// Ok it's not. Creating a new conntrack_priv for our target
 
 	cp = malloc(sizeof(struct conntrack_target_priv));
-	bzero(cp, sizeof(struct conntrack_target_priv));
+	memset(cp, 0, sizeof(struct conntrack_target_priv));
 
 	cp->next = ce->target_privs;
 	ce->target_privs = cp;
@@ -310,7 +310,7 @@ int conntrack_add_helper_priv(void *priv, int type, struct conntrack_entry *ce, 
 	// Ok it's not. Creating a new conntrack_priv for our target
 
 	cp = malloc(sizeof(struct conntrack_helper_priv));
-	bzero(cp, sizeof(struct conntrack_helper_priv));
+	memset(cp, 0, sizeof(struct conntrack_helper_priv));
 
 	cp->next = ce->helper_privs;
 	ce->helper_privs = cp;

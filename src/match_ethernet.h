@@ -26,6 +26,17 @@
 #include "modules_common.h"
 #include "match.h"
 
+
+#define ETH_ALEN 6
+
+struct ether_header
+{
+	uint8_t  ether_dhost[ETH_ALEN];
+	uint8_t  ether_shost[ETH_ALEN];
+	uint16_t ether_type;
+} __attribute__ ((__packed__));
+
+
 int match_register_ethernet(struct match_reg *r, struct match_functions *m_funcs);
 int match_identify_ethernet(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
 int match_unregister_ethernet(struct match_reg *r);

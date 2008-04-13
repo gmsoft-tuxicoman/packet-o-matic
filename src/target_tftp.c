@@ -60,7 +60,7 @@ int target_register_tftp(struct target_reg *r, struct target_functions *tg_funcs
 int target_init_tftp(struct target *t) {
 
 	struct target_priv_tftp *priv = malloc(sizeof(struct target_priv_tftp));
-	bzero(priv, sizeof(struct target_priv_tftp));
+	memset(priv, 0, sizeof(struct target_priv_tftp));
 
 	t->target_priv = priv;
 
@@ -128,7 +128,7 @@ int target_process_tftp(struct target *t, struct frame *f) {
 
 		// New connection
 		cp = malloc(sizeof(struct target_conntrack_priv_tftp));
-		bzero(cp, sizeof(struct target_conntrack_priv_tftp));
+		memset(cp, 0, sizeof(struct target_conntrack_priv_tftp));
 
 		char tmp[NAME_MAX + 1];
 		memset(tmp, 0, sizeof(tmp));

@@ -80,7 +80,7 @@ int helper_register(const char *helper_name) {
 	}
 
 	struct helper_reg *my_helper = malloc(sizeof(struct helper_reg));
-	bzero(my_helper, sizeof(struct helper_reg));
+	memset(my_helper, 0, sizeof(struct helper_reg));
 	my_helper->type = id;
 	helpers[id] = my_helper;
 	helpers[id]->dl_handle = handle;
@@ -111,7 +111,7 @@ int helper_register_param(int helper_type, char *name, char *defval, struct ptyp
 		return POM_ERR;
 
 	struct helper_param *p = malloc(sizeof(struct helper_param));
-	bzero(p, sizeof(struct helper_param));
+	memset(p, 0, sizeof(struct helper_param));
 	p->name = malloc(strlen(name) + 1);
 	strcpy(p->name, name);
 	p->defval = malloc(strlen(defval) + 1);
@@ -227,7 +227,7 @@ int helper_cleanup() {
 int helper_queue_frame(struct frame *f) {
 
 	struct helper_frame *hf = malloc(sizeof(struct helper_frame));
-	bzero(hf, sizeof(struct helper_frame));
+	memset(hf, 0, sizeof(struct helper_frame));
 	hf->f = f; // We don't do a copy. The helper provide us a struct frame and the corresponding buffer that we'll free
 
 	if (!frame_head)

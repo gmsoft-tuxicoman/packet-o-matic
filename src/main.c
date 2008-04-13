@@ -664,7 +664,7 @@ err:
 }
 
 int ringbuffer_init(struct ringbuffer *r) {
-	bzero(r, sizeof(struct ringbuffer));
+	memset(r, 0, sizeof(struct ringbuffer));
 	pthread_mutex_init(&r->mutex, NULL);
 	pthread_cond_init(&r->underrun_cond, NULL);
 	pthread_cond_init(&r->overflow_cond, NULL);
@@ -705,7 +705,7 @@ int ringbuffer_alloc(struct ringbuffer *r, struct input *in) {
 	int i;
 	for (i = 0; i < PTYPE_UINT32_GETVAL(r->size); i++) {
 		r->buffer[i] = malloc(sizeof(struct frame));
-		bzero(r->buffer[i], sizeof(struct frame));
+		memset(r->buffer[i], 0, sizeof(struct frame));
 		r->buffer[i]->input = in;
 		frame_alloc_aligned_buff(r->buffer[i], r->ic.snaplen);
 		r->buffer[i]->input = main_config->input;
@@ -768,7 +768,7 @@ int halt() {
 int core_register_param(char *name, char *defval, struct ptype *value, char *descr, int (*param_can_change) (struct ptype *value, char *msg, size_t size)) {
 
 	struct core_param *p = malloc(sizeof(struct core_param));
-	bzero(p, sizeof(struct core_param));
+	memset(p, 0, sizeof(struct core_param));
 
 	p->name = malloc(strlen(name) + 1);
 	strcpy(p->name, name);

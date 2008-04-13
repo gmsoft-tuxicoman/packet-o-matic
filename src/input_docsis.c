@@ -117,7 +117,7 @@ int input_register_docsis(struct input_reg *r, struct input_functions *i_funcs) 
 int input_init_docsis(struct input *i) {
 
 	i->input_priv = malloc(sizeof(struct input_priv_docsis));
-	bzero(i->input_priv, sizeof(struct input_priv_docsis));
+	memset(i->input_priv, 0, sizeof(struct input_priv_docsis));
 
 	struct input_priv_docsis *p = i->input_priv;
 	p->temp_buff = malloc(TEMP_BUFF_LEN);
@@ -200,7 +200,7 @@ int input_open_docsis(struct input *i) {
 	
 	// Open the frontend
 	char adapter[NAME_MAX];
-	bzero(adapter, NAME_MAX);
+	memset(adapter, 0, NAME_MAX);
 	strcpy(adapter, "/dev/dvb/adapter");
 	(*ifcs->ptype_snprintf) (p_adapter, adapter + strlen(adapter), NAME_MAX - strlen(adapter));
 
@@ -247,7 +247,7 @@ int input_open_docsis(struct input *i) {
 	}
 
 	// Let's filter on the DOCSIS PID
-	bzero(&filter, sizeof(struct dmx_pes_filter_params));	
+	memset(&filter, 0, sizeof(struct dmx_pes_filter_params));	
 	filter.pid = DOCSIS_PID;
 	filter.input = DMX_IN_FRONTEND;
 	filter.output = DMX_OUT_TS_TAP;
@@ -520,7 +520,7 @@ int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symbolRate, 
 	struct input_priv_docsis *p = i->input_priv;
 
 
-	bzero(&frp, sizeof(struct dvb_frontend_parameters));
+	memset(&frp, 0, sizeof(struct dvb_frontend_parameters));
 	frp.frequency = frequency;
 	frp.inversion = INVERSION_AUTO; // DOCSIS explicitly prohibit inversion but we keep AUTO to play it safe
 	frp.u.qam.symbol_rate = symbolRate;
@@ -680,7 +680,7 @@ int input_read_docsis(struct input *i, struct frame *f) {
 
 	unsigned int packet_pos = 0;
 	unsigned char mpeg_buff[MPEG_TS_LEN];
-	bzero(mpeg_buff, MPEG_TS_LEN);
+	memset(mpeg_buff, 0, MPEG_TS_LEN);
 
 	int dlen = 0; // len of the docsis MAC frame including headers
 

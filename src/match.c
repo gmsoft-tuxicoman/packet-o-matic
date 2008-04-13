@@ -52,7 +52,7 @@ int match_register(const char *match_name) {
 			}
 
 			struct match_reg *my_match = malloc(sizeof(struct match_reg));
-			bzero(my_match, sizeof(struct match_reg));
+			memset(my_match, 0, sizeof(struct match_reg));
 
 			
 			matchs[i] = my_match;
@@ -136,7 +136,7 @@ int match_register_field(int match_type, char *name, struct ptype *type, char *d
 		if (!matchs[match_type]->fields[i]) {
 
 			struct match_field_reg *p = malloc(sizeof(struct match_field_reg));
-			bzero(p, sizeof(struct match_field_reg));
+			memset(p, 0, sizeof(struct match_field_reg));
 
 			p->name = malloc(strlen(name) + 1);
 			strcpy(p->name, name);
@@ -172,7 +172,7 @@ struct match_field *match_alloc_field(int match_type, char *field_type) {
 	
 	struct match_field *ret;
 	ret = malloc(sizeof(struct match_field));
-	bzero(ret, sizeof(struct match_field));
+	memset(ret, 0, sizeof(struct match_field));
 
 
 	ret->value = ptype_alloc_from(matchs[match_type]->fields[i]->type);

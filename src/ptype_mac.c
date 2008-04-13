@@ -46,7 +46,7 @@ int ptype_alloc_mac(struct ptype *p) {
 
 	p->value = malloc(sizeof(struct ptype_mac_val));
 	struct ptype_mac_val *v = p->value;
-	bzero(v->addr, sizeof(v->addr));
+	memset(v->addr, 0, sizeof(v->addr));
 	memset(v->mask, 0xff, sizeof(v->mask));
 
 	return POM_OK;

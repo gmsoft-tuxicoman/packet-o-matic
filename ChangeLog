@@ -1,3 +1,11 @@
+* 2008/04/13 Guy Martin <gmsoft@tuxicoman.be>
+Added support for solaris.
+Added filter parameter in input_pcap.
+Autodetect useable iface in input_pcap.
+Get rid of bzero() in favor of memset() and index() in favor of strchr().
+Use our own header for ethernet frames and ipv6 extended headers.
+Update sll.h to use uintX_t instead of u_intX_t.
+
 * 2008/04/12 Guy Martin <gmsoft@tuxicoman.be>
 Added expectation interface that allow targets to expect new connections.
 Added target_tftp.

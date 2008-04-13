@@ -62,7 +62,7 @@ int target_register_rtp(struct target_reg *r, struct target_functions *tg_funcs)
 int target_init_rtp(struct target *t) {
 
 	struct target_priv_rtp *priv = malloc(sizeof(struct target_priv_rtp));
-	bzero(priv, sizeof(struct target_priv_rtp));
+	memset(priv, 0, sizeof(struct target_priv_rtp));
 
 	t->target_priv = priv;
 
@@ -159,7 +159,7 @@ int target_process_rtp(struct target *t, struct frame *f) {
 
 		// New connection
 		cp = malloc(sizeof(struct target_conntrack_priv_rtp));
-		bzero(cp, sizeof(struct target_conntrack_priv_rtp));
+		memset(cp, 0, sizeof(struct target_conntrack_priv_rtp));
 		
 		(*tf->conntrack_add_priv) (cp, t, f->ce, target_close_connection_rtp);
 		
@@ -174,7 +174,7 @@ int target_process_rtp(struct target *t, struct frame *f) {
 		// Compute filename right away
 		char filename[NAME_MAX + 1];
 		char outstr[20];
-		bzero(outstr, 20);
+		memset(outstr, 0, 20);
 		// YYYYMMDD-HHMMSS-UUUUUU
 		char *format = "-%Y%m%d-%H%M%S-";
 		struct tm *tmp;
@@ -211,7 +211,7 @@ int target_process_rtp(struct target *t, struct frame *f) {
 			return POM_OK;
 		}
 		cp->buffer[dir].buff = malloc(PTYPE_UINT16_GETVAL(priv->jitter_buffer));
-		bzero(cp->buffer[dir].buff, PTYPE_UINT16_GETVAL(priv->jitter_buffer));
+		memset(cp->buffer[dir].buff, 0, PTYPE_UINT16_GETVAL(priv->jitter_buffer));
 		cp->buffer[dir].buff_size = PTYPE_UINT16_GETVAL(priv->jitter_buffer);
 		cp->last_seq[dir] = ntohs(rtphdr->seq_num) - 1;
 
@@ -316,7 +316,7 @@ int open_file(struct target_priv_rtp *priv, struct target_conntrack_priv_rtp *cp
 		(*tf->pom_log) (POM_LOG_TSHOOT "%s opened\r\n", cp->filename);
 	
 	struct au_hdr auhdr;
-	bzero(&auhdr, sizeof(struct au_hdr));
+	memset(&auhdr, 0, sizeof(struct au_hdr));
 	memcpy(auhdr.magic, AU_MAGIC, sizeof(auhdr.magic));
 	auhdr.hdr_size = htonl(sizeof(struct au_hdr));
 	auhdr.data_size = 0;

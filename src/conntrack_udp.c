@@ -126,7 +126,7 @@ void *conntrack_alloc_match_priv_udp(struct frame *f, unsigned int start, struct
 	// Allocate the udp priv
 	struct conntrack_priv_udp *priv;
 	priv = malloc(sizeof(struct conntrack_priv_udp));
-	bzero(priv, sizeof(struct conntrack_priv_udp));
+	memset(priv, 0, sizeof(struct conntrack_priv_udp));
 	priv->sport = hdr->uh_sport;
 	priv->dport = hdr->uh_dport;
 

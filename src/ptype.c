@@ -55,7 +55,7 @@ int ptype_register(const char *ptype_name) {
 			}
 
 			struct ptype_reg *my_ptype = malloc(sizeof(struct ptype_reg));
-			bzero(my_ptype, sizeof(struct ptype_reg));
+			memset(my_ptype, 0, sizeof(struct ptype_reg));
 
 			
 			if ((*register_my_ptype) (my_ptype) != POM_OK) {
@@ -90,7 +90,7 @@ struct ptype* ptype_alloc(const char* type, char* unit) {
 	}
 	
 	struct ptype *ret = malloc(sizeof(struct ptype));
-	bzero(ret, sizeof(struct ptype));
+	memset(ret, 0, sizeof(struct ptype));
 	ret->type = idx;
 	if (ptypes[idx]->alloc)
 		ptypes[idx]->alloc(ret);
@@ -109,7 +109,7 @@ struct ptype* ptype_alloc_from(struct ptype *pt) {
 		return NULL;
 
 	struct ptype *ret = malloc(sizeof(struct ptype));
-	bzero(ret, sizeof(struct ptype));
+	memset(ret, 0, sizeof(struct ptype));
 	ret->type = pt->type;
 	if (ptypes[ret->type]) {
 		ptypes[pt->type]->alloc(ret);

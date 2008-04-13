@@ -67,7 +67,7 @@ int target_register_irc(struct target_reg *r, struct target_functions *tg_funcs)
 int target_init_irc(struct target *t) {
 
 	struct target_priv_irc *priv = malloc(sizeof(struct target_priv_irc));
-	bzero(priv, sizeof(struct target_priv_irc));
+	memset(priv, 0, sizeof(struct target_priv_irc));
 
 	t->target_priv = priv;
 
@@ -132,7 +132,7 @@ int target_process_irc(struct target *t, struct frame *f) {
 	if (!cp) { // We need to track all connections
 
 		cp = malloc(sizeof(struct target_conntrack_priv_irc));
-		bzero(cp, sizeof(struct target_conntrack_priv_irc));
+		memset(cp, 0, sizeof(struct target_conntrack_priv_irc));
 
 		/* init open files list and fill it with status */
 		cp->ofiles = (struct open_file*) malloc(sizeof(struct open_file));
