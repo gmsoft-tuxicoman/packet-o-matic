@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -45,7 +45,7 @@ struct target_priv_dump_payload {
 
 };
 
-int target_register_dump_payload(struct target_reg *r, struct target_functions *tg_funcs);
+int target_register_dump_payload(struct target_reg *r);
 
 int target_init_dump_payload(struct target *t);
 int target_process_dump_payload(struct target *t, struct frame *f);

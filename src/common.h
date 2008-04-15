@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -81,6 +81,12 @@
 #define POM_OK 0
 #define POM_ERR -1
 
+// Flags used when loading libraries
+#ifdef RTLD_GROUP
+#define RTLD_FLAGS RTLD_NOW | RTLD_LOCAL | RTLD_GROUP
+#else
+#define RTLD_FLAGS RTLD_NOW | RTLD_LOCAL
+#endif
 
 void *lib_get_register_func(const char *type, const char *name, void **handle);
 
@@ -98,5 +104,7 @@ unsigned int debug_level;
 int console_output;
 
 void pom_log(const char *format, ...);
+
+int frame_alloc_aligned_buff(struct frame *f, int length);
 
 #endif

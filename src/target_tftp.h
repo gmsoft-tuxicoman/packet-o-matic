@@ -58,7 +58,7 @@ struct target_priv_tftp {
 
 };
 
-int target_register_tftp(struct target_reg *r, struct target_functions *tg_funcs);
+int target_register_tftp(struct target_reg *r);
 
 int target_init_tftp(struct target *t);
 int target_process_tftp(struct target *t, struct frame *f);

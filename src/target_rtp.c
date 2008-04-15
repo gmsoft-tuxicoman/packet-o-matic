@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,27 +33,24 @@
 
 unsigned int match_rtp_id;
 
-struct target_functions *tf;
 struct target_mode *mode_default;
 
-int target_register_rtp(struct target_reg *r, struct target_functions *tg_funcs) {
+int target_register_rtp(struct target_reg *r) {
 
 	r->init = target_init_rtp;
 	r->process = target_process_rtp;
 	r->close = target_close_rtp;
 	r->cleanup = target_cleanup_rtp;
 
-	tf = tg_funcs;
+	match_rtp_id = match_register("rtp");
 
-	match_rtp_id = (*tf->match_register) ("rtp");
-
-	mode_default = (*tg_funcs->register_mode) (r->type, "default", "Dump each RTP stream into separate files");
+	mode_default = target_register_mode(r->type, "default", "Dump each RTP stream into separate files");
 
 	if (!mode_default)
 		return POM_ERR;
 
-	(*tg_funcs->register_param) (mode_default, "prefix", "dump", "Prefix of dumped filenames including path");
-	(*tg_funcs->register_param) (mode_default, "jitter_buffer", "4000", "Data to buffer while waiting for reverse direction channels");
+	target_register_param(mode_default, "prefix", "dump", "Prefix of dumped filenames including path");
+	target_register_param(mode_default, "jitter_buffer", "4000", "Data to buffer while waiting for reverse direction channels");
 
 	return POM_OK;
 
@@ -66,15 +63,15 @@ int target_init_rtp(struct target *t) {
 
 	t->target_priv = priv;
 
-	priv->prefix = (*tf->ptype_alloc) ("string", NULL);
-	priv->jitter_buffer = (*tf->ptype_alloc) ("uint16", "bytes");
+	priv->prefix = ptype_alloc("string", NULL);
+	priv->jitter_buffer = ptype_alloc("uint16", "bytes");
 	if (!priv->prefix || !priv->jitter_buffer) {
 		target_cleanup_rtp(t);
 		return POM_ERR;
 	}
 
-	(*tf->register_param_value) (t, mode_default, "prefix", priv->prefix);
-	(*tf->register_param_value) (t, mode_default, "jitter_buffer", priv->jitter_buffer);
+	target_register_param_value(t, mode_default, "prefix", priv->prefix);
+	target_register_param_value(t, mode_default, "jitter_buffer", priv->jitter_buffer);
 
 
 	return POM_OK;
@@ -86,7 +83,7 @@ int target_close_rtp(struct target *t) {
 	struct target_priv_rtp *priv = t->target_priv;
 
 	while (priv->ct_privs) {
-		(*tf->conntrack_remove_priv) (priv->ct_privs, priv->ct_privs->ce);
+		conntrack_remove_target_priv(priv->ct_privs, priv->ct_privs->ce);
 		target_close_connection_rtp(t, priv->ct_privs->ce, priv->ct_privs);
 	}
 
@@ -99,8 +96,8 @@ int target_cleanup_rtp(struct target *t) {
 
 	if (priv) {
 
-		(*tf->ptype_cleanup) (priv->prefix);
-		(*tf->ptype_cleanup) (priv->jitter_buffer);
+		ptype_cleanup(priv->prefix);
+		ptype_cleanup(priv->jitter_buffer);
 		free(priv);
 	}
 
@@ -122,7 +119,7 @@ int target_process_rtp(struct target *t, struct frame *f) {
 	}
 
 	if (!rtpl) {
-		(*tf->pom_log) (POM_LOG_INFO "No RTP header found in this packet\r\n");
+		pom_log(POM_LOG_INFO "No RTP header found in this packet\r\n");
 		return POM_OK;
 	}
 
@@ -142,18 +139,18 @@ int target_process_rtp(struct target *t, struct frame *f) {
 		case RTP_CODEC_G722:
 			break;
 		default:
-			(*tf->pom_log) (POM_LOG_DEBUG "RTP: Payload type %u not supported\r\n", rtphdr->payload_type);
+			pom_log(POM_LOG_DEBUG "RTP: Payload type %u not supported\r\n", rtphdr->payload_type);
 			return POM_OK;
 
 	}
 
 
 	if (!f->ce)
-		(*tf->conntrack_create_entry) (f);
+		conntrack_create_entry(f);
 
 	struct target_conntrack_priv_rtp *cp;
 
-	cp = (*tf->conntrack_get_priv) (t, f->ce);
+	cp = conntrack_get_target_priv(t, f->ce);
 
 	if (!cp) {
 
@@ -161,7 +158,7 @@ int target_process_rtp(struct target *t, struct frame *f) {
 		cp = malloc(sizeof(struct target_conntrack_priv_rtp));
 		memset(cp, 0, sizeof(struct target_conntrack_priv_rtp));
 		
-		(*tf->conntrack_add_priv) (cp, t, f->ce, target_close_connection_rtp);
+		conntrack_add_target_priv(cp, t, f->ce, target_close_connection_rtp);
 		
 		cp->ce = f->ce;
 		cp->payload_type = rtphdr->payload_type;
@@ -187,7 +184,7 @@ int target_process_rtp(struct target *t, struct frame *f) {
 		sprintf(outstr, "%u", (unsigned int)f->tv.tv_usec);
 		strcat(filename, outstr);
 		strcat(filename, ".au");
-		if ((*tf->layer_field_parse) (f->l, filename, cp->filename, NAME_MAX) == POM_ERR)
+		if (layer_field_parse(f->l, filename, cp->filename, NAME_MAX) == POM_ERR)
 			return POM_ERR;
 
 
@@ -198,7 +195,7 @@ int target_process_rtp(struct target *t, struct frame *f) {
 
 	if (rtphdr->payload_type != cp->payload_type) {
 		// payload type different for each direction is not supported
-		(*tf->pom_log) (POM_LOG_DEBUG "RTP: Payload type %u does not mach initial payload type : %u\r\n", rtphdr->payload_type, cp->payload_type);
+		pom_log(POM_LOG_DEBUG "RTP: Payload type %u does not mach initial payload type : %u\r\n", rtphdr->payload_type, cp->payload_type);
 		return POM_OK;
 	}
 
@@ -306,14 +303,14 @@ int write_packet(struct target_conntrack_priv_rtp *cp, struct target_priv_rtp *p
 int open_file(struct target_priv_rtp *priv, struct target_conntrack_priv_rtp *cp) {
 
 
-	cp->fd = (*tf->file_open) (NULL, cp->filename, O_RDWR | O_CREAT, 0666);
+	cp->fd = target_file_open(NULL, cp->filename, O_RDWR | O_CREAT, 0666);
 
 	if (cp->fd == -1) {
 		char errbuff[256];
 		strerror_r(errno, errbuff, 256);
-		(*tf->pom_log) (POM_LOG_ERR "Unable to open file %s for writing : %s\r\n", cp->filename, errbuff);
+		pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s\r\n", cp->filename, errbuff);
 	} else
-		(*tf->pom_log) (POM_LOG_TSHOOT "%s opened\r\n", cp->filename);
+		pom_log(POM_LOG_TSHOOT "%s opened\r\n", cp->filename);
 	
 	struct au_hdr auhdr;
 	memset(&auhdr, 0, sizeof(struct au_hdr));
@@ -334,7 +331,7 @@ int open_file(struct target_priv_rtp *priv, struct target_conntrack_priv_rtp *cp
 			auhdr.encoding = htonl(AU_CODEC_ADPCM_G722);
 			break;
 		default:
-			(*tf->pom_log) (POM_LOG_DEBUG "RTP: Payload type %u not supported\r\n", cp->payload_type);
+			pom_log(POM_LOG_DEBUG "RTP: Payload type %u not supported\r\n", cp->payload_type);
 			return POM_OK;
 
 	}
@@ -347,7 +344,7 @@ int open_file(struct target_priv_rtp *priv, struct target_conntrack_priv_rtp *cp
 		cp->channels++;
 
 	if (cp->channels == 0) {
-		(*tf->pom_log) (POM_LOG_ERR "Internal error in target_rtp. No channel found when writing file\r\n");
+		pom_log(POM_LOG_ERR "Internal error in target_rtp. No channel found when writing file\r\n");
 		return POM_ERR;
 	}
 
@@ -363,7 +360,7 @@ int open_file(struct target_priv_rtp *priv, struct target_conntrack_priv_rtp *cp
 
 int target_close_connection_rtp(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
-	(*tf->pom_log) (POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
+	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
 
 	struct target_conntrack_priv_rtp *cp;
 	cp = conntrack_priv;

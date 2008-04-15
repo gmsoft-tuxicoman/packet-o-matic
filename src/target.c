@@ -30,30 +30,7 @@
 
 
 
-struct target_functions tg_funcs;
-
 int target_init() {
-
-	tg_funcs.pom_log = pom_log;
-	tg_funcs.match_register = match_register;
-	tg_funcs.register_mode = target_register_mode;
-	tg_funcs.register_param = target_register_param;
-	tg_funcs.register_param_value = target_register_param_value;
-	tg_funcs.ptype_alloc = ptype_alloc;
-	tg_funcs.ptype_print_val = ptype_print_val;
-	tg_funcs.ptype_cleanup = ptype_cleanup_module;
-	tg_funcs.conntrack_create_entry = conntrack_create_entry;
-	tg_funcs.conntrack_add_priv = conntrack_add_target_priv;
-	tg_funcs.conntrack_get_priv = conntrack_get_target_priv;
-	tg_funcs.conntrack_remove_priv = conntrack_remove_target_priv;
-	tg_funcs.match_get_name = match_get_name;
-	tg_funcs.match_get_field = match_get_field;
-	tg_funcs.file_open = target_file_open;
-	tg_funcs.layer_field_parse = layer_field_parse;
-	tg_funcs.expectation_alloc = expectation_alloc;
-	tg_funcs.expectation_add = expectation_add;
-	tg_funcs.expectation_cleanup = expectation_cleanup;
-	tg_funcs.expectation_set_priv = expectation_set_target_priv;
 
 	pom_log(POM_LOG_DEBUG "Targets initialized\r\n");
 
@@ -72,7 +49,7 @@ int target_register(const char *target_name) {
 				return i;
 			}
 		} else {
-			int (*register_my_target) (struct target_reg *, struct target_functions *);
+			int (*register_my_target) (struct target_reg *);
 
 			void *handle = NULL;
 			register_my_target = lib_get_register_func("target", target_name, &handle);
@@ -87,7 +64,7 @@ int target_register(const char *target_name) {
 			targets[i] = my_target;
 			my_target->type = i;
 
-			if ((*register_my_target) (my_target, &tg_funcs) != POM_OK) {
+			if ((*register_my_target) (my_target) != POM_OK) {
 				pom_log(POM_LOG_ERR "Error while loading target %s. could not register target !\r\n", target_name);
 				targets[i] = NULL;
 				free(my_target);
@@ -361,8 +338,8 @@ int target_cleanup_module(struct target *t) {
 		}
 		targets[t->type]->refcount--;
 	}
-	ptype_cleanup_module(t->pkt_cnt);
-	ptype_cleanup_module(t->byte_cnt);
+	ptype_cleanup(t->pkt_cnt);
+	ptype_cleanup(t->byte_cnt);
 	free (t);
 
 	return POM_OK;

@@ -26,10 +26,7 @@
 #include "modules_common.h"
 #include "match.h"
 
-
-int match_register_udp();
-
-int match_register_udp();
+int match_register_udp(struct match_reg *r);
 int match_identify_udp(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
 int match_get_expectation_udp(int field_id, int direction);
 int match_unregister_udp(struct match_reg *r);

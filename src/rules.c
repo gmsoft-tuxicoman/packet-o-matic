@@ -384,8 +384,8 @@ int list_destroy(struct rule_list *list) {
 			target_cleanup_module(t);
 			t = next;
 		}
-		ptype_cleanup_module(tmp->pkt_cnt);
-		ptype_cleanup_module(tmp->byte_cnt);
+		ptype_cleanup(tmp->pkt_cnt);
+		ptype_cleanup(tmp->byte_cnt);
 		free(tmp);
 
 	} while (list);

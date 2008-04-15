@@ -26,26 +26,23 @@
 #include "ptype_uint32.h"
 
 struct match_dep *match_undefined;
-struct match_functions *mf;
 
 int field_payload, field_ssrc, field_seq, field_timestamp;
 
 struct ptype *ptype_uint8, *ptype_uint16, *ptype_uint32, *ptype_uint32_hex;
 
-int match_register_rtp(struct match_reg *r, struct match_functions *m_funcs) {
+int match_register_rtp(struct match_reg *r) {
 
 	r->identify = match_identify_rtp;
 	r->get_expectation = match_get_expectation_rtp;
 	r->unregister = match_unregister_rtp;
 
-	mf = m_funcs;
+	match_undefined = match_add_dependency(r->type, "undefined");
 
-	match_undefined = (*mf->add_dependency) (r->type, "undefined");
-
-	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
-	ptype_uint16 = (*mf->ptype_alloc) ("uint16", NULL);
-	ptype_uint32 = (*mf->ptype_alloc) ("uint32", NULL);
-	ptype_uint32_hex = (*mf->ptype_alloc) ("uint32", NULL);
+	ptype_uint8 = ptype_alloc("uint8", NULL);
+	ptype_uint16 = ptype_alloc("uint16", NULL);
+	ptype_uint32 = ptype_alloc("uint32", NULL);
+	ptype_uint32_hex = ptype_alloc("uint32", NULL);
 	ptype_uint32_hex->print_mode = PTYPE_UINT32_PRINT_HEX;
 
 	if (!ptype_uint8 || !ptype_uint16 || !ptype_uint32 || !ptype_uint32_hex) {
@@ -53,10 +50,10 @@ int match_register_rtp(struct match_reg *r, struct match_functions *m_funcs) {
 		return POM_ERR;
 	}
 
-	field_payload = (*mf->register_field) (r->type, "payload", ptype_uint8, "Payload type");
-	field_ssrc = (*mf->register_field) (r->type, "ssrc", ptype_uint32, "Syncronization source");
-	field_seq = (*mf->register_field) (r->type, "seq", ptype_uint16, "Sequence");
-	field_timestamp = (*mf->register_field) (r->type, "ts", ptype_uint32, "Timestamp");
+	field_payload = match_register_field(r->type, "payload", ptype_uint8, "Payload type");
+	field_ssrc = match_register_field(r->type, "ssrc", ptype_uint32, "Syncronization source");
+	field_seq = match_register_field(r->type, "seq", ptype_uint16, "Sequence");
+	field_timestamp = match_register_field(r->type, "ts", ptype_uint32, "Timestamp");
 
 	return POM_OK;
 
@@ -74,7 +71,7 @@ int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, uns
 	hdr_len += hdr->csrc_count * 4;
 
 	if (len - hdr_len <= 0) {
-		(*mf->pom_log) (POM_LOG_TSHOOT "Invalid size for RTP packet\r\n");
+		pom_log(POM_LOG_TSHOOT "Invalid size for RTP packet\r\n");
 		return POM_ERR;
 	}
 
@@ -88,7 +85,7 @@ int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, uns
 		ext = f->buff + start + hdr_len;
 		hdr_len += ntohs(ext->length);
 		if (len < (hdr_len + start)) {
-			(*mf->pom_log) (POM_LOG_TSHOOT "Invalid size for RTP packet\r\n");
+			pom_log(POM_LOG_TSHOOT "Invalid size for RTP packet\r\n");
 			return POM_ERR;
 		}
 	}
@@ -117,10 +114,10 @@ int match_get_expectation_rtp(int field_id, int direction) {
 
 int match_unregister_rtp(struct match_reg *r) {
 
-	(*mf->ptype_cleanup) (ptype_uint8);
-	(*mf->ptype_cleanup) (ptype_uint16);
-	(*mf->ptype_cleanup) (ptype_uint32);
-	(*mf->ptype_cleanup) (ptype_uint32_hex);
+	ptype_cleanup(ptype_uint8);
+	ptype_cleanup(ptype_uint16);
+	ptype_cleanup(ptype_uint32);
+	ptype_cleanup(ptype_uint32_hex);
 
 	return POM_OK;
 }

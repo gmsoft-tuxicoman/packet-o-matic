@@ -28,27 +28,24 @@
 #include "ptype_ipv6.h"
 
 struct match_dep *match_icmpv6, *match_tcp, *match_udp;
-struct match_functions *mf;
 
 int field_saddr, field_daddr, field_flabel, field_hlim;
 
 struct ptype *ptype_ipv6, *ptype_uint8, *ptype_uint32;
 
-int match_register_ipv6(struct match_reg *r, struct match_functions *m_funcs) {
+int match_register_ipv6(struct match_reg *r) {
 
 	r->identify = match_identify_ipv6;
 	r->get_expectation = match_get_expectation_ipv6;
 	r->unregister = match_unregister_ipv6;
 
-	mf = m_funcs;
+	match_icmpv6 = match_add_dependency(r->type, "icmpv6");
+	match_tcp = match_add_dependency(r->type, "tcp");
+	match_udp = match_add_dependency(r->type, "udp");
 
-	match_icmpv6 = (*mf->add_dependency) (r->type, "icmpv6");
-	match_tcp = (*mf->add_dependency) (r->type, "tcp");
-	match_udp = (*mf->add_dependency) (r->type, "udp");
-
-	ptype_ipv6 = (*mf->ptype_alloc) ("ipv6", NULL);
-	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
-	ptype_uint32 = (*mf->ptype_alloc) ("uint32", NULL);
+	ptype_ipv6 = ptype_alloc("ipv6", NULL);
+	ptype_uint8 = ptype_alloc("uint8", NULL);
+	ptype_uint32 = ptype_alloc("uint32", NULL);
 	ptype_uint32->print_mode = PTYPE_UINT32_PRINT_HEX;
 
 	if (!ptype_ipv6 || !ptype_uint8 || !ptype_uint32) {
@@ -56,10 +53,10 @@ int match_register_ipv6(struct match_reg *r, struct match_functions *m_funcs) {
 		return POM_ERR;
 	}
 
-	field_saddr = (*mf->register_field) (r->type, "src", ptype_ipv6, "Source address");
-	field_daddr = (*mf->register_field) (r->type, "dst", ptype_ipv6, "Destination address");
-	field_flabel = (*mf->register_field) (r->type, "flabel", ptype_uint32, "Flow label");
-	field_hlim = (*mf->register_field) (r->type, "hlim", ptype_uint8, "Hop limit");
+	field_saddr = match_register_field(r->type, "src", ptype_ipv6, "Source address");
+	field_daddr = match_register_field(r->type, "dst", ptype_ipv6, "Destination address");
+	field_flabel = match_register_field(r->type, "flabel", ptype_uint32, "Flow label");
+	field_hlim = match_register_field(r->type, "hlim", ptype_uint8, "Hop limit");
 
 	return POM_OK;
 }
@@ -141,9 +138,9 @@ int match_get_expectation_ipv6(int field_id, int direction) {
 
 int match_unregister_ipv6(struct match_reg *r) {
 	
-	(*mf->ptype_cleanup) (ptype_ipv6);
-	(*mf->ptype_cleanup) (ptype_uint8);
-	(*mf->ptype_cleanup) (ptype_uint32);
+	ptype_cleanup(ptype_ipv6);
+	ptype_cleanup(ptype_uint8);
+	ptype_cleanup(ptype_uint32);
 
 	return POM_OK;
 

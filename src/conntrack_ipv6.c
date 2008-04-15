@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 
 #define INITVAL 0x8529fc6a // Random value
 
-int conntrack_register_ipv6(struct conntrack_reg *r, struct conntrack_functions *ct_funcs) {
+int conntrack_register_ipv6(struct conntrack_reg *r) {
 	
 	r->get_hash = conntrack_get_hash_ipv6;
 	r->doublecheck = conntrack_doublecheck_ipv6;

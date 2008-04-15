@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,11 +26,9 @@
 
 #define INITVAL 0x7513adf4
 
-struct conntrack_functions *cf;
-
 struct ptype *udp_timeout;
 
-int conntrack_register_udp(struct conntrack_reg *r, struct conntrack_functions *ct_funcs) {
+int conntrack_register_udp(struct conntrack_reg *r) {
 	
 	r->get_hash = conntrack_get_hash_udp;
 	r->doublecheck = conntrack_doublecheck_udp;
@@ -39,14 +37,12 @@ int conntrack_register_udp(struct conntrack_reg *r, struct conntrack_functions *
 	r->unregister = conntrack_unregister_udp;
 	r->flags = CT_DIR_BOTH;
 	
-	cf = ct_funcs;
-
-	udp_timeout = (*cf->ptype_alloc) ("uint16", "seconds");
+	udp_timeout = ptype_alloc("uint16", "seconds");
 
 	if (!udp_timeout)
 		return POM_ERR;
 
-	(*cf->register_param) (r->type, "timeout", "180", udp_timeout, "Connection timeout");
+	conntrack_register_param(r->type, "timeout", "180", udp_timeout, "Connection timeout");
 
 	return POM_OK;
 }
@@ -108,10 +104,10 @@ int conntrack_doublecheck_udp(struct frame *f, unsigned int start, void *priv, u
 
 
 	// Remove the timer from the queue
-	(*cf->dequeue_timer) (p->timer);
+	timer_dequeue(p->timer);
 
 	// And requeue it at the end
-	(*cf->queue_timer) (p->timer, PTYPE_UINT16_GETVAL(udp_timeout));
+	timer_queue(p->timer, PTYPE_UINT16_GETVAL(udp_timeout));
 
 	return POM_OK;
 }
@@ -133,13 +129,13 @@ void *conntrack_alloc_match_priv_udp(struct frame *f, unsigned int start, struct
 
 	// Allocate the timer and set it up
 	struct timer *t;
-	t = (*cf->alloc_timer) (ce, f->input);
+	t = conntrack_timer_alloc(ce, f->input);
 
 	priv->timer = t;
 
 	// Put the timeout at the end of the list
 	
-	(*cf->queue_timer) (t, PTYPE_UINT16_GETVAL(udp_timeout));
+	timer_queue(t, PTYPE_UINT16_GETVAL(udp_timeout));
 
 	return priv;
 
@@ -150,7 +146,7 @@ int conntrack_cleanup_match_priv_udp(void *priv) {
 	struct conntrack_priv_udp *p = priv;
 	
 	if (p->timer) {
-		(*cf->cleanup_timer) (p->timer);
+		timer_cleanup(p->timer);
 	}
 
 	free(priv);
@@ -160,7 +156,7 @@ int conntrack_cleanup_match_priv_udp(void *priv) {
 
 int conntrack_unregister_udp(struct conntrack_reg *r) {
 
-	(*cf->ptype_cleanup) (udp_timeout);
+	ptype_cleanup(udp_timeout);
 	return POM_OK;
 
 }

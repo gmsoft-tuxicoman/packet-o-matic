@@ -772,8 +772,8 @@ int mgmtcmd_remove_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 		
 	}
 
-	ptype_cleanup_module(rl->pkt_cnt);
-	ptype_cleanup_module(rl->byte_cnt);
+	ptype_cleanup(rl->pkt_cnt);
+	ptype_cleanup(rl->byte_cnt);
 	free(rl);
 
 	reader_process_unlock();

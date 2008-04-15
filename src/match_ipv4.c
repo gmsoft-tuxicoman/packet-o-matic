@@ -28,28 +28,25 @@
 #include "ptype_uint8.h"
 
 struct match_dep *match_icmp, *match_tcp, *match_udp, *match_ipv6;
-struct match_functions *mf;
 
 int field_saddr, field_daddr, field_tos, field_ttl;
 
 struct ptype *ptype_ipv4, *ptype_uint8, *ptype_uint8_hex;
 
-int match_register_ipv4(struct match_reg *r, struct match_functions *m_funcs) {
+int match_register_ipv4(struct match_reg *r) {
 	
 	r->identify = match_identify_ipv4;
 	r->get_expectation = match_get_expectation_ipv4;
 	r->unregister = match_unregister_ipv4;
 
-	mf = m_funcs;
+	match_icmp = match_add_dependency(r->type, "icmp");
+	match_tcp = match_add_dependency(r->type, "tcp");
+	match_udp = match_add_dependency(r->type, "udp");
+	match_ipv6 = match_add_dependency(r->type, "ipv6");
 
-	match_icmp = (*mf->add_dependency) (r->type, "icmp");
-	match_tcp = (*mf->add_dependency) (r->type, "tcp");
-	match_udp = (*mf->add_dependency) (r->type, "udp");
-	match_ipv6 = (*mf->add_dependency) (r->type, "ipv6");
-
-	ptype_ipv4 = (*mf->ptype_alloc) ("ipv4", NULL);
-	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
-	ptype_uint8_hex = (*mf->ptype_alloc) ("uint8", NULL);
+	ptype_ipv4 = ptype_alloc("ipv4", NULL);
+	ptype_uint8 = ptype_alloc("uint8", NULL);
+	ptype_uint8_hex = ptype_alloc("uint8", NULL);
 	ptype_uint8_hex->print_mode = PTYPE_UINT8_PRINT_HEX;
 
 	if (!ptype_ipv4 || !ptype_uint8 || !ptype_uint8_hex) {
@@ -57,10 +54,10 @@ int match_register_ipv4(struct match_reg *r, struct match_functions *m_funcs) {
 		return POM_ERR;
 	}
 
-	field_saddr = (*mf->register_field) (r->type, "src", ptype_ipv4, "Source address");
-	field_daddr = (*mf->register_field) (r->type, "dst", ptype_ipv4, "Destination address");
-	field_tos = (*mf->register_field) (r->type, "tos", ptype_uint8_hex, "Type of service");
-	field_ttl = (*mf->register_field) (r->type, "ttl", ptype_uint8, "Time to live");
+	field_saddr = match_register_field(r->type, "src", ptype_ipv4, "Source address");
+	field_daddr = match_register_field(r->type, "dst", ptype_ipv4, "Destination address");
+	field_tos = match_register_field(r->type, "tos", ptype_uint8_hex, "Type of service");
+	field_ttl = match_register_field(r->type, "ttl", ptype_uint8, "Time to live");
 
 	return POM_OK;
 }
@@ -124,9 +121,9 @@ int match_get_expectation_ipv4(int field_id, int direction) {
 
 int match_unregister_ipv4(struct match_reg *r) {
 
-	(*mf->ptype_cleanup) (ptype_ipv4);
-	(*mf->ptype_cleanup) (ptype_uint8);
-	(*mf->ptype_cleanup) (ptype_uint8_hex);
+	ptype_cleanup(ptype_ipv4);
+	ptype_cleanup(ptype_uint8);
+	ptype_cleanup(ptype_uint8_hex);
 
 	return POM_OK;
 }

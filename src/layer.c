@@ -24,7 +24,6 @@
 #include "layer.h"
 #include "match.h"
 #include "ptype.h"
-#include "input.h"
 
 static struct layer** pool;
 static int poolsize, poolused;
@@ -95,7 +94,7 @@ int layer_cleanup() {
 		for (j = 0; j < field_pool[i].size; j++) {
 			int k;
 			for (k = 0; k < MAX_LAYER_FIELDS && field_pool[i].pool[j][k]; k++)
-				ptype_cleanup_module(field_pool[i].pool[j][k]);
+				ptype_cleanup(field_pool[i].pool[j][k]);
 		}
 	}
 
@@ -224,20 +223,3 @@ int layer_field_parse(struct layer *l, char *expr, char *buff, size_t size) {
 }
 
 
-// takes care of allocating f->buff_base and set correctly f->buff and f->bufflen
-
-int frame_alloc_aligned_buff(struct frame *f, int length) {
-	struct input_caps ic;
-	if (input_getcaps(f->input, &ic) == POM_ERR) {	
-		pom_log(POM_LOG_ERR "Error while trying to get input caps\r\n");
-		return POM_ERR;
-	}
-
-	int total_len = length + ic.buff_align_offset + 4;
-	f->buff_base = malloc(total_len);
-	f->buff = (void*) (((int)f->buff_base & ~3) + 4 + ic.buff_align_offset);
-	f->bufflen = total_len - ((int)f->buff - (int)f->buff_base);
-
-	return POM_OK;
-
-}

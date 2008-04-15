@@ -54,7 +54,7 @@ struct target_priv_pop {
 
 };
 
-int target_register_pop(struct target_reg *r, struct target_functions *tg_funcs);
+int target_register_pop(struct target_reg *r);
 
 int target_init_pop(struct target *t);
 int target_process_pop(struct target *t, struct frame *f);

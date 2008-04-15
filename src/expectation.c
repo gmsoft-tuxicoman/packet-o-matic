@@ -154,7 +154,7 @@ int expectation_cleanup(struct expectation_list *l) {
 		struct expectation_field *fld = n->fields;
 		while (fld) {
 			n->fields = fld->next;
-			ptype_cleanup_module(fld->value);
+			ptype_cleanup(fld->value);
 			free(fld);
 			fld = n->fields;
 		}

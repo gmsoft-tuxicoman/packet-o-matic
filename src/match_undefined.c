@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 
 #include "match_undefined.h"
 
-int match_register_undefined(struct match_reg *r, struct match_functions *m_funcs) {
+int match_register_undefined(struct match_reg *r) {
 
 	return POM_OK;
 

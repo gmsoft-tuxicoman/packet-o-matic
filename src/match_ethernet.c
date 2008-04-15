@@ -26,31 +26,28 @@
 
 
 struct match_dep *match_ipv4, *match_ipv6, *match_arp, *match_vlan;
-struct match_functions *mf;
 
 int field_saddr, field_daddr;
 
 struct ptype *ptype_mac;
 
-int match_register_ethernet(struct match_reg *r, struct match_functions *m_funcs) {
+int match_register_ethernet(struct match_reg *r) {
 
 	r->identify = match_identify_ethernet;
 	r->unregister = match_unregister_ethernet;
 	
-	mf = m_funcs;
-	
-	match_ipv4 = (*mf->add_dependency) (r->type, "ipv4");
-	match_ipv6 = (*mf->add_dependency) (r->type, "ipv6");
-	match_arp = (*mf->add_dependency) (r->type, "arp");
-	match_vlan = (*mf->add_dependency) (r->type, "vlan");
+	match_ipv4 = match_add_dependency(r->type, "ipv4");
+	match_ipv6 = match_add_dependency(r->type, "ipv6");
+	match_arp = match_add_dependency(r->type, "arp");
+	match_vlan = match_add_dependency(r->type, "vlan");
 
-	ptype_mac = (*mf->ptype_alloc) ("mac", NULL);
+	ptype_mac = ptype_alloc ("mac", NULL);
 
 	if (!ptype_mac)
 		return POM_ERR;
 
-	field_saddr = (*mf->register_field) (r->type, "src", ptype_mac, "Source MAC address");
-	field_daddr = (*mf->register_field) (r->type, "dst", ptype_mac, "Destination MAC address");
+	field_saddr = match_register_field(r->type, "src", ptype_mac, "Source MAC address");
+	field_daddr = match_register_field(r->type, "dst", ptype_mac, "Destination MAC address");
 
 	return POM_OK;
 
@@ -83,7 +80,7 @@ int match_identify_ethernet(struct frame *f, struct layer* l, unsigned int start
 
 int match_unregister_ethernet(struct match_reg *r) {
 
-	(*mf->ptype_cleanup) (ptype_mac);
+	ptype_cleanup(ptype_mac);
 
 	return POM_OK;
 }

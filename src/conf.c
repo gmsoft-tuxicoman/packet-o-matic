@@ -417,7 +417,7 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 		r->enabled = 1;
 	xmlFree(disabled);
 
-	ptype_cleanup_module(disabled_pt);
+	ptype_cleanup(disabled_pt);
 
 	cur = cur->xmlChildrenNode;
 	while (cur) {

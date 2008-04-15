@@ -1,3 +1,9 @@
+* 2008/04/15 Guy Martin <gmsoft@tuxicoman.be>
+Renamed ptype_cleanup_module() in ptype_cleanup().
+Pass RTLD_GROUP to dlopen() when avaiable.
+Use libpom.so to store API and make it directly accessible to the modules.
+Moved frame_alloc_aligned_buff() into common.c.
+
 * 2008/04/13 Guy Martin <gmsoft@tuxicoman.be>
 Added support for solaris.
 Added filter parameter in input_pcap.

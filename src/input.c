@@ -27,7 +27,6 @@
 #include "ptype_uint64.h"
 
 struct input_reg *inputs[MAX_INPUT]; ///< Global variable which contains all the input registered in a table.
-static struct input_functions i_funcs; ///< Variable to hold the function pointers passed to the input.
 
 /**
  * This function will try to find the module input_<name>.so and
@@ -48,7 +47,7 @@ int input_register(const char *input_name) {
 			}
 		} else {
 
-			int (*register_my_input) (struct input_reg *, struct input_functions *);
+			int (*register_my_input) (struct input_reg *);
 
 			void *handle = NULL;
 			register_my_input = lib_get_register_func("input", input_name, &handle);
@@ -64,15 +63,7 @@ int input_register(const char *input_name) {
 			inputs[i] = my_input;
 			inputs[i]->dl_handle = handle;
 
-			i_funcs.pom_log = pom_log;
-			i_funcs.match_register = match_register;
-			i_funcs.register_mode = input_register_mode;
-			i_funcs.register_param = input_register_param;
-			i_funcs.ptype_alloc = ptype_alloc;
-			i_funcs.ptype_cleanup = ptype_cleanup_module;
-			i_funcs.ptype_snprintf = ptype_print_val;
-			
-			if ((*register_my_input) (my_input, &i_funcs) != POM_OK) {
+			if ((*register_my_input) (my_input) != POM_OK) {
 				pom_log(POM_LOG_ERR "Error while loading input %s. Could not register input !\r\n", input_name);
 				inputs[i] = NULL;
 				free(my_input);
@@ -317,8 +308,8 @@ int input_cleanup(struct input *i) {
 	if (inputs[i->type] && inputs[i->type]->cleanup)
 		(*inputs[i->type]->cleanup) (i);
 
-	ptype_cleanup_module(i->pkt_cnt);
-	ptype_cleanup_module(i->byte_cnt);
+	ptype_cleanup(i->pkt_cnt);
+	ptype_cleanup(i->byte_cnt);
 	free (i);
 	
 	return POM_ERR;

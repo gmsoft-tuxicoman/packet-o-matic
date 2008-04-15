@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -51,7 +51,7 @@ struct helper_priv_ipv4 {
 };
 
 
-int helper_register_ipv4(struct helper_reg *r, struct helper_functions *ct_funcs);
+int helper_register_ipv4(struct helper_reg *r);
 int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len, struct layer *l);
 int helper_cleanup_ipv4_frag(void *priv);
 int helper_cleanup_ipv4();

@@ -26,28 +26,25 @@
 #include "ptype_uint8.h"
 
 struct match_dep *match_ipv6;
-struct match_functions *mf;
 
 int field_type, field_code;
 
 struct ptype *ptype_uint8;
 
-int match_register_icmpv6(struct match_reg *r, struct match_functions *m_funcs) {
+int match_register_icmpv6(struct match_reg *r) {
 
 	r->identify = match_identify_icmpv6;
 	r->unregister = match_unregister_icmpv6;
 
-	mf = m_funcs;
-	
-	match_ipv6 = (*mf->add_dependency) (r->type, "ipv6");
+	match_ipv6 = match_add_dependency(r->type, "ipv6");
 
-	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
+	ptype_uint8 = ptype_alloc("uint8", NULL);
 
 	if (!ptype_uint8)
 		return POM_ERR;
 
-	field_type = (*mf->register_field) (r->type, "type", ptype_uint8, "Type");
-	field_code = (*mf->register_field) (r->type, "code", ptype_uint8, "Code");
+	field_type = match_register_field(r->type, "type", ptype_uint8, "Type");
+	field_code = match_register_field(r->type, "code", ptype_uint8, "Code");
 
 	return POM_OK;
 }
@@ -71,7 +68,7 @@ int match_identify_icmpv6(struct frame *f, struct layer* l, unsigned int start, 
 
 int match_unregister_icmpv6(struct match_reg *r) {
 
-	(*mf->ptype_cleanup) (ptype_uint8);
+	ptype_cleanup(ptype_uint8);
 	return POM_OK;
 
 }

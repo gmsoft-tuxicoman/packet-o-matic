@@ -60,7 +60,7 @@ struct rtphdrext {
 
 
 
-int match_register_rtp(struct match_reg *r, struct match_functions *m_funcs);
+int match_register_rtp(struct match_reg *r);
 int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
 int match_get_expectation_rtp(int field_id, int direction);
 int match_unregister_rtp(struct match_reg *r);

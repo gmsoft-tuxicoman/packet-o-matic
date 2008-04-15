@@ -23,31 +23,28 @@
 #include "ptype_uint16.h"
 
 struct match_dep *match_ipv4, *match_ipv6, *match_arp, *match_vlan;
-struct match_functions *mf;
 
 int field_vid;
 
 struct ptype *ptype_vid;
 
-int match_register_vlan(struct match_reg *r, struct match_functions *m_funcs) {
+int match_register_vlan(struct match_reg *r) {
 
 	r->identify = match_identify_vlan;
 	r->get_expectation = match_get_expectation_vlan;
 	r->unregister = match_unregister_vlan;
 	
-	mf = m_funcs;
-	
-	match_ipv4 = (*mf->add_dependency) (r->type, "ipv4");
-	match_ipv6 = (*mf->add_dependency) (r->type, "ipv6");
-	match_arp = (*mf->add_dependency) (r->type, "arp");
-	match_vlan = (*mf->add_dependency) (r->type, "vlan");
+	match_ipv4 = match_add_dependency(r->type, "ipv4");
+	match_ipv6 = match_add_dependency(r->type, "ipv6");
+	match_arp = match_add_dependency(r->type, "arp");
+	match_vlan = match_add_dependency(r->type, "vlan");
 
-	ptype_vid = (*mf->ptype_alloc) ("uint16", NULL);
+	ptype_vid = ptype_alloc("uint16", NULL);
 
 	if (!ptype_vid)
 		return POM_ERR;
 
-	field_vid = (*mf->register_field) (r->type, "vid", ptype_vid, "Vlan ID");
+	field_vid = match_register_field(r->type, "vid", ptype_vid, "Vlan ID");
 
 	return POM_OK;
 
@@ -87,7 +84,7 @@ int match_get_expectation_vlan(int field_id, int direction) {
 
 int match_unregister_vlan(struct match_reg *r) {
 
-	(*mf->ptype_cleanup) (ptype_vid);
+	ptype_cleanup(ptype_vid);
 
 	return POM_OK;
 }

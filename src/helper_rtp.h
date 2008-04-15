@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -60,7 +60,7 @@ struct helper_timer_priv_rtp {
 	int dir;
 };
 
-int helper_register_rtp(struct helper_reg *r, struct helper_functions *ct_funcs);
+int helper_register_rtp(struct helper_reg *r);
 int helper_need_help_rtp(struct frame *f, unsigned int start, unsigned int len, struct layer *l);
 int helper_process_next_rtp(struct helper_priv_rtp *p, int dir);
 int helper_process_timer_rtp(void *priv);

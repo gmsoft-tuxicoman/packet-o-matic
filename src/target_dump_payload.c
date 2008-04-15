@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,29 +30,26 @@
 #include "ptype_bool.h"
 #include "ptype_string.h"
 
-struct target_functions *tf;
 
 unsigned int match_undefined_id;
 struct target_mode *mode_default;
 
-int target_register_dump_payload(struct target_reg *r, struct target_functions *tg_funcs) {
+int target_register_dump_payload(struct target_reg *r) {
 
 	r->init = target_init_dump_payload;
 	r->process = target_process_dump_payload;
 	r->close = target_close_dump_payload;
 	r->cleanup = target_cleanup_dump_payload;
 
-	tf = tg_funcs;
+	match_undefined_id = match_register("undefined");
 
-	match_undefined_id = (*tf->match_register) ("undefined");
-
-	mode_default = (*tg_funcs->register_mode) (r->type, "default", "Dump each connection into separate files");
+	mode_default = target_register_mode(r->type, "default", "Dump each connection into separate files");
 
 	if (!mode_default)
 		return POM_ERR;
 
-	(*tg_funcs->register_param) (mode_default, "prefix", "dump", "Prefix of dumped filenames including path");
-	(*tg_funcs->register_param) (mode_default, "markdir", "no", "Mark the direction of each packets in dumped files");
+	target_register_param(mode_default, "prefix", "dump", "Prefix of dumped filenames including path");
+	target_register_param(mode_default, "markdir", "no", "Mark the direction of each packets in dumped files");
 
 	return POM_OK;
 
@@ -65,16 +62,16 @@ int target_init_dump_payload(struct target *t) {
 
 	t->target_priv = priv;
 
-	priv->prefix = (*tf->ptype_alloc) ("string", NULL);
-	priv->markdir = (*tf->ptype_alloc) ("bool", NULL);
+	priv->prefix = ptype_alloc("string", NULL);
+	priv->markdir = ptype_alloc("bool", NULL);
 
 	if (!priv->prefix || !priv->markdir) {
 		target_cleanup_dump_payload(t);
 		return POM_ERR;
 	}
 
-	(*tf->register_param_value) (t, mode_default, "prefix", priv->prefix);
-	(*tf->register_param_value) (t, mode_default, "markdir", priv->markdir);
+	target_register_param_value(t, mode_default, "prefix", priv->prefix);
+	target_register_param_value(t, mode_default, "markdir", priv->markdir);
 
 	return POM_OK;
 }
@@ -84,7 +81,7 @@ int target_close_dump_payload(struct target *t) {
 	struct target_priv_dump_payload *priv = t->target_priv;
 
 	while (priv->ct_privs) {
-		(*tf->conntrack_remove_priv) (priv->ct_privs, priv->ct_privs->ce);
+		conntrack_remove_target_priv(priv->ct_privs, priv->ct_privs->ce);
 		target_close_connection_dump_payload(t, priv->ct_privs->ce, priv->ct_privs);
 	}
 
@@ -97,8 +94,8 @@ int target_cleanup_dump_payload(struct target *t) {
 
 	if (priv) {
 			
-		(*tf->ptype_cleanup) (priv->prefix);
-		(*tf->ptype_cleanup) (priv->markdir);
+		ptype_cleanup(priv->prefix);
+		ptype_cleanup(priv->markdir);
 		free(priv);
 
 	}
@@ -120,12 +117,12 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 		return POM_OK;
 
 	if (!f->ce)
-		(*tf->conntrack_create_entry) (f);
+		conntrack_create_entry(f);
 
 
 	struct target_conntrack_priv_dump_payload *cp;
 
-	cp = (*tf->conntrack_get_priv) (t, f->ce);
+	cp = conntrack_get_target_priv(t, f->ce);
 
 	if (!cp) {
 
@@ -149,19 +146,19 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 		strcat(filename, outstr);
 		sprintf(outstr, "%u", (unsigned int)f->tv.tv_usec);
 		strcat(filename, outstr);
-		cp->fd = (*tf->file_open) (f->l, filename, O_RDWR | O_CREAT, 0666);
+		cp->fd = target_file_open(f->l, filename, O_RDWR | O_CREAT, 0666);
 
 		if (cp->fd == -1) {
 			free(cp);
 			char errbuff[256];
 			strerror_r(errno, errbuff, 256);
-			(*tf->pom_log) (POM_LOG_ERR "Unable to open file %s for writing : %s\r\n", filename, errbuff);
+			pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s\r\n", filename, errbuff);
 			return POM_ERR;
 		}
 
-		(*tf->pom_log) (POM_LOG_TSHOOT "%s opened\r\n", filename);
+		pom_log(POM_LOG_TSHOOT "%s opened\r\n", filename);
 
-		(*tf->conntrack_add_priv) (cp, t, f->ce, target_close_connection_dump_payload);
+		conntrack_add_target_priv(cp, t, f->ce, target_close_connection_dump_payload);
 
 		cp->ce = f->ce;
 		cp->next = priv->ct_privs;
@@ -180,14 +177,14 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 
 	write(cp->fd, f->buff + lastl->payload_start, lastl->payload_size);
 
-	(*tf->pom_log) (POM_LOG_TSHOOT "Saved %u bytes of payload\r\n", lastl->payload_size);
+	pom_log(POM_LOG_TSHOOT "Saved %u bytes of payload\r\n", lastl->payload_size);
 
 	return POM_OK;
 };
 
 int target_close_connection_dump_payload(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
-	(*tf->pom_log) (POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
+	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
 
 	struct target_conntrack_priv_dump_payload *cp;
 	cp = conntrack_priv;

@@ -30,8 +30,6 @@
 
 struct conntrack_list *ct_table[CONNTRACK_SIZE];
 struct conntrack_list *ct_table_rev[CONNTRACK_SIZE];
-struct conntrack_functions ct_funcs;
-
 
 int conntrack_init() {
 
@@ -41,15 +39,6 @@ int conntrack_init() {
 		ct_table[i] = NULL;
 		ct_table_rev[i] = NULL;
 	}
-
-	ct_funcs.alloc_timer = conntrack_timer_alloc;
-	ct_funcs.cleanup_timer = timer_cleanup;
-	ct_funcs.queue_timer = timer_queue;
-	ct_funcs.dequeue_timer = timer_dequeue;
-	ct_funcs.register_param = conntrack_register_param;
-	ct_funcs.ptype_alloc = ptype_alloc;
-	ct_funcs.ptype_print_val = ptype_print_val;
-	ct_funcs.ptype_cleanup = ptype_cleanup_module;
 
 	pom_log(POM_LOG_DEBUG "Conntrack initialized\r\n");
 	
@@ -70,7 +59,7 @@ int conntrack_register(const char *conntrack_name) {
 	if (conntracks[id])
 		return id;
 
-	int (*register_my_conntrack) (struct conntrack_reg *, struct conntrack_functions *);
+	int (*register_my_conntrack) (struct conntrack_reg *);
 
 	void *handle = NULL;
 	register_my_conntrack = lib_get_register_func("conntrack", conntrack_name, &handle);
@@ -85,7 +74,7 @@ int conntrack_register(const char *conntrack_name) {
 	conntracks[id] = my_conntrack;
 	conntracks[id]->dl_handle = handle;
 
-	if ((*register_my_conntrack) (my_conntrack, &ct_funcs) != POM_OK) {
+	if ((*register_my_conntrack) (my_conntrack) != POM_OK) {
 		pom_log(POM_LOG_ERR "Error while loading conntrack %s. Could not register conntrack !\r\n", conntrack_name);
 		conntracks[id] = NULL;
 		free(my_conntrack);

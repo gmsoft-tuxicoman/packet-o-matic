@@ -139,17 +139,6 @@ struct input_reg {
 
 };
 
-/// This structure provides usefull fonction pointers for the inputs
-struct input_functions {
-	void (*pom_log) (const char *format, ...); ///< Log something in the console
-	int (*match_register) (const char *); ///< Register a match
-	struct input_mode *(*register_mode) (int, const char *, const char *); ///< Register a mode for the current input
-	int (*register_param) (struct input_mode *, char *, char *, struct ptype*, char *); ///< Register a parameter for a specific mode
-	struct ptype* (*ptype_alloc) (const char* , char*); ///< Allocate a struct ptype
-	int (*ptype_cleanup) (struct ptype* p); ///< Cleanup the allocated struct
-	int (*ptype_snprintf) (struct ptype*, char*, size_t);
-};
-
 /// Registers a new input by it's name.
 int input_register(const char *input_name);
 

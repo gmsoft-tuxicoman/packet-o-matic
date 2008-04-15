@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,11 +25,9 @@
 
 #define INITVAL 0x83f0e1b6
 
-struct conntrack_functions *cf;
-
 struct ptype *rtp_timeout;
 
-int conntrack_register_rtp(struct conntrack_reg *r, struct conntrack_functions *ct_funcs) {
+int conntrack_register_rtp(struct conntrack_reg *r) {
 	
 	r->get_hash = conntrack_get_hash_rtp;
 	r->doublecheck = conntrack_doublecheck_rtp;
@@ -38,13 +36,11 @@ int conntrack_register_rtp(struct conntrack_reg *r, struct conntrack_functions *
 	r->unregister = conntrack_unregister_rtp;
 	r->flags = CT_DIR_ONEWAY;
 
-	cf = ct_funcs;
-
-	rtp_timeout = (*cf->ptype_alloc) ("uint16", "seconds");
+	rtp_timeout = ptype_alloc("uint16", "seconds");
 	if (!rtp_timeout)
 		return POM_ERR;
 
-	(*cf->register_param) (r->type, "timeout", "10", rtp_timeout, "Connection timeout");
+	conntrack_register_param(r->type, "timeout", "10", rtp_timeout, "Connection timeout");
 	
 	return POM_OK;
 }
@@ -80,10 +76,10 @@ int conntrack_doublecheck_rtp(struct frame *f, unsigned int start, void *priv, u
 		return POM_ERR;
 
 	// Remove the timer from the queue
-	(*cf->dequeue_timer) (p->timer);
+	timer_dequeue(p->timer);
 
 	// And requeue it at the end
-	(*cf->queue_timer) (p->timer, PTYPE_UINT16_GETVAL(rtp_timeout));
+	timer_queue(p->timer, PTYPE_UINT16_GETVAL(rtp_timeout));
 
 
 	return POM_OK;
@@ -106,13 +102,13 @@ void *conntrack_alloc_match_priv_rtp(struct frame *f, unsigned int start, struct
 
 	// Allocate the timeout and set it up
 	struct timer *t;
-	t = (*cf->alloc_timer) (ce, f->input);
+	t = conntrack_timer_alloc(ce, f->input);
 
 	priv->timer = t;
 
 	// Put the timeout at the end of the list
 
-	(*cf->queue_timer) (t, PTYPE_UINT16_GETVAL(rtp_timeout));
+	timer_queue(t, PTYPE_UINT16_GETVAL(rtp_timeout));
 
 	return priv;
 
@@ -123,7 +119,7 @@ int conntrack_cleanup_match_priv_rtp(void *priv) {
 	struct conntrack_priv_rtp *p = priv;
 
 	if (p->timer) {
-		(*cf->cleanup_timer) (p->timer);
+		timer_cleanup(p->timer);
 	}
 
 	free(priv);
@@ -132,6 +128,6 @@ int conntrack_cleanup_match_priv_rtp(void *priv) {
 
 int conntrack_unregister_rtp(struct conntrack_reg *r) {
 
-	(*cf->ptype_cleanup) (rtp_timeout);
+	ptype_cleanup(rtp_timeout);
 	return POM_OK;
 }

@@ -27,7 +27,7 @@
 #include "match.h"
 #include "sll.h"
 
-int match_register_linux_cooked(struct match_reg *r, struct match_functions *m_funcs);
+int match_register_linux_cooked(struct match_reg *r);
 int match_identify_linux_cooked(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
 int match_get_expectation_linux_cooked(int field_id, int direction);
 int match_unregister_linux_cooked(struct match_reg *r);

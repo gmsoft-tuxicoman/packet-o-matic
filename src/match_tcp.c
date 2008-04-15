@@ -27,42 +27,37 @@
 #include "ptype_uint32.h"
 
 struct match_dep *match_undefined;
-struct match_functions *mf;
 
 int field_sport, field_dport, field_flags, field_seq, field_ack, field_win;
 
 struct ptype *ptype_uint8, *ptype_uint16, *ptype_uint32;
 
-int match_register_tcp(struct match_reg *r, struct match_functions *m_funcs) {
+int match_register_tcp(struct match_reg *r) {
 
 	r->identify = match_identify_tcp;
 	r->get_expectation = match_get_expectation_tcp;
 	r->unregister = match_unregister_tcp;
 
-	mf = m_funcs;
+	match_undefined = match_add_dependency(r->type, "undefined");
 
-	match_undefined = (*mf->add_dependency) (r->type, "undefined");
-
-	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
+	ptype_uint8 = ptype_alloc("uint8", NULL);
 	ptype_uint8->print_mode = PTYPE_UINT8_PRINT_HEX;
-	ptype_uint16 = (*mf->ptype_alloc) ("uint16", NULL);
-	ptype_uint32 = (*mf->ptype_alloc) ("uint32", NULL);
+	ptype_uint16 = ptype_alloc("uint16", NULL);
+	ptype_uint32 = ptype_alloc("uint32", NULL);
 	
 	if (!ptype_uint8 || !ptype_uint16 || !ptype_uint32) {
 		match_unregister_tcp(r);
 		return POM_ERR;
 	}
 
-	field_sport = (*mf->register_field) (r->type, "sport", ptype_uint16, "Source port");
-	field_dport = (*mf->register_field) (r->type, "dport", ptype_uint16, "Destination port");
-	field_flags = (*mf->register_field) (r->type, "flags", ptype_uint8, "Flags");
-	field_seq = (*mf->register_field) (r->type, "seq", ptype_uint32, "Sequence");
-	field_ack = (*mf->register_field) (r->type, "ack", ptype_uint32, "Sequence ACK");
-	field_win = (*mf->register_field) (r->type, "win", ptype_uint16, "Window");
-
+	field_sport = match_register_field(r->type, "sport", ptype_uint16, "Source port");
+	field_dport = match_register_field(r->type, "dport", ptype_uint16, "Destination port");
+	field_flags = match_register_field(r->type, "flags", ptype_uint8, "Flags");
+	field_seq = match_register_field(r->type, "seq", ptype_uint32, "Sequence");
+	field_ack = match_register_field(r->type, "ack", ptype_uint32, "Sequence ACK");
+	field_win = match_register_field(r->type, "win", ptype_uint16, "Window");
 
 	return POM_OK;
-
 }
 
 
@@ -106,9 +101,9 @@ int match_get_expectation_tcp(int field_id, int direction) {
 
 int match_unregister_tcp(struct match_reg *r) {
 
-	(*mf->ptype_cleanup) (ptype_uint8);
-	(*mf->ptype_cleanup) (ptype_uint16);
-	(*mf->ptype_cleanup) (ptype_uint32);
+	ptype_cleanup(ptype_uint8);
+	ptype_cleanup(ptype_uint16);
+	ptype_cleanup(ptype_uint32);
 
 	return POM_OK;
 }

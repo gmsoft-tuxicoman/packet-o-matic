@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -34,7 +34,7 @@ struct conntrack_priv_rtp {
 
 };
 
-int conntrack_register_rtp(struct conntrack_reg *r, struct conntrack_functions *ct_funcs);
+int conntrack_register_rtp(struct conntrack_reg *r);
 uint32_t conntrack_get_hash_rtp(struct frame *f, unsigned int start, unsigned int flags);
 int conntrack_doublecheck_rtp(struct frame *f, unsigned int start, void *priv, unsigned int flags);
 void *conntrack_alloc_match_priv_rtp(struct frame *f, unsigned int start, struct conntrack_entry *ce);

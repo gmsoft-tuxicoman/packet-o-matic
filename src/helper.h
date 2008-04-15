@@ -62,29 +62,6 @@ struct helper_reg {
 
 };
 
-struct helper_functions {
-	void (*pom_log) (const char *format, ...);
-	int (*register_param) (int helper_type, char *name, char *defval, struct ptype *value, char *descr);
-	struct timer* (*alloc_timer) (void *priv, struct input *i, int (*handler) (void *));
-	int (*cleanup_timer) (struct timer *t);
-	int (*queue_timer) (struct timer *t, unsigned int expiry);
-	int (*dequeue_timer) (struct timer *t);
-	int (*queue_frame) (struct frame *f);
-	int (*conntrack_create_entry) (struct frame *f);
-	int (*conntrack_get_entry) (struct frame *f);
-	int (*conntrack_add_priv) (void *priv, int type, struct conntrack_entry *ce, int (*flush_buffer) (struct conntrack_entry *ce, void *priv), int (*cleanup_handler) (struct conntrack_entry *ce, void *priv));
-	int (*conntrack_remove_priv) (void *priv, struct conntrack_entry *ce);
-	void *(*conntrack_get_priv) (int type, struct conntrack_entry *ce);
-	struct ptype* (*ptype_alloc) (const char* type, char* unit);
-	int (*ptype_print_val) (struct ptype *pt, char *val, size_t size);
-	int (*ptype_cleanup) (struct ptype* p);
-	struct match_field_reg *(*match_get_field) (int match_type, int field_id);
-	int (*frame_alloc_aligned_buff) (struct frame *f, int length);
-
-
-
-};
-
 struct helper_reg *helpers[MAX_HELPER];
 
 int helper_init();

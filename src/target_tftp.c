@@ -30,28 +30,24 @@
 #include "ptype_bool.h"
 #include "ptype_string.h"
 
-struct target_functions *tf;
-
 unsigned int match_undefined_id;
 struct target_mode *mode_default;
 
-int target_register_tftp(struct target_reg *r, struct target_functions *tg_funcs) {
+int target_register_tftp(struct target_reg *r) {
 
 	r->init = target_init_tftp;
 	r->process = target_process_tftp;
 	r->close = target_close_tftp;
 	r->cleanup = target_cleanup_tftp;
 
-	tf = tg_funcs;
+	match_undefined_id = match_register("undefined");
 
-	match_undefined_id = (*tf->match_register) ("undefined");
-
-	mode_default = (*tg_funcs->register_mode) (r->type, "dump", "Dump emails into separate maildir folders");
+	mode_default = target_register_mode(r->type, "dump", "Dump emails into separate maildir folders");
 
 	if (!mode_default)
 		return POM_ERR;
 
-	(*tg_funcs->register_param) (mode_default, "path", "/tmp/", "Path of the maildir folder used to save the emails");
+	target_register_param(mode_default, "path", "/tmp/", "Path of the maildir folder used to save the emails");
 
 	return POM_OK;
 
@@ -64,14 +60,14 @@ int target_init_tftp(struct target *t) {
 
 	t->target_priv = priv;
 
-	priv->path = (*tf->ptype_alloc) ("string", NULL);
+	priv->path = ptype_alloc("string", NULL);
 
 	if (!priv->path) {
 		target_cleanup_tftp(t);
 		return POM_ERR;
 	}
 
-	(*tf->register_param_value) (t, mode_default, "path", priv->path);
+	target_register_param_value(t, mode_default, "path", priv->path);
 
 	return POM_OK;
 }
@@ -82,7 +78,7 @@ int target_close_tftp(struct target *t) {
 	struct target_priv_tftp *priv = t->target_priv;
 
 	while (priv->ct_privs) {
-		(*tf->conntrack_remove_priv) (priv->ct_privs, priv->ct_privs->ce);
+		conntrack_remove_target_priv(priv->ct_privs, priv->ct_privs->ce);
 		target_close_connection_tftp(t, priv->ct_privs->ce, priv->ct_privs);
 	}
 
@@ -95,7 +91,7 @@ int target_cleanup_tftp(struct target *t) {
 
 	if (priv) {
 			
-		(*tf->ptype_cleanup) (priv->path);
+		ptype_cleanup(priv->path);
 		free(priv);
 
 	}
@@ -116,12 +112,12 @@ int target_process_tftp(struct target *t, struct frame *f) {
 	struct conntrack_entry *ce = f->ce;
 
 	if (!ce) {
-		(*tf->conntrack_create_entry) (f); ce = f->ce;
+		conntrack_create_entry(f); ce = f->ce;
 	} 
 
 	struct target_conntrack_priv_tftp *cp;
 
-	cp = (*tf->conntrack_get_priv) (t, ce);
+	cp = conntrack_get_target_priv(t, ce);
 
 	if (!cp) {
 
@@ -132,13 +128,13 @@ int target_process_tftp(struct target *t, struct frame *f) {
 
 		char tmp[NAME_MAX + 1];
 		memset(tmp, 0, sizeof(tmp));
-		(*tf->layer_field_parse) (f->l, PTYPE_STRING_GETVAL(priv->path), tmp, NAME_MAX);
+		layer_field_parse(f->l, PTYPE_STRING_GETVAL(priv->path), tmp, NAME_MAX);
 		cp->parsed_path = malloc(strlen(tmp) + 3);
 		strcpy(cp->parsed_path, tmp);
 		if (*(cp->parsed_path + strlen(cp->parsed_path) - 1) != '/')
 			strcat(cp->parsed_path, "/");
 
-		(*tf->conntrack_add_priv) (cp, t, ce, target_close_connection_tftp);
+		conntrack_add_target_priv(cp, t, ce, target_close_connection_tftp);
 
 		cp->ce = ce;
 		cp->next = priv->ct_privs;
@@ -201,7 +197,7 @@ int tftp_process_packet(struct target *t, struct conntrack_entry *ce, struct tar
 			strncpy(conn->filename, payload, max - 2);
 			payload += strlen(conn->filename) + 1;
 
-			struct expectation_list *expt  = (*tf->expectation_alloc) (f, t, ce, EXPT_DIR_REV);
+			struct expectation_list *expt  = expectation_alloc(f, t, ce, EXPT_DIR_REV);
 
 			// Now look for last layer
 			struct expectation_node *n = expt->n;
@@ -218,9 +214,9 @@ int tftp_process_packet(struct target *t, struct conntrack_entry *ce, struct tar
 				fld = fld->next;
 			}
 
-			(*tf->expectation_set_priv) (expt, new_cp, target_close_connection_tftp);
+			expectation_set_target_priv(expt, new_cp, target_close_connection_tftp);
 
-			if ((*tf->expectation_add) (expt, TFTP_CONNECTION_TIMER) == POM_ERR) {
+			if (expectation_add(expt, TFTP_CONNECTION_TIMER) == POM_ERR) {
 				free(new_cp->parsed_path);
 				free(new_cp);
 				return POM_ERR;
@@ -249,7 +245,7 @@ int tftp_process_packet(struct target *t, struct conntrack_entry *ce, struct tar
 			conn->last_block++;
 
 			while (conn->last_block < block_id) {
-				(*tf->pom_log) (POM_LOG_DEBUG "TFTP data block %u missed. Padding with 512 bytes\r\n", conn->last_block);
+				pom_log(POM_LOG_DEBUG "TFTP data block %u missed. Padding with 512 bytes\r\n", conn->last_block);
 				char missed[512];
 				memset(missed, 0, sizeof(missed));
 				write(conn->fd, missed, sizeof(missed));
@@ -296,7 +292,7 @@ int target_close_connection_tftp(struct target *t, struct conntrack_entry *ce, v
 	if (cp->parsed_path)
 		free(cp->parsed_path);
 
-	(*tf->pom_log) (POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
+	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
 	struct target_priv_tftp *priv = t->target_priv;
 
 	if (cp->prev)
@@ -322,16 +318,16 @@ int tftp_file_open(struct target_conntrack_priv_tftp *cp, struct timeval *recvd_
 	strncpy(final_name, cp->parsed_path, NAME_MAX);
 	strncat(final_name, conn->filename, NAME_MAX - strlen(final_name));
 
-	conn->fd = (*tf->file_open) (NULL, final_name, O_RDWR | O_CREAT, 0666);
+	conn->fd = target_file_open(NULL, final_name, O_RDWR | O_CREAT, 0666);
 
 	if (conn->fd == -1) {
 		char errbuff[256];
 		strerror_r(errno, errbuff, sizeof(errbuff));
-		(*tf->pom_log) (POM_LOG_ERR "Unable to open file %s for writing : %s\r\n", final_name, errbuff);
+		pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s\r\n", final_name, errbuff);
 		return POM_ERR;
 	}
 
-	(*tf->pom_log) (POM_LOG_TSHOOT "TFTP : %s opened\r\n", final_name);
+	pom_log(POM_LOG_TSHOOT "TFTP : %s opened\r\n", final_name);
 
 	return POM_OK;
 }
@@ -344,7 +340,7 @@ int tftp_file_close(struct target_conntrack_priv_tftp *cp) {
 		return POM_ERR;
 	close(conn->fd);
 	conn->fd = -1;
-	(*tf->pom_log) (POM_LOG_TSHOOT "TFTP : %s closed\r\n", conn->filename);
+	pom_log(POM_LOG_TSHOOT "TFTP : %s closed\r\n", conn->filename);
 	*conn->filename = 0;
 
 	return POM_OK;

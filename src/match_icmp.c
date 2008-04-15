@@ -25,28 +25,25 @@
 #include <netinet/ip_icmp.h>
 
 struct match_dep *match_ipv4;
-struct match_functions *mf;
 int field_type, field_code;
 
 struct ptype *ptype_uint8;
 
-int match_register_icmp(struct match_reg *r, struct match_functions *m_funcs) {
+int match_register_icmp(struct match_reg *r) {
 
 	r->identify = match_identify_icmp;
 	r->unregister = match_unregister_icmp;
 
-	mf = m_funcs;
-	
-	match_ipv4 = (*mf->add_dependency) (r->type, "ipv4");
+	match_ipv4 = match_add_dependency(r->type, "ipv4");
 
-	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
+	ptype_uint8 = ptype_alloc("uint8", NULL);
 
 	if (!ptype_uint8)
 		return POM_ERR;
 
 
-	field_type = (*mf->register_field) (r->type, "type", ptype_uint8, "Type");
-	field_code = (*mf->register_field) (r->type, "code", ptype_uint8, "Code");
+	field_type = match_register_field(r->type, "type", ptype_uint8, "Type");
+	field_code = match_register_field(r->type, "code", ptype_uint8, "Code");
 
 	return POM_OK;
 }
@@ -66,7 +63,7 @@ int match_identify_icmp(struct frame *f, struct layer* l, unsigned int start, un
 
 int match_unregister_icmp(struct match_reg *r) {
 
-	(*mf->ptype_cleanup) (ptype_uint8);
+	ptype_cleanup(ptype_uint8);
 	return POM_OK;
 
 }

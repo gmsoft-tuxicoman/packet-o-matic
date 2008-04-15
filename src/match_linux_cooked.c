@@ -23,34 +23,31 @@
 #include "ptype_bytes.h"
 
 struct match_dep *match_ipv4, *match_ipv6;
-struct match_functions *mf;
 
 int field_pkt_type, field_ha_type, field_addr;
 
 struct ptype *ptype_uint16, *ptype_bytes;
 
-int match_register_linux_cooked(struct match_reg *r, struct match_functions *m_funcs) {
+int match_register_linux_cooked(struct match_reg *r) {
 
 	r->identify = match_identify_linux_cooked;
 	r->get_expectation = match_get_expectation_linux_cooked;
 	r->unregister = match_unregister_linux_cooked;
 
-	mf = m_funcs;
-	
-	match_ipv4 = (*mf->add_dependency) (r->type, "ipv4");
-	match_ipv6 = (*mf->add_dependency) (r->type, "ipv6");
+	match_ipv4 = match_add_dependency(r->type, "ipv4");
+	match_ipv6 = match_add_dependency(r->type, "ipv6");
 
-	ptype_uint16 = (*mf->ptype_alloc) ("uint16", NULL);
-	ptype_bytes = (*mf->ptype_alloc) ("bytes", NULL);
+	ptype_uint16 = ptype_alloc("uint16", NULL);
+	ptype_bytes = ptype_alloc("bytes", NULL);
 
 	if (!ptype_uint16 || !ptype_bytes) {
 		match_unregister_linux_cooked(r);
 		return POM_ERR;
 	}
 
-	field_pkt_type = (*mf->register_field) (r->type, "pkt_type", ptype_uint16, "Packet type");
-	field_ha_type = (*mf->register_field) (r->type, "ha_type", ptype_uint16, "Address type");
-	field_addr = (*mf->register_field) (r->type, "src", ptype_bytes, "Source address");
+	field_pkt_type = match_register_field(r->type, "pkt_type", ptype_uint16, "Packet type");
+	field_ha_type = match_register_field(r->type, "ha_type", ptype_uint16, "Address type");
+	field_addr = match_register_field(r->type, "src", ptype_bytes, "Source address");
 
 
 	return POM_OK;
@@ -94,8 +91,8 @@ int match_get_expectation_linux_cooked(int field_id, int direction) {
 
 int match_unregister_linux_cooked(struct match_reg *r) {
 
-	(*mf->ptype_cleanup) (ptype_uint16);
-	(*mf->ptype_cleanup) (ptype_bytes);
+	ptype_cleanup(ptype_uint16);
+	ptype_cleanup(ptype_bytes);
 	return POM_OK;
 
 }

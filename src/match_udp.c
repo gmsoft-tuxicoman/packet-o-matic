@@ -24,30 +24,27 @@
 #include "ptype_uint16.h"
 
 struct match_dep *match_undefined;
-struct match_functions *mf;
 
 int field_sport, field_dport;
 
 struct ptype *ptype_uint16;
 
-int match_register_udp(struct match_reg *r, struct match_functions *m_funcs) {
+int match_register_udp(struct match_reg *r) {
 
 
 	r->identify = match_identify_udp;
 	r->get_expectation = match_get_expectation_udp;
 	r->unregister = match_unregister_udp;
 
-	mf = m_funcs;
+	match_undefined = match_add_dependency(r->type, "undefined");
 
-	match_undefined = (*mf->add_dependency) (r->type, "undefined");
-
-	ptype_uint16 = (*mf->ptype_alloc) ("uint16", NULL);
+	ptype_uint16 = ptype_alloc("uint16", NULL);
 
 	if (!ptype_uint16)
 		return POM_ERR;
 
-	field_sport = (*mf->register_field) (r->type, "sport", ptype_uint16, "Source port");
-	field_dport = (*mf->register_field) (r->type, "dport", ptype_uint16, "Destination port");
+	field_sport = match_register_field(r->type, "sport", ptype_uint16, "Source port");
+	field_dport = match_register_field(r->type, "dport", ptype_uint16, "Destination port");
 
 
 	return POM_OK;
@@ -89,7 +86,7 @@ int match_get_expectation_udp(int field_id, int direction) {
 
 int match_unregister_udp(struct match_reg *r) {
 
-	(*mf->ptype_cleanup) (ptype_uint16);
+	ptype_cleanup(ptype_uint16);
 	return POM_OK;
 
 }

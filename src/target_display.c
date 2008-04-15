@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,33 +28,30 @@
 
 int match_undefined_id;
 
-struct target_functions *tf;
 struct target_mode *mode_normal, *mode_connection;
 
-int target_register_display(struct target_reg *r, struct target_functions *tg_funcs) {
+int target_register_display(struct target_reg *r) {
 
 	r->init = target_init_display;
 	r->process = target_process_display;
 	r->close = target_close_display;
 	r->cleanup = target_cleanup_display;
 
-	tf = tg_funcs;
+	match_undefined_id = match_register("undefined");
 
-	match_undefined_id = (*tf->match_register) ("undefined");
-
-	mode_normal = (*tf->register_mode) (r->type, "normal", "Display the headers fields and dump");
-	mode_connection = (*tf->register_mode) (r->type, "connection", "Display each new connection and a summary");
+	mode_normal = target_register_mode(r->type, "normal", "Display the headers fields and dump");
+	mode_connection = target_register_mode(r->type, "connection", "Display each new connection and a summary");
 
 	if (!mode_normal || !mode_connection)
 		return POM_ERR;
 
-	(*tf->register_param) (mode_normal, "skip", "0", "Number of headers to skip");
-	(*tf->register_param) (mode_normal, "debug_level", "3", "Default debug level that target_display will use");
-	(*tf->register_param) (mode_normal, "print_hex", "no", "Show dump of the packet in hex");
-	(*tf->register_param) (mode_normal, "print_ascii", "no", "Show dump of the packet in ascii");
-	(*tf->register_param) (mode_normal, "conntrack", "no", "Save conntrack info to see all the connection packets");
+	target_register_param(mode_normal, "skip", "0", "Number of headers to skip");
+	target_register_param(mode_normal, "debug_level", "3", "Default debug level that target_display will use");
+	target_register_param(mode_normal, "print_hex", "no", "Show dump of the packet in hex");
+	target_register_param(mode_normal, "print_ascii", "no", "Show dump of the packet in ascii");
+	target_register_param(mode_normal, "conntrack", "no", "Save conntrack info to see all the connection packets");
 
-	(*tf->register_param) (mode_connection, "skip", "0", "Number of headers to skip");
+	target_register_param(mode_connection, "skip", "0", "Number of headers to skip");
 
 	return POM_OK;
 
@@ -67,24 +64,24 @@ int target_init_display(struct target *t) {
 
 	t->target_priv = priv;
 
-	priv->skip = (*tf->ptype_alloc) ("uint16", "headers");
-	priv->debug_level = (*tf->ptype_alloc) ("uint8", NULL);
-	priv->print_hex = (*tf->ptype_alloc) ("bool", NULL);
-	priv->print_ascii = (*tf->ptype_alloc) ("bool", NULL);
-	priv->conntrack = (*tf->ptype_alloc) ("bool", NULL);
+	priv->skip = ptype_alloc("uint16", "headers");
+	priv->debug_level = ptype_alloc("uint8", NULL);
+	priv->print_hex = ptype_alloc("bool", NULL);
+	priv->print_ascii = ptype_alloc("bool", NULL);
+	priv->conntrack = ptype_alloc("bool", NULL);
 
 	if (!priv->skip) {
 		free(priv);
 		return POM_ERR;
 	}
 
-	(*tf->register_param_value) (t, mode_normal, "skip", priv->skip);
-	(*tf->register_param_value) (t, mode_normal, "debug_level", priv->debug_level);
-	(*tf->register_param_value) (t, mode_normal, "print_hex", priv->print_hex);
-	(*tf->register_param_value) (t, mode_normal, "print_ascii", priv->print_ascii);
-	(*tf->register_param_value) (t, mode_normal, "conntrack", priv->conntrack);
+	target_register_param_value(t, mode_normal, "skip", priv->skip);
+	target_register_param_value(t, mode_normal, "debug_level", priv->debug_level);
+	target_register_param_value(t, mode_normal, "print_hex", priv->print_hex);
+	target_register_param_value(t, mode_normal, "print_ascii", priv->print_ascii);
+	target_register_param_value(t, mode_normal, "conntrack", priv->conntrack);
 
-	(*tf->register_param_value) (t, mode_connection, "skip", priv->skip);
+	target_register_param_value(t, mode_connection, "skip", priv->skip);
 
 	return POM_OK;
 }
@@ -106,15 +103,15 @@ int target_process_display(struct target *t, struct frame *f) {
 
 	if (PTYPE_BOOL_GETVAL(p->conntrack) || t->mode == mode_connection) {
 		if (!f->ce)
-			(*tf->conntrack_create_entry) (f);
+			conntrack_create_entry(f);
 
 		struct target_conntrack_priv_display *cp;
-		cp = (*tf->conntrack_get_priv) (t, f->ce);
+		cp = conntrack_get_target_priv(t, f->ce);
 
 		if (!cp) {
 			cp = malloc(sizeof(struct target_conntrack_priv_display));
 			memset(cp, 0, sizeof(struct target_conntrack_priv_display));
-			(*tf->conntrack_add_priv) (cp, t, f->ce, target_close_connection_display);
+			conntrack_add_target_priv(cp, t, f->ce, target_close_connection_display);
 
 			cp->ce = f->ce;
 			cp->next = p->ct_privs;
@@ -153,7 +150,7 @@ int target_process_display(struct target *t, struct frame *f) {
 	
 		first_field = 1;
 	
-		char *match_name = (*tf->match_get_name) (l->type);
+		char *match_name = match_get_name(l->type);
 		strncat(line, match_name, freesize);
 		freesize -= strlen(match_name);
 
@@ -163,7 +160,7 @@ int target_process_display(struct target *t, struct frame *f) {
 
 			int i;
 			for (i = 0; i < MAX_LAYER_FIELDS && l->fields[i]; i++) {
-				len = (*tf->ptype_print_val) (l->fields[i], buff, sizeof(buff) - 1);
+				len = ptype_print_val(l->fields[i], buff, sizeof(buff) - 1);
 
 				if (len) {
 					if (!first_field) {
@@ -177,7 +174,7 @@ int target_process_display(struct target *t, struct frame *f) {
 						first_field = 0;
 					}
 					
-					struct match_field_reg *field = (*tf->match_get_field) (l->type, i);
+					struct match_field_reg *field = match_get_field(l->type, i);
 						
 					strncat(line, field->name, freesize);
 					freesize -= strlen(field->name);
@@ -214,7 +211,7 @@ int target_process_display(struct target *t, struct frame *f) {
 	char format[strlen(format_str) + 1];
 	strcpy(format, format_str);
 	format[0] = debug_level;
-	(*tf->pom_log) (format, line);
+	pom_log(format, line);
 
 
 	int start = 0;
@@ -296,7 +293,7 @@ int target_display_print_hex(void *frame, unsigned int start, unsigned int len, 
 		char format[strlen(format_str) + 1];
 		strcpy(format, format_str);
 		format[0] = PTYPE_UINT8_GETVAL(p->debug_level);
-		(*tf->pom_log) (format, line);
+		pom_log(format, line);
 	}
 	
 	return POM_OK;
@@ -331,7 +328,7 @@ int target_display_print_ascii(void *frame, unsigned int start, unsigned int len
 	char format[strlen(format_str) + 1];
 	strcpy(format, format_str);
 	format[0] = PTYPE_UINT8_GETVAL(p->debug_level);
-	(*tf->pom_log) (format, line);
+	pom_log(format, line);
 	return POM_OK;
 
 }
@@ -341,7 +338,7 @@ int target_close_display(struct target *t) {
 	struct target_priv_display *priv = t->target_priv;
 
 	while (priv->ct_privs) {
-		(*tf->conntrack_remove_priv) (priv->ct_privs, priv->ct_privs->ce);
+		conntrack_remove_target_priv(priv->ct_privs, priv->ct_privs->ce);
 		target_close_connection_display(t, priv->ct_privs->ce, priv->ct_privs);
 
 	}
@@ -355,11 +352,11 @@ int target_cleanup_display(struct target *t) {
 	struct target_priv_display *priv = t->target_priv;
 
 	if (priv) {
-		(*tf->ptype_cleanup) (priv->skip);
-		(*tf->ptype_cleanup) (priv->debug_level);
-		(*tf->ptype_cleanup) (priv->print_hex);
-		(*tf->ptype_cleanup) (priv->print_ascii);
-		(*tf->ptype_cleanup) (priv->conntrack);
+		ptype_cleanup(priv->skip);
+		ptype_cleanup(priv->debug_level);
+		ptype_cleanup(priv->print_hex);
+		ptype_cleanup(priv->print_ascii);
+		ptype_cleanup(priv->conntrack);
 		free(t->target_priv);
 	}
 

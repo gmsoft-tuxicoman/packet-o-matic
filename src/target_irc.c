@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  target_irc : Dump IRC communication
  *  Copyright (C) 2007 Thomas Gouverneur <wildcat@espix.org>
@@ -35,12 +35,11 @@
 #include "ptype_string.h"
 
 
-struct target_functions *tf;
 unsigned int match_undefined_id;
 struct target_mode *mode_dump;
 
 
-int target_register_irc(struct target_reg *r, struct target_functions *tg_funcs) {
+int target_register_irc(struct target_reg *r) {
 
 	r->init = target_init_irc;
 	r->open = target_open_irc;
@@ -48,16 +47,14 @@ int target_register_irc(struct target_reg *r, struct target_functions *tg_funcs)
 	r->close = target_close_irc;
 	r->cleanup = target_cleanup_irc;
 
-	tf = tg_funcs;
+	match_undefined_id = match_register("undefined");
 
-	match_undefined_id = (*tf->match_register) ("undefined");
-
-	mode_dump = (*tg_funcs->register_mode) (r->type, "dump", "Dump IRC connection into separate files with irssi-like log format");
+	mode_dump = target_register_mode(r->type, "dump", "Dump IRC connection into separate files with irssi-like log format");
 
 	if (!mode_dump)
 		return POM_ERR;
 
-	(*tg_funcs->register_param) (mode_dump, "path", "/tmp", "Path of dumped files");
+	target_register_param(mode_dump, "path", "/tmp", "Path of dumped files");
 
 	return POM_OK;
 
@@ -71,14 +68,14 @@ int target_init_irc(struct target *t) {
 
 	t->target_priv = priv;
 
-	priv->path = (*tf->ptype_alloc) ("string", NULL);
+	priv->path = ptype_alloc("string", NULL);
 
 	if (!priv->path) {
 		target_cleanup_irc(t);
 		return POM_ERR;
 	}
 	
-	(*tf->register_param_value) (t, mode_dump, "path", priv->path);
+	target_register_param_value(t, mode_dump, "path", priv->path);
 
 	return POM_OK;
 }
@@ -88,7 +85,7 @@ int target_close_irc(struct target *t) {
 	struct target_priv_irc *priv = t->target_priv;
 
 	while (priv->ct_privs) {
-		(*tf->conntrack_remove_priv) (priv->ct_privs, priv->ct_privs->ce);
+		conntrack_remove_target_priv(priv->ct_privs, priv->ct_privs->ce);
 		target_close_connection_irc(t, priv->ct_privs->ce, priv->ct_privs);
 	}
 
@@ -101,7 +98,7 @@ int target_cleanup_irc(struct target *t) {
 
 	if (priv) {
 
-		(*tf->ptype_cleanup) (priv->path);
+		ptype_cleanup(priv->path);
 		free(priv);
 	}
 
@@ -123,11 +120,11 @@ int target_process_irc(struct target *t, struct frame *f) {
 		lastl = lastl->next;
 
 	if (!f->ce)
-		(*tf->conntrack_create_entry) (f);
+		conntrack_create_entry(f);
 
 	struct target_conntrack_priv_irc *cp;
 
-	cp = (*tf->conntrack_get_priv) (t, f->ce);
+	cp = conntrack_get_target_priv(t, f->ce);
 
 	if (!cp) { // We need to track all connections
 
@@ -143,7 +140,7 @@ int target_process_irc(struct target *t, struct frame *f) {
 
 		cp->state = IRC_UNKNOWN;
 		cp->fd = -1;
-		(*tf->conntrack_add_priv) (cp, t, f->ce, target_close_connection_irc);
+		conntrack_add_target_priv(cp, t, f->ce, target_close_connection_irc);
 		cp->ce = f->ce;
 		cp->next = priv->ct_privs;
 		if (priv->ct_privs)
@@ -154,7 +151,7 @@ int target_process_irc(struct target *t, struct frame *f) {
 		return POM_OK;
 
 	if (lastl->payload_size == 0) {
-		(*tf->pom_log) (POM_LOG_TSHOOT "Payload size == 0\r\n");	
+		pom_log(POM_LOG_TSHOOT "Payload size == 0\r\n");	
 		return POM_OK;
 	}
 
@@ -167,7 +164,7 @@ int target_process_irc(struct target *t, struct frame *f) {
 	for (i=0; i < lastl->payload_size; i++) {
  
 		if (!pload[i]) { // non ascii
-			(*tf->pom_log) (POM_LOG_TSHOOT "NULL char in IRC packet\r\n");
+			pom_log(POM_LOG_TSHOOT "NULL char in IRC packet\r\n");
 			return POM_OK;
 		}
 		
@@ -197,7 +194,7 @@ int target_process_irc(struct target *t, struct frame *f) {
 
 int target_close_connection_irc(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
-	(*tf->pom_log) (POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
+	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
 
 	struct target_conntrack_priv_irc *cp;
 	cp = conntrack_priv;
@@ -243,7 +240,7 @@ int     parse_msg(struct target_conntrack_priv_irc *cp,
 	memset(args, 0, sizeof(args));
 	memset(token, 0, sizeof(token));
 
-	(*tf->pom_log) (POM_LOG_TSHOOT "DEBUG: %s\r\n", line);
+	pom_log(POM_LOG_TSHOOT "DEBUG: %s\r\n", line);
 
 	if (*line == ':') {
 		is_srv = 1;
@@ -264,11 +261,11 @@ int     parse_msg(struct target_conntrack_priv_irc *cp,
 		}
 	} else {
 		cp->state = IRC_NOMATCH;
-		(*tf->pom_log) (POM_LOG_TSHOOT "DEBUG: Cannot find correct IRC Syntax, avoiding to parse this connection in the future...\r\n");
+		pom_log(POM_LOG_TSHOOT "DEBUG: Cannot find correct IRC Syntax, avoiding to parse this connection in the future...\r\n");
 		return POM_ERR;
 	}
 
-	(*tf->pom_log) (POM_LOG_TSHOOT "DEBUG: tok=%s|from=%s\r\n", token, from);
+	pom_log(POM_LOG_TSHOOT "DEBUG: tok=%s|from=%s\r\n", token, from);
 
 	if (!token) return POM_ERR;
 
@@ -319,7 +316,7 @@ int     process_mode(struct target_conntrack_priv_irc *cp,
 	
 
 	/* log internally */
-	(*tf->pom_log) (POM_LOG_TSHOOT "MODE: %s\r\n", line);
+	pom_log(POM_LOG_TSHOOT "MODE: %s\r\n", line);
 
 	/* log to file */
 	if (to[0] == '#') {
@@ -393,7 +390,7 @@ int     process_oper(struct target_conntrack_priv_irc *cp,
 	}
 
 	/* log internally */
-	(*tf->pom_log) (POM_LOG_TSHOOT "OPER: %s\r\n", line);
+	pom_log(POM_LOG_TSHOOT "OPER: %s\r\n", line);
 
 	/* log to file */
 	len = snprintf(wbuf, MAX_LINE + 64, "[%s] <%s> logged in as OPER with %s/%s\r\n", 
@@ -460,7 +457,7 @@ int     process_kick(struct target_conntrack_priv_irc *cp,
 	}
 
 	/* log internally */
-	(*tf->pom_log) (POM_LOG_TSHOOT "KICK: %s\r\n", line);
+	pom_log(POM_LOG_TSHOOT "KICK: %s\r\n", line);
 
 	/* log to file */
 	len = snprintf(wbuf, MAX_LINE + 64, "[%s] <%s> has kicked %s out of %s (%s)\r\n", 
@@ -534,7 +531,7 @@ int     process_topic(struct target_conntrack_priv_irc *cp,
 	}
 
 	/* log internally */
-	(*tf->pom_log) (POM_LOG_TSHOOT "TOPIC: %s\r\n", line);
+	pom_log(POM_LOG_TSHOOT "TOPIC: %s\r\n", line);
 
 	/* log to file */
 	if (topic[0] == 0) {
@@ -613,7 +610,7 @@ int     process_nick(struct target_conntrack_priv_irc *cp,
 	}
 
 	/* log internally */
-	(*tf->pom_log) (POM_LOG_TSHOOT "NICK: %s\r\n", line);
+	pom_log(POM_LOG_TSHOOT "NICK: %s\r\n", line);
 
 	/* log to file */
 	len = snprintf(wbuf, MAX_LINE + 64, "[%s] -!- %s is now known as %s\r\n", 
@@ -673,7 +670,7 @@ int     process_pass(struct target_conntrack_priv_irc *cp,
 	}
 
 	/* log internally */
-	(*tf->pom_log) (POM_LOG_TSHOOT "PASS : %s\r\n", line);
+	pom_log(POM_LOG_TSHOOT "PASS : %s\r\n", line);
 
 	/* log to file */
 	len = snprintf(wbuf, MAX_LINE + 64, "[%s] password used to connect: %s\r\n", 
@@ -739,7 +736,7 @@ int     process_join(struct target_conntrack_priv_irc *cp,
 	strncpy(realfrom, getNick(from), MAX_NICK);
 
 	/* log internally */
-	(*tf->pom_log) (POM_LOG_TSHOOT "JOIN from %s: %s\r\n", realfrom, line);
+	pom_log(POM_LOG_TSHOOT "JOIN from %s: %s\r\n", realfrom, line);
 
 	/* log to file */
 	len = snprintf(wbuf, MAX_LINE + 64, "[%s] -!- %s [%s] has joined %s [%s]\r\n", 
@@ -817,7 +814,7 @@ int     process_part(struct target_conntrack_priv_irc *cp,
 	}
 
 	/* log internally */
-	(*tf->pom_log) (POM_LOG_TSHOOT "PART from %s: %s\r\n", realfrom, line);
+	pom_log(POM_LOG_TSHOOT "PART from %s: %s\r\n", realfrom, line);
 
 	/* log to file */
 	len = snprintf(wbuf, MAX_LINE + 64, "[%s] -!- %s [%s] has left %s [%s]\r\n", get_time(), 
@@ -886,7 +883,7 @@ int     process_notice(struct target_conntrack_priv_irc *cp,
 	strncpy(realfrom, getNick(from), MAX_NICK);
 
 	/* log internally */
-	(*tf->pom_log) (POM_LOG_TSHOOT "NOTICE from %s: %s\r\n", realfrom, line);
+	pom_log(POM_LOG_TSHOOT "NOTICE from %s: %s\r\n", realfrom, line);
 
 	/* log to file */
 	len = snprintf(wbuf, MAX_LINE + 64, "[%s] -%s:%s- %s\r\n", get_time(), 
@@ -941,7 +938,7 @@ int     process_privmsg(struct target_conntrack_priv_irc *cp,
 	memset(msg, 0, sizeof(msg));
 	memset(realfrom, 0, sizeof(realfrom));
 
-	(*tf->pom_log) (POM_LOG_TSHOOT "PRIVMSG\r\n");
+	pom_log(POM_LOG_TSHOOT "PRIVMSG\r\n");
 
 	/* find destination of msg */
 	if ((pos = strchr(line, ' ')) != NULL) {
@@ -955,7 +952,7 @@ int     process_privmsg(struct target_conntrack_priv_irc *cp,
 	strncpy(realfrom, getNick(from), MAX_NICK);
 
 	/* log internally */
-	(*tf->pom_log) (POM_LOG_TSHOOT "PRIVMSG from %s: %s\r\n", realfrom, line);
+	pom_log(POM_LOG_TSHOOT "PRIVMSG from %s: %s\r\n", realfrom, line);
 
 	/* log to file */
 	len = snprintf(wbuf, MAX_LINE + 64, "[%s] <%s> %s\r\n", get_time(), 
@@ -1146,16 +1143,16 @@ int open_of(struct open_file *of, struct target_conntrack_priv_irc *cp) {
 	strcat(filename, "-");
 	strcat(filename, get_timestamp());
 	strcat(filename, ".irc");
-	of->fd = (*tf->file_open) (cp->f->l, filename, O_RDWR | O_CREAT, 0666);
+	of->fd = target_file_open(cp->f->l, filename, O_RDWR | O_CREAT, 0666);
 
 	if (of->fd == -1) {
 		char errbuff[256];
 		strerror_r(errno, errbuff, 256);
-		(*tf->pom_log) (POM_LOG_ERR "Unable to open file %s for writing : %s\r\n", filename, errbuff);
+		pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s\r\n", filename, errbuff);
 		return POM_ERR;
 	}
 
-	(*tf->pom_log) (POM_LOG_TSHOOT "%s opened\r\n", filename);
+	pom_log(POM_LOG_TSHOOT "%s opened\r\n", filename);
 
 	return POM_OK;
 

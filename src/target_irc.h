@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  target_irc : Dump IRC communication
  *  Copyright (C) 2007 Gouverneur Thomas <wildcat@espix.org>
@@ -88,7 +88,7 @@ struct target_priv_irc {
 };
 
 
-int target_register_irc(struct target_reg *r, struct target_functions *tg_funcs);
+int target_register_irc(struct target_reg *r);
 int target_init_irc(struct target *t);
 int target_open_irc(struct target *t);
 int target_process_irc(struct target *t, struct frame *f);

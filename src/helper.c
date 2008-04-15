@@ -25,29 +25,12 @@
 #include "ptype.h"
 #include "rules.h"
 
-struct helper_functions *hlp_funcs;
 struct helper_frame *frame_head, *frame_tail;
 
 int helper_init() {
 
-	hlp_funcs = malloc(sizeof(struct helper_functions));
-	hlp_funcs->pom_log = pom_log;
-	hlp_funcs->register_param = helper_register_param;
-	hlp_funcs->alloc_timer = timer_alloc;
-	hlp_funcs->cleanup_timer = timer_cleanup;
-	hlp_funcs->queue_timer = timer_queue;
-	hlp_funcs->dequeue_timer = timer_dequeue;
-	hlp_funcs->queue_frame = helper_queue_frame;
-	hlp_funcs->conntrack_create_entry = conntrack_create_entry;
-	hlp_funcs->conntrack_get_entry = conntrack_get_entry;
-	hlp_funcs->conntrack_add_priv = conntrack_add_helper_priv;
-	hlp_funcs->conntrack_get_priv = conntrack_get_helper_priv;
-	hlp_funcs->conntrack_remove_priv = conntrack_remove_helper_priv;
-	hlp_funcs->ptype_alloc = ptype_alloc;
-	hlp_funcs->ptype_print_val = ptype_print_val;
-	hlp_funcs->ptype_cleanup = ptype_cleanup_module;
-	hlp_funcs->match_get_field = match_get_field;
-	hlp_funcs->frame_alloc_aligned_buff = frame_alloc_aligned_buff;
+	frame_head = NULL;
+	frame_tail = NULL;
 
 	pom_log(POM_LOG_DEBUG "Helper initialized\r\n");
 
@@ -70,7 +53,7 @@ int helper_register(const char *helper_name) {
 
 
 
-	int (*register_my_helper) (struct helper_reg *, struct helper_functions *);
+	int (*register_my_helper) (struct helper_reg *);
 
 	void *handle = NULL;
 	register_my_helper = lib_get_register_func("helper", helper_name, &handle);
@@ -85,7 +68,7 @@ int helper_register(const char *helper_name) {
 	helpers[id] = my_helper;
 	helpers[id]->dl_handle = handle;
 
-	if ((*register_my_helper) (my_helper, hlp_funcs) != POM_OK) {
+	if ((*register_my_helper) (my_helper) != POM_OK) {
 		pom_log(POM_LOG_ERR "Error while loading helper %s. Could not register helper !\r\n", helper_name);
 		helpers[id] = NULL;
 		free(my_helper);
@@ -210,9 +193,6 @@ int helper_unregister_all() {
 
 
 int helper_cleanup() {
-
-
-	free(hlp_funcs);
 
 	return POM_OK;
 }

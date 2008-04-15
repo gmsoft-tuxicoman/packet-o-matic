@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,8 +26,6 @@
 #include "main.h"
 #include "ptype_bool.h"
 
-static struct match_functions *m_funcs;
-
 int match_undefined_id;
 
 struct ptype *param_autoload_helper;
@@ -42,7 +40,7 @@ int match_register(const char *match_name) {
 				return i;
 			}
 		} else {
-			int (*register_my_match) (struct match_reg *, struct match_functions *);
+			int (*register_my_match) (struct match_reg *);
 
 			void *handle = NULL;
 			register_my_match = lib_get_register_func("match", match_name, &handle);
@@ -61,7 +59,7 @@ int match_register(const char *match_name) {
 
 			my_match->type = i; // Allow the match to know it's number at registration time
 
-			if ((*register_my_match) (my_match, m_funcs) != POM_OK) {
+			if ((*register_my_match) (my_match) != POM_OK) {
 				pom_log(POM_LOG_ERR "Error while loading match %s. Could not register match !\r\n", match_name);
 				free(my_match->name);
 				free(my_match);
@@ -193,7 +191,7 @@ int match_cleanup_field(struct match_field *p) {
 	else
 		matchs[p->type]->refcount--;
 
-	ptype_cleanup_module(p->value);
+	ptype_cleanup(p->value);
 	free(p);
 	
 
@@ -201,13 +199,6 @@ int match_cleanup_field(struct match_field *p) {
 }
 
 int match_init() {
-
-	m_funcs = malloc(sizeof(struct match_functions));
-	m_funcs->pom_log = pom_log;
-	m_funcs->add_dependency = match_add_dependency;
-	m_funcs->register_field = match_register_field;
-	m_funcs->ptype_alloc = ptype_alloc;
-	m_funcs->ptype_cleanup = ptype_cleanup_module;
 
 	param_autoload_helper = ptype_alloc("bool", NULL);
 	if (!param_autoload_helper)
@@ -310,11 +301,7 @@ int match_refcount_dec(int match_type) {
 
 int match_cleanup() {
 
-	if (m_funcs)
-		free(m_funcs);
-	m_funcs = NULL;
-
-	ptype_cleanup_module(param_autoload_helper);
+	ptype_cleanup(param_autoload_helper);
 
 	return POM_OK;
 }

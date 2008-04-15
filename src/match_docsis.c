@@ -22,28 +22,25 @@
 #include "ptype_uint8.h"
 
 struct match_dep *match_atm, *match_ethernet;
-struct match_functions *mf;
 
 int field_fc_type, field_fc_parm;
 
 struct ptype *ptype_uint8;
 
-int match_register_docsis(struct match_reg *r, struct match_functions *m_funcs) {
+int match_register_docsis(struct match_reg *r) {
 
 	r->identify = match_identify_docsis;
 	r->unregister = match_unregister_docsis;
 
-	mf = m_funcs;
-	
-	match_atm = (*mf->add_dependency) (r->type, "atm");
-	match_ethernet = (*mf->add_dependency) (r->type, "ethernet");
+	match_atm = match_add_dependency(r->type, "atm");
+	match_ethernet = match_add_dependency(r->type, "ethernet");
 
-	ptype_uint8 = (*mf->ptype_alloc) ("uint8", NULL);
+	ptype_uint8 = ptype_alloc("uint8", NULL);
 	if (!ptype_uint8) 
 		return POM_ERR;
 
-	field_fc_type = (*mf->register_field) (r->type, "fc_type", ptype_uint8, "Frame control type");
-	field_fc_parm = (*mf->register_field) (r->type, "fc_parm", ptype_uint8, "Frame parameters");
+	field_fc_type = match_register_field(r->type, "fc_type", ptype_uint8, "Frame control type");
+	field_fc_parm = match_register_field(r->type, "fc_parm", ptype_uint8, "Frame parameters");
 
 	return POM_OK;
 }
@@ -98,7 +95,7 @@ int match_identify_docsis(struct frame *f, struct layer* l, unsigned int start, 
 
 int match_unregister_docsis(struct match_reg *r) {
 
-	(*mf->ptype_cleanup) (ptype_uint8);
+	ptype_cleanup(ptype_uint8);
 	return POM_OK;
 
 }

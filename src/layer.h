@@ -80,6 +80,5 @@ int layer_cleanup();
 
 int layer_field_parse(struct layer *, char *expr, char *buff, size_t size);
 
-int frame_alloc_aligned_buff(struct frame *f, int length);
 
 #endif

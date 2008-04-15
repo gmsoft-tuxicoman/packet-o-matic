@@ -30,8 +30,6 @@
 #include "ptype_bool.h"
 #include "ptype_string.h"
 
-struct target_functions *tf;
-
 unsigned int match_undefined_id;
 struct target_mode *mode_default;
 
@@ -46,23 +44,21 @@ enum pop_cmd {
 	pop_cmd_multiline,
 };
 
-int target_register_pop(struct target_reg *r, struct target_functions *tg_funcs) {
+int target_register_pop(struct target_reg *r) {
 
 	r->init = target_init_pop;
 	r->process = target_process_pop;
 	r->close = target_close_pop;
 	r->cleanup = target_cleanup_pop;
 
-	tf = tg_funcs;
+	match_undefined_id = match_register("undefined");
 
-	match_undefined_id = (*tf->match_register) ("undefined");
-
-	mode_default = (*tg_funcs->register_mode) (r->type, "dump", "Dump emails into separate maildir folders");
+	mode_default = target_register_mode(r->type, "dump", "Dump emails into separate maildir folders");
 
 	if (!mode_default)
 		return POM_ERR;
 
-	(*tg_funcs->register_param) (mode_default, "path", "/tmp/", "Path of the maildir folder used to save the emails");
+	target_register_param(mode_default, "path", "/tmp/", "Path of the maildir folder used to save the emails");
 
 	return POM_OK;
 
@@ -75,14 +71,14 @@ int target_init_pop(struct target *t) {
 
 	t->target_priv = priv;
 
-	priv->path = (*tf->ptype_alloc) ("string", NULL);
+	priv->path = ptype_alloc("string", NULL);
 
 	if (!priv->path) {
 		target_cleanup_pop(t);
 		return POM_ERR;
 	}
 
-	(*tf->register_param_value) (t, mode_default, "path", priv->path);
+	target_register_param_value(t, mode_default, "path", priv->path);
 
 	return POM_OK;
 }
@@ -93,7 +89,7 @@ int target_close_pop(struct target *t) {
 	struct target_priv_pop *priv = t->target_priv;
 
 	while (priv->ct_privs) {
-		(*tf->conntrack_remove_priv) (priv->ct_privs, priv->ct_privs->ce);
+		conntrack_remove_target_priv(priv->ct_privs, priv->ct_privs->ce);
 		target_close_connection_pop(t, priv->ct_privs->ce, priv->ct_privs);
 	}
 
@@ -106,7 +102,7 @@ int target_cleanup_pop(struct target *t) {
 
 	if (priv) {
 			
-		(*tf->ptype_cleanup) (priv->path);
+		ptype_cleanup(priv->path);
 		free(priv);
 
 	}
@@ -125,12 +121,12 @@ int target_process_pop(struct target *t, struct frame *f) {
 		lastl = lastl->next;
 
 	if (!f->ce)
-		(*tf->conntrack_create_entry) (f);
+		conntrack_create_entry(f);
 
 
 	struct target_conntrack_priv_pop *cp;
 
-	cp = (*tf->conntrack_get_priv) (t, f->ce);
+	cp = conntrack_get_target_priv(t, f->ce);
 
 	if (!cp) {
 
@@ -143,13 +139,13 @@ int target_process_pop(struct target *t, struct frame *f) {
 
 		char tmp[NAME_MAX + 1];
 		memset(tmp, 0, sizeof(tmp));
-		(*tf->layer_field_parse) (f->l, PTYPE_STRING_GETVAL(priv->path), tmp, NAME_MAX);
+		layer_field_parse(f->l, PTYPE_STRING_GETVAL(priv->path), tmp, NAME_MAX);
 		cp->parsed_path = malloc(strlen(tmp) + 3);
 		strcpy(cp->parsed_path, tmp);
 		if (*(cp->parsed_path + strlen(cp->parsed_path) - 1) != '/')
 			strcat(cp->parsed_path, "/");
 
-		(*tf->conntrack_add_priv) (cp, t, f->ce, target_close_connection_pop);
+		conntrack_add_target_priv(cp, t, f->ce, target_close_connection_pop);
 
 		cp->ce = f->ce;
 		cp->next = priv->ct_privs;
@@ -371,7 +367,7 @@ int pop_process_line(struct target_conntrack_priv_pop *cp, char *line, int size,
 
 int target_close_connection_pop(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
-	(*tf->pom_log) (POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
+	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
 
 	struct target_conntrack_priv_pop *cp;
 	cp = conntrack_priv;
@@ -425,18 +421,18 @@ int pop_file_open(struct target_conntrack_priv_pop *cp, struct timeval *recvd_ti
 		strncat(final_name, "tmp/", NAME_MAX - strlen(final_name));
 		strncat(final_name, filename, NAME_MAX - strlen(final_name));
 
-		cp->fd = (*tf->file_open) (NULL, final_name, O_RDWR | O_CREAT, 0666);
+		cp->fd = target_file_open(NULL, final_name, O_RDWR | O_CREAT, 0666);
 
 		if (cp->fd == -1) {
 			char errbuff[256];
 			strerror_r(errno, errbuff, sizeof(errbuff));
-			(*tf->pom_log) (POM_LOG_ERR "Unable to open file %s for writing : %s\r\n", filename, errbuff);
+			pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s\r\n", filename, errbuff);
 			return POM_ERR;
 		}
 
 		total_delivery++;
 
-		(*tf->pom_log) (POM_LOG_TSHOOT "%s opened\r\n", filename);
+		pom_log(POM_LOG_TSHOOT "%s opened\r\n", filename);
 
 	return POM_OK;
 }
@@ -473,16 +469,16 @@ int pop_file_close(struct target_conntrack_priv_pop *cp) {
 	cp->filename = NULL;
 
 	if (link(old_name, new_name) == -1) {
-		(*tf->pom_log) (POM_LOG_ERR "Unable to hard link %s with %s\r\n", new_name, old_name);
+		pom_log(POM_LOG_ERR "Unable to hard link %s with %s\r\n", new_name, old_name);
 		return POM_ERR;
 	}
 
 	if (unlink(old_name) == -1) {
-		(*tf->pom_log) (POM_LOG_ERR "Unable to unlink %s\r\n", old_name);
+		pom_log(POM_LOG_ERR "Unable to unlink %s\r\n", old_name);
 		return POM_ERR;
 	}
 
-	(*tf->pom_log) (POM_LOG_TSHOOT "%s closed and moved to directory new\r\n", old_name);
+	pom_log(POM_LOG_TSHOOT "%s closed and moved to directory new\r\n", old_name);
 	return POM_OK;
 
 }
@@ -505,8 +501,8 @@ int pop_write_login_info(struct target_conntrack_priv_pop *cp, struct frame *f) 
 	strftime(strformat, sizeof(strformat), format, tmp);
 
 
-	if ((*tf->layer_field_parse) (f->l, strformat, line, sizeof(line)) == POM_ERR) {
-		(*tf->pom_log) (POM_LOG_WARN "Internal error while parsing string for target_pop logins\r\n");
+	if (layer_field_parse(f->l, strformat, line, sizeof(line)) == POM_ERR) {
+		pom_log(POM_LOG_WARN "Internal error while parsing string for target_pop logins\r\n");
 		return POM_ERR;
 	}
 	
@@ -523,7 +519,7 @@ int pop_write_login_info(struct target_conntrack_priv_pop *cp, struct frame *f) 
 	strncat(line, "\"\n", NAME_MAX - strlen(line));
 	
 	int fd;
-	fd = (*tf->file_open) (NULL, final_name, O_RDWR | O_APPEND | O_CREAT, 0666);
+	fd = target_file_open(NULL, final_name, O_RDWR | O_APPEND | O_CREAT, 0666);
 	write(fd, line, strlen(line));
 	close(fd);
 

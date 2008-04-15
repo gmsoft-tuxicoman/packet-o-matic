@@ -116,20 +116,6 @@ struct conntrack_reg {
 
 };
 
-struct conntrack_functions {
-	struct timer* (*alloc_timer) (struct conntrack_entry *ce, struct input *i);
-	int (*cleanup_timer) (struct timer *t);
-	int (*queue_timer) (struct timer *t, unsigned int expiry);
-	int (*dequeue_timer) (struct timer *t);
-	int (*register_param) (int conntrack_type, char *name, char *defval, struct ptype *alue, char *descr);
-	struct ptype* (*ptype_alloc) (const char* type, char* unit);
-	int (*ptype_print_val) (struct ptype *pt, char *val, size_t size);
-	int (*ptype_cleanup) (struct ptype* p);
-
-
-};
-
-
 /// Structure which hold usefull data to identify the connection
 struct conntrack_match_priv {
 

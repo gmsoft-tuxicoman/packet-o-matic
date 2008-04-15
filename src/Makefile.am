@@ -3,10 +3,13 @@ CFLAGS += -Wall
 MGMT_OBJS = mgmtsrv.c mgmtsrv.h mgmtvty.c mgmtvty.h mgmtcmd.c mgmtcmd.h mgmtcmd_helper.c mgmtcmd_helper.h mgmtcmd_conntrack.c mgmtcmd_conntrack.h mgmtcmd_input.c mgmtcmd_input.h mgmtcmd_rule.c mgmtcmd_rule.h mgmtcmd_target.c mgmtcmd_target.h
 
 bin_PROGRAMS = packet-o-matic
-packet_o_matic_SOURCES = main.c main.h rules.c rules.h input.c input.h match.c match.h conntrack.c conntrack.h jhash.h target.c target.h timers.c timers.h helper.c helper.h conf.c conf.h common.c common.h layer.c layer.h ptype.c ptype.h expectation.c expectation.h $(MGMT_OBJS)
+packet_o_matic_SOURCES = main.c main.h rules.c rules.h conf.c conf.h layer.c layer.h $(MGMT_OBJS)
+
+libpom_la_SOURCES = input.c input.h match.c match.h conntrack.c conntrack.h jhash.h target.c target.h timers.c timers.h helper.c helper.h ptype.c ptype.h expectation.c expectation.h common.c common.h
+libpom_la_CFLAGS = -DLIBDIR='"@LIB_DIR@"'
 
 packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"'
-packet_o_matic_LDFLAGS = @LIBS@ @libxml2_LIBS@
+packet_o_matic_LDFLAGS = @LIBS@ @libxml2_LIBS@ -lpom
 
 INPUT_OBJS = @INPUT_OBJS@
 MATCH_OBJS = match_docsis.la match_ethernet.la match_vlan.la match_ipv4.la match_icmp.la match_ipv6.la match_icmpv6.la match_tcp.la match_udp.la match_rtp.la match_undefined.la match_linux_cooked.la
@@ -16,7 +19,7 @@ TARGET_OBJS = target_display.la target_dump_payload.la target_irc.la target_http
 PTYPES_OBJS = ptype_bool.la ptype_uint8.la ptype_uint16.la ptype_uint32.la ptype_uint64.la ptype_mac.la ptype_ipv4.la ptype_ipv6.la ptype_string.la ptype_bytes.la
 
 
-lib_LTLIBRARIES = $(INPUT_OBJS) $(MATCH_OBJS) $(CONNTRACK_OBJS) $(HELPER_OBJS) $(TARGET_OBJS) $(PTYPES_OBJS)
+lib_LTLIBRARIES = libpom.la $(INPUT_OBJS) $(MATCH_OBJS) $(CONNTRACK_OBJS) $(HELPER_OBJS) $(TARGET_OBJS) $(PTYPES_OBJS)
 EXTRA_LTLIBRARIES = input_docsis.la input_pcap.la target_pcap.la target_tcpkill.la target_inject.la target_tap.la
 
 
@@ -26,47 +29,47 @@ input_pcap_la_SOURCES = input_pcap.c input_pcap.h modules_common.h
 input_pcap_la_LDFLAGS = -module -avoid-version -lpcap -rpath '$(libdir)'
 
 match_docsis_la_SOURCES = match_docsis.c match_docsis.h modules_common.h
-match_docsis_la_LDFLAGS = -module -avoid-version
+match_docsis_la_LDFLAGS = -module -avoid-version -lpom
 match_ethernet_la_SOURCES = match_ethernet.c match_ethernet.h modules_common.h
-match_ethernet_la_LDFLAGS = -module -avoid-version
+match_ethernet_la_LDFLAGS = -module -avoid-version -lpom
 match_vlan_la_SOURCES = match_vlan.c match_vlan.h modules_common.h
-match_vlan_la_LDFLAGS = -module -avoid-version
+match_vlan_la_LDFLAGS = -module -avoid-version -lpom
 match_ipv4_la_SOURCES = match_ipv4.c match_ipv4.h modules_common.h
-match_ipv4_la_LDFLAGS = -module -avoid-version
+match_ipv4_la_LDFLAGS = -module -avoid-version -lpom
 match_icmp_la_SOURCES = match_icmp.c match_icmp.h modules_common.h
-match_icmp_la_LDFLAGS = -module -avoid-version
+match_icmp_la_LDFLAGS = -module -avoid-version -lpom
 match_ipv6_la_SOURCES = match_ipv6.c match_ipv6.h modules_common.h
-match_ipv6_la_LDFLAGS = -module -avoid-version
+match_ipv6_la_LDFLAGS = -module -avoid-version -lpom
 match_icmpv6_la_SOURCES = match_icmpv6.c match_icmpv6.h modules_common.h
-match_icmpv6_la_LDFLAGS = -module -avoid-version
+match_icmpv6_la_LDFLAGS = -module -avoid-version -lpom
 match_tcp_la_SOURCES = match_tcp.c match_tcp.h modules_common.h
-match_tcp_la_LDFLAGS = -module -avoid-version
+match_tcp_la_LDFLAGS = -module -avoid-version -lpom
 match_udp_la_SOURCES = match_udp.c match_udp.h modules_common.h
-match_udp_la_LDFLAGS = -module -avoid-version
+match_udp_la_LDFLAGS = -module -avoid-version -lpom
 match_rtp_la_SOURCES = match_rtp.c match_rtp.h modules_common.h
-match_rtp_la_LDFLAGS = -module -avoid-version
+match_rtp_la_LDFLAGS = -module -avoid-version -lpom
 match_undefined_la_SOURCES = match_undefined.c match_undefined.h modules_common.h
-match_undefined_la_LDFLAGS = -module -avoid-version
+match_undefined_la_LDFLAGS = -module -avoid-version -lpom
 match_linux_cooked_la_SOURCES = match_linux_cooked.c match_linux_cooked.h modules_common.h sll.h
-match_linux_cooked_la_LDFLAGS = -module -avoid-version
+match_linux_cooked_la_LDFLAGS = -module -avoid-version -lpom
 
 conntrack_ipv4_la_SOURCES = conntrack_ipv4.c conntrack_ipv4.h modules_common.h jhash.h
-conntrack_ipv4_la_LDFLAGS = -module -avoid-version
+conntrack_ipv4_la_LDFLAGS = -module -avoid-version -lpom
 conntrack_ipv6_la_SOURCES = conntrack_ipv6.c conntrack_ipv6.h modules_common.h jhash.h
-conntrack_ipv6_la_LDFLAGS = -module -avoid-version
+conntrack_ipv6_la_LDFLAGS = -module -avoid-version -lpom
 conntrack_rtp_la_SOURCES = conntrack_rtp.c conntrack_rtp.h modules_common.h jhash.h
-conntrack_rtp_la_LDFLAGS = -module -avoid-version
+conntrack_rtp_la_LDFLAGS = -module -avoid-version -lpom
 conntrack_tcp_la_SOURCES = conntrack_tcp.c conntrack_tcp.h modules_common.h jhash.h
-conntrack_tcp_la_LDFLAGS = -module -avoid-version
+conntrack_tcp_la_LDFLAGS = -module -avoid-version -lpom
 conntrack_udp_la_SOURCES = conntrack_udp.c conntrack_udp.h modules_common.h jhash.h
-conntrack_udp_la_LDFLAGS = -module -avoid-version
+conntrack_udp_la_LDFLAGS = -module -avoid-version -lpom
 
 helper_ipv4_la_SOURCES = helper_ipv4.c helper_ipv4.h modules_common.h
-helper_ipv4_la_LDFLAGS = -module -avoid-version
+helper_ipv4_la_LDFLAGS = -module -avoid-version -lpom
 helper_tcp_la_SOURCES = helper_tcp.c helper_tcp.h modules_common.h
-helper_tcp_la_LDFLAGS = -module -avoid-version
+helper_tcp_la_LDFLAGS = -module -avoid-version -lpom
 helper_rtp_la_SOURCES = helper_rtp.c helper_rtp.h modules_common.h
-helper_rtp_la_LDFLAGS = -module -avoid-version
+helper_rtp_la_LDFLAGS = -module -avoid-version -lpom
 
 
 target_display_la_SOURCES = target_display.c target_display.h modules_common.h

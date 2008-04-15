@@ -84,32 +84,6 @@ struct target {
 };
 
 
-struct target_functions {
-
-	void (*pom_log) (const char *format, ...);
-	int (*match_register) (const char *);
-	struct target_mode *(*register_mode) (int , const char *, const char *);
-	int (*register_param) (struct target_mode *, char *, char *, char *);
-	int (*register_param_value) (struct target *t, struct target_mode *mode, const char *name, struct ptype *value);
-	struct ptype* (*ptype_alloc) (const char* , char*);
-	int (*ptype_print_val) (struct ptype *pt, char *val, size_t size);
-	int (*ptype_cleanup) (struct ptype*);
-	int (*conntrack_create_entry) (struct frame *f);
-	int (*conntrack_add_priv) (void *priv, struct target *t,  struct conntrack_entry *ce, int (*cleanup_handler) (struct target *t, struct conntrack_entry *ce, void *priv));
-	void *(*conntrack_get_priv) (struct target *t, struct conntrack_entry *ce);
-	int (*conntrack_remove_priv) (void *priv, struct conntrack_entry *ce);
-	char *(*match_get_name) (int match_type);
-	struct match_field_reg *(*match_get_field) (int match_type, int field_id);
-	int (*file_open) (struct layer *l, char *filename, int flags, mode_t mode);
-	int (*layer_field_parse) (struct layer *, char *expr, char *buff, size_t size);
-	struct expectation_list *(*expectation_alloc) (struct frame *f, struct target *t, struct conntrack_entry *ce, int direction);
-	int (*expectation_add) (struct expectation_list *l, unsigned int expiry);
-	int (*expectation_cleanup) (struct expectation_list *l);
-	int (*expectation_set_priv) (struct expectation_list *l, void *target_priv, int (*cleanup_handler) (struct target *t, struct conntrack_entry *ce, void *priv));
-
-
-};
-
 struct target_reg *targets[MAX_TARGET];
 
 int target_init();

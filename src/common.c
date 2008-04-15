@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@
 
 #include "common.h"
 #include "mgmtsrv.h"
+#include "input.h"
 
 void pom_log(const char *format, ...) {
 
@@ -62,7 +63,7 @@ void *lib_get_register_func(const char *type, const char *name, void **handle) {
 	strcat(libname, ".so");
 
 	// First try to open with automatic resolving for LD_LIBRARY_PATH
-	*handle = dlopen(libname, RTLD_NOW);
+	*handle = dlopen(libname, RTLD_FLAGS);
 
 	char buff[NAME_MAX];
 
@@ -75,7 +76,7 @@ void *lib_get_register_func(const char *type, const char *name, void **handle) {
 		strcat(buff, LIBDIR);
 		strcat(buff, "/");
 		strcat(buff, libname);
-		*handle = dlopen(buff, RTLD_NOW);
+		*handle = dlopen(buff, RTLD_FLAGS);
 	}
 
 	if (!*handle) {
@@ -90,5 +91,23 @@ void *lib_get_register_func(const char *type, const char *name, void **handle) {
 	strcat(buff, name);
 	
 	return dlsym(*handle, buff);
+
+}
+
+// takes care of allocating f->buff_base and set correctly f->buff and f->bufflen
+
+int frame_alloc_aligned_buff(struct frame *f, int length) {
+	struct input_caps ic;
+	if (input_getcaps(f->input, &ic) == POM_ERR) {	
+		pom_log(POM_LOG_ERR "Error while trying to get input caps\r\n");
+		return POM_ERR;
+	}
+
+	int total_len = length + ic.buff_align_offset + 4;
+	f->buff_base = malloc(total_len);
+	f->buff = (void*) (((int)f->buff_base & ~3) + 4 + ic.buff_align_offset);
+	f->bufflen = total_len - ((int)f->buff - (int)f->buff_base);
+
+	return POM_OK;
 
 }

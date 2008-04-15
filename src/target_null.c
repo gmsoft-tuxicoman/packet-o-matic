@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,13 +23,9 @@
 
 #include "target_null.h"
 
-struct target_functions *tf;
-
-int target_register_null(struct target_reg *r, struct target_functions *tg_funcs) {
+int target_register_null(struct target_reg *r) {
 
 	r->process = target_process_null;
-
-	tf = tg_funcs;
 
 	return POM_OK;
 
@@ -37,7 +33,7 @@ int target_register_null(struct target_reg *r, struct target_functions *tg_funcs
 
 int target_process_null(struct target *t, struct frame *f) {
 
-	(*tf->pom_log) (POM_LOG_DEBUG "Packet processed\r\n");
+	pom_log(POM_LOG_DEBUG "Packet processed\r\n");
 
 	return POM_OK;
 

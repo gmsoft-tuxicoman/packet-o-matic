@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -55,6 +55,9 @@ struct input_priv_docsis {
 
 
 };
+
+/// Register the docsis modulbe
+int input_register_docsis(struct input_reg *r);
 
 /// Init the docsis modules
 int input_init_docsis(struct input *i);

@@ -654,8 +654,8 @@ err:
 
 	ringbuffer_deinit(rbuf);
 	free(rbuf);
-	ptype_cleanup_module(param_autosave_on_exit);
-	ptype_cleanup_module(param_quit_on_input_error);
+	ptype_cleanup(param_autosave_on_exit);
+	ptype_cleanup(param_quit_on_input_error);
 	core_param_unregister_all();
 
 	ptype_unregister_all();
@@ -684,7 +684,7 @@ int ringbuffer_deinit(struct ringbuffer *r) {
 	if (!r)
 		return POM_ERR;
 
-	ptype_cleanup_module(r->size);
+	ptype_cleanup(r->size);
 	return POM_OK;
 }
 

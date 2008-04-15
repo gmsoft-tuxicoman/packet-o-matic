@@ -229,7 +229,7 @@ int ptype_copy(struct ptype *dst, struct ptype *src) {
 }
 
 
-int ptype_cleanup_module(struct ptype* p) {
+int ptype_cleanup(struct ptype* p) {
 
 	if (!p)
 		return POM_ERR;

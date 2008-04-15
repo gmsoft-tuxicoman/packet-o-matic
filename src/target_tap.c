@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,10 +26,9 @@
 
 int match_ethernet_id;
 
-struct target_functions *tf;
 struct target_mode *mode_default;
 
-int target_register_tap(struct target_reg *r, struct target_functions *tg_funcs) {
+int target_register_tap(struct target_reg *r) {
 
 	r->init = target_init_tap;
 	r->open = target_open_tap;
@@ -37,17 +36,15 @@ int target_register_tap(struct target_reg *r, struct target_functions *tg_funcs)
 	r->close = target_close_tap;
 	r->cleanup = target_cleanup_tap;
 
-	tf = tg_funcs;
+	match_ethernet_id = match_register("ethernet");
 
-	match_ethernet_id = (*tf->match_register) ("ethernet");
-
-	mode_default = (*tg_funcs->register_mode) (r->type, "default", "Send packets to a new virtual interface");
+	mode_default = target_register_mode(r->type, "default", "Send packets to a new virtual interface");
 
 	if (!mode_default)
 		return POM_ERR;
 	
-	(*tg_funcs->register_param) (mode_default, "ifname", "pom0", "Interface to create");
-	(*tg_funcs->register_param) (mode_default, "persistent", "no", "Create a persistent interface");
+	target_register_param(mode_default, "ifname", "pom0", "Interface to create");
+	target_register_param(mode_default, "persistent", "no", "Create a persistent interface");
 
 
 	return POM_OK;
@@ -65,16 +62,16 @@ int target_init_tap(struct target *t) {
 
 	t->target_priv = priv;
 
-	priv->ifname = (*tf->ptype_alloc) ("string", NULL);
-	priv->persistent = (*tf->ptype_alloc) ("bool", NULL);
+	priv->ifname = ptype_alloc("string", NULL);
+	priv->persistent = ptype_alloc("bool", NULL);
 
 	if (!priv->ifname || !priv->persistent) {
 		target_cleanup_tap(t);
 		return POM_ERR;
 	}
 
-	(*tf->register_param_value) (t, mode_default, "ifname", priv->ifname);
-	(*tf->register_param_value) (t, mode_default, "persistent", priv->persistent);
+	target_register_param_value(t, mode_default, "ifname", priv->ifname);
+	target_register_param_value(t, mode_default, "persistent", priv->persistent);
 	
 
 	return POM_OK;
@@ -85,8 +82,8 @@ int target_cleanup_tap(struct target *t) {
 	struct target_priv_tap *priv = t->target_priv;
 
 	if (priv) {	
-		(*tf->ptype_cleanup) (priv->ifname);
-		(*tf->ptype_cleanup) (priv->persistent);
+		ptype_cleanup(priv->ifname);
+		ptype_cleanup(priv->persistent);
 		free(priv);
 	}
 
@@ -100,7 +97,7 @@ int target_open_tap(struct target *t) {
 
 	priv->fd = open("/dev/net/tun", O_RDWR | O_SYNC);
 	if (priv->fd < 0) {
-		(*tf->pom_log) (POM_LOG_ERR "Failed to open tap device\r\n");
+		pom_log(POM_LOG_ERR "Failed to open tap device\r\n");
 		return POM_ERR;
 	}
 
@@ -110,13 +107,13 @@ int target_open_tap(struct target *t) {
 	strncpy(ifr.ifr_name, PTYPE_STRING_GETVAL(priv->ifname), IFNAMSIZ);
 	
 	if (ioctl(priv->fd, TUNSETIFF, (void *) &ifr) < 0) {
-		(*tf->pom_log) (POM_LOG_ERR "Unable to setup tap device %s\r\n", PTYPE_STRING_GETVAL(priv->ifname));
+		pom_log(POM_LOG_ERR "Unable to setup tap device %s\r\n", PTYPE_STRING_GETVAL(priv->ifname));
 		close(priv->fd);
 		return POM_ERR;
 	}
 
 	if (ioctl(priv->fd, TUNSETPERSIST, PTYPE_BOOL_GETVAL(priv->persistent)) < 0) {
-		(*tf->pom_log) (POM_LOG_WARN "Unable to set persistent mode to tap device %s\r\n", PTYPE_STRING_GETVAL(priv->ifname));
+		pom_log(POM_LOG_WARN "Unable to set persistent mode to tap device %s\r\n", PTYPE_STRING_GETVAL(priv->ifname));
 	}
 
 
@@ -129,14 +126,14 @@ int target_process_tap(struct target *t, struct frame *f) {
 	struct target_priv_tap *priv = t->target_priv;
 
 	if (priv->fd < 1) {
-		(*tf->pom_log) (POM_LOG_ERR "Error, tap target not opened !\r\n");
+		pom_log(POM_LOG_ERR "Error, tap target not opened !\r\n");
 		return POM_ERR;
 	}
 	
 	int start = layer_find_start(f->l, match_ethernet_id);
 
 	if (start == POM_ERR) {
-		(*tf->pom_log) (POM_LOG_ERR "Unable to find the start of the packet\r\n");
+		pom_log(POM_LOG_ERR "Unable to find the start of the packet\r\n");
 		return POM_OK;
 
 	}

@@ -66,15 +66,6 @@ struct match_field {
 
 };
 
-/// provide usefull fonction pointers to the inputs
-struct match_functions {
-	void (*pom_log) (const char *format, ...);
-	struct match_dep* (*add_dependency) (int match_type, const char *); ///< add a match dependency
-	int (*register_field) (int match_type, char *name, struct ptype *type, char *descr); ///< register a field for this match
-	struct ptype* (*ptype_alloc) (const char* type, char* unit);
-	int (*ptype_cleanup) (struct ptype* p);
-};
-
 struct match_reg *matchs[MAX_MATCH];
 
 int match_init();
