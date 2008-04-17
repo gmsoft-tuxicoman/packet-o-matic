@@ -42,12 +42,12 @@ int target_register_tftp(struct target_reg *r) {
 
 	match_undefined_id = match_register("undefined");
 
-	mode_default = target_register_mode(r->type, "dump", "Dump emails into separate maildir folders");
+	mode_default = target_register_mode(r->type, "dump", "Dump files");
 
 	if (!mode_default)
 		return POM_ERR;
 
-	target_register_param(mode_default, "path", "/tmp/", "Path of the maildir folder used to save the emails");
+	target_register_param(mode_default, "path", "/tmp/", "Path where to save the dumped files");
 
 	return POM_OK;
 

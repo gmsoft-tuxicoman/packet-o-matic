@@ -86,25 +86,19 @@ void print_usage() {
 
 }
 
-void print_help() {
 
-	print_usage();
-
-	char * path = getenv("LD_LIBRARY_PATH");
-
-	if (!path)
-		path = LIBDIR;
+int help_load_modules(char *dir) {
 
 
 	DIR *d;
-	d = opendir(path);
-	if (!d) {
-		printf("No module found.\n");
-		return;
-	}
+	d = opendir(dir);
+	if (!d) 
+		return 0;
 
 	struct dirent *dp;
 	char type[NAME_MAX];
+
+	int modules_count = 0;
 
 	while ((dp = readdir(d))) {
 
@@ -116,7 +110,8 @@ void print_help() {
 				}
 				type[strlen(type) - 1] = 0;
 			}
-			input_register(type);
+			if (input_register(type) != POM_ERR)
+				modules_count++;
 		}
 
 		if (sscanf(dp->d_name, "target_%s", type) == 1) {
@@ -127,7 +122,8 @@ void print_help() {
 				}
 				type[strlen(type) - 1] = 0;
 			}
-			target_register(type);
+			if (target_register(type) != POM_ERR)
+				modules_count++;
 		}
 
 		if (sscanf(dp->d_name, "match_%s", type) == 1) {
@@ -138,11 +134,45 @@ void print_help() {
 				}
 				type[strlen(type) - 1] = 0;
 			}
-			match_register(type);
+			if (match_register(type) != POM_ERR)
+				modules_count++;
 		}
 	}
 
 	closedir(d);
+
+	return modules_count;
+
+}
+
+void print_help() {
+
+	print_usage();
+
+	int modules_count = 0;
+
+	char *path = getenv("LD_LIBRARY_PATH");
+
+	if (!path)
+		modules_count = help_load_modules(LIBDIR);
+	else {
+		char *my_path = malloc(strlen(path) + 1);
+		strcpy(my_path, path);
+		
+		char *str, *token, *saveptr = NULL;
+		for (str = my_path; ; str = NULL) {
+			token = strtok_r(str, ":", &saveptr);
+			if (!token)
+				break;
+			modules_count += help_load_modules(token);
+		}
+		free(my_path);
+	}
+
+	if (!modules_count) {
+		pom_log("No module found.\r\n");
+		return;
+	}
 
 	printf("\nINPUTS :\n--------\n\n");
 	input_print_help();

@@ -1,3 +1,9 @@
+* 2008/04/17 Guy Martin <gmsoft@tuxicoman.be>
+Correctly parse LD_LIBRARY_PATH if it contains ':' when printing help.
+Fix logic bug in target_irc when analysing if token is null.
+Correct description for target_tftp mode ande parameter.
+Update Makefile.am to use correct linking process with libtool.
+
 * 2008/04/15 Guy Martin <gmsoft@tuxicoman.be>
 Renamed ptype_cleanup_module() in ptype_cleanup().
 Pass RTLD_GROUP to dlopen() when avaiable.

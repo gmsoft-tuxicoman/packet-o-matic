@@ -264,10 +264,12 @@ int     parse_msg(struct target_conntrack_priv_irc *cp,
 		pom_log(POM_LOG_TSHOOT "DEBUG: Cannot find correct IRC Syntax, avoiding to parse this connection in the future...\r\n");
 		return POM_ERR;
 	}
+	
+	if (!*token)
+		return POM_ERR;
 
 	pom_log(POM_LOG_TSHOOT "DEBUG: tok=%s|from=%s\r\n", token, from);
 
-	if (!token) return POM_ERR;
 
 	for (i=0; i < NB_TOKENS; i++) {
 		

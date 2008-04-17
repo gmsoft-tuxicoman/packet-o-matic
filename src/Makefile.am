@@ -4,12 +4,12 @@ MGMT_OBJS = mgmtsrv.c mgmtsrv.h mgmtvty.c mgmtvty.h mgmtcmd.c mgmtcmd.h mgmtcmd_
 
 bin_PROGRAMS = packet-o-matic
 packet_o_matic_SOURCES = main.c main.h rules.c rules.h conf.c conf.h layer.c layer.h $(MGMT_OBJS)
+packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"'
+packet_o_matic_LDFLAGS = @LIBS@ @libxml2_LIBS@ 
+packet_o_matic_LDADD = libpom.la
 
 libpom_la_SOURCES = input.c input.h match.c match.h conntrack.c conntrack.h jhash.h target.c target.h timers.c timers.h helper.c helper.h ptype.c ptype.h expectation.c expectation.h common.c common.h
 libpom_la_CFLAGS = -DLIBDIR='"@LIB_DIR@"'
-
-packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"'
-packet_o_matic_LDFLAGS = @LIBS@ @libxml2_LIBS@ -lpom
 
 INPUT_OBJS = @INPUT_OBJS@
 MATCH_OBJS = match_docsis.la match_ethernet.la match_vlan.la match_ipv4.la match_icmp.la match_ipv6.la match_icmpv6.la match_tcp.la match_udp.la match_rtp.la match_undefined.la match_linux_cooked.la
