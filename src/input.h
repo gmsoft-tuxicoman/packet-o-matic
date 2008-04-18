@@ -24,7 +24,7 @@
 #define __INPUT_H__
 
 #undef MAX_INPUT
-/// Maximum number of inputs
+/// Maximum number of registered inputs
 #define MAX_INPUT 16
 
 /// This structure is used to retreive the capabilities of the current opened input
@@ -85,14 +85,16 @@ struct input_reg {
 	/// Pointer to the initialization function of the input
 	/**
 	 * The init function is called when we create the input.
-	 * Returns POM_OK on success and POM_ERR on failure.
+	 * @param i The input structure to init
+	 * @return POM_OK on nuccess and POM_ERR on failure.
 	 **/
 	int (*init) (struct input *i);
 
 	/// Pointer to the open function of the input
 	/**
 	 * The open function is called when opening the input.
-	 * Returns a seclectable file descriptor on success and POM_ERR on failure.
+	 * @param i The input to init
+	 * @return A seclectable file descriptor on success and POM_ERR on failure.
 	 **/
 	int (*open) (struct input *i);
 
@@ -100,28 +102,33 @@ struct input_reg {
 	/**
 	 *  Reads a packet and store it in the buffer present in the frame structure.
 	 *  It must populate first_layer, len and buff. Set len to 0 if nothing was read.
-	 *  Return POM_OK or POM_ERR in case of fatal error.
+	 *  @param i The input to read from
+	 *  @param f The frame to fill with read packet
+	 *  @return POM_OK or POM_ERR in case of fatal error.
 	 **/
 	int (*read) (struct input *i, struct frame *f);
 
 	/// Pointer to the close fonction
 	/**
 	 * Close the input.
-	 * Returns POM_OK on success and POM_ERR on failure.
+	 * @param i The input to close
+	 * @return POM_OK on success, POM_ERR on failure.
 	 **/
 	int (*close) (struct input *i);
 
 	/// Pointer to the cleanup function
 	/**
 	 * Cleanup the input once we don't need it anymore.
-	 * Returns POM_OK on success and POM_ERR on failure.
+	 * @param i The input to cleanup
+	 * @return POM_OK on success and POM_ERR on failure.
 	 **/
 	int (*cleanup) (struct input *i);
 
 	/// Pointer to the unregister function
 	/**
 	 * Free the memory allocated at registration time.
-	 * Returns POM_OK on success and POM_ERR on failure.
+	 * @param r The struct input_reg that will be unregistered
+	 * @return POM_OK on success and POM_ERR on failure.
 	 **/
 	 int (*unregister) (struct input_reg *r);
 
@@ -129,9 +136,10 @@ struct input_reg {
 	/**
 	 * Fills the struct input_caps with the capabilities of the input.
 	 * The input must be opened or POM_ERR will be returned.
-	 * Returns POM_OK on success and POM_ERR on failure.
+	 * @param i The input we need capabilities from
+	 * @param ic The struct input_caps that needs to be filled
+	 * @return POM_OK on success and POM_ERR on failure.
 	 **/
-
 	int (*getcaps) (struct input *i, struct input_caps *ic);
 
 	/// Pointer to the different possible modes.
@@ -142,19 +150,19 @@ struct input_reg {
 /// Registers a new input by it's name.
 int input_register(const char *input_name);
 
-/// Register a mode for an input
+/// Register a mode for an input.
 struct input_mode *input_register_mode(int input_type, const char *name, const char *descr);
 
-/// Set the mode of an input
+/// Set the mode of an input.
 int input_set_mode(struct input *i, char *mode_name);
 
-// Register a parameter for a specific input mode
+/// Register a parameter for a specific input mode.
 int input_register_param(struct input_mode *mode, char *name, char *defval, struct ptype *value, char *descr);
 
-/// Give the input name from its type
+/// Give the input name from its type.
 char *input_get_name(int input_type);
 
-// Give the type of the input from its name
+/// Give the type of the input from its name.
 int input_get_type(char *input_name);
 
 /// Create a new input and returns its structure.
@@ -169,7 +177,7 @@ int input_read(struct input *i, struct frame *f);
 /// Close the input.
 int input_close(struct input *i);
 
-/// Cleanup the input stuff.
+/// Cleanup the input structur previously allocated by input_alloc().
 int input_cleanup(struct input *i);
 
 // Unregister an input.
@@ -178,10 +186,10 @@ int input_unregister(int input_type);
 /// Unregister all the inputs.
 int input_unregister_all();
 
-/// Display the help of every input.
+/// Display the help of every input to the console.
 void input_print_help();
 
-/// Return current input caps
+/// Return current input caps.
 int input_getcaps(struct input *i, struct input_caps *ic); 
 
 

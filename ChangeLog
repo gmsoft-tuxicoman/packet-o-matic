@@ -1,3 +1,8 @@
+* 2008/04/18 Guy Martin <gmsoft@tuxicoman.be>
+Improved input documentation.
+Added ptype documentation.
+Updated Doxyfile.
+
 * 2008/04/17 Guy Martin <gmsoft@tuxicoman.be>
 Correctly parse LD_LIBRARY_PATH if it contains ':' when printing help.
 Fix logic bug in target_irc when analysing if token is null.

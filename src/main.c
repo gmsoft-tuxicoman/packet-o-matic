@@ -170,7 +170,7 @@ void print_help() {
 	}
 
 	if (!modules_count) {
-		pom_log("No module found.\r\n");
+		printf("No module found.\r\n");
 		return;
 	}
 

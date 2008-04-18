@@ -18,6 +18,11 @@
  *
  */
 
+/**
+ * @defgroup input_api Input API
+ * @defgroup input_core Input core functions
+ */
+
 
 #include "common.h"
 #include "input.h"
@@ -29,10 +34,11 @@
 struct input_reg *inputs[MAX_INPUT]; ///< Global variable which contains all the input registered in a table.
 
 /**
+ * @ingroup input_api
+ * @param input_name Name of the input
+ * @return Input type on success or POM_ERR on failure.
  * This function will try to find the module input_<name>.so and
  * call the function input_<name>_register() from it.
- * This function should return the input type id on success or POM_ERR on failure.
- * Subsequently, this function behave the same.
  **/
 int input_register(const char *input_name) {
 
@@ -89,11 +95,13 @@ int input_register(const char *input_name) {
 }
 
 /**
- * Allocate a mode to an input and associate it with it.
+ * @ingroup input_api
  * The first registered mode will be the default mode.
- * Return the allocated mode for reference. On failure returns NULL.
+ * @param input_type Type of the input
+ * @param name Name of the mode to register
+ * @param descr Description of the mode
+ * @return Pointer to the allocated mode. On failure returns NULL.
  **/
-
 struct input_mode *input_register_mode(int input_type, const char *name, const char *descr) {
 
 	if (!inputs[input_type])
@@ -121,10 +129,11 @@ struct input_mode *input_register_mode(int input_type, const char *name, const c
 }
 
 /**
- * Set the current input mode.
- * Return POM_ERR if the mode doesn't exists or if the input is already running
+ * @ingroup input_api
+ * @param i Input to set mode to
+ * @param mode_name Name of the mode
+ * @return POM_OK on success, POM_ERR on error.
  **/
-
 int input_set_mode(struct input *i, char *mode_name) {
 	if (!i)
 		return POM_ERR;
@@ -144,8 +153,13 @@ int input_set_mode(struct input *i, char *mode_name) {
  }
 
 /**
- * Register a parameter for a specific input mode.
- * Returns POM_ERR on failure, POM_OK on success.
+ * @ingroup input_api
+ * @param mode Mode to add a parameter to
+ * @param name Name of the parameter
+ * @param defval Default value of the parameter
+ * @param value Ptype used to store the actual value of the parameter
+ * @param descr Description of the parameter
+ * @return POM_OK on sucess, POM_ERR on error.
  **/
 int input_register_param(struct input_mode *mode, char *name, char *defval, struct ptype *value, char *descr) {
 
@@ -179,7 +193,9 @@ int input_register_param(struct input_mode *mode, char *name, char *defval, stru
 }
 
 /**
- * Return the name of the input.
+ * @ingroup input_api
+ * @param input_type Type of the input
+ * @return Pointer to the input name.
  **/
 char *input_get_name(int input_type) {
 	if (!inputs[input_type])
@@ -189,7 +205,9 @@ char *input_get_name(int input_type) {
 }
 
 /**
- * Return the type of the input.
+ * @ingroup input_api
+ * @param input_name Name of the input to get the type
+ * @return The type of the input.
  **/
 int input_get_type(char* input_name) {
 
@@ -203,9 +221,9 @@ int input_get_type(char* input_name) {
 }
 
 /**
- * Allocate and return a struct *input.
- * It calls the init function of the input module corresponding to the type of module given in input_type.
- * On failure, it returns NULL.
+ * @ingroup input_core
+ * @param input_type Type of the input
+ * @return A pointer to the allocated struct input on success or POM_ERR on failure.
  **/
 struct input *input_alloc(int input_type) {
 
@@ -237,8 +255,9 @@ struct input *input_alloc(int input_type) {
 }
 
 /**
- * Returns a selectable file descriptor
- * or returns POM_ERR on failure.
+ * @ingroup input_core
+ * @param i Pointer to an allocated struct input
+ * @return A selectable file descriptor or POM_ERR on failure.
  **/
 int input_open(struct input *i) {
 
@@ -259,8 +278,11 @@ int input_open(struct input *i) {
 }
 
 /**
- * The buffer used should be at least the size of the snaplen returned by input_get_caps. The argument bufflen is the length of the buffer.
- * Returns the number of bytes copied. Returns 0 if nothing was read and POM_ERR in case of fatal error.
+ * @ingroup input_core
+ * @param i Pointer to the input to read from
+ * @param f Pointer to a struct frame where to store the packet read
+ * @return The number of bytes copied, 0 if nothing was read and POM_ERR in case of fatal error.
+ * The buffer used in the struct frame should be at least the size of the snaplen returned by input_get_caps. The argument bufflen is the length of the buffer.
  **/
 int input_read(struct input *i, struct frame *f) {
 
@@ -278,7 +300,9 @@ int input_read(struct input *i, struct frame *f) {
 }
 
 /**
- * Returns POM_ERR on failure.
+ * @ingroup input_core
+ * @param i Pointer to an struct input
+ * @return POM_OK on success, POM_ERR on failure.
  **/
 int input_close(struct input *i) {
 
@@ -298,7 +322,9 @@ int input_close(struct input *i) {
 }
 
 /**
- * Returns POM_ERR on failure.
+ * @ingroup input_core
+ * @param i Pointer to the struct input to free
+ * @returns POM_OK on success, POM_ERR on failure.
  **/
 int input_cleanup(struct input *i) {
 
@@ -317,9 +343,10 @@ int input_cleanup(struct input *i) {
 }
 
 /**
- * Return POM_ERR on failure.
+ * @ingroup input_core
+ * @param input_type Type of the input to unregister
+ * @return POM_OK on success, POM_ERR on failure.
  **/
-
 int input_unregister(int input_type) {
 	
 	if (!inputs[input_type])
@@ -355,9 +382,8 @@ int input_unregister(int input_type) {
 }
 
 /**
- * This function makes sure that all the memory of the input is remove.
- * However it doesn't call the cleanup() functions of the input.
- * Returns POM_ERR on failure.
+ * @ingroup input_core
+ * @return POM_OK on success, POM_ERR on failure.
  **/
 int input_unregister_all() {
 
@@ -371,6 +397,13 @@ int input_unregister_all() {
 
 }
 
+/**
+ * @ingroup input_core
+ * @param i Pointer to a opened input
+ * @param ic Pointer to an allocated struct input_caps
+ * @return POM_OK on sucess, POM_ERR on failure.
+ */
+
 int input_getcaps(struct input *i, struct input_caps *ic) {
 
 	if (!i || !inputs[i->type])
@@ -381,7 +414,9 @@ int input_getcaps(struct input *i, struct input_caps *ic) {
 
 }
 
-
+/**
+ * @ingroup input_core
+ */
 void input_print_help() {
 
 	int i;

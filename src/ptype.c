@@ -18,9 +18,18 @@
  *
  */
 
+/**
+ * @defgroup ptype_api Ptype API
+ * @defgroup ptype_core Ptype core functions
+ */
+
 #include "common.h"
 #include "ptype.h"
 
+
+/**
+ * @ingroup ptype_core
+ */
 int ptype_init() {
 
 	int i;
@@ -33,7 +42,11 @@ int ptype_init() {
 
 }
 
-
+/**
+ * @ingroup ptype_api
+ * @param ptype_name Name of the ptype to register
+ * @return Ptype type.
+ */
 int ptype_register(const char *ptype_name) {
 
 	int i;
@@ -79,7 +92,12 @@ int ptype_register(const char *ptype_name) {
 
 }
 
-
+/**
+ * @ingroup ptype_api
+ * @param type Type of the ptype
+ * @param unit Unit of the values store by this ptype, NULL if not applicable
+ * @return Allocated struct ptype.
+ */
 struct ptype* ptype_alloc(const char* type, char* unit) {
 
 	int idx = ptype_register(type);
@@ -103,6 +121,11 @@ struct ptype* ptype_alloc(const char* type, char* unit) {
 	return ret;
 }
 
+/**
+ * @ingroup ptype_api
+ * @param pt Ptype to clone
+ * @return A clone of the provided ptype or NULL on failure.
+ */
 struct ptype* ptype_alloc_from(struct ptype *pt) {
 
 	if (!ptypes[pt->type])
@@ -128,16 +151,35 @@ struct ptype* ptype_alloc_from(struct ptype *pt) {
 
 }
 
+/**
+ * @ingroup ptype_api
+ * @param pt Ptype to store value to
+ * @param val String to parse
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int ptype_parse_val(struct ptype *pt, char *val) {
 
 	return ptypes[pt->type]->parse_val(pt, val);
 }
 
+/**
+ * @ingroup ptype_api
+ * @param pt Ptype which contains the value to print
+ * @param val Preallocated buffer to store the value
+ * @param size Size of the preallocated buffer
+ * @return Number of bytes copied into the buffer.
+ */
 int ptype_print_val(struct ptype *pt, char *val, size_t size) {
 
 	return ptypes[pt->type]->print_val(pt, val, size);
 }
 
+/**
+ * @ingroup ptype_core
+ * @param pt Ptype to get the operation from
+ * @param op String representation of the operation
+ * @return The operation indentifier.
+ */
 int ptype_get_op(struct ptype *pt, char *op) {
 
 	int o = 0;
@@ -160,6 +202,11 @@ int ptype_get_op(struct ptype *pt, char *op) {
 	return POM_ERR;
 }
 
+/**
+ * @ingroup ptype_core
+ * @param op Operation identifier
+ * @return String representation of the operation.
+ */
 char *ptype_get_op_sign(int op) {
 	switch (op) {
 		case PTYPE_OP_EQUALS:
@@ -177,6 +224,11 @@ char *ptype_get_op_sign(int op) {
 	return NULL;
 }
 
+/**
+ * @ingroup ptype_core
+ * @param op Operation identifier
+ * @return Alphanumeric string representation of the operation.
+ */
 char *ptype_get_op_name(int op) {
 	switch (op) {
 		case PTYPE_OP_EQUALS:
@@ -194,6 +246,13 @@ char *ptype_get_op_name(int op) {
 	return NULL;
 }
 
+/**
+ * @ingroup ptype_core
+ * @param op Operation identifier
+ * @param a First ptype
+ * @param b Second ptype
+ * @return Result of the comparaision (true or false).
+ */
 int ptype_compare_val(int op, struct ptype *a, struct ptype *b) {
 	
 	if (a->type != b->type) {
@@ -208,16 +267,36 @@ int ptype_compare_val(int op, struct ptype *a, struct ptype *b) {
 
 }
 
+/**
+ * @ingroup ptype_core
+ * @param pt Ptype to serialize
+ * @param val Buffer to store the serialized value
+ * @param size Size of the preallocated buffer
+ * @return Number of bytes written to the buffer.
+ */
 int ptype_serialize(struct ptype *pt, char *val, size_t size) {
 
 	return ptypes[pt->type]->serialize(pt, val, size);
 }
 
+/**
+ * @ingroup ptype_core
+ * @param pt Ptype to unserialize
+ * @param val Serialized value
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int ptype_unserialize(struct ptype *pt, char *val) {
 
 	return ptypes[pt->type]->unserialize(pt, val);
 }
 
+
+/**
+ * @ingroup ptype_core
+ * @param dst Ptype to store value to
+ * @param src Ptype to copy value from
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int ptype_copy(struct ptype *dst, struct ptype *src) {
 
 	if (dst->type != src->type) {
@@ -228,7 +307,11 @@ int ptype_copy(struct ptype *dst, struct ptype *src) {
 	return ptypes[src->type]->copy(dst, src);
 }
 
-
+/**
+ * @ingroup ptype_api
+ * @param p Ptype to cleanup
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int ptype_cleanup(struct ptype* p) {
 
 	if (!p)
@@ -242,6 +325,11 @@ int ptype_cleanup(struct ptype* p) {
 	return POM_OK;
 }
 
+/**
+ * @ingroup ptype_api
+ * @param ptype_name Name of the ptype
+ * @return the Ptype type or POM_ERR on failure.
+ */
 int ptype_get_type(char* ptype_name) {
 	
 	int i;
@@ -253,6 +341,11 @@ int ptype_get_type(char* ptype_name) {
 	return POM_ERR;
 }
 
+/**
+ * @ingroup ptype_core
+ * @param ptype_type Type of the ptype
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int ptype_unregister(int ptype_type) {
 
 	if (ptypes[ptype_type]) {
@@ -270,6 +363,10 @@ int ptype_unregister(int ptype_type) {
 
 }
 
+/**
+ * @ingroup ptype_core
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int ptype_unregister_all() {
 
 	int i;
