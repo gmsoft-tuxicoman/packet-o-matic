@@ -77,7 +77,7 @@ struct ptype_reg {
 	 * @param pt Ptype to allocate value to
 	 * @return POM_OK on success, POM_ERR on failure.
 	 */
-	int (*alloc) (struct ptype*i pt);
+	int (*alloc) (struct ptype* pt);
 
 	/// Pointer to the cleanup function
 	/**
