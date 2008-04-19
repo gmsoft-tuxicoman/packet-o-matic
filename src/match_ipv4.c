@@ -21,8 +21,8 @@
 #include "match_ipv4.h"
 
 #include <netinet/in_systm.h>
-#include <netinet/ip.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
 
 #include "ptype_ipv4.h"
 #include "ptype_uint8.h"

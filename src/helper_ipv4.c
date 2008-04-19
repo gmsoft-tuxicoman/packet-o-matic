@@ -23,8 +23,8 @@
 #include "ptype_uint32.h"
 
 #include <netinet/in_systm.h>
-#include <netinet/ip.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
 
 #ifdef HAVE_NETINET_IP_VAR_H
 #include <netinet/ip_var.h>

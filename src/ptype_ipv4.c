@@ -18,10 +18,10 @@
  *
  */
 
-
-
 #include "ptype_ipv4.h"
 
+
+#include <sys/socket.h>
 
 int ptype_register_ipv4(struct ptype_reg *r) {
 
@@ -36,7 +36,7 @@ int ptype_register_ipv4(struct ptype_reg *r) {
 
 	r->copy = ptype_copy_ipv4;
 
-	r->ops = PTYPE_OP_EQUALS;
+	r->ops = PTYPE_OP_EQ;
 	
 	return POM_OK;
 
@@ -115,7 +115,7 @@ int ptype_compare_ipv4(int op, void *val_a, void *val_b) {
 	struct ptype_ipv4_val *a = val_a;
 	struct ptype_ipv4_val *b = val_b;
 
-	if (op != PTYPE_OP_EQUALS)
+	if (op != PTYPE_OP_EQ)
 		return 0;
 
 	

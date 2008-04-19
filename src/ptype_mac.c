@@ -36,7 +36,7 @@ int ptype_register_mac(struct ptype_reg *r) {
 
 	r->copy = ptype_copy_mac;
 	
-	r->ops = PTYPE_OP_EQUALS;
+	r->ops = PTYPE_OP_EQ;
 	
 	return POM_OK;
 
@@ -97,7 +97,7 @@ int ptype_compare_mac(int op, void *val_a, void *val_b) {
 	struct ptype_mac_val *a = val_a;
 	struct ptype_mac_val *b = val_b;
 
-	if(op == PTYPE_OP_EQUALS)
+	if(op == PTYPE_OP_EQ)
 		return (memcmp(a->addr, b->addr, sizeof(a->addr)) == 0);
 
 	return 0;

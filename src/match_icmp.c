@@ -21,6 +21,7 @@
 #include "match_icmp.h"
 #include "ptype_uint8.h"
 #include <netinet/in_systm.h>
+#include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
 

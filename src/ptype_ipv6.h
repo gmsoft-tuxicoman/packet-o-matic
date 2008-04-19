@@ -24,6 +24,7 @@
 #include "modules_common.h"
 #include "ptype.h"
 
+#include <netinet/in.h>
 
 struct ptype_ipv6_val {
 	struct in6_addr addr;

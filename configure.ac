@@ -116,7 +116,7 @@ AC_SUBST(d[LIB_DL])
 AC_CHECK_LIB([nsl], [gethostbyname])
 AC_CHECK_LIB([socket], [socket])
 
-AC_CHECK_HEADER([pcap.h])
+AC_CHECK_HEADERS([pcap.h pcap-bpf.h], [pcap_headers=yes], [pcap_headers=no])
 AC_CHECK_LIB([pcap], [pcap_open_offline, pcap_open_dead, pcap_close], [want_pcap=yes], [want_pcap=no])
 
 AC_CHECK_HEADER([libnet.h])
@@ -142,7 +142,7 @@ AC_SUBST(LIB_DIR)
 
 
 # Check for PCAP
-if test "x$want_pcap" = "xyes"
+if test "x$pcap_headers" = "xyes" -a "x$want_pcap" = "xyes"
 then
 	INPUT_OBJS="$INPUT_OBJS input_pcap.la"
 	TARGET_OBJS="$TARGET_OBJS target_pcap.la"

@@ -96,7 +96,7 @@ int ptype_compare_bool(int op, void *val_a, void* val_b) {
 	int *a = val_a;
 	int *b = val_b;
 
-	if (op == PTYPE_OP_EQUALS)
+	if (op == PTYPE_OP_EQ)
 		return *a == *b;
 
 	return 0;

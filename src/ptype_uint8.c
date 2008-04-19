@@ -95,7 +95,7 @@ int ptype_compare_uint8(int op, void *val_a, void* val_b) {
 	uint8_t *b = val_b;
 
 	switch (op) {
-		case PTYPE_OP_EQUALS:
+		case PTYPE_OP_EQ:
 			return *a == *b;
 		case PTYPE_OP_GT:
 			return *a > *b;

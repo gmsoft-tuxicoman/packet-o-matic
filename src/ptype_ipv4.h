@@ -24,6 +24,10 @@
 #include "modules_common.h"
 #include "ptype.h"
 
+#include <netinet/in_systm.h>
+#include <netinet/in.h>
+#include <netinet/ip.h>
+
 
 struct ptype_ipv4_val {
 	struct in_addr addr;

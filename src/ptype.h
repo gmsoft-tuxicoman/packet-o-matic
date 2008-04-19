@@ -29,8 +29,8 @@
 /// Ptype operation reserverd number
 #define PTYPE_OP_RSVD	0x00
 
-/// Ptype operation equals
-#define PTYPE_OP_EQUALS	0x01
+/// Ptype operation equal
+#define PTYPE_OP_EQ	0x01
 
 /// Ptype operation greater than
 #define PTYPE_OP_GT	0x02
@@ -44,9 +44,12 @@
 /// Ptype operation less or equal
 #define PTYPE_OP_LE	0x10
 
+/// Ptype operation not equal
+#define PTYPE_OP_NEQ	0x20
+
 
 /// Ptype mask for all valid operations
-#define PTYPE_OP_ALL	0x1f
+#define PTYPE_OP_ALL	0x3f
 
 
 /// Maximum length of unity string

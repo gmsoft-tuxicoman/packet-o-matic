@@ -35,7 +35,7 @@ int ptype_register_string(struct ptype_reg *r) {
 
 	r->copy = ptype_copy_string;
 
-	r->ops = PTYPE_OP_EQUALS;
+	r->ops = PTYPE_OP_EQ;
 	
 	return POM_OK;
 
@@ -73,7 +73,7 @@ int ptype_compare_string(int op, void *val_a, void *val_b) {
 	char *a = val_a;
 	char *b = val_b;
 
-	if (op == PTYPE_OP_EQUALS)
+	if (op == PTYPE_OP_EQ)
 		return !strcmp(a, b);
 	
 	return 0;

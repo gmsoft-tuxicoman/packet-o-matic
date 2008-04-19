@@ -188,8 +188,10 @@ int input_open_pcap(struct input *i) {
 
 	}
 
-
-	return pcap_get_selectable_fd(p->p);
+	int fd = pcap_get_selectable_fd(p->p);
+	if (fd == -1)
+		return POM_OK; //Means open but no fd (*wtf*)
+	return fd;
 }
 
 int input_read_pcap(struct input *i, struct frame *f) {

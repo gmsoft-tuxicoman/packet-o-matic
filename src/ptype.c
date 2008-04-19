@@ -185,7 +185,7 @@ int ptype_get_op(struct ptype *pt, char *op) {
 	int o = 0;
 
 	if (!strcmp(op, "eq") || !strcmp(op, "==") || !strcmp(op, "equals"))
-		o = PTYPE_OP_EQUALS;
+		o = PTYPE_OP_EQ;
 	else if (!strcmp(op, "gt") || !strcmp(op, ">")) 
 		o = PTYPE_OP_GT;
 	else if (!strcmp(op, "ge") || !strcmp(op, ">=")) 
@@ -194,6 +194,8 @@ int ptype_get_op(struct ptype *pt, char *op) {
 		o = PTYPE_OP_LT;
 	else if (!strcmp(op, "le") || !strcmp(op, "<=")) 
 		o = PTYPE_OP_LE;
+	else if (!strcmp(op, "neq") || !strcmp(op, "!="))
+		o = PTYPE_OP_NEQ;
 
 	if (ptypes[pt->type]->ops & o)
 		return o;
@@ -209,7 +211,7 @@ int ptype_get_op(struct ptype *pt, char *op) {
  */
 char *ptype_get_op_sign(int op) {
 	switch (op) {
-		case PTYPE_OP_EQUALS:
+		case PTYPE_OP_EQ:
 			return "==";
 		case PTYPE_OP_GT:
 			return ">";
@@ -219,6 +221,8 @@ char *ptype_get_op_sign(int op) {
 			return "<";
 		case PTYPE_OP_LE:
 			return "<=";
+		case PTYPE_OP_NEQ:
+			return "!=";
 
 	}
 	return NULL;
@@ -231,7 +235,7 @@ char *ptype_get_op_sign(int op) {
  */
 char *ptype_get_op_name(int op) {
 	switch (op) {
-		case PTYPE_OP_EQUALS:
+		case PTYPE_OP_EQ:
 			return "eq";
 		case PTYPE_OP_GT:
 			return "gt";
@@ -241,6 +245,8 @@ char *ptype_get_op_name(int op) {
 			return "lt";
 		case PTYPE_OP_LE:
 			return "le";
+		case PTYPE_OP_NEQ:
+			return "neq";
 
 	}
 	return NULL;
@@ -263,6 +269,8 @@ int ptype_compare_val(int op, struct ptype *a, struct ptype *b) {
 	if (!(ptypes[a->type]->ops & op))
 		pom_log(POM_LOG_ERR "Invalid operation %s for ptype %s\r\n", ptype_get_op_sign(op), ptypes[a->type]->name);
 
+	if (op == PTYPE_OP_NEQ)
+		return !(*ptypes[a->type]->compare_val) (PTYPE_OP_EQ, a->value, b->value);
 	return (*ptypes[a->type]->compare_val) (op, a->value, b->value);
 
 }

@@ -23,6 +23,8 @@
 #include "ptype_ipv6.h"
 
 
+#include <sys/socket.h>
+
 int ptype_register_ipv6(struct ptype_reg *r) {
 
 	r->alloc = ptype_alloc_ipv6;
@@ -36,7 +38,7 @@ int ptype_register_ipv6(struct ptype_reg *r) {
 
 	r->copy = ptype_copy_ipv6;
 	
-	r->ops = PTYPE_OP_EQUALS;
+	r->ops = PTYPE_OP_EQ;
 	
 	return POM_OK;
 
@@ -113,7 +115,7 @@ int ptype_compare_ipv6(int op, void *val_a, void *val_b) {
 	struct ptype_ipv6_val *a = val_a;
 	struct ptype_ipv6_val *b = val_b;
 
-	if (op != PTYPE_OP_EQUALS)
+	if (op != PTYPE_OP_EQ)
 		return 0;
 
 	int minmask = a->mask;

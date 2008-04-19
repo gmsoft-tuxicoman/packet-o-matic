@@ -36,7 +36,7 @@ int ptype_register_bytes(struct ptype_reg *r) {
 
 	r->copy = ptype_copy_bytes;
 	
-	r->ops = PTYPE_OP_EQUALS;
+	r->ops = PTYPE_OP_EQ;
 	
 	return POM_OK;
 
@@ -194,7 +194,7 @@ int ptype_compare_bytes(int op, void *val_a, void *val_b) {
 		return 0;
 
 
-	if (op == PTYPE_OP_EQUALS) {
+	if (op == PTYPE_OP_EQ) {
 		int i;
 		for (i = 0; i < a->length; i++)
 			if ((a->value[i] & a->mask[i]) != (b->value[i] & b->mask[i]))

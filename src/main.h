@@ -25,6 +25,8 @@
 #include "conf.h"
 #include "input.h"
 
+#include <pthread.h>
+
 struct conf *main_config;
 
 struct core_param *core_params;

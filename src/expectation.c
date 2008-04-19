@@ -76,7 +76,7 @@ struct expectation_list *expectation_alloc(struct frame *f, struct target *t, st
 				}
 				struct expectation_field *fld = malloc(sizeof(struct expectation_field));
 				memset(fld, 0, sizeof(struct expectation_field));
-				fld->op = PTYPE_OP_EQUALS;
+				fld->op = PTYPE_OP_EQ;
 				fld->value = ptype_alloc_from(l->fields[field_id]);
 			
 				struct match_field_reg *fld_reg = match_get_field(l->type, i);

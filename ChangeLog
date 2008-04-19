@@ -1,3 +1,12 @@
+* 2008/04/19 Guy Martin <gmsoft@tuxicoman.be>
+Check if all pcap headers are present at configure time.
+Fixed includes to allow compilation on OpenBSD.
+Make input_pcap returns POM_OK if no fd can be selected.
+Rename PTYPE_OP_EQUALS in PTYPE_OP_EQ.
+Added PTYPE_OP_NEQ.
+Fix rule matching with or/and in specific scenario.
+Initialize the variable result in input_unregister_all.
+
 * 2008/04/18 Guy Martin <gmsoft@tuxicoman.be>
 Improved input documentation.
 Added ptype documentation.

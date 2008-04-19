@@ -63,7 +63,7 @@ int dump_invalid_packet(struct frame *f) {
 int node_match(struct frame *f, struct rule_node *n, struct layer *l) {
 
 	if (!l)
-		return 0;
+		return 1;
 
 	int result = 1;
 
@@ -111,9 +111,6 @@ int node_match(struct frame *f, struct rule_node *n, struct layer *l) {
 
 		// Check if the rule correspond to what we identified
 		if (l->type != n->layer) {
-			// if there is a field to match, we apply the not operation on the field and not on the type
-			if (n->match)
-				return 0;
 			return (n->op & RULE_OP_NOT);
 		}
 

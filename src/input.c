@@ -388,7 +388,7 @@ int input_unregister(int input_type) {
 int input_unregister_all() {
 
 	int i;
-	int result;
+	int result = POM_OK;
 
 	for (i = 0; i < MAX_INPUT; i++) 
 		if (inputs[i] && input_unregister(i) == POM_ERR)
