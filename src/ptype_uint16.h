@@ -24,19 +24,36 @@
 #include "modules_common.h"
 #include "ptype.h"
 
+/**
+ * @ingroup ptypes
+ */
+/*@{*/
+
+/// Print the value in hexadecimal
 #define PTYPE_UINT16_PRINT_DECIMAL	0
+/// Print the value in 
 #define PTYPE_UINT16_PRINT_HEX		1
 
-/// x the struct ptype
+/// Get the value from a ptype uint16
+/**
+ * @param x The struct ptype
+ * @return The ptype value.
+ */
 #define PTYPE_UINT16_GETVAL(x) 			\
 	(uint16_t) *((uint16_t*) (x)->value)
 
-/// x the struct ptype, y the value
+/// Set the value of a ptype uint16
+/**
+ * @param x The struct ptype
+ * @param y The value
+ */
 #define PTYPE_UINT16_SETVAL(x, y) {	\
 	uint16_t *v = (x)->value;	\
 	*v = (y);			\
 }
 
+
+/*@}*/
 
 int ptype_register_uint16(struct ptype_reg *r);
 int ptype_alloc_uint16(struct ptype *p);

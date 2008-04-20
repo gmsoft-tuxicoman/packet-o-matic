@@ -18,11 +18,6 @@
  *
  */
 
-/**
- * @defgroup ptype_api Ptype API
- * @defgroup ptype_core Ptype core functions
- */
-
 #include "common.h"
 #include "ptype.h"
 
@@ -45,7 +40,7 @@ int ptype_init() {
 /**
  * @ingroup ptype_api
  * @param ptype_name Name of the ptype to register
- * @return Ptype type.
+ * @return Ptype type or POM_ERR on failure.
  */
 int ptype_register(const char *ptype_name) {
 
@@ -96,7 +91,7 @@ int ptype_register(const char *ptype_name) {
  * @ingroup ptype_api
  * @param type Type of the ptype
  * @param unit Unit of the values store by this ptype, NULL if not applicable
- * @return Allocated struct ptype.
+ * @return Allocated struct ptype or NULL on error.
  */
 struct ptype* ptype_alloc(const char* type, char* unit) {
 
@@ -152,7 +147,7 @@ struct ptype* ptype_alloc_from(struct ptype *pt) {
 }
 
 /**
- * @ingroup ptype_api
+ * @ingroup ptype_core
  * @param pt Ptype to store value to
  * @param val String to parse
  * @return POM_OK on success, POM_ERR on failure.
@@ -163,7 +158,7 @@ int ptype_parse_val(struct ptype *pt, char *val) {
 }
 
 /**
- * @ingroup ptype_api
+ * @ingroup ptype_core
  * @param pt Ptype which contains the value to print
  * @param val Preallocated buffer to store the value
  * @param size Size of the preallocated buffer
@@ -178,7 +173,7 @@ int ptype_print_val(struct ptype *pt, char *val, size_t size) {
  * @ingroup ptype_core
  * @param pt Ptype to get the operation from
  * @param op String representation of the operation
- * @return The operation indentifier.
+ * @return The operation indentifier or POM_ERR on error.
  */
 int ptype_get_op(struct ptype *pt, char *op) {
 
@@ -207,7 +202,7 @@ int ptype_get_op(struct ptype *pt, char *op) {
 /**
  * @ingroup ptype_core
  * @param op Operation identifier
- * @return String representation of the operation.
+ * @return String representation of the operation or NULL on error.
  */
 char *ptype_get_op_sign(int op) {
 	switch (op) {
@@ -231,7 +226,7 @@ char *ptype_get_op_sign(int op) {
 /**
  * @ingroup ptype_core
  * @param op Operation identifier
- * @return Alphanumeric string representation of the operation.
+ * @return Alphanumeric string representation of the operation or NULL on error.
  */
 char *ptype_get_op_name(int op) {
 	switch (op) {

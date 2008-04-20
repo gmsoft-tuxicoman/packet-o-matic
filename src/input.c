@@ -20,7 +20,6 @@
 
 /**
  * @defgroup input_api Input API
- * @defgroup input_core Input core functions
  */
 
 

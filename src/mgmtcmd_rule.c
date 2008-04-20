@@ -435,12 +435,14 @@ int mgmtcmd_set_rule_parse_branch(struct mgmt_connection *c, char *expr, struct 
 			*end = my_end;
 
 			struct rule_node *the_end = NULL;
-			mgmtcmd_set_rule_split(c, expr, &my_start->a, &the_end);
+			if (mgmtcmd_set_rule_split(c, expr, &my_start->a, &the_end) == POM_ERR)
+				return POM_ERR;
 			if (!the_end)
 				return POM_ERR;
 
 			the_end->a = my_end;
-			mgmtcmd_set_rule_split(c, expr + i + found_len, &my_start->b, &the_end);
+			if (mgmtcmd_set_rule_split(c, expr + i + found_len, &my_start->b, &the_end) == POM_ERR)
+				return POM_ERR;
 			the_end->a = my_end;
 
 			return POM_OK;
@@ -549,7 +551,7 @@ int mgmtcmd_set_rule_split(struct mgmt_connection *c, char *expr, struct rule_no
 	}
 
 	// parse the last block
-	if (mgmtcmd_set_rule_parse_branch(c, expr + pstart, my_start_addr, end))
+	if (mgmtcmd_set_rule_parse_branch(c, expr + pstart, my_start_addr, end) == POM_ERR)
 		return POM_ERR;
 	if (!*start)
 		*start = *my_start_addr;

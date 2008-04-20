@@ -23,10 +23,12 @@
 
 #include <unistd.h>
 
-/// Maximum number of registered
-#define MAX_PTYPE 256
+/**
+ * @defgroup ptype_api Ptype API
+ */
+/*@{*/
 
-/// Ptype operation reserverd number
+/// Ptype operation reserved number
 #define PTYPE_OP_RSVD	0x00
 
 /// Ptype operation equal
@@ -51,9 +53,18 @@
 /// Ptype mask for all valid operations
 #define PTYPE_OP_ALL	0x3f
 
+/*@}*/
 
-/// Maximum length of unity string
+/**
+ * @defgroup ptype_core Ptype core functions
+ */
+/*@{*/
+
+/// Maximum length of unit string
 #define PTYPE_MAX_UNIT 15
+
+/// Maximum number of registered
+#define MAX_PTYPE 256
 
 /// This structure hold all the informations about a ptype and its attibutes
 struct ptype {
@@ -63,8 +74,11 @@ struct ptype {
 	unsigned int print_mode; ///< How to display the ptype on the screen
 };
 
+/*}@*/
+
 /// This structure hold informations about a registered ptype
 /*
+ * @ingroup ptype_api
  * A ptype should provide all the function pointers at registration time and set ops with the operations it supports.
  */
 struct ptype_reg {
@@ -148,6 +162,8 @@ struct ptype_reg {
 
 };
 
+/// Containes all the registered ptypes
+/** @ingroup ptype_core **/
 struct ptype_reg *ptypes[MAX_PTYPE];
 
 /// Init the ptype subsystem.

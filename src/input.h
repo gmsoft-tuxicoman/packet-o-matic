@@ -23,6 +23,11 @@
 #ifndef __INPUT_H__
 #define __INPUT_H__
 
+/**
+ * @defgroup input_core Input core functions
+ */
+/*@{*/
+
 #undef MAX_INPUT
 /// Maximum number of registered inputs
 #define MAX_INPUT 16
@@ -65,16 +70,18 @@ struct input {
 	struct ptype *byte_cnt; ///< Read byte count
 };
 
-
+/*@}*/
 
 /// This structure saves infos about a registered input
 /**
+ * @ingroup input_api
  * When the register function of an input is called, it must fill the following fields :
  * - init
  * - open
  * - read
  * - close
  * - cleanup
+ * - getcaps
  **/
 struct input_reg {
 
@@ -94,7 +101,7 @@ struct input_reg {
 	/**
 	 * The open function is called when opening the input.
 	 * @param i The input to init
-	 * @return A seclectable file descriptor on success and POM_ERR on failure.
+	 * @return A seclectable file descriptor or POM_OK on success and POM_ERR on failure.
 	 **/
 	int (*open) (struct input *i);
 
