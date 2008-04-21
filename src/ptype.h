@@ -74,10 +74,10 @@ struct ptype {
 	unsigned int print_mode; ///< How to display the ptype on the screen
 };
 
-/*}@*/
+/*@}*/
 
 /// This structure hold informations about a registered ptype
-/*
+/**
  * @ingroup ptype_api
  * A ptype should provide all the function pointers at registration time and set ops with the operations it supports.
  */
@@ -143,7 +143,7 @@ struct ptype_reg {
 	int (*serialize) (struct ptype *pt, char *val, size_t size);
 
 	/// Pointer to the unserialization function
-	/*
+	/**
 	 * This function will initialize the value previously serialized with the above function.
 	 * @param pt Ptype to store the unserialized value to
 	 * @param val String representation of the serialized value
@@ -152,7 +152,7 @@ struct ptype_reg {
 	int (*unserialize) (struct ptype *pt, char *val);
 
 	/// Pointer to the copy function
-	/*
+	/**
 	 * This function will copy the value of a ptype into another.
 	 * @param dst Ptype to store the value to
 	 * @param src Ptype to copy the value from
@@ -162,7 +162,7 @@ struct ptype_reg {
 
 };
 
-/// Containes all the registered ptypes
+/// Contains all the registered ptypes
 /** @ingroup ptype_core **/
 struct ptype_reg *ptypes[MAX_PTYPE];
 

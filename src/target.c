@@ -29,7 +29,9 @@
 #include "ptype_uint64.h"
 
 
-
+/**
+ * @ingroup target_core
+ */
 int target_init() {
 
 	pom_log(POM_LOG_DEBUG "Targets initialized\r\n");
@@ -38,6 +40,11 @@ int target_init() {
 
 }
 
+/**
+ * @ingroup target_core
+ * @param target_name Name of the target to register
+ * @return The type of the target or POM_ERR on failure.
+ */
 int target_register(const char *target_name) {
 
 	int i;
@@ -87,6 +94,13 @@ int target_register(const char *target_name) {
 
 }
 
+/**
+ * @ingroup target_api
+ * @param target_type Type of the target to register the mode to
+ * @param name Name of the mode
+ * @param descr Description of the mode
+ * @return The registered mode or NULL on error.
+ */
 struct target_mode *target_register_mode(int target_type, const char *name, const char *descr) {
 
 	if (!targets[target_type])
@@ -113,6 +127,14 @@ struct target_mode *target_register_mode(int target_type, const char *name, cons
 
 }
 
+/**
+ * @ingroup target_api
+ * @param mode The mode to register a parameter to
+ * @param name The name of the parameter
+ * @param defval Default value
+ * @param descr Description
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int target_register_param(struct target_mode *mode, char *name, char *defval, char *descr) {
 
 	if (!mode)
@@ -140,6 +162,14 @@ int target_register_param(struct target_mode *mode, char *name, char *defval, ch
 	return POM_OK;
 }
 
+/**
+ * @ingroup target_api
+ * @param t The target which is registering the value
+ * @param mode The mode to which the parameter of the value belongs
+ * @param name Name of the parameter to register its value
+ * @param value The actual value
+ * @return POM_OK on sucess, POM_ERR on failure.
+ */
 int target_register_param_value(struct target *t, struct target_mode *mode, const char *name, struct ptype *value) {
 
 	if (!t || !mode || !value)
@@ -180,6 +210,11 @@ int target_register_param_value(struct target *t, struct target_mode *mode, cons
 
 }
 
+/**
+ * @ingroup target_core
+ * @param target_type Type of the target to create a new instance
+ * @return The new instance of the target or NULL on failure.
+ */
 struct target *target_alloc(int target_type) {
 
 	if (!targets[target_type]) {
@@ -210,6 +245,12 @@ struct target *target_alloc(int target_type) {
 	return t;
 }
 
+/**
+ * @ingroup target_api
+ * @param t Target to set the mode to
+ * @param mode_name Mode to set
+ * @return POM_OK on sucess, POM_ERR on failure.
+ */
 int target_set_mode(struct target *t, const char *mode_name) {
 
 	if (!t)
@@ -227,6 +268,12 @@ int target_set_mode(struct target *t, const char *mode_name) {
 	return POM_ERR;
 }
 
+/**
+ * @ingroup target_core
+ * @param t Target to get the value from
+ * @param param Name of the parameter to get the value from
+ * @return The value of the parameter or NULL on error.
+ */
 struct ptype *target_get_param_value(struct target *t, const char *param) {
 
 	if (!t)
@@ -260,6 +307,11 @@ struct ptype *target_get_param_value(struct target *t, const char *param) {
 
 }
 
+/**
+ * @ingroup target_core
+ * @param target_type Type of the target
+ * @return The name of the target or NULL on error.
+ */
 char *target_get_name(int target_type) {
 
 	if (!targets[target_type])
@@ -269,6 +321,11 @@ char *target_get_name(int target_type) {
 
 }
 
+/**
+ * @ingroup target_core
+ * @param target_name Name of the target
+ * @return The type of the target or POM_ERR on error.
+ */
 int target_get_type(char* target_name) {
 
 	int i;
@@ -280,6 +337,11 @@ int target_get_type(char* target_name) {
 
 }
 
+/**
+ * @ingroup target_core
+ * @param t Target to open
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int target_open(struct target *t) {
 
 	if (!t && t->started)
@@ -294,6 +356,13 @@ int target_open(struct target *t) {
 
 }
 
+/**
+ * @ingroup target_core
+ * If the target returns POM_ERR, it will be closed.
+ * @param t Target to send the packet to
+ * @param f The frame to process
+ * @return POM_OK on sucess, POM_ERR on failure.
+ */
 int target_process(struct target *t, struct frame *f) {
 
 	if (t->started) {
@@ -309,6 +378,11 @@ int target_process(struct target *t, struct frame *f) {
 
 }
 
+/**
+ * @ingroup target_core
+ * @param t Target to close
+ * @return POM_OK on sucess, POM_ERR on failure.
+ */
 int target_close(struct target *t) {
 
 	if (!t || !t->started)
@@ -322,6 +396,11 @@ int target_close(struct target *t) {
 
 }
 
+/**
+ * @ingroup ptype_core
+ * @param t Target to cleanup
+ * @return POM_OK on sucess, POM_ERR on failure.
+ */
 int target_cleanup_module(struct target *t) {
 
 	if (!t)
@@ -346,6 +425,11 @@ int target_cleanup_module(struct target *t) {
 
 }
 
+/**
+ * @ingroup target_core
+ * @param target_type Target type to unregister
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int target_unregister(int target_type) {
 
 	if (!targets[target_type])
@@ -387,6 +471,10 @@ int target_unregister(int target_type) {
 
 }
 
+/**
+ * @ingroup target_core
+ * @return POM_OK on sucess, POM_ERR on error.
+ */
 int target_unregister_all() {
 
 	int i = 0;
@@ -401,13 +489,19 @@ int target_unregister_all() {
 
 }
 
+/**
+ * @ingroup target_core
+ * @return POM_OK on sucess, POM_ERR on failure.
+ */
 int target_cleanup() {
 
 	return POM_OK;
 
 }
 
-
+/**
+ * @ingroup target_core
+ */
 void target_print_help() {
 
 	int i;
@@ -442,6 +536,14 @@ void target_print_help() {
 	}
 }
 
+/**
+ * @ingroup target_api
+ * @param l Layer of the packet that correspond to the file
+ * @param filename Name of the file that may contain variables to be expended
+ * @param flags Flags as documented in open(2)
+ * @param mode Mode as documented in open(2)
+ * @return The file descriptor on success, POM_ERR on failure.
+ */
 int target_file_open(struct layer *l, char *filename, int flags, mode_t mode) {
 
 	char buffer[NAME_MAX + 1];

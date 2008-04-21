@@ -26,11 +26,10 @@
 #include "common.h"
 #include "rules.h"
 
-/// Return value if the packet needs to be processed by the helper
-/// Returned by helper_need_help only
-#define H_NEED_HELP 1
-
-#define MAX_HELPER MAX_MATCH
+/**
+ * @defgroup helper_api Helper API
+ */
+/*@{*/
 
 /// Stores informations about a frame that needs to be processed
 struct helper_frame {
@@ -40,40 +39,89 @@ struct helper_frame {
 
 };
 
+/// Stores informations about a frame parameter
 struct helper_param {
 
-	char *name;
-	char *defval;
-	char *descr;
-	struct ptype *value;
-	struct helper_param *next;
+	char *name; ///< Name of the parameter
+	char *defval; ///< Default value of the parameter
+	char *descr; ///< Description of the parameter
+	struct ptype *value; ///< Value of the parameter
+	struct helper_param *next; ///< Used for linking
 
 };
 
+/// This structure hold all the information about the registered helpers
 struct helper_reg {
 
-	int type; ///< unique id of the helper
-	void *dl_handle;
+	int type; ///< Unique id of the helper
+	void *dl_handle; ///< Handle of the library
+
+	/// Pointer to the need_help function
+	/**
+	 * @param f The frame to possibly apply helper on
+	 * @param start The start of the current layer in the provided frame
+	 * @param len Length of this layer in the pcaket
+	 * @param l Layer we are currently handling
+	 * @return POM_OK if no help is needed, H_NEED_HELP if help is needed and the packet should not be process, or POM_ERR on failure.
+	 */
 	int (*need_help) (struct frame *f, unsigned int start, unsigned int len, struct layer *l);
-	int (*flush_buffer) (void);
+
+	/// Pointer to the cleanup function
+	/**
+	 * @return POM_OK on sucess, POM_ERR on error.
+	 */
 	int (*cleanup) (void);
-	struct helper_param *params;
+
+	struct helper_param *params; ///< Parameters of this helper
 
 
 };
+/*@}*/
 
+/**
+ * @defgroup helper_core Helper core functions
+ */
+/*@{*/
+
+/// Return value if the packet needs to be processed by the helper in helper_need_help
+#define H_NEED_HELP 1
+
+/// Maximum number of registered helper
+#define MAX_HELPER MAX_MATCH
+
+/// This variable saves info about all the registered helpers
 struct helper_reg *helpers[MAX_HELPER];
 
+/*@}*/
+
+/// Init the helper subsystem
 int helper_init();
+
+/// Register a new helper
 int helper_register(const char *name);
+
+/// Register a parameter for an helper
 int helper_register_param(int helper_type, char *name, char *defval, struct ptype *value, char *descr);
+
+/// Get the parameter of a helper
 struct helper_param* helper_get_param(int helper_type, char* param_name);
+
+/// Process a packet to see if it needs some help
 int helper_need_help(struct frame *f, unsigned int start, unsigned int len, struct layer *l);
+
+/// Queue a frame for processing
 int helper_queue_frame(struct frame *f);
-int helper_flush_buffer(struct rule_list *list);
+
+/// Process queued frames
 int helper_process_queue(struct rule_list *list);
+
+/// Unregister a helper
 int helper_unregister(int helper_type);
+
+/// Unregister all the helpers
 int helper_unregister_all();
+
+/// Cleanup the helper subsystem
 int helper_cleanup();
 
 

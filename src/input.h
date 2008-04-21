@@ -187,7 +187,7 @@ int input_close(struct input *i);
 /// Cleanup the input structur previously allocated by input_alloc().
 int input_cleanup(struct input *i);
 
-// Unregister an input.
+/// Unregister an input.
 int input_unregister(int input_type);
 
 /// Unregister all the inputs.

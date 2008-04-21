@@ -30,6 +30,11 @@ int match_undefined_id;
 
 struct ptype *param_autoload_helper;
 
+/**
+ * @ingroup match_core
+ * @param match_name Name of the match to register
+ * @return THe id of the match or POM_ERR on error.
+ */
 int match_register(const char *match_name) {
 
 	int i;
@@ -103,6 +108,12 @@ int match_register(const char *match_name) {
 
 }
 
+/**
+ * @ingroup match_api
+ * @param match_type Type of the match that needs a dependency
+ * @param dep_name Name of the dependency
+ * @return The match dependency or NULL on error.
+ */
 struct match_dep *match_add_dependency(int match_type, const char *dep_name) {
 
 	int i;
@@ -124,6 +135,14 @@ struct match_dep *match_add_dependency(int match_type, const char *dep_name) {
 	return NULL;
 }
 
+/**
+ * @ingroup match_api
+ * @param match_type Match to register the field to
+ * @param name Name of the field
+ * @param type Template ptype that will be used for additional fields
+ * @param descr Description of the field
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int match_register_field(int match_type, char *name, struct ptype *type, char *descr) {
 
 	if (!matchs[match_type])
@@ -153,6 +172,12 @@ int match_register_field(int match_type, char *name, struct ptype *type, char *d
 
 }
 
+/**
+ * @ingroup match_core
+ * @param match_type Type of the match to allocate a field from
+ * @param field_type Name of the field
+ * @return The allocated field or NULL on error.
+ */
 struct match_field *match_alloc_field(int match_type, char *field_type) {
 
 
@@ -184,6 +209,11 @@ struct match_field *match_alloc_field(int match_type, char *field_type) {
 	return ret;
 }
 
+/**
+ * @ingroup match_core
+ * @param p Field to cleanup
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int match_cleanup_field(struct match_field *p) {
 
 	if (!matchs[p->type])
@@ -198,6 +228,10 @@ int match_cleanup_field(struct match_field *p) {
 	return POM_OK;
 }
 
+/**
+ * @ingroup match_core
+ * @return POM_OK on sucess, POM_ERR on error.
+ */
 int match_init() {
 
 	param_autoload_helper = ptype_alloc("bool", NULL);
@@ -211,6 +245,11 @@ int match_init() {
 	return POM_OK;
 }
 
+/**
+ * @ingroup match_core
+ * @param match_type Type of the match
+ * @return The name of the match or NULL on error.
+ */
 char *match_get_name(int match_type) {
 
 	if (matchs[match_type])
@@ -220,13 +259,23 @@ char *match_get_name(int match_type) {
 
 }
 
+/**
+ * @ingroup match_core
+ * @param match_type Type of the match to get the field from
+ * @param field_id Id of the field
+ * @return The field or NULL on error.
+ */
 struct match_field_reg *match_get_field(int match_type, int field_id) {
 
 	return matchs[match_type]->fields[field_id];
 
 }
 
-
+/**
+ * @ingroup match_core
+ * @param match_name Name of the match
+ * @return The id of the match or POM_ERR on error.
+ */
 int match_get_type(const char *match_name) {
 
 	int i;
@@ -239,9 +288,13 @@ int match_get_type(const char *match_name) {
 }
 
 /**
- * Identify the next layer of this frame.
- * Returns the next layer that has been identified.
- **/
+ * @ingroup match_core
+ * @param f The frame to analyze
+ * @param l The layer to analyze
+ * @param start Start of the layer in this packet
+ * @param len Length of this layer in the packet
+ * @return The next layer that has been identified.
+ */
 
 int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigned int len) {
 	
@@ -253,8 +306,11 @@ int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigne
 }
 
 /**
- * Evaluate a parameter to match a packet.
+ * @ingroup match_core
  * This must be used after match_identify() identified the whole packet
+ * @param mf Field to evaluate
+ * @param l Layer to evaluate
+ * @return True or false, result of the evaluation.
  **/
 
 int match_eval(struct match_field *mf, struct layer *l) {
@@ -264,6 +320,13 @@ int match_eval(struct match_field *mf, struct layer *l) {
 	
 }
 
+/**
+ * @ingroup match_core
+ * @param match_type Match used for the expectation
+ * @param field_id Field to get the expectation from
+ * @param direction Direction of the expectation
+ * @return The field id to use for the expectation or POM_ERR on error.
+ */
 int match_get_expectation(int match_type, int field_id, int direction) {
 
 	if (matchs[match_type]->get_expectation)
@@ -273,6 +336,11 @@ int match_get_expectation(int match_type, int field_id, int direction) {
 
 }
 
+/**
+ * @ingroup match_core
+ * @param match_type Type of the match
+ * @return POM_OK on success or POM_ERR on failure.
+ */
 int match_refcount_inc(int match_type) {
 
 	if (!matchs[match_type])
@@ -283,6 +351,11 @@ int match_refcount_inc(int match_type) {
 
 }
 
+/**
+ * @ingroup match_core
+ * @param match_type Type of the match
+ * @return POM_OK on success or POM_ERR on failure.
+ */
 int match_refcount_dec(int match_type) {
 
 	if (!matchs[match_type])
@@ -299,6 +372,10 @@ int match_refcount_dec(int match_type) {
 
 }
 
+/**
+ * @ingroup match_core
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int match_cleanup() {
 
 	ptype_cleanup(param_autoload_helper);
@@ -307,6 +384,11 @@ int match_cleanup() {
 }
 
 
+/**
+ * @ingroup match_core
+ * @param match_type Type of the match to unregister
+ * @return POM_OK on success, POM_ERR on error.
+ */
 int match_unregister(unsigned int match_type) {
 
 	struct match_reg *r = matchs[match_type];
@@ -374,6 +456,10 @@ int match_unregister(unsigned int match_type) {
 	return POM_OK;
 }
 
+/**
+ * @ingroup match_core
+ * @return POM_OK on sucess, POM_ERR on failure.
+ */
 int match_unregister_all() {
 
 	int i = 0;
@@ -388,6 +474,9 @@ int match_unregister_all() {
 
 }
 
+/**
+ * @ingroup match_core
+ */
 void match_print_help() {
 
 	int i;

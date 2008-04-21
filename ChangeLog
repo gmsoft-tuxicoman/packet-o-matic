@@ -1,3 +1,7 @@
+* 2008/04/21 Guy Martin <gmsoft@tuxicoman.be>
+Added helper, match and target documentation.
+Small fixes in input and ptype documentation.
+
 * 2008/04/20 Guy Martin <gmsoft@tuxicoman.be>
 Updated input and ptype documentation.
 Fix error checking with rule parsing in the CLI.

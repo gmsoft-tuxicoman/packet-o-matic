@@ -27,6 +27,10 @@
 
 struct helper_frame *frame_head, *frame_tail;
 
+/**
+ * @ingroup helper_core
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int helper_init() {
 
 	frame_head = NULL;
@@ -38,6 +42,11 @@ int helper_init() {
 
 }
 
+/**
+ * @ingroup helper_core
+ * @param helper_name Name of the helper
+ * @return POM_OK on sucess, POM_ERR on failure.
+ */
 int helper_register(const char *helper_name) {
 
 
@@ -84,6 +93,15 @@ int helper_register(const char *helper_name) {
 
 }
 
+/**
+ * @ingroup helper_api
+ * @param helper_type Type of helper to register the parameter to
+ * @param name Name of the parameter to register
+ * @param defval Default value of the parameter
+ * @param value Actual value of the parmeter
+ * @param descr Description of the parameter
+ * @return POM_OK on success, POM_ERR on error.
+ */
 int helper_register_param(int helper_type, char *name, char *defval, struct ptype *value, char *descr) {
 
 	if (!helpers[helper_type])
@@ -117,6 +135,12 @@ int helper_register_param(int helper_type, char *name, char *defval, struct ptyp
 
 }
 
+/**
+ * @ingroup helper_core
+ * @param helper_type Type of the helper
+ * @param param_name Name of the parameter
+ * @return The matched parameter or NULL if not found.
+ */
 struct helper_param* helper_get_param(int helper_type, char* param_name) {
 
 	if (!helpers[helper_type])
@@ -134,13 +158,13 @@ struct helper_param* helper_get_param(int helper_type, char* param_name) {
 }
 
 /**
- * Parameters :
- *  - f : the frame to be examined
- *  - start : the start of the current header in the frame
- *  - len : the len of the current header + it's payload
- *  - l : the current layer
- **/
-
+ * @ingroup helper_core
+ * @param f The frame to be examined
+ * @param start The start of the current header in the frame
+ * @param len The len of the current header + it's payload
+ * @param l The current layer
+ * @return POM_OK on sucess, H_NEED_HELP if packet should not be processed anymore or POM_ERR on failure.
+ */
 int helper_need_help(struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
 
 	if (!helpers[l->type] || !helpers[l->type]->need_help)
@@ -150,6 +174,11 @@ int helper_need_help(struct frame *f, unsigned int start, unsigned int len, stru
 
 }
 
+/**
+ * @ingroup helper_core
+ * @param helper_type Helper to unregister
+ * @return POM_OK on sucess, POM_ERR on failure.
+ */
 int helper_unregister(int helper_type) {
 
 	if (helpers[helper_type]) {
@@ -177,6 +206,10 @@ int helper_unregister(int helper_type) {
 
 }
 
+/**
+ * @ingroup helper_core
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int helper_unregister_all() {
 
 	int i;
@@ -191,7 +224,10 @@ int helper_unregister_all() {
 
 }
 
-
+/**
+ * @ingroup helper_core
+ * @return POM_OK on sucess, POM_ERR on failure.
+ */
 int helper_cleanup() {
 
 	return POM_OK;
@@ -199,10 +235,9 @@ int helper_cleanup() {
 
 
 /**
- * Parameters :
- *  - frame : the content of the frame that needs to be processed
- *  - len : length of the frame
- *  - first_layer : first_layer of the frame
+ * @ingroup helper_api
+ * @param f The content of the frame that needs to be processed
+ * @return POM_OK on success, POM_ERR on failure.
  **/
 int helper_queue_frame(struct frame *f) {
 
@@ -224,7 +259,11 @@ int helper_queue_frame(struct frame *f) {
 
 }
 
-
+/**
+ * @ingroup helper_core
+ * @param list Rule list to use when processing queued packets
+ * @return POM_OK on success, POM_ERR on failure
+ */
 int helper_process_queue(struct rule_list *list) {
 
 	if (!frame_head)

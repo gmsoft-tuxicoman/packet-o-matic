@@ -23,37 +23,81 @@
 #ifndef __MATCH_H__
 #define __MATCH_H__
 
-#undef MAX_MATCH
-#define MAX_MATCH 16
-
 #include "layer.h"
 
-/// contains info about the possible fields for this match
+/**
+ * @defgroup match_api Match API
+ */
+/*@{*/
+
+/// Contains info about the possible fields for this match
 struct match_field_reg {
-	char *name; ///< name of the field
-	struct ptype *type; ///< allocated ptype that will show how to allocate subsequent fields
-	char *descr; ///< description of the field
+	char *name; ///< Name of the field
+	struct ptype *type; ///< Allocated ptype that will show how to allocate subsequent fields
+	char *descr; ///< Description of the field
 
 };
 
-// contains info about match dependencies
+/// Contains info about match dependencies
 struct match_dep {
-	char *name; // name of the dependency
-	int id; // id of the match
+	char *name; ///< Name of the dependency
+	int id; ///< Type of the match
 };
+/*@}*/
 
-/// save infos about a registered match
+
+/**
+ * @defgroup match_core Match core functions
+ */
+/*@{*/
+#undef MAX_MATCH
+
+/// Maximum of register matchs
+#define MAX_MATCH 16
+
+/// Variable that hold info about all the registered matchs
+struct match_reg *matchs[MAX_MATCH];
+
+/*@}*/
+/** @defgroup match_api **/
+/*@{*/
+/// Save infos about a registered match
 struct match_reg {
 
-	char *name; ///< name of the match
-	unsigned int type; ///< type of the match
-	struct match_field_reg *fields[MAX_LAYER_FIELDS]; ///< possible fields for the match
-	void *dl_handle; ///< handle of the library
-	unsigned int refcount; //< reference count
-	struct match_dep match_deps[MAX_MATCH];
-	int (*identify) (struct frame *f, struct layer*, unsigned int, unsigned int); ///< callled to identify the next layer of a packet
+	char *name; ///< Name of the match
+	unsigned int type; ///< Type of the match
+	struct match_field_reg *fields[MAX_LAYER_FIELDS]; ///< Possible fields for the match
+	void *dl_handle; ///< Handle of the library
+	unsigned int refcount; ///< Reference count
+	struct match_dep match_deps[MAX_MATCH]; ///< Match dependencies
+
+	/// Pointer to the identify function
+	/**
+	 * Identifies the next layer of a packet.
+	 * @param f Frame to identify
+	 * @param l The current layer
+	 * @param start Offset of this layer in the buffer
+	 * @param len Length of this layer
+	 * @return POM_OK on success, POM_ERR if there is nothing more to identify or on error.
+	 */
+	int (*identify) (struct frame *f, struct layer* l, unsigned int start, unsigned int len);
+
+	/// Pointer to the get_expectation function
+	/**
+	 * This function gives what field should we copy the value to the current field.
+	 * @param field_id Field for which we want a value
+	 * @param direction Direction of the expectation
+	 * @return Field from which we should take the value from or POM_ERR on error.
+	 */
 	int (*get_expectation) (int field_id, int direction);
-	int (*unregister) (struct match_reg *r); ///< called when unregistering the match
+
+	/// Pointer to the unregister function
+	/**
+	 * Called when unregistering the match.
+	 * @param r What match to unregister
+	 * @return POM_OK on success, POM_ERR on failure.
+	 */
+	int (*unregister) (struct match_reg *r);
 
 };
 
@@ -66,27 +110,62 @@ struct match_field {
 
 };
 
-struct match_reg *matchs[MAX_MATCH];
+/*@}*/
 
+
+/// Init the match subsystem
 int match_init();
-int match_register(const char *match_name);
-int match_register_field(int match_type, char *name, struct ptype *type, char *descr);
-struct match_dep *match_add_dependency(int match_type, const char *dep_name);
-struct match_field *match_alloc_field(int match_type, char *field_type);
-int match_cleanup_field(struct match_field *p);
-int match_get_type(const char *match_name);
-char *match_get_name(int match_type);
-struct match_field_reg *match_get_field(int match_type, int field_id);
-int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigned int len);
-int match_get_expectation(int match_type, int field_id, int direction);
-int match_eval(struct match_field *mf, struct layer *l);
-int match_refcount_inc(int match_type);
-int match_refcount_dec(int match_type);
-int match_cleanup();
-int match_unregister(unsigned int match_type);
-int match_unregister_all();
-void match_print_help();
 
+/// Register a match
+int match_register(const char *match_name);
+
+/// Register a field for this match
+int match_register_field(int match_type, char *name, struct ptype *type, char *descr);
+
+/// Add a dependency for a match on another match
+struct match_dep *match_add_dependency(int match_type, const char *dep_name);
+
+/// Allocate a match field
+struct match_field *match_alloc_field(int match_type, char *field_type);
+
+/// Deallocate a match field
+int match_cleanup_field(struct match_field *p);
+
+/// Get the type of the match from its name
+int match_get_type(const char *match_name);
+
+/// Get the name of the match from its type
+char *match_get_name(int match_type);
+
+/// Get a field of a certain match based on their type
+struct match_field_reg *match_get_field(int match_type, int field_id);
+
+/// Identify the next layer
+int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigned int len);
+
+/// Get the field id for the epxectation
+int match_get_expectation(int match_type, int field_id, int direction);
+
+/// Evalute a match field against a later
+int match_eval(struct match_field *mf, struct layer *l);
+
+/// Increase the reference count on a match
+int match_refcount_inc(int match_type);
+
+/// Decrease the reference count on a match
+int match_refcount_dec(int match_type);
+
+/// Cleanup the match subsystem
+int match_cleanup();
+
+/// Unregister a match
+int match_unregister(unsigned int match_type);
+
+/// Unregister all the matchs
+int match_unregister_all();
+
+/// Print the help of all the loaded matchs
+void match_print_help();
 
 
 #endif
