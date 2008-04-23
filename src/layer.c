@@ -32,6 +32,9 @@ regex_t parse_regex;
 
 static struct layer_field_pool field_pool[MAX_MATCH];
 
+/**
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int layer_init() {
 
 	pool = NULL;
@@ -49,6 +52,9 @@ int layer_init() {
 
 }
 
+/**
+ * @return The next available layer or NULL on error.
+ */
 struct layer* layer_pool_get() {
 
 	struct layer *l;
@@ -67,6 +73,9 @@ struct layer* layer_pool_get() {
 
 }
 
+/**
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int layer_pool_discard() {
 	
 	poolused = 0;
@@ -80,7 +89,9 @@ int layer_pool_discard() {
 }
 
 
-
+/**
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int layer_cleanup() {
 
 	int i;
@@ -104,7 +115,11 @@ int layer_cleanup() {
 
 }
 
-
+/**
+ * @param l List of layers
+ * @param header_type Layer to find in the list
+ * @return Offset of the given layer in the packet
+ */
 int layer_find_start(struct layer *l, int header_type) {
 	
 	if (!l)
@@ -123,6 +138,10 @@ int layer_find_start(struct layer *l, int header_type) {
 	return POM_ERR;
 }
 
+/**
+ * @param l Layer to get a field for
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int layer_field_pool_get(struct layer* l) {
 
 	struct layer_field_pool *lfp = &field_pool[l->type];
@@ -154,6 +173,13 @@ int layer_field_pool_get(struct layer* l) {
 
 }
 
+/**
+ * @param l List of layers to use for replacing parsed values
+ * @param expr Expression to parse
+ * @param buff Preallocated buffer to save the result
+ * @param size Size of the preallocated buffer
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int layer_field_parse(struct layer *l, char *expr, char *buff, size_t size) {
 
 	regmatch_t pmatch;

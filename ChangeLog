@@ -1,3 +1,6 @@
+* 2008/04/23 Guy Martin <gmsoft@tuxicoman.be>
+Added conntrack and helper documentation.
+
 * 2008/04/21 Guy Martin <gmsoft@tuxicoman.be>
 Added helper, match and target documentation.
 Small fixes in input and ptype documentation.

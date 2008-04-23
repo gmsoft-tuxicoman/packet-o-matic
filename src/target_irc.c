@@ -219,7 +219,7 @@ int target_close_connection_irc(struct target *t, struct conntrack_entry *ce, vo
 }
 
 
-/**
+/*
  * Parse the line and execute proper process_* function. 
  */
 int     parse_msg(struct target_conntrack_priv_irc *cp,
@@ -286,7 +286,7 @@ int     parse_msg(struct target_conntrack_priv_irc *cp,
 }
 
 
-/**
+/*
  * Parse and log the MODE command.
  */
 int     process_mode(struct target_conntrack_priv_irc *cp,
@@ -363,7 +363,7 @@ int     process_mode(struct target_conntrack_priv_irc *cp,
 
 
 
-/**
+/*
  * Parse and log the OPER command.
  */
 int     process_oper(struct target_conntrack_priv_irc *cp,
@@ -419,7 +419,7 @@ int     process_oper(struct target_conntrack_priv_irc *cp,
 }
 
 
-/**
+/*
  * Parse and log the KICK command.
  */
 int     process_kick(struct target_conntrack_priv_irc *cp,
@@ -498,7 +498,7 @@ int     process_kick(struct target_conntrack_priv_irc *cp,
 }
 
 
-/**
+/*
  * Parse and log the TOPIC command.
  */
 int     process_topic(struct target_conntrack_priv_irc *cp,
@@ -578,7 +578,7 @@ int     process_topic(struct target_conntrack_priv_irc *cp,
 
 
 
-/**
+/*
  * Parse and log the NICK command.
  */
 int     process_nick(struct target_conntrack_priv_irc *cp,
@@ -650,7 +650,7 @@ int     process_nick(struct target_conntrack_priv_irc *cp,
 	return POM_OK;
 }
 
-/**
+/*
  * Parse and log the PASS command.
  */
 int     process_pass(struct target_conntrack_priv_irc *cp,
@@ -697,7 +697,7 @@ int     process_pass(struct target_conntrack_priv_irc *cp,
 }
 
 
-/**
+/*
  * Parse and log the JOIN command.
  */
 int     process_join(struct target_conntrack_priv_irc *cp,
@@ -776,7 +776,7 @@ int     process_join(struct target_conntrack_priv_irc *cp,
 	return POM_OK;
 }
 
-/**
+/*
  * Parse and log the PART command.
  */
 int     process_part(struct target_conntrack_priv_irc *cp,
@@ -852,7 +852,7 @@ int     process_part(struct target_conntrack_priv_irc *cp,
 	return POM_OK;
 }
 
-/**
+/*
  * Parse and log the NOTICE command.
  */
 int     process_notice(struct target_conntrack_priv_irc *cp,
@@ -920,7 +920,7 @@ int     process_notice(struct target_conntrack_priv_irc *cp,
 	return POM_OK;
 }
 
-/**
+/*
  * Parse and log the PRIVMSG command.
  */
 int     process_privmsg(struct target_conntrack_priv_irc *cp,
@@ -990,7 +990,7 @@ int     process_privmsg(struct target_conntrack_priv_irc *cp,
 }
 
 
-/**
+/*
  * split nickname from nick!ident@host
  * to be only nick.
  */
@@ -1007,7 +1007,7 @@ char *getNick(char *nick) {
 	return ret;
 }
 
-/**
+/*
  * Get timestamp with HH:MM:SS format
  */
 char*	get_time(void) {
@@ -1024,7 +1024,7 @@ char*	get_time(void) {
 	return &out[0];
 }
 
-/**
+/*
  * Get timestamp with format YYYYMMDD-HH:MM:SS
  */
 char*	get_timestamp(void) {
@@ -1041,11 +1041,11 @@ char*	get_timestamp(void) {
 	return &out[0];
 }
 
-/**
+/*
  * Management for the List of opened files:
  */
 
-/**
+/*
  * Add a struct open_file to the list i
  */
 int add_of(struct open_file *first, struct open_file *el) {
@@ -1060,7 +1060,7 @@ int add_of(struct open_file *first, struct open_file *el) {
 	return POM_OK;
 }
 
-/**
+/*
  * Empty the list
  * (warning: the first element has to be assigned with NULL
  * after the execution of this function)
@@ -1082,7 +1082,7 @@ int remove_all_of(struct open_file *first) {
 	return POM_OK;
 }
 
-/**
+/*
  * Delete an element of the list
  * (warning: can never delete the first one (status))
  */
@@ -1115,7 +1115,7 @@ int del_of(struct open_file *first, const char *what) {
 	return POM_OK;
 }
 
-/**
+/*
  * Find and return an opened file.
  */
 struct open_file *get_of(struct open_file *first, const char* what) {
@@ -1133,7 +1133,7 @@ struct open_file *get_of(struct open_file *first, const char* what) {
 	return NULL;
 }
 
-/**
+/*
  * Open the file descriptor of the struct open_file
  */
 int open_of(struct open_file *of, struct target_conntrack_priv_irc *cp) {

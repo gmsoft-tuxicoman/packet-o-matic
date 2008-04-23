@@ -24,20 +24,28 @@
 
 #include "config.h"
 
-#define MAX_LAYER_FIELDS 8
-#define MAX_SAME_LAYERS 4
-
 #include <stdint.h>
 #include <time.h>
 #ifdef TIME_WITH_SYS_TIME
 #include <sys/time.h>
 #endif
 
+/**
+ * @defgroup layer_core Layer core functions
+ */
+/*@{*/
+
+/// Maximum fields per layer
+#define MAX_LAYER_FIELDS 8
+/// Maximum identical layer in a frame
+#define MAX_SAME_LAYERS 4
+
+/// Pool of preallocated fields
 struct layer_field_pool {
 
-	struct ptype *pool[MAX_SAME_LAYERS][MAX_LAYER_FIELDS];
-	unsigned int usage;
-	unsigned int size;
+	struct ptype *pool[MAX_SAME_LAYERS][MAX_LAYER_FIELDS]; ///< Pool of fields
+	unsigned int usage; ///< Current usage of the pool
+	unsigned int size; ///< Current size of the pool
 
 };
 
@@ -67,18 +75,26 @@ struct frame {
 
 };
 
+/// Init the layer subsystem
 int layer_init();
 
+/// Find the starting offset of a layer
 int layer_find_start(struct layer *l, int header_type);
 
+/// Get the next available layer out of the pool
 struct layer* layer_pool_get();
+
+/// Release a layer that we were using
 int layer_pool_discard();
 
+/// Get the next available layer field out of the pool
 int layer_field_pool_get(struct layer* l);
 
+/// Cleanup the layer subsystem
 int layer_cleanup();
 
-int layer_field_parse(struct layer *, char *expr, char *buff, size_t size);
+/// Parse the provided expression and save it into the buffer
+int layer_field_parse(struct layer *l, char *expr, char *buff, size_t size);
 
-
+/*@}*/
 #endif

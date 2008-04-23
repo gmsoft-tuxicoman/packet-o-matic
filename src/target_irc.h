@@ -37,7 +37,7 @@
 #define MAX_CHANNEL	32
 #define MAX_NICK	32
 
-/**
+/*
  * Openned files mgr
  */
 struct open_file {
@@ -64,13 +64,13 @@ struct target_conntrack_priv_irc {
 	struct target_conntrack_priv_irc *next;
 	struct target_conntrack_priv_irc *prev;
 
-	/** 
+	/* 
 	 * struct target * to avoid passing it by arg 
-	 **/
+	 */
 	struct target *t;
 	struct target_priv_irc *tp;
 
-	/**
+	/*
 	 * IRC Stuff:
 	 */
 	char	my_nick[MAX_NICK + 1];
@@ -96,7 +96,7 @@ int target_close_connection_irc(struct target *t, struct conntrack_entry *ce, vo
 int target_close_irc(struct target *t);
 int target_cleanup_irc(struct target *t);
 
-/**
+/*
  * Contain the token of IRC message along with
  * the function to execute when parsed.
  */

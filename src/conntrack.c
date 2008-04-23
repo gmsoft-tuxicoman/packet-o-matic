@@ -31,6 +31,10 @@
 struct conntrack_list *ct_table[CONNTRACK_SIZE];
 struct conntrack_list *ct_table_rev[CONNTRACK_SIZE];
 
+/**
+ * @ingroup conntrack_core
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int conntrack_init() {
 
 	int i;
@@ -46,6 +50,11 @@ int conntrack_init() {
 
 }
 
+/**
+ * @ingroup conntrack_core
+ * @param conntrack_name Name of the conntrack
+ * @return Type of the conntrack on success or POM_ERR on error.
+ */
 int conntrack_register(const char *conntrack_name) {
 
 
@@ -90,6 +99,15 @@ int conntrack_register(const char *conntrack_name) {
 
 }
 
+/**
+ * @ingroup conntrack_api
+ * @param conntrack_type Type of the conntrack
+ * @param name Name of the parameter to regiter
+ * @param defval Default value
+ * @param value Pointer to the actual value
+ * @param descr Description
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int conntrack_register_param(int conntrack_type, char *name, char *defval, struct ptype *value, char *descr) {
 
 	if (!conntracks[conntrack_type])
@@ -121,6 +139,12 @@ int conntrack_register_param(int conntrack_type, char *name, char *defval, struc
 
 }
 
+/**
+ * @ingroup conntrack_core
+ * @param conntrack_type Type of the conntrack to get the parameter from
+ * @param param_name Name of the parameter
+ * @return Pointer to the parameter or NULL on error.
+ */
 struct conntrack_param *conntrack_get_param(int conntrack_type, char *param_name) {
 
 	if (!conntracks[conntrack_type])
@@ -138,6 +162,12 @@ struct conntrack_param *conntrack_get_param(int conntrack_type, char *param_name
 
 }
 
+/**
+ * @ingroup conntrack_api
+ * The function will set f->ce with the newly created entry
+ * @param f Frame to create a conntrack entry from
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int conntrack_create_entry(struct frame *f) {
 	
 	struct conntrack_list *cl, *cl_rev;
@@ -210,8 +240,13 @@ int conntrack_create_entry(struct frame *f) {
 
 
 /**
-* The obj is a variable which is used to identify target. The value of the struct target should be given.
-**/
+* @ingroup conntrack_api
+* @param priv Private data to remember
+* @param t Target who the private data belongs to
+* @param ce Conntrack entry associated with this private data
+* @param cleanup_handler Cleanup handler for the private data when the connection is closed
+* @return POM_OK on success, POM_ERR on failure.
+*/
 int conntrack_add_target_priv(void *priv, struct target *t, struct conntrack_entry *ce, int (*cleanup_handler) (struct target *t, struct conntrack_entry *ce, void *priv)) {
 
 	// Let's see if that priv_type is already present
@@ -247,6 +282,14 @@ int conntrack_add_target_priv(void *priv, struct target *t, struct conntrack_ent
 	return POM_OK;
 }
 
+/**
+ * @ingroup conntrack_api
+ * This function must be called when the connection is closed by the target.
+ * This allows the conntrack subsystem to clean the connection entry if needed.
+ * @param priv Private data to remove
+ * @param ce Conntrack entry associated with the private data
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int conntrack_remove_target_priv(void* priv, struct conntrack_entry *ce) {
 
 	if (!ce)
@@ -279,6 +322,15 @@ int conntrack_remove_target_priv(void* priv, struct conntrack_entry *ce) {
 	return POM_OK;
 }
 
+/**
+* @ingroup conntrack_api
+* @param priv Private data to remember
+* @param type Type of the helper who the private data belongs to
+* @param ce Conntrack entry associated with this private data
+* @param flush_buffer The connection is about to be closed and we flush the buffers to make sure there is no packet remaining
+* @param cleanup_handler Cleanup handler for the private data when the connection is closed
+* @return POM_OK on success, POM_ERR on failure.
+*/
 int conntrack_add_helper_priv(void *priv, int type, struct conntrack_entry *ce, int (*flush_buffer) (struct conntrack_entry *ce, void *priv), int (*cleanup_handler) (struct conntrack_entry *ce, void *priv)) {
 
 	// Let's see if that priv_type is already present
@@ -315,6 +367,12 @@ int conntrack_add_helper_priv(void *priv, int type, struct conntrack_entry *ce, 
 	return POM_OK;
 }
 
+/**
+ * @ingroup conntrack_api
+ * @param type Type of the helper to get the private data from
+ * @param ce Conntrack entry to which the private data is associated
+ * @return Pointer to the private data or NULL on error.
+ */
 void *conntrack_get_helper_priv(int type, struct conntrack_entry *ce) {
 
 
@@ -333,6 +391,14 @@ void *conntrack_get_helper_priv(int type, struct conntrack_entry *ce) {
 	return NULL;
 }
 
+/**
+ * @ingroup conntrack_api
+ * This function must be called when the connection is closed by the helper.
+ * This allows the conntrack subsystem to clean the connection entry if needed.
+ * @param priv Private data to remove
+ * @param ce Conntrack entry associated with the private data
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int conntrack_remove_helper_priv(void* priv, struct conntrack_entry *ce) {
 
 	if (!ce)
@@ -365,6 +431,12 @@ int conntrack_remove_helper_priv(void* priv, struct conntrack_entry *ce) {
 	return POM_OK;
 }
 
+/**
+ * @ingroup conntrack_api
+ * @param t Target to get the private data from
+ * @param ce Conntrack entry to which the private data is associated
+ * @return Pointer to the private data or NULL on error.
+ */
 void *conntrack_get_target_priv(struct target *t, struct conntrack_entry *ce) {
 
 
@@ -383,7 +455,12 @@ void *conntrack_get_target_priv(struct target *t, struct conntrack_entry *ce) {
 	return NULL;
 }
 
-
+/**
+ * @ingroup conntrack_api
+ * @param f Frame to get a hash for
+ * @param flags What type of heash to create
+ * @return The computed hash.
+ */
 uint32_t conntrack_hash(struct frame *f, unsigned int flags) {
 
 
@@ -414,6 +491,11 @@ uint32_t conntrack_hash(struct frame *f, unsigned int flags) {
 	return hash;
 }
 
+/**
+ * @ingroup conntrack_api
+ * @param f Frame to test
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int conntrack_get_entry(struct frame *f) {
 	
 	uint32_t hash;
@@ -453,6 +535,13 @@ int conntrack_get_entry(struct frame *f) {
 
 }
 
+/**
+ * @ingroup conntrack_core
+ * @param cl Conntrack list to search
+ * @param f Frame to test
+ * @param flags How to match the conntracks
+ * @return The conntrack entry found or NULL on failure.
+ */
 struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct frame *f, unsigned int flags) {
 
 	if (!cl)
@@ -497,6 +586,11 @@ struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct frame *
 	return ce;
 }
 
+/**
+ * @ingroup conntrack_api
+ * @param ce Conntrack entry to cleanup
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int conntrack_cleanup_connection(struct conntrack_entry *ce) {
 
 	// Remove the match privs
@@ -601,7 +695,11 @@ int conntrack_cleanup_connection(struct conntrack_entry *ce) {
 	return POM_OK;
 }
 
-
+/**
+ * @ingroup conntrack_core
+ * @param ce Conntrack_entry to close
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int conntrack_close_connection(struct conntrack_entry *ce) {
 
 	struct conntrack_helper_priv *hp;
@@ -620,6 +718,11 @@ int conntrack_close_connection(struct conntrack_entry *ce) {
 	return POM_OK;
 }
 
+/**
+ * @ingroup conntrack_core
+ * @param r Rule list to use for packets that are still in the buffer
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int conntrack_close_connections(struct rule_list *r) {
 
 	int i;
@@ -648,6 +751,10 @@ int conntrack_close_connections(struct rule_list *r) {
 
 }
 
+/**
+ * @ingroup conntrack_core
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int conntrack_cleanup() {
 
 	int i;
@@ -665,7 +772,11 @@ int conntrack_cleanup() {
 
 }
 
-
+/**
+ * @ingroup conntrack_core
+ * @param conntrack_type Type of the conntrack to unregiter
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int conntrack_unregister(int conntrack_type) {
 
 	if (conntracks[conntrack_type]) {
@@ -694,7 +805,10 @@ int conntrack_unregister(int conntrack_type) {
 
 }
 
-
+/**
+ * @ingroup conntrack_core
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int conntrack_unregister_all() {
 
 	int i;
@@ -710,6 +824,11 @@ int conntrack_unregister_all() {
 
 }
 
+/**
+ * @ingroup conntrack_core
+ * @param ce Conntrack entry for which the timer expired
+ * @return POM_OK on success, POM_ERR on failure.
+ */
 int conntrack_do_timer(void * ce) {
 
 	if (conntrack_close_connection(ce) == POM_ERR)
@@ -718,6 +837,12 @@ int conntrack_do_timer(void * ce) {
 	return POM_OK;
 }
 
+/**
+ * @ingroup conntrack_api
+ * @param ce Conntrack entry
+ * @param i Input used for the packet
+ * @return POM_OK on success, POM_ERR on error.
+ */
 struct timer *conntrack_timer_alloc(struct conntrack_entry *ce, struct input *i) {
 
 	return timer_alloc(ce, i, conntrack_do_timer);
