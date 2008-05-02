@@ -208,7 +208,7 @@ int target_process_tcpkill(struct target *t, struct frame *f) {
 	// init temp buffer
 	unsigned char buffer_base[1024];
 	memset(buffer_base, 0, 1024);
-	unsigned char *buffer = (unsigned char*) (((int)buffer_base & ~3) + 4);
+	unsigned char *buffer = (unsigned char*) (((long)buffer_base & ~3) + 4);
 
 	int tcpsum = 0;
 	int blen = 0; // Buffer len

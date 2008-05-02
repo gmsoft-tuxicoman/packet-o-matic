@@ -117,7 +117,8 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 		return POM_OK;
 
 	if (!f->ce)
-		conntrack_create_entry(f);
+		if (conntrack_create_entry(f) == POM_ERR)
+			return POM_OK;
 
 
 	struct target_conntrack_priv_dump_payload *cp;

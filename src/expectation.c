@@ -240,9 +240,11 @@ int expectation_process(struct frame *f) {
 		if (process) {
 			if (!f->ce)
 				conntrack_create_entry(f);
-			f->ce->parent_ce = expt->parent_ce;
-			if (expt->target_priv)
-				conntrack_add_target_priv(expt->target_priv, expt->t, f->ce, expt->target_priv_cleanup_handler);
+			if (f->ce) {
+				f->ce->parent_ce = expt->parent_ce;
+				if (expt->target_priv)
+					conntrack_add_target_priv(expt->target_priv, expt->t, f->ce, expt->target_priv_cleanup_handler);
+			}
 
 			target_process(expt->t, f);
 

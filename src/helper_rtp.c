@@ -63,7 +63,8 @@ int helper_need_help_rtp(struct frame *f, unsigned int start, unsigned int len, 
 	// We need to track all the rtp packets
 	if (!f->ce)
 		if (conntrack_get_entry(f) == POM_ERR)
-			conntrack_create_entry(f);
+			if (conntrack_create_entry(f) == POM_ERR)
+				return POM_OK;
 	
 	uint16_t new_seq;
 	new_seq = ntohs(hdr->seq_num);

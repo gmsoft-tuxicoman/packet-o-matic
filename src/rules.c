@@ -55,107 +55,149 @@ int dump_invalid_packet(struct frame *f) {
 }
 
 /**
- * Parameters :
- * - n : current node what we are evaluating
- * - l : current layer that we are currently looking at
+ * @param f Current frame
+ * @param l Current layer that we are currently looking at
+ * @param n Current node what we are evaluating
+ * @param last Last node what we should evaluate
+ * @return True or false. Set *l to the last matched layer.
  **/
 
-int node_match(struct frame *f, struct rule_node *n, struct layer *l) {
+int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct rule_node *last) {
 
-	if (!l)
+	if (n == last)
 		return 1;
 
-	int result = 1;
 
-	struct layer *next_layer = l->next;
+	while (n != last) {
 
-	if ((n->op & ~RULE_OP_NOT) == 0) {
+		if (n->op == RULE_OP_TAIL) {
+			n = n->a;
+			continue;
+		}
 
-		// The current layer is not identified. Let's see if we can match with the current match type
-		if (l->type == match_undefined_id) {
-			if (!l->prev) {
-				pom_log(POM_LOG_ERR "Error, first layer is undefined !\r\n");
-				return 0;
-			}
-			unsigned int next_layer;
-			l->type = n->layer;
-			if (layer_field_pool_get(l) != POM_OK) {
-				pom_log(POM_LOG_WARN "Could not get a field pool for this packet. Ignoring\r\n");
-				return 0;
-			}
-			next_layer = match_identify(f, l, l->prev->payload_start, l->prev->payload_size);
-			if (next_layer < 0) {
-				// restore the original value
-				l->type = match_undefined_id;
-				return 0;
-			} else {
-				l->next = layer_pool_get();
-				l->next->type = next_layer;
+		if (!*l) {
+			// There is no more layer to match
+			return 0;
+		}
 
-				if (helper_need_help(f, l->prev->payload_start, l->prev->payload_size, l) == H_NEED_HELP) // If it needs help, we don't process it
+		if (!n->b) { // Only one node is attached to this one
+			// The current layer is not identified. Let's see if we can match with the current match type
+			if ((*l)->type == match_undefined_id) {
+				if (!(*l)->prev) {
+					pom_log(POM_LOG_ERR "Error, first layer is undefined !\r\n");
 					return 0;
-			
-				// check the calculated size and adjust the max len of the packet
-				// the initial size may be too long as some padding could have been introduced by the input
-
-				if (l->prev && (l->payload_start + l->payload_size > l->prev->payload_start + l->prev->payload_size || l->payload_size > l->prev->payload_size)) {
-					dump_invalid_packet(f);
+				}
+				unsigned int next_layer;
+				(*l)->type = n->layer;
+				if (layer_field_pool_get(*l) != POM_OK) {
+					pom_log(POM_LOG_WARN "Could not get a field pool for this packet. Ignoring\r\n");
 					return 0;
+				}
+				next_layer = match_identify(f, *l, (*l)->prev->payload_start, (*l)->prev->payload_size);
+				if (next_layer < 0) {
+					// restore the original value
+					(*l)->type = match_undefined_id;
+					return 0;
+				} else {
+					(*l)->next = layer_pool_get();
+					(*l)->next->prev = *l;
+					(*l)->next->type = next_layer;
+
+					if (helper_need_help(f, (*l)->prev->payload_start, (*l)->prev->payload_size, *l) == H_NEED_HELP) // If it needs help, we don't process it
+						return 0;
+				
+					// check the calculated size and adjust the max len of the packet
+					// the initial size may be too long as some padding could have been introduced by the input
+
+					if ((*l)->prev && ((*l)->payload_start + (*l)->payload_size > (*l)->prev->payload_start + (*l)->prev->payload_size || (*l)->payload_size > (*l)->prev->payload_size)) {
+						dump_invalid_packet(f);
+						return 0;
+					}
+
 				}
 
 			}
+			if (n->layer == (*l)->type) { // See if the layer is what we are looking for
+				if (n->match) {
+					int result = match_eval(n->match, *l);
+					if (n->op & RULE_OP_NOT)
+						result = !result;
+					if (!result)
+						return 0;
+				} else if (n->op & RULE_OP_NOT)
+					return 0;
 
+
+			} else if (!(n->op & RULE_OP_NOT)) {
+				return 0;
+			}
+			n = n->a;
+			*l = (*l)->next;
+
+		} else { // Two nodes are attached to this one
+			// find the last one that needs to be processed
+			struct rule_node *new_last = NULL, *rn = n;
+			int depth = 0;
+			if (!n->last) {
+				while (rn && rn != last) {
+					if (rn->b) {
+						depth++;
+					} else if (rn->op == RULE_OP_TAIL) {
+						depth--;
+						if (depth == 0) {
+							new_last = rn;
+							n->last = new_last;
+							break;
+						}
+					}
+					rn = rn->a;
+				}
+			} else {
+				new_last = n->last;
+			}
+
+			// let's see the result of the branch
+
+			int result = 0;
+			if (n->op & (RULE_OP_OR | RULE_OP_AND)) {
+				int result_a, result_b;
+				struct layer *layer_a = (*l), *layer_b = (*l);
+				result_a = node_match(f, &layer_a, n->a, new_last);
+				result_b = node_match(f, &layer_b, n->b, new_last);
+				if (n->op & RULE_OP_OR)
+					result = result_a || result_b;
+				else
+					result = result_a && result_b;
+				if (!result) 
+					return 0;
+				if ((result_a && result_b) && (layer_a != layer_b)) { // we have to branch here because both side didn't match up to the same layer
+					// last layer matched is different, branching
+					if (result_a) 
+						result_a = node_match(f, &layer_a, new_last, last);
+					if (result_b)
+						result_b = node_match(f, &layer_b, new_last, last);
+					if (n->op & RULE_OP_OR)
+						result = result_a || result_b;
+					else
+						result = result_a && result_b;
+					return result;
+				} else if (result_a) {
+					*l = layer_a;
+				} else if (result_b) {
+					*l = layer_b;
+				}
+
+			} else {
+				pom_log(POM_LOG_ERR "Error unexpected operation for rule node\r\n");
+				return 0;
+			}
+
+			if (!result)
+				return 0;
+			n = new_last;
 		}
-
-
-
-		// Check if the rule correspond to what we identified
-		if (l->type != n->layer) {
-			return (n->op & RULE_OP_NOT);
-		}
-
-		if (n->match) {
-			if (n->op & RULE_OP_NOT)
-				result = !match_eval(n->match, l);
-			else
-				result = match_eval(n->match, l);
-		}
-
-	} else { // If there is an operation specified, it means this node is a 'or' or 'and' operation
-		next_layer = l;
 	}
-
-	if (result == 0)
-		return 0; // It doesn't match
-
-	if (!n->a)
-		return result; // There is nothing else to match
-
-
-
-
-	if (!n->b) { // There is only one next node
-		return node_match(f, n->a, next_layer);
-	}
-
-
-	// there is two node, let's see if we match one of them
-	if (n->op & RULE_OP_OR) {
-		if (n->op & RULE_OP_NOT)
-			result = !(node_match(f, n->a, next_layer) || node_match(f, n->b, next_layer));
-		else
-			result = node_match(f, n->a, next_layer) || node_match(f, n->b, next_layer);
-	} else if (n->op & RULE_OP_AND) {
-		if (n->op & RULE_OP_NOT)
-			result = !(node_match(f, n->a, next_layer) && node_match(f, n->b, next_layer));
-		else
-			result = node_match(f, n->a, next_layer) && node_match(f, n->b, next_layer);
-	} else {
-		pom_log(POM_LOG_ERR "Invalid rule specified for node with two subnodes.\r\n");
-		return 0;
-	}
-
-	return result;
+	return 1;
 }
 
 int do_rules(struct frame *f, struct rule_list *rules) {
@@ -237,7 +279,8 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 
 		if (r->node && r->enabled) {
 			// If there is a conntrack_entry, it means one of the target added it's priv, so the packet needs to be processed
-			r->result = node_match(f, r->node, f->l); // Get the result to fully populate layers
+			struct layer *start_l = f->l;
+			r->result = node_match(f, &start_l, r->node, NULL); // Get the result to fully populate layers
 			if (r->result) {
 			//	pom_log(POM_LOG_TSHOOT "Rule matched\r\n");
 				PTYPE_UINT64_INC(r->pkt_cnt, 1);
@@ -337,7 +380,7 @@ int node_destroy(struct rule_node *node, int sub) {
 		done_stack = realloc(done_stack, sizeof(struct rule_node*) * (done + 1));
 		done_stack[done] = node;
 		done++;
-	} else if (node->op != RULE_OP_AND && node->op != RULE_OP_OR)
+	} else if ((node->op & ~RULE_OP_NOT) != RULE_OP_AND && (node->op & ~RULE_OP_NOT) != RULE_OP_OR)
 		match_refcount_dec(node->layer);
 	
 

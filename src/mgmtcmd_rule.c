@@ -141,9 +141,6 @@ int mgmtcmd_show_rule_print_node_flat(struct mgmt_connection *c, struct rule_nod
 				rn = rn->a;
 			}
 
-			if (n->op & RULE_OP_NOT)
-				mgmtsrv_send(c, "!(");
-
 			mgmtcmd_show_rule_print_node_flat(c, n->a, new_last);
 			if (n->op & RULE_OP_OR)
 				mgmtsrv_send(c, " or ");
@@ -151,8 +148,6 @@ int mgmtcmd_show_rule_print_node_flat(struct mgmt_connection *c, struct rule_nod
 				mgmtsrv_send(c, " and ");
 
 			mgmtcmd_show_rule_print_node_flat(c, n->b, new_last);
-			if (n->op & RULE_OP_NOT)
-				mgmtsrv_send(c, ")");
 
 			n = new_last;
 		}
@@ -207,17 +202,11 @@ int mgmtcmd_show_rule_print_node_tree(struct mgmt_connection *c, struct rule_nod
 				}
 				rn = rn->a;
 			}
-			if (n->op & RULE_OP_NOT) {
-				if (n->op & RULE_OP_OR)
-					mgmtsrv_send(c, "!or -- ");
-				else if (n->op & RULE_OP_AND)
-					mgmtsrv_send(c, "!and - ");
-			} else {
-				if (n->op & RULE_OP_OR)
-					mgmtsrv_send(c, "or --- ");
-				else if (n->op & RULE_OP_AND)
-					mgmtsrv_send(c, "and -- ");
-			}
+			if (n->op & RULE_OP_OR)
+				mgmtsrv_send(c, "or --- ");
+			else if (n->op & RULE_OP_AND)
+				mgmtsrv_send(c, "and -- ");
+
 			
 			char *prepend_a = " |     ";
 			char *prepend_b = "       ";
@@ -487,7 +476,7 @@ int mgmtcmd_set_rule_parse_branch(struct mgmt_connection *c, char *expr, struct 
 			return POM_ERR;
 
 		if (inv) {
-			if ((*start)->op == 0) {
+			if ((*start)->b){
 				mgmtsrv_send(c, "Unexpected \"!\"\r\n");
 				return POM_ERR;
 			}
@@ -501,9 +490,13 @@ int mgmtcmd_set_rule_parse_branch(struct mgmt_connection *c, char *expr, struct 
 		return POM_ERR;
 	*end = *start;
 
-	if (inv)
-		(*start)->op |= RULE_OP_NOT;
-
+	if (inv) {
+		if ((*start)->b) {
+			mgmtsrv_send(c, "Cannot use '!' with or/and operation\r\n");
+			return POM_ERR;
+		} else
+			(*start)->op |= RULE_OP_NOT;
+	}
 	return POM_OK;
 }
 

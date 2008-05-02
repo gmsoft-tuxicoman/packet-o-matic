@@ -121,7 +121,8 @@ int target_process_pop(struct target *t, struct frame *f) {
 		lastl = lastl->next;
 
 	if (!f->ce)
-		conntrack_create_entry(f);
+		if (conntrack_create_entry(f) == POM_ERR)
+			return POM_OK;
 
 
 	struct target_conntrack_priv_pop *cp;

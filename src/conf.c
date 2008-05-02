@@ -321,18 +321,6 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 				xmlFree(op);
 			}
 
-			char *inv = (char *) xmlGetProp(cur, (const xmlChar *)"inv");
-			if (inv) {
-				if (!strcmp(inv, "yes"))
-					n->op |= RULE_OP_NOT;
-				else if (strcmp(inv, "no")) 
-					pom_log(POM_LOG_ERR "Invalid 'inv' value. Either 'yes' or 'no'\r\n");
-				
-					
-			}
-					
-			xmlFree(inv);
-
 			xmlNodePtr pcur = cur->xmlChildrenNode;
 
 			while (pcur) {
@@ -346,6 +334,21 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 						
 			}
 			
+			char *inv = (char *) xmlGetProp(cur, (const xmlChar *)"inv");
+			if (inv) {
+				if (!strcmp(inv, "yes")) {
+					if (n->b)
+						pom_log(POM_LOG_WARN "The operation '!' is not supported on or/and operations\r\n");
+					else
+						n->op |= RULE_OP_NOT;
+				} else if (strcmp(inv, "no")) 
+					pom_log(POM_LOG_ERR "Invalid 'inv' value. Either 'yes' or 'no'\r\n");
+				
+					
+			}
+					
+			xmlFree(inv);
+
 
 			// Attach the last node of each part to one single now
 			struct rule_node *tmpn, *nextn;

@@ -169,19 +169,11 @@ struct conntrack_param *conntrack_get_param(int conntrack_type, char *param_name
  * @return POM_OK on success, POM_ERR on failure.
  */
 int conntrack_create_entry(struct frame *f) {
-	
-	struct conntrack_list *cl, *cl_rev;
 
-	cl = malloc(sizeof(struct conntrack_list));
-	memset(cl, 0, sizeof(struct conntrack_list));
-
-	cl_rev = malloc(sizeof(struct conntrack_list));
-	memset(cl_rev, 0, sizeof(struct conntrack_list));
-
-	// Make those two conntrack_list linked
-	cl->rev = cl_rev;
-	cl_rev->rev = cl;
-
+	if (f->ce) {
+		pom_log(POM_LOG_WARN "Conntrack entry already exists for this frame\r\n");
+		return POM_OK;
+	}
 
 	uint32_t hash = conntrack_hash(f, CT_DIR_ONEWAY);	
 	uint32_t hash_rev = conntrack_hash(f, CT_DIR_REV);
@@ -193,15 +185,6 @@ int conntrack_create_entry(struct frame *f) {
 
 	ce->full_hash = hash;
 
-	cl->ce = ce;
-	cl->hash = hash;
-	cl->next = ct_table[hash];
-	ct_table[hash] = cl;
-
-	cl_rev->ce = ce;
-	cl_rev->hash = hash_rev;
-	cl_rev->next = ct_table_rev[hash_rev];
-	ct_table_rev[hash_rev] = cl_rev;
 
 	struct layer *l = f->l;
 	struct conntrack_match_priv *lastcp = NULL;
@@ -229,6 +212,35 @@ int conntrack_create_entry(struct frame *f) {
 		}
 		l = l->next;
 	}
+
+	if (!ce->match_privs) {
+		// no match priv was created, we can't track this connection
+		free(ce);
+		return POM_ERR;
+	}
+
+	struct conntrack_list *cl, *cl_rev;
+
+	cl = malloc(sizeof(struct conntrack_list));
+	memset(cl, 0, sizeof(struct conntrack_list));
+
+	cl_rev = malloc(sizeof(struct conntrack_list));
+	memset(cl_rev, 0, sizeof(struct conntrack_list));
+
+	// Make those two conntrack_list linked
+	cl->rev = cl_rev;
+	cl_rev->rev = cl;
+
+
+	cl->ce = ce;
+	cl->hash = hash;
+	cl->next = ct_table[hash];
+	ct_table[hash] = cl;
+
+	cl_rev->ce = ce;
+	cl_rev->hash = hash_rev;
+	cl_rev->next = ct_table_rev[hash_rev];
+	ct_table_rev[hash_rev] = cl_rev;
 
 	pom_log(POM_LOG_TSHOOT "Conntrack entry 0x%lx created\r\n", (unsigned long) ce);
 

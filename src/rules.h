@@ -28,13 +28,14 @@
 #define RULE_OP_NOT	0x4
 #define RULE_OP_TAIL	0x8
 
-/// a rule_node containes two next node and a possible match
+/// A rule_node containes two next node and a possible match.
 struct rule_node {
-	struct rule_node *a; ///< next rule to match
-	struct rule_node *b; ///< possible other rule to match
-	unsigned int op; ///< operator (and, or, not)
-	unsigned int layer; ///< ignore if op != 0
+	struct rule_node *a; ///< Next rule to match
+	struct rule_node *b; ///< Possible other rule to match
+	unsigned int op; ///< Operator (and, or, not)
+	unsigned int layer; ///< Ignore if op != 0
 	struct match_field *match; ///< how to match the current rule
+	struct rule_node *last; ///< Last node of the branch, computed by rules
 
 };
 
@@ -60,8 +61,7 @@ struct rule_list {
 
 int rules_init();
 
-/// Recursively walk trough the rule_node tree and return 1 if the current frame match
-int node_match(struct frame *f, struct rule_node *n, struct layer *l);
+int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct rule_node *last);
 
 int do_rules(struct frame *f, struct rule_list *rules);
 

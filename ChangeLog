@@ -1,3 +1,10 @@
+* 2008/05/02 Guy Martin <gmsoft@tuxicoman.be>
+Rewrote node_match more efficiently.
+Remove ! operation for or/and branches.
+Make conntrack_create_entry fail if no match_priv is created.
+Fix warning on x86_64.
+Fix match reference count when destroying a rule.
+
 * 2008/04/23 Guy Martin <gmsoft@tuxicoman.be>
 Added conntrack and helper documentation.
 

@@ -103,7 +103,8 @@ int target_process_display(struct target *t, struct frame *f) {
 
 	if (PTYPE_BOOL_GETVAL(p->conntrack) || t->mode == mode_connection) {
 		if (!f->ce)
-			conntrack_create_entry(f);
+			if (conntrack_create_entry(f) == POM_ERR)
+				return POM_OK;
 
 		struct target_conntrack_priv_display *cp;
 		cp = conntrack_get_target_priv(t, f->ce);
@@ -149,8 +150,15 @@ int target_process_display(struct target *t, struct frame *f) {
 			first_layer = 0;
 	
 		first_field = 1;
+
+		if (l->type == POM_ERR)
+			break;
 	
 		char *match_name = match_get_name(l->type);
+
+		if (!match_name)
+			break;
+
 		strncat(line, match_name, freesize);
 		freesize -= strlen(match_name);
 

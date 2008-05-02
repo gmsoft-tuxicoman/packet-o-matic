@@ -112,7 +112,9 @@ int target_process_tftp(struct target *t, struct frame *f) {
 	struct conntrack_entry *ce = f->ce;
 
 	if (!ce) {
-		conntrack_create_entry(f); ce = f->ce;
+		if (conntrack_create_entry(f) == POM_ERR)
+			return POM_OK;
+		ce = f->ce;
 	} 
 
 	struct target_conntrack_priv_tftp *cp;

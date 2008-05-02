@@ -146,7 +146,8 @@ int target_process_rtp(struct target *t, struct frame *f) {
 
 
 	if (!f->ce)
-		conntrack_create_entry(f);
+		if (conntrack_create_entry(f) == POM_ERR)
+			return POM_OK;
 
 	struct target_conntrack_priv_rtp *cp;
 
