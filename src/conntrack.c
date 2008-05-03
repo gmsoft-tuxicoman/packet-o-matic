@@ -180,6 +180,31 @@ int conntrack_create_entry(struct frame *f) {
 	
 	struct conntrack_entry *ce;
 
+#ifdef DEBUG
+	ce = conntrack_find(ct_table[hash], f, CT_DIR_ONEWAY);
+	if (ce) {
+		pom_log(POM_LOG_WARN "Conntrack entry already exists for this connection\r\n");
+		ce->direction = CE_DIR_FWD;
+		f->ce = ce;
+		return POM_OK;
+
+	} else {
+		uint32_t hash_fwd = conntrack_hash(f, CT_DIR_FWD);
+		ce = conntrack_find(ct_table_rev[hash_fwd], f, CT_DIR_REV);
+		if (ce) {
+			pom_log(POM_LOG_WARN "Conntrack entry already exists for this connection\r\n");
+			ce->direction = CE_DIR_REV;
+			f->ce = ce;
+			return POM_OK;
+		}
+
+	}
+
+	if (ce) { 
+		f->ce = ce;
+		return POM_OK;
+	}
+#endif
 	ce = malloc(sizeof(struct conntrack_entry));
 	memset(ce, 0, sizeof(struct conntrack_entry));
 
@@ -754,8 +779,8 @@ int conntrack_close_connections(struct rule_list *r) {
 
 				hp = hp->next;
 			}
-
-			cl = cl->next;
+			conntrack_cleanup_connection(cl->ce);
+			cl = ct_table[i];
 		}
 	}
 

@@ -1,3 +1,9 @@
+* 2008/05/03 Guy Martin <gmsoft@tuxicoman.be>
+Use select() on the input to avoid hangs when stopping input.
+Added debug code to check validate conntrack creation.
+Fix typo in input.h documentation.
+Close all connections when the input stops.
+
 * 2008/05/02 Guy Martin <gmsoft@tuxicoman.be>
 Rewrote node_match more efficiently.
 Remove ! operation for or/and branches.

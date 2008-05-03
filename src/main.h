@@ -59,6 +59,7 @@ struct ringbuffer {
 
 	struct input *i; ///< Input associated with this ringbuffer
 	struct input_caps ic; ///< Capabilities of the input
+	int fd; ///< File descriptor of the input
 };
 
 struct core_param {

@@ -266,14 +266,15 @@ int input_open(struct input *i) {
 	if (i->running)
 		return POM_ERR;
 
+	int res = POM_ERR;
 	if (inputs[i->type] && inputs[i->type]->open) {
-		int res = (*inputs[i->type]->open) (i);
+		res = (*inputs[i->type]->open) (i);
 		if (res == POM_ERR)
 			return POM_ERR;
 	}
 
 	i->running = 1;
-	return POM_OK;
+	return res;
 }
 
 /**

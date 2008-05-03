@@ -101,7 +101,7 @@ struct input_reg {
 	/**
 	 * The open function is called when opening the input.
 	 * @param i The input to init
-	 * @return A seclectable file descriptor or POM_OK on success and POM_ERR on failure.
+	 * @return A selectable file descriptor or POM_OK on success and POM_ERR on failure.
 	 **/
 	int (*open) (struct input *i);
 

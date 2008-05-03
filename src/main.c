@@ -218,6 +218,8 @@ int start_input(struct ringbuffer *r) {
 		return POM_ERR;
 	}
 
+	r->fd = fd;
+
 	if (ringbuffer_alloc(r, main_config->input) == POM_ERR) {
 		pom_log(POM_LOG_ERR "Error while allocating the ringbuffer\r\n");
 		input_close(r->i);
@@ -291,6 +293,34 @@ void *input_thread_func(void *params) {
 			finish = 1;
 			return NULL;
 		}
+
+		if (r->fd != POM_OK)
+			while (r->state == rb_state_open) {
+				fd_set rfds;
+				struct timeval tv;
+				int retval;
+
+				FD_ZERO(&rfds);
+				FD_SET(r->fd, &rfds);
+
+				tv.tv_sec = 1;
+				tv.tv_usec = 0;
+
+				retval = select(1, &rfds, NULL, NULL, &tv);
+
+				if (retval == -1) {
+					pom_log("Error while select() on the input\r\n");
+					r->state = rb_state_stopping;
+					break;
+				} else if (retval)
+					break;
+
+				// Timeout
+				continue;
+			}
+
+		if (r->state != rb_state_open)
+			break;
 
 		if (input_read(r->i, r->buffer[r->write_pos]) == POM_ERR) {
 			pom_log(POM_LOG_ERR "Error while reading from input\r\n");
@@ -583,11 +613,11 @@ int main(int argc, char *argv[]) {
 			goto finish;
 		}
 	
-		timers_process(); // This is not real-time timers but we don't really need it
-		if (rbuf->buffer[rbuf->read_pos]->len > 0) // Need to queue that in the buffer
+		if (rbuf->buffer[rbuf->read_pos]->len > 0) { // Need to queue that in the buffer
+			timers_process(); // This is not real-time timers but we don't really need it
 			do_rules(rbuf->buffer[rbuf->read_pos], main_config->rules);
-
-		helper_process_queue(main_config->rules); // Process frames that needed some help
+			helper_process_queue(main_config->rules); // Process frames that needed some help
+		}
 
 
 		if (pthread_mutex_unlock(&reader_mutex)) {
@@ -610,11 +640,17 @@ int main(int argc, char *argv[]) {
 
 
 		while (rbuf->usage <= 0) {
+			if (rbuf->state == rb_state_stopping || rbuf->state == rb_state_closed) {
+				// Process remaining queued frames
+				conntrack_close_connections(main_config->rules);
+				expectation_cleanup_all();
+			}
+
 			if (finish && rbuf->state == rb_state_closed) {
 				pthread_mutex_unlock(&rbuf->mutex);
 				goto finish;
 			}
-			//pom_log(POM_LOG_TSHOOT "Buffer empty (%u). Waiting\r\n", rbuf->usage);
+
 			struct timeval tv;
 			gettimeofday(&tv, NULL);
 			struct timespec tp;
@@ -622,7 +658,7 @@ int main(int argc, char *argv[]) {
 			tp.tv_nsec = tv.tv_usec * 1000;
 			switch (pthread_cond_timedwait(&rbuf->underrun_cond, &rbuf->mutex, &tp)) {
 				case ETIMEDOUT:
-					pom_log(POM_LOG_TSHOOT "Timeout occured while waiting for next frame to be available\r\n");
+					//pom_log(POM_LOG_TSHOOT "Timeout occured while waiting for next frame to be available\r\n");
 				case 0:
 					break;
 				default:
