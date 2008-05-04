@@ -1,3 +1,6 @@
+* 2008/05/04 Guy Martin <gmsoft@tuxicoman.be>
+Make input_open_docsis() return POM_OK instead of a selectable fd.
+
 * 2008/05/03 Guy Martin <gmsoft@tuxicoman.be>
 Use select() on the input to avoid hangs when stopping input.
 Added debug code to check validate conntrack creation.
