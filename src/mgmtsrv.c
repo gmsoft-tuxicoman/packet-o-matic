@@ -91,8 +91,10 @@ int mgmtsrv_init(const char *port) {
 		}
 
 		if (bind(sockfd, tmpres->ai_addr, tmpres->ai_addrlen) < 0) {
-			strerror_r(errno, errbuff, 256);
-			pom_log(POM_LOG_ERR "Error while binding socket on address %s : %s\r\n", host, errbuff);
+			int my_errno = errno;
+			strerror_r(my_errno, errbuff, 256);
+			if (! (my_errno == EADDRINUSE && conn_head)) // Do not show an error in case we did bind already
+				pom_log(POM_LOG_ERR "Error while binding socket on address %s : %s\r\n", host, errbuff);
 			close(sockfd);
 			tmpres = tmpres->ai_next;
 			continue;
