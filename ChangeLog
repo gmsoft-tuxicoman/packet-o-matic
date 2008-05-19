@@ -1,3 +1,7 @@
+* 2008/05/19 Guy Martin <gmsoft@tuxicoman.be>
+Added completion on commands arguments.
+Reduced maximum command words to 128.
+
 * 2008/05/12 Guy Martin <gmsoft@tuxicoman.be>
 Suppress bind() error msg if we already have a socket in mgmtsrv.
 

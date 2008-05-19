@@ -30,8 +30,6 @@
 #include "ptype.h"
 #include "ptype_uint64.h"
 
-struct input_reg *inputs[MAX_INPUT]; ///< Global variable which contains all the input registered in a table.
-
 /**
  * @ingroup input_api
  * @param input_name Name of the input

@@ -30,7 +30,10 @@
 int mgmtcmd_helper_register_all();
 int mgmtcmd_show_helpers(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_load_helper(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_load_helper_completion(int argc, char *argv[]);
 int mgmtcmd_set_helper_param(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_unload_helper_completion(int argc, char *argv[]);
 int mgmtcmd_unload_helper(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_set_helper_param_completion(int argc, char *argv[]);
 
 #endif

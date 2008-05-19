@@ -28,8 +28,10 @@
 
 #include "rules.h"
 
+struct mgmt_command_arg* mgmtcmd_rule_id_completion(int argc, char *argv[]);
 int mgmtcmd_rule_register_all();
 int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmt_show_rules_completion(int argc, char *argv[]);
 int mgmtcmd_set_rule(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_disable_rule(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_enable_rule(struct mgmt_connection *c, int argc, char *argv[]);

@@ -40,6 +40,7 @@ struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 		.help = "Start a target",
 		.callback_func = mgmtcmd_start_target,
 		.usage = "start target <rule_id> <target_id>",
+		.completion = mgmtcmd_completion_id2,
 	},
 
 	{
@@ -47,6 +48,7 @@ struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 		.help = "Stop a target",
 		.callback_func = mgmtcmd_stop_target,
 		.usage = "stop target <rule_id> <target_id>",
+		.completion = mgmtcmd_completion_id2,
 	},
 
 	{
@@ -54,6 +56,7 @@ struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 		.help = "Add a target to a rule",
 		.callback_func = mgmtcmd_add_target,
 		.usage = "add target <rule_id> <target>",
+		.completion = mgmtcmd_target_name_completion,
 	},
 
 	{
@@ -61,6 +64,7 @@ struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 		.help = "Remove a target from a rule",
 		.callback_func = mgmtcmd_remove_target,
 		.usage = "remove target <rule_id> <target_id>",
+		.completion = mgmtcmd_completion_id2,
 	},
 
 	{
@@ -68,6 +72,7 @@ struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 		.help = "Change the value of a target parameter",
 		.callback_func = mgmtcmd_set_target_parameter,
 		.usage = "set target parameter <rule_id> <target_id> <parameter> <value>",
+		.completion = mgmtcmd_set_target_parameter_completion,
 	},
 
 	{
@@ -75,6 +80,7 @@ struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 		.help = "Change the mode of a target",
 		.callback_func = mgmtcmd_set_target_mode,
 		.usage = "set target mode <rule_id> <target_id> <mode>",
+		.completion = mgmtcmd_set_target_mode_completion,
 	},
 
 	{
@@ -82,6 +88,7 @@ struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 		.help = "Load a target into the system",
 		.usage = "load target <target>",
 		.callback_func = mgmtcmd_load_target,
+		.completion = mgmtcmd_load_target_completion,
 	},
 
 	{
@@ -89,6 +96,7 @@ struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 		.help = "Unload a target from the system",
 		.usage = "unload target <target>",
 		.callback_func = mgmtcmd_unload_target,
+		.completion = mgmtcmd_unload_target_completion,
 	},
 };
 
@@ -101,6 +109,43 @@ int mgmtcmd_target_register_all() {
 	}
 
 	return POM_OK;
+}
+
+struct mgmt_command_arg *mgmctcmd_target_id_completion(int argc, char *argv[], int pos) {
+
+	struct mgmt_command_arg *res = NULL;
+
+	if (pos == 0) {
+		struct rule_list *rl;
+		int count = 0;
+		for (rl = main_config->rules; rl; rl = rl->next)
+			count++;
+		res = mgmtcmd_completion_int_range(0, count);
+	} else if (pos == 1) {
+		struct rule_list *rl;
+		int i = 0;
+		int rule_id = -1;
+		if (sscanf(argv[argc - 1], "%u", &rule_id) != 1)
+			return NULL;
+
+		for (rl = main_config->rules; rl && i < rule_id; rl = rl->next)
+			i++;
+
+		struct target *t = rl->target;
+		int count = 0;
+		for (t = rl->target; t; t = t->next)
+			count++;
+		res = mgmtcmd_completion_int_range(0, count);
+
+	}
+
+	return res;
+}
+
+struct mgmt_command_arg *mgmtcmd_completion_id2(int argc, char *argv[]) {
+
+	return mgmctcmd_target_id_completion(argc, argv, argc - 2);
+
 }
 
 int mgmtcmd_show_targets(struct mgmt_connection *c, int argc, char *argv[]) {
@@ -287,6 +332,18 @@ int mgmtcmd_add_target(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
+struct mgmt_command_arg* mgmtcmd_target_name_completion(int argc, char *argv[]) {
+
+	struct mgmt_command_arg *res = NULL;
+
+	if (argc == 2) {
+		res = mgmctcmd_target_id_completion(argc, argv, 0);
+	} else if (argc == 3) {
+		res = mgmtcmd_list_modules("target");
+	}
+	return res;
+}
+
 struct target *mgmtcmd_get_target(struct rule_list *rl, char *target) {
 
 	unsigned int target_id, i;
@@ -391,6 +448,57 @@ int mgmtcmd_set_target_parameter(struct mgmt_connection *c, int argc, char *argv
 
 }
 
+struct mgmt_command_arg *mgmtcmd_set_target_parameter_completion(int argc, char *argv[]) {
+
+	struct mgmt_command_arg *res = NULL;
+
+	if (argc == 3 || argc == 4) {
+
+		res = mgmctcmd_target_id_completion(argc, argv, argc - 3);
+
+	} else if (argc == 5) {
+		int i = 0;
+		int rule_id = -1;
+
+		if (sscanf(argv[argc - 2], "%u", &rule_id) != 1)
+			return NULL;
+
+		struct rule_list *rl;
+		for (rl = main_config->rules; rl && i < rule_id; rl = rl->next)
+			i++;
+
+		int target_id = -1;
+		if (sscanf(argv[argc - 1], "%u", &target_id) != 1)
+			return NULL;
+
+		struct target *t;
+		for (t = rl->target, i = 0; t && i < target_id; t = t->next)
+			i++;
+		
+		if (!t || !targets[t->type] || !targets[t->type]->modes)
+			return NULL;
+
+		struct target_mode *m = targets[t->type]->modes;
+
+		struct target_param_reg *p = m->params;
+
+		while (p) {
+			struct mgmt_command_arg *item = malloc(sizeof(struct mgmt_command_arg));
+			memset(item, 0, sizeof(struct mgmt_command_arg));
+			char *name = p->name;
+			item->word = malloc(strlen(name) + 1);
+			strcpy(item->word, name);
+			item->next = res;
+			res = item;
+
+			p = p->next;
+		}
+
+
+	}
+	return res;
+}
+
 int mgmtcmd_set_target_mode(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc < 3)
@@ -430,6 +538,56 @@ int mgmtcmd_set_target_mode(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
+struct mgmt_command_arg *mgmtcmd_set_target_mode_completion(int argc, char *argv[]) {
+
+	struct mgmt_command_arg *res = NULL;
+
+	if (argc == 3 || argc == 4) {
+
+		res = mgmctcmd_target_id_completion(argc, argv, argc - 3);
+
+	} else if (argc == 5) {
+		int i = 0;
+		int rule_id = -1;
+
+		if (sscanf(argv[argc - 2], "%u", &rule_id) != 1)
+			return NULL;
+
+		struct rule_list *rl;
+		for (rl = main_config->rules; rl && i < rule_id; rl = rl->next)
+			i++;
+
+		int target_id = -1;
+		if (sscanf(argv[argc - 1], "%u", &target_id) != 1)
+			return NULL;
+
+		struct target *t;
+		for (t = rl->target, i = 0; t && i < target_id; t = t->next)
+			i++;
+		
+		if (!t || !targets[t->type] || !targets[t->type]->modes)
+			return NULL;
+
+		struct target_mode *m = targets[t->type]->modes;
+
+		while (m) {
+			struct mgmt_command_arg *item = malloc(sizeof(struct mgmt_command_arg));
+			memset(item, 0, sizeof(struct mgmt_command_arg));
+			char *name = m->name;
+			item->word = malloc(strlen(name) + 1);
+			strcpy(item->word, name);
+			item->next = res;
+			res = item;
+
+			m = m->next;
+		}
+
+
+	}
+	return res;
+}
+
+
 int mgmtcmd_load_target(struct mgmt_connection *c, int argc, char*argv[]) {
 
 	if (argc != 1)
@@ -448,6 +606,16 @@ int mgmtcmd_load_target(struct mgmt_connection *c, int argc, char*argv[]) {
 
 	return POM_OK;
 
+}
+
+struct mgmt_command_arg* mgmtcmd_load_target_completion(int argc, char *argv[]) {
+
+	if (argc != 2)
+		return NULL;
+
+	struct mgmt_command_arg *res = NULL;
+	res = mgmtcmd_list_modules("target");
+	return res;
 }
 
 int mgmtcmd_unload_target(struct mgmt_connection *c, int argc, char *argv[]) {
@@ -478,4 +646,28 @@ int mgmtcmd_unload_target(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	return POM_OK;
 
+}
+
+struct mgmt_command_arg* mgmtcmd_unload_target_completion(int argc, char *argv[]) {
+
+	struct mgmt_command_arg *res = NULL;
+
+	if (argc != 2)
+		return NULL;
+
+	int i;
+	for (i = 0; i < MAX_TARGET; i++) {
+		if (targets[i]) {
+			struct mgmt_command_arg *item = malloc(sizeof(struct mgmt_command_arg));
+			memset(item, 0, sizeof(struct mgmt_command_arg));
+			char *name = targets[i]->name;
+			item->word = malloc(strlen(name) + 1);
+			strcpy(item->word, name);
+			item->next = res;
+			res = item;
+		}
+
+	}
+
+	return res;
 }

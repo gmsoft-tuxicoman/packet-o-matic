@@ -37,6 +37,7 @@ struct mgmt_command mgmt_helper_commands[MGMT_HELPER_COMMANDS_NUM] = {
 		.help = "Load an helper into the system",
 		.usage = "load helper <helper_name>",
 		.callback_func = mgmtcmd_load_helper,
+		.completion = mgmtcmd_load_helper_completion,
 	},
 
 	{
@@ -44,6 +45,7 @@ struct mgmt_command mgmt_helper_commands[MGMT_HELPER_COMMANDS_NUM] = {
 		.help = "Change the value of a helper parameter",
 		.usage = "set helper parameter <helper> <parameter> <value>",
 		.callback_func = mgmtcmd_set_helper_param,
+		.completion = mgmtcmd_set_helper_param_completion,
 	},
 
 	{
@@ -51,6 +53,7 @@ struct mgmt_command mgmt_helper_commands[MGMT_HELPER_COMMANDS_NUM] = {
 		.help = "Unload an helper from the system",
 		.usage = "unload helper <helper>",
 		.callback_func = mgmtcmd_unload_helper,
+		.completion = mgmtcmd_unload_helper_completion,
 	},
 
 };
@@ -126,6 +129,15 @@ int mgmtcmd_load_helper(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
+struct mgmt_command_arg* mgmtcmd_load_helper_completion(int argc, char *argv[]) {
+
+	if (argc != 2)
+		return NULL;
+
+	struct mgmt_command_arg *res = NULL;
+	res = mgmtcmd_list_modules("helper");
+	return res;
+}
 
 int mgmtcmd_set_helper_param(struct mgmt_connection *c, int argc, char *argv[]) {
 	
@@ -153,6 +165,50 @@ int mgmtcmd_set_helper_param(struct mgmt_connection *c, int argc, char *argv[]) 
 
 }
 
+struct mgmt_command_arg* mgmtcmd_set_helper_param_completion(int argc, char *argv[]) {
+
+	struct mgmt_command_arg *res = NULL;
+
+	switch (argc) {
+		case 3:
+			res = mgmtcmd_unload_helper_completion(2, argv);
+			break;
+
+		case 4: {
+			int i, helper_id = -1;
+			for (i = 0; i < MAX_HELPER; i++) {
+				if (helpers[i]) {
+					char *name = match_get_name(i);
+					if (!strcmp(argv[3], name)) {
+						helper_id = i;
+						break;
+					}
+				}
+
+			}
+			if (helper_id == -1)
+				return NULL;
+			
+			struct helper_param *p = helpers[helper_id]->params;
+			while (p) {
+				struct mgmt_command_arg *item = malloc(sizeof(struct mgmt_command_arg));
+				memset(item, 0, sizeof(struct mgmt_command_arg));
+				item->word = malloc(strlen(p->name) + 1);
+				strcpy(item->word, p->name);
+				p = p->next;
+
+				item->next = res;
+				res = item;
+			}
+
+			break;
+		}
+	}
+
+	return res;
+
+}
+
 int mgmtcmd_unload_helper(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
@@ -177,3 +233,28 @@ int mgmtcmd_unload_helper(struct mgmt_connection *c, int argc, char *argv[]) {
 	return POM_OK;
 
 }
+
+struct mgmt_command_arg* mgmtcmd_unload_helper_completion(int argc, char *argv[]) {
+
+	struct mgmt_command_arg *res = NULL;
+
+	if (argc != 2)
+		return NULL;
+
+	int i;
+	for (i = 0; i < MAX_HELPER; i++) {
+		if (helpers[i]) {
+			struct mgmt_command_arg *item = malloc(sizeof(struct mgmt_command_arg));
+			memset(item, 0, sizeof(struct mgmt_command_arg));
+			char *name = match_get_name(i);
+			item->word = malloc(strlen(name) + 1);
+			strcpy(item->word, name);
+			item->next = res;
+			res = item;
+		}
+
+	}
+
+	return res;
+}
+

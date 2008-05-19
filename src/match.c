@@ -40,8 +40,8 @@ int match_register(const char *match_name) {
 	int i;
 
 	for (i = 0; i < MAX_MATCH; i++) {
-		if (matchs[i] != NULL) {
-			if (matchs[i]->name && strcmp(matchs[i]->name, match_name) == 0) {
+		if (matches[i] != NULL) {
+			if (matches[i]->name && strcmp(matches[i]->name, match_name) == 0) {
 				return i;
 			}
 		} else {
@@ -58,9 +58,9 @@ int match_register(const char *match_name) {
 			memset(my_match, 0, sizeof(struct match_reg));
 
 			
-			matchs[i] = my_match;
-			matchs[i]->name = malloc(strlen(match_name) + 1);
-			strcpy(matchs[i]->name, match_name);
+			matches[i] = my_match;
+			matches[i]->name = malloc(strlen(match_name) + 1);
+			strcpy(matches[i]->name, match_name);
 
 			my_match->type = i; // Allow the match to know it's number at registration time
 
@@ -68,11 +68,11 @@ int match_register(const char *match_name) {
 				pom_log(POM_LOG_ERR "Error while loading match %s. Could not register match !\r\n", match_name);
 				free(my_match->name);
 				free(my_match);
-				matchs[i] = NULL;
+				matches[i] = NULL;
 				return POM_ERR;
 			}
 
-			matchs[i]->dl_handle = handle;
+			matches[i]->dl_handle = handle;
 
 			pom_log(POM_LOG_DEBUG "Match %s registered\r\n", match_name);
 
@@ -86,13 +86,13 @@ int match_register(const char *match_name) {
 			
 			int j, k;
 			for (j = 0; j < MAX_MATCH; j++) {
-				if (!matchs[j])
+				if (!matches[j])
 					continue;
 				for (k = 0; k < MAX_MATCH; k++) {
-					if (!matchs[j]->match_deps[k].name)
+					if (!matches[j]->match_deps[k].name)
 						break;
-					if (!strcmp(matchs[j]->match_deps[k].name, match_name) && matchs[j]->match_deps[k].id != i) {
-						matchs[j]->match_deps[k].id = i;
+					if (!strcmp(matches[j]->match_deps[k].name, match_name) && matches[j]->match_deps[k].id != i) {
+						matches[j]->match_deps[k].id = i;
 						break;
 					}
 				}
@@ -118,10 +118,10 @@ struct match_dep *match_add_dependency(int match_type, const char *dep_name) {
 
 	int i;
 
-	if (!matchs[match_type])
+	if (!matches[match_type])
 		return NULL;
 
-	struct match_reg *r = matchs[match_type];
+	struct match_reg *r = matches[match_type];
 
 	for (i = 0; i < MAX_MATCH; i++) {
 		if (!r->match_deps[i].name) {
@@ -145,12 +145,12 @@ struct match_dep *match_add_dependency(int match_type, const char *dep_name) {
  */
 int match_register_field(int match_type, char *name, struct ptype *type, char *descr) {
 
-	if (!matchs[match_type])
+	if (!matches[match_type])
 		return POM_ERR;
 	int i;
 
 	for (i = 0; i < MAX_LAYER_FIELDS; i++) {
-		if (!matchs[match_type]->fields[i]) {
+		if (!matches[match_type]->fields[i]) {
 
 			struct match_field_reg *p = malloc(sizeof(struct match_field_reg));
 			memset(p, 0, sizeof(struct match_field_reg));
@@ -161,7 +161,7 @@ int match_register_field(int match_type, char *name, struct ptype *type, char *d
 			strcpy(p->descr, descr);
 			p->type = type;
 
-			matchs[match_type]->fields[i] = p;
+			matches[match_type]->fields[i] = p;
 			
 			return i;
 		}
@@ -181,16 +181,16 @@ int match_register_field(int match_type, char *name, struct ptype *type, char *d
 struct match_field *match_alloc_field(int match_type, char *field_type) {
 
 
-	if (!matchs[match_type])
+	if (!matches[match_type])
 		return NULL;
 
 	int i;
-	for (i = 0; i < MAX_LAYER_FIELDS && matchs[match_type]->fields[i]; i++) {
-		if (!strcmp(matchs[match_type]->fields[i]->name, field_type))
+	for (i = 0; i < MAX_LAYER_FIELDS && matches[match_type]->fields[i]; i++) {
+		if (!strcmp(matches[match_type]->fields[i]->name, field_type))
 			break;
 	}
 
-	if (!i >= MAX_LAYER_FIELDS || !matchs[match_type]->fields[i])
+	if (!i >= MAX_LAYER_FIELDS || !matches[match_type]->fields[i])
 		return NULL;
 	
 	struct match_field *ret;
@@ -198,12 +198,12 @@ struct match_field *match_alloc_field(int match_type, char *field_type) {
 	memset(ret, 0, sizeof(struct match_field));
 
 
-	ret->value = ptype_alloc_from(matchs[match_type]->fields[i]->type);
+	ret->value = ptype_alloc_from(matches[match_type]->fields[i]->type);
 	if (!ret->value) {
 		free(ret);
 		return NULL;
 	}
-	matchs[match_type]->refcount++;
+	matches[match_type]->refcount++;
 	ret->type = match_type;
 	ret->id = i;
 	return ret;
@@ -216,10 +216,10 @@ struct match_field *match_alloc_field(int match_type, char *field_type) {
  */
 int match_cleanup_field(struct match_field *p) {
 
-	if (!matchs[p->type])
+	if (!matches[p->type])
 		pom_log(POM_LOG_ERR "Error, invalid match type %u for field\r\n", p->type);
 	else
-		matchs[p->type]->refcount--;
+		matches[p->type]->refcount--;
 
 	ptype_cleanup(p->value);
 	free(p);
@@ -252,8 +252,8 @@ int match_init() {
  */
 char *match_get_name(int match_type) {
 
-	if (matchs[match_type])
-		return matchs[match_type]->name;
+	if (matches[match_type])
+		return matches[match_type]->name;
 	
 	return NULL;
 
@@ -267,7 +267,7 @@ char *match_get_name(int match_type) {
  */
 struct match_field_reg *match_get_field(int match_type, int field_id) {
 
-	return matchs[match_type]->fields[field_id];
+	return matches[match_type]->fields[field_id];
 
 }
 
@@ -280,7 +280,7 @@ int match_get_type(const char *match_name) {
 
 	int i;
 	for (i = 0; i < MAX_MATCH; i++) {
-		if (matchs[i] && strcmp(matchs[i]->name, match_name) == 0)
+		if (matches[i] && strcmp(matches[i]->name, match_name) == 0)
 			return i;
 	}
 
@@ -298,8 +298,8 @@ int match_get_type(const char *match_name) {
 
 int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigned int len) {
 	
-	if (matchs[l->type]->identify)
-		return (*matchs[l->type]->identify) (f, l, start, len);
+	if (matches[l->type]->identify)
+		return (*matches[l->type]->identify) (f, l, start, len);
 
 	return match_undefined_id;
 
@@ -329,8 +329,8 @@ int match_eval(struct match_field *mf, struct layer *l) {
  */
 int match_get_expectation(int match_type, int field_id, int direction) {
 
-	if (matchs[match_type]->get_expectation)
-		return (*matchs[match_type]->get_expectation) (field_id, direction);
+	if (matches[match_type]->get_expectation)
+		return (*matches[match_type]->get_expectation) (field_id, direction);
 	
 	return POM_ERR;
 
@@ -343,9 +343,9 @@ int match_get_expectation(int match_type, int field_id, int direction) {
  */
 int match_refcount_inc(int match_type) {
 
-	if (!matchs[match_type])
+	if (!matches[match_type])
 		return POM_ERR;
-	matchs[match_type]->refcount++;
+	matches[match_type]->refcount++;
 
 	return POM_OK;
 
@@ -358,15 +358,15 @@ int match_refcount_inc(int match_type) {
  */
 int match_refcount_dec(int match_type) {
 
-	if (!matchs[match_type])
+	if (!matches[match_type])
 		return POM_ERR;
 	
-	if (matchs[match_type]->refcount == 0) {
-		pom_log(POM_LOG_WARN "Warning, trying to decrease match %s reference count below 0\r\n", matchs[match_type]->name);
+	if (matches[match_type]->refcount == 0) {
+		pom_log(POM_LOG_WARN "Warning, trying to decrease match %s reference count below 0\r\n", matches[match_type]->name);
 		return POM_ERR;
 	}
 
-	matchs[match_type]->refcount--;
+	matches[match_type]->refcount--;
 
 	return POM_OK;
 
@@ -391,7 +391,7 @@ int match_cleanup() {
  */
 int match_unregister(unsigned int match_type) {
 
-	struct match_reg *r = matchs[match_type];
+	struct match_reg *r = matches[match_type];
 
 	if (!r)
 		return POM_ERR;
@@ -422,13 +422,13 @@ int match_unregister(unsigned int match_type) {
 	// update match dependencies
 	int j;
 	for (i = 0; i < MAX_MATCH; i++) {
-		if (!matchs[i])
+		if (!matches[i])
 			continue;
 		for (j = 0; j < MAX_MATCH; j++) {
-			if (!matchs[i]->match_deps[j].name)
+			if (!matches[i]->match_deps[j].name)
 				break;
-			if (!strcmp(matchs[i]->match_deps[j].name, r->name)) {
-				matchs[i]->match_deps[j].id = POM_ERR;
+			if (!strcmp(matches[i]->match_deps[j].name, r->name)) {
+				matches[i]->match_deps[j].id = POM_ERR;
 				break;
 			}
 		}
@@ -451,7 +451,7 @@ int match_unregister(unsigned int match_type) {
 	free(r->name);
 	free(r);
 
-	matchs[match_type] = NULL;
+	matches[match_type] = NULL;
 
 	return POM_OK;
 }
@@ -466,7 +466,7 @@ int match_unregister_all() {
 	int result = POM_OK;
 
 	for (; i < MAX_MATCH; i++)
-		if (matchs[i])
+		if (matches[i])
 			if (match_unregister(i) == POM_ERR)
 				result = POM_ERR;
 
@@ -483,16 +483,16 @@ void match_print_help() {
 
 
 	for (i = 0; i < MAX_MATCH; i++) {
-		if (!matchs[i])
+		if (!matches[i])
 			continue;
-		printf("* MATCH %s *\n", matchs[i]->name);
+		printf("* MATCH %s *\n", matches[i]->name);
 		
-		if (!matchs[i]->fields[0])
+		if (!matches[i]->fields[0])
 			printf("No field for this match\n");
 		else {
 			int j;
-			for (j = 0; j < MAX_LAYER_FIELDS && matchs[i]->fields[j]; j++)
-				printf("  %s : %s\n", matchs[i]->fields[j]->name, matchs[i]->fields[j]->descr);
+			for (j = 0; j < MAX_LAYER_FIELDS && matches[i]->fields[j]; j++)
+				printf("  %s : %s\n", matches[i]->fields[j]->name, matches[i]->fields[j]->descr);
 		}
 		printf("\n");
 	}

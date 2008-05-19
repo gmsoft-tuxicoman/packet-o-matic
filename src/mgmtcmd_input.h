@@ -31,9 +31,14 @@ int mgmtcmd_show_input(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_start_input(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_stop_input(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_input_type(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_set_input_type_completion(int argc, char *argv[]);
 int mgmtcmd_set_input_mode(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_set_input_mode_completion(int argc, char *argv[]);
 int mgmtcmd_set_input_parameter(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_set_input_parameter_completion(int argc, char *argv[]);
 int mgmtcmd_load_input(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_load_input_completion(int argc, char *argv[]);
 int mgmtcmd_unload_input(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_unload_input_completion(int argc, char *argv[]);
 
 #endif

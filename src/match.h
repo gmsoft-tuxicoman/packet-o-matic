@@ -52,11 +52,11 @@ struct match_dep {
 /*@{*/
 #undef MAX_MATCH
 
-/// Maximum of register matchs
+/// Maximum of register matches
 #define MAX_MATCH 16
 
-/// Variable that hold info about all the registered matchs
-struct match_reg *matchs[MAX_MATCH];
+/// Variable that hold info about all the registered matches
+struct match_reg *matches[MAX_MATCH];
 
 /*@}*/
 /** @defgroup match_api **/
@@ -161,10 +161,10 @@ int match_cleanup();
 /// Unregister a match
 int match_unregister(unsigned int match_type);
 
-/// Unregister all the matchs
+/// Unregister all the matches
 int match_unregister_all();
 
-/// Print the help of all the loaded matchs
+/// Print the help of all the loaded matches
 void match_print_help();
 
 

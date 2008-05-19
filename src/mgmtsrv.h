@@ -38,7 +38,7 @@ struct mgmt_command *cmds;
 #define MGMT_MAX_CMD_WORDS 16
 
 // Maximum number of words in a command entered in the console
-#define MGMT_MAX_CMD_WORDS_ARGS 2048
+#define MGMT_MAX_CMD_WORDS_ARGS 128
 
 #define MGMT_CMD_HISTORY_SIZE 100
 
@@ -73,6 +73,10 @@ struct mgmt_connection {
 
 };
 
+struct mgmt_command_arg {
+	char *word;
+	struct mgmt_command_arg *next;
+};
 
 struct mgmt_command {
 
@@ -81,6 +85,7 @@ struct mgmt_command {
 	char *usage;
 
 	int (*callback_func) (struct mgmt_connection *c, int argc, char *argv[]);
+	struct mgmt_command_arg* (*completion) (int argc, char *argv[]);
 
 	struct mgmt_command *next;
 	struct mgmt_command *prev;

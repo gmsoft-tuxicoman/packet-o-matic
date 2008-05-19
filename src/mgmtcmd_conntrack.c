@@ -36,6 +36,7 @@ struct mgmt_command mgmt_conntrack_commands[MGMT_CONNTRACK_COMMANDS_NUM] = {
 		.help = "Change the value of a conntrack parameter",
 		.usage = "set conntrack parameter <conntrack> <parameter> <value>",
 		.callback_func = mgmtcmd_set_conntrack_param,
+		.completion = mgmtcmd_set_conntrack_param_completion,
 	},
 
 	{
@@ -43,6 +44,7 @@ struct mgmt_command mgmt_conntrack_commands[MGMT_CONNTRACK_COMMANDS_NUM] = {
 		.help = "Load a conntrack from the system",
 		.usage = "load conntrack <conntrack>",
 		.callback_func = mgmtcmd_load_conntrack,
+		.completion = mgmtcmd_load_conntrack_completion,
 	},
 
 	{
@@ -50,6 +52,7 @@ struct mgmt_command mgmt_conntrack_commands[MGMT_CONNTRACK_COMMANDS_NUM] = {
 		.help = "Unload a conntrack from the system",
 		.usage = "unload conntrack <conntrack>",
 		.callback_func = mgmtcmd_unload_conntrack,
+		.completion = mgmtcmd_unload_conntrack_completion,
 	},
 		
 };
@@ -116,6 +119,49 @@ int mgmtcmd_set_conntrack_param(struct mgmt_connection *c, int argc, char *argv[
 
 }
 
+struct mgmt_command_arg* mgmtcmd_set_conntrack_param_completion(int argc, char *argv[]) {
+
+	struct mgmt_command_arg *res = NULL;
+
+	switch (argc) {
+		case 3:
+			res = mgmtcmd_unload_conntrack_completion(2, argv);
+			break;
+
+		case 4: {
+			int i, conntrack_id = -1;
+			for (i = 0; i < MAX_CONNTRACK; i++) {
+				if (conntracks[i]) {
+					char *name = match_get_name(i);
+					if (!strcmp(argv[3], name)) {
+						conntrack_id = i;
+						break;
+					}
+				}
+
+			}
+			if (conntrack_id == -1)
+				return NULL;
+			
+			struct conntrack_param *p = conntracks[conntrack_id]->params;
+			while (p) {
+				struct mgmt_command_arg *item = malloc(sizeof(struct mgmt_command_arg));
+				memset(item, 0, sizeof(struct mgmt_command_arg));
+				item->word = malloc(strlen(p->name) + 1);
+				strcpy(item->word, p->name);
+				p = p->next;
+
+				item->next = res;
+				res = item;
+			}
+
+			break;
+		}
+	}
+
+	return res;
+
+}
 int mgmtcmd_load_conntrack(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
@@ -145,6 +191,15 @@ int mgmtcmd_load_conntrack(struct mgmt_connection *c, int argc, char *argv[]) {
 	return POM_OK;
 
 }
+
+struct mgmt_command_arg* mgmtcmd_load_conntrack_completion(int argc, char *argv[]) {
+
+	struct mgmt_command_arg *res = NULL;
+	res = mgmtcmd_list_modules("conntrack");
+	return res;
+
+}
+
 int mgmtcmd_unload_conntrack(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
@@ -175,3 +230,26 @@ int mgmtcmd_unload_conntrack(struct mgmt_connection *c, int argc, char *argv[]) 
 
 }
 
+struct mgmt_command_arg* mgmtcmd_unload_conntrack_completion(int argc, char *argv[]) {
+
+	struct mgmt_command_arg *res = NULL;
+
+	if (argc != 2)
+		return NULL;
+
+	int i;
+	for (i = 0; i < MAX_CONNTRACK; i++) {
+		if (conntracks[i]) {
+			struct mgmt_command_arg *item = malloc(sizeof(struct mgmt_command_arg));
+			memset(item, 0, sizeof(struct mgmt_command_arg));
+			char *name = match_get_name(i);
+			item->word = malloc(strlen(name) + 1);
+			strcpy(item->word, name);
+			item->next = res;
+			res = item;
+		}
+
+	}
+
+	return res;
+}

@@ -24,6 +24,8 @@
 #include "mgmtcmd.h"
 #include "match.h"
 
+#include <dirent.h>
+
 #include "mgmtcmd_conntrack.h"
 #include "mgmtcmd_input.h"
 #include "mgmtcmd_helper.h"
@@ -84,6 +86,7 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.help = "Change the current debug level",
 		.callback_func = mgmtcmd_set_debug_level,
 		.usage = "set debug level <0-5>",
+		.completion = mgmtcmd_set_debug_level_completion,
 	},
 
 	{
@@ -123,6 +126,7 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.help = "Load a match into the system",
 		.usage = "load match <match>",
 		.callback_func = mgmtcmd_load_match,
+		.completion = mgmtcmd_load_match_completion,
 	},
 
 	{
@@ -130,6 +134,7 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.help = "Unload a match from the system",
 		.usage = "unload match <match>",
 		.callback_func = mgmtcmd_unload_match,
+		.completion = mgmtcmd_unload_match_completion,
 	},
 
 	{
@@ -137,6 +142,7 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.help = "Load a ptype into the system",
 		.usage = "load ptype <ptype>",
 		.callback_func = mgmtcmd_load_ptype,
+		.completion = mgmtcmd_load_ptype_completion,
 	},
 
 	{
@@ -144,6 +150,7 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.help = "Unload a ptype from the system",
 		.usage = "unload ptype <ptype>",
 		.callback_func = mgmtcmd_unload_ptype,
+		.completion = mgmtcmd_unload_ptype_completion,
 	},
 
 };
@@ -316,6 +323,18 @@ int mgmtcmd_set_debug_level(struct mgmt_connection *c, int argc, char *argv[]) {
 	return POM_OK;
 }
 
+struct mgmt_command_arg *mgmtcmd_set_debug_level_completion(int argc, char *argv[]) {
+
+	if (argc != 3)
+		return NULL;
+
+	struct mgmt_command_arg *res = NULL;
+	res = mgmtcmd_completion_int_range(0, 6);
+
+	return res;
+
+}
+
 int mgmtcmd_show_debug_level(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	mgmtsrv_send(c, "Debug level is ");
@@ -426,11 +445,28 @@ int mgmtcmd_load_match(struct mgmt_connection *c, int argc, char *argv[]) {
 	return POM_OK;
 
 }
+
+struct mgmt_command_arg* mgmtcmd_load_match_completion(int argc, char *argv[]) {
+
+	if (argc != 2)
+		return NULL;
+
+	struct mgmt_command_arg *res = NULL;
+	res = mgmtcmd_list_modules("match");
+	return res;
+
+}
+
 int mgmtcmd_unload_match(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
 	if (argc != 1)
 		return MGMT_USAGE;
+
+	if (!strcmp(argv[0], "undefined")) {
+		mgmtsrv_send(c, "Match undefined cannot be unloaded because it's a system match\r\n");
+		return POM_OK;
+	}
 
 	int id = match_get_type(argv[0]);
 
@@ -444,7 +480,7 @@ int mgmtcmd_unload_match(struct mgmt_connection *c, int argc, char *argv[]) {
 		return POM_OK;
 	}
 
-	if (matchs[id]->refcount) {
+	if (matches[id]->refcount) {
 		mgmtsrv_send(c, "Match %s is still in use. Cannot unload it\r\n", argv[0]);
 		return POM_OK;
 	}
@@ -459,6 +495,32 @@ int mgmtcmd_unload_match(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	return POM_OK;
 
+}
+
+struct mgmt_command_arg* mgmtcmd_unload_match_completion(int argc, char *argv[]) {
+
+	struct mgmt_command_arg *res = NULL;
+
+	if (argc != 2)
+		return NULL;
+
+	int i;
+	for (i = 0; i < MAX_MATCH; i++) {
+		if (matches[i]) {
+			char *name = match_get_name(i);
+			if (!strcmp(name, "undefined"))
+				continue;
+			struct mgmt_command_arg *item = malloc(sizeof(struct mgmt_command_arg));
+			memset(item, 0, sizeof(struct mgmt_command_arg));
+			item->word = malloc(strlen(name) + 1);
+			strcpy(item->word, name);
+			item->next = res;
+			res = item;
+		}
+
+	}
+
+	return res;
 }
 
 int mgmtcmd_load_ptype(struct mgmt_connection *c, int argc, char*argv[]) {
@@ -478,6 +540,17 @@ int mgmtcmd_load_ptype(struct mgmt_connection *c, int argc, char*argv[]) {
 		mgmtsrv_send(c, "Ptype %s regitered with id %u\r\n", argv[0], id);
 
 	return POM_OK;
+
+}
+
+struct mgmt_command_arg* mgmtcmd_load_ptype_completion(int argc, char *argv[]) {
+
+	if (argc != 2)
+		return NULL;
+
+	struct mgmt_command_arg *res = NULL;
+	res = mgmtcmd_list_modules("ptype");
+	return res;
 
 }
 
@@ -511,3 +584,137 @@ int mgmtcmd_unload_ptype(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
+struct mgmt_command_arg* mgmtcmd_unload_ptype_completion(int argc, char *argv[]) {
+
+	struct mgmt_command_arg *res = NULL;
+
+	if (argc != 2)
+		return NULL;
+
+	int i;
+	for (i = 0; i < MAX_PTYPE; i++) {
+		if (ptypes[i]) {
+			struct mgmt_command_arg *item = malloc(sizeof(struct mgmt_command_arg));
+			memset(item, 0, sizeof(struct mgmt_command_arg));
+			char *name = ptypes[i]->name;
+			item->word = malloc(strlen(name) + 1);
+			strcpy(item->word, name);
+			item->next = res;
+			res = item;
+		}
+
+	}
+
+	return res;
+}
+
+struct mgmt_command_arg* mgmtcmd_list_modules(char *type) {
+
+
+	struct mgmt_command_arg *res = NULL;
+
+	char *path = getenv("LD_LIBRARY_PATH");
+
+	if (!path) {
+		res = mgmtcmd_list_modules_browse(LIBDIR, type);
+	} else {
+		char *my_path = malloc(strlen(path) + 1);
+		strcpy(my_path, path);
+
+		char *str, *token, *saveptr = NULL;
+		for (str = my_path; ; str = NULL) {
+			token = strtok_r(str, ":", &saveptr);
+			if (!token)
+				break;
+
+			struct mgmt_command_arg *list;
+			list = mgmtcmd_list_modules_browse(token, type);
+			while (list) {
+				struct mgmt_command_arg *tmp = res;
+				int dupe = 0;
+				while (tmp) {
+					if (!strcmp(list->word, tmp->word)) {
+						dupe = 1;
+						break;
+					}
+					tmp = tmp->next;
+				}
+				list = list->next;
+				struct mgmt_command_arg *tmp2;
+				if (dupe) {
+					tmp2 = list;
+					list = list->next;
+					free(tmp2->word);
+					free(tmp2);
+				} else {
+					tmp2 = list->next;
+					list->next = res;
+					res = list;
+					list = tmp2;
+				}
+			}
+		}
+
+		free(my_path);
+	}
+	
+
+	return res;
+}
+
+struct mgmt_command_arg* mgmtcmd_list_modules_browse(char *path, char *type) {
+
+
+	DIR *d;
+	d = opendir(path);
+	if (!d) 
+		return 0;
+
+	struct dirent *dp;
+	char name[NAME_MAX];
+
+	char *scanstr = malloc(strlen(type) + 4);
+	strcpy(scanstr, type);
+	strcat(scanstr, "_%s");
+
+
+	struct mgmt_command_arg* res = NULL;
+
+	while ((dp = readdir(d))) {
+
+		if (sscanf(dp->d_name, scanstr, name) == 1) {
+			char *dot = strchr(name, '.');
+			*dot = 0;
+			struct mgmt_command_arg* item = malloc(sizeof(struct mgmt_command_arg));
+			memset(item, 0, sizeof(struct mgmt_command_arg));
+			item->word = malloc(strlen(name) + 1);
+			strcpy(item->word, name);
+			item->next = res;
+			res = item;
+		}
+	}
+
+	closedir(d);
+	free(scanstr);
+
+	return res;
+
+}
+
+struct mgmt_command_arg *mgmtcmd_completion_int_range(int start, int count) {
+	struct mgmt_command_arg* res = NULL;
+	int i, end = start + count;
+	for (i = start; i < end; i++) {
+		char temp[64];
+		snprintf(temp, 255, "%u", i);
+		struct mgmt_command_arg* item = malloc(sizeof(struct mgmt_command_arg));
+		memset(item, 0, sizeof(struct mgmt_command_arg));
+		item->word = malloc(strlen(temp) + 1);
+		strcpy(item->word, temp);
+
+		item->next = res;
+		res = item;
+	}
+
+	return res;
+}

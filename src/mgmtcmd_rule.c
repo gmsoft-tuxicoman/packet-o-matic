@@ -31,6 +31,7 @@ struct mgmt_command mgmt_rule_commands[MGMT_RULE_COMMANDS_NUM] = {
 		.words = { "show", "rules", NULL },
 		.help = "Display all the configured rules",
 		.callback_func = mgmtcmd_show_rules,
+		.completion = mgmt_show_rules_completion,
 		.usage = "show rules [tree | flat]",
 	},
 	
@@ -38,6 +39,7 @@ struct mgmt_command mgmt_rule_commands[MGMT_RULE_COMMANDS_NUM] = {
 		.words = { "set", "rule", NULL },
 		.help = "Change a rule",
 		.callback_func = mgmtcmd_set_rule,
+		.completion = mgmtcmd_rule_id_completion,
 		.usage = "set rule <rule_id> <rule>",
 	},
 
@@ -45,6 +47,7 @@ struct mgmt_command mgmt_rule_commands[MGMT_RULE_COMMANDS_NUM] = {
 		.words = { "disable", "rule", NULL },
 		.help = "Disable a rule",
 		.callback_func = mgmtcmd_disable_rule,
+		.completion = mgmtcmd_rule_id_completion,
 		.usage = "disable rule <rule_id>",
 	},
 
@@ -52,6 +55,7 @@ struct mgmt_command mgmt_rule_commands[MGMT_RULE_COMMANDS_NUM] = {
 		.words = { "enable", "rule", NULL },
 		.help = "Enable a rule",
 		.callback_func = mgmtcmd_enable_rule,
+		.completion = mgmtcmd_rule_id_completion,
 		.usage = "enable rule <rule_id>",
 	},
 
@@ -66,10 +70,25 @@ struct mgmt_command mgmt_rule_commands[MGMT_RULE_COMMANDS_NUM] = {
 		.words = { "remove", "rule", NULL },
 		.help = "remove a rule",
 		.callback_func = mgmtcmd_remove_rule,
+		.completion = mgmtcmd_rule_id_completion,
 		.usage = "remove rule <rule_id>",
 	},
 
 };
+
+struct mgmt_command_arg* mgmtcmd_rule_id_completion(int argc, char *argv[]) {
+
+	if (argc != 2)
+		return NULL;
+
+	struct rule_list *rl;
+	int count = 0;
+	for (rl = main_config->rules; rl; rl = rl->next)
+		count++;
+
+	return mgmtcmd_completion_int_range(0, count);
+	
+}
 
 int mgmtcmd_rule_register_all() {
 
@@ -280,6 +299,32 @@ int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]) {
 	}
 
 	return POM_OK;
+}
+
+struct mgmt_command_arg* mgmt_show_rules_completion(int argc, char *argv[]) {
+
+	if (argc != 2)
+		return NULL;
+
+	struct mgmt_command_arg* res = NULL;
+
+	res = malloc(sizeof(struct mgmt_command_arg));
+	memset(res, 0, sizeof(struct mgmt_command_arg));
+	char *flat = "flat";
+	res->word = malloc(strlen(flat) + 1);
+	strcpy(res->word, flat);
+
+	struct mgmt_command_arg* tmp = NULL;
+	tmp = malloc(sizeof(struct mgmt_command_arg));
+	memset(tmp, 0, sizeof(struct mgmt_command_arg));
+	char *tree = "tree";
+	tmp->word = malloc(strlen(tree) + 1);
+	strcpy(tmp->word, tree);
+
+	res->next = tmp;
+
+	return res;
+
 }
 
 struct rule_node *mgmtcmd_set_rule_parse_block(struct mgmt_connection *c, char *expr) {
