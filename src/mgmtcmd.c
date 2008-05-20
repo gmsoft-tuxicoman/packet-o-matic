@@ -639,7 +639,6 @@ struct mgmt_command_arg* mgmtcmd_list_modules(char *type) {
 					}
 					tmp = tmp->next;
 				}
-				list = list->next;
 				struct mgmt_command_arg *tmp2;
 				if (dupe) {
 					tmp2 = list;
