@@ -1,3 +1,6 @@
+* 2008/05/20 Guy Martin <gmsoft@tuxicoman.be>
+Make input_docsis release the input lock while scanning.
+
 * 2008/05/19 Guy Martin <gmsoft@tuxicoman.be>
 Added completion on commands arguments.
 Reduced maximum command words to 128.

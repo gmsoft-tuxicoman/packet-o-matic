@@ -39,6 +39,7 @@
 /// Private structure of the docsis input.
 struct input_priv_docsis {
 
+	char *frontend_name; ///< Name of the frontend device
 	int frontend_fd; ///< The fd of /dev/dvb/adapterX/frontendX.
 	int demux_fd; ///< The fd of /dev/dvb/adapterX/demuxX.
 	int dvr_fd; ///< The fd of /dev/dvb/adapterX/dvrX.
@@ -46,6 +47,12 @@ struct input_priv_docsis {
 	int output_layer; ///< The type of packet we output.
 	unsigned int temp_buff_len; ///< The length of our temporary buffer.
 	unsigned char last_seq; ///< Last MPEG sequence in the stream used count packet loss.
+
+	unsigned int scan_curfreq; ///< Current frequency when scanning
+	unsigned int scan_step; ///< Frequency steps to use
+	unsigned int scan_endfreq; ///< Frequency to stop at
+	unsigned int scan_srate; ///< Symbol rate to use
+	fe_modulation_t scan_modulation; ////< Modulation to use
 
 	// stats stuff
 	unsigned long total_packets; ///< Total packet read.
@@ -64,6 +71,9 @@ int input_init_docsis(struct input *i);
 
 /// Open the cable interface to read from it.
 int input_open_docsis(struct input *i);
+
+/// Scan the current frequency for a docsis stream
+int input_scan_docsis(struct input *i);
 
 /// Read packets from the DOCSIS cable interface and saves it into buffer.
 int input_read_docsis(struct input *i, struct frame *f);

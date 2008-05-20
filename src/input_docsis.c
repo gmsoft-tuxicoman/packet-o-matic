@@ -204,6 +204,8 @@ int input_open_docsis(struct input *i) {
 	strcpy(frontend, adapter);
 	strcat(frontend, "/frontend");
 	ptype_print_val(p_frontend, frontend + strlen(frontend), NAME_MAX - strlen(frontend));
+	p->frontend_name = malloc(strlen(frontend) + 1);
+	strcpy(p->frontend_name, frontend);
 
 	p->frontend_fd = open(frontend, O_RDWR);
 	if (p->frontend_fd == -1) {
@@ -303,7 +305,6 @@ int input_open_docsis(struct input *i) {
 		unsigned int start = PTYPE_UINT32_GETVAL(p_startfreq);
 
 		unsigned int end, step;
-		int j;
 		if (eurodocsis) {
 			if (start < 112000000)
 				start = 112000000;
@@ -322,60 +323,17 @@ int input_open_docsis(struct input *i) {
 			step = 1000000;
 		}
 
+		p->scan_curfreq = start;
+		p->scan_step = step;
+		p->scan_endfreq = end;
+		p->scan_srate = symbolRate;
+		p->scan_modulation = modulation;
 
-		unsigned int need_reinit = PTYPE_BOOL_GETVAL(p_frontend_reinit);
+
 
 
 		pom_log("Starting a scan from %uMhz to %uMhz\r\n", start / 1000000, end / 1000000);
-		for (j = start; j <= end; j += step) {
-
-			pom_log("Tuning to %u Mhz ...\r\n", j / 1000000);
-
-			int res = input_docsis_tune(i, j, symbolRate, modulation);
-			if (res == POM_ERR)
-				goto err;
-			else if (res == 0) {
-				if (need_reinit) {
-					// Let's close and reopen the frontend to reinit it
-					pom_log("Reinitializing frontend ...\r\n");
-					close(p->frontend_fd);
-					sleep(10); // Yes, stupid frontends need to be closed to lock again or result is arbitrary
-					p->frontend_fd = open(frontend, O_RDWR);
-					if (p->frontend_fd == -1) {
-						pom_log(POM_LOG_ERR "Error while reopening frontend\r\n");
-						goto err;
-					}
-				}
-				continue;
-			}
-
-			tuned = 1;
-
-			pom_log("Frequency tunned. Looking up for SYNC messages ...\r\n");
-
-			if (input_docsis_check_downstream(i) == POM_ERR)
-				continue;
-
-			pom_log("Downstream acquired !\r\n");
-			pom_log("Frequency : %f Mhz, Symbol rate : %u Sym/s, QAM : ", (double) j / 1000000.0, symbolRate);
-			if (modulation == QAM_64)
-				pom_log("QAM64");
-			else if(modulation == QAM_256)
-				pom_log("QAM256");
-			pom_log("\r\n");
-
-			PTYPE_UINT32_SETVAL(p_frequency, j);
-
-			i->mode = mode_normal;
-
-			break;
-
-		}
-
-		if (j > end) {
-			pom_log(POM_LOG_WARN "No DOCSIS stream found\r\n");
-			goto err;
-		}
+		return POM_OK;
 	} else {
 		pom_log(POM_LOG_ERR "Invalid input mode\r\n");
 		goto err;
@@ -665,10 +623,70 @@ int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_docsis *
 }
 
 /**
+ * Scan for a docsis stream on the current frequency. Change mode to normal once found or increase curfreq if not.
+ * Return POM_ERR if whole range was scanned or in case of error.
+ */
+int input_scan_docsis(struct input *i) {
+
+
+	struct input_priv_docsis *p = i->input_priv;
+
+	int j = p->scan_curfreq;
+	p->scan_curfreq += p->scan_step;
+
+	unsigned int need_reinit = PTYPE_BOOL_GETVAL(p_frontend_reinit);
+
+	pom_log("Tuning to %u Mhz ...\r\n", j / 1000000);
+
+	int res = input_docsis_tune(i, j, p->scan_srate, p->scan_modulation);
+	if (res == POM_ERR)
+		return POM_ERR;
+	else if (res == 0) {
+		if (need_reinit) {
+			// Let's close and reopen the frontend to reinit it
+			pom_log("Reinitializing frontend ...\r\n");
+			close(p->frontend_fd);
+			sleep(10); // Yes, stupid frontends need to be closed to lock again or result is arbitrary
+			p->frontend_fd = open(p->frontend_name, O_RDWR);
+			if (p->frontend_fd == -1) {
+				pom_log(POM_LOG_ERR "Error while reopening frontend\r\n");
+				return POM_ERR;
+			}
+		}
+		return POM_OK;
+	}
+
+	pom_log("Frequency tunned. Looking up for SYNC messages ...\r\n");
+
+	if (input_docsis_check_downstream(i) == POM_ERR)
+		return POM_OK;
+
+	pom_log("Downstream acquired !\r\n");
+	pom_log("Frequency : %f Mhz, Symbol rate : %u Sym/s, QAM : ", (double) j / 1000000.0, p->scan_srate);
+	if (p->scan_modulation == QAM_64)
+		pom_log("QAM64");
+	else if(p->scan_modulation == QAM_256)
+		pom_log("QAM256");
+	pom_log("\r\n");
+
+	PTYPE_UINT32_SETVAL(p_frequency, j);
+
+	i->mode = mode_normal;
+
+	if (p->scan_curfreq > p->scan_endfreq) {
+		pom_log(POM_LOG_WARN "No DOCSIS stream found\r\n");
+		return POM_ERR;
+	}
+	return POM_OK;
+}
+/**
  * Returns POM_OK or POM_ERR in case of fatal error.
  **/
 
 int input_read_docsis(struct input *i, struct frame *f) {
+
+	if (i->mode == mode_scan)
+		return input_scan_docsis(i);
 
 	struct input_priv_docsis *p = i->input_priv;
 
@@ -904,7 +922,10 @@ int input_close_docsis(struct input *i) {
 	struct input_priv_docsis *p = i->input_priv;
 	if (!p)
 		return POM_ERR;
-	
+
+	free(p->frontend_name);
+	p->frontend_name = 0;
+
 	close(p->frontend_fd);
 	close(p->demux_fd);
 	close(p->dvr_fd);
