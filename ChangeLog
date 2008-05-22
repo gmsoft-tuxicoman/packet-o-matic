@@ -1,3 +1,7 @@
+* 2008/05/22 Guy Martin <gmsoft@tuxicoman.be>
+Added completion for "set core parameter".
+Fix completion of "load conntrack".
+
 * 2008/05/20 Guy Martin <gmsoft@tuxicoman.be>
 Make input_docsis release the input lock while scanning.
 Fix memory leak when doing completion on modules names.

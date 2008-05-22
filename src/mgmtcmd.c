@@ -119,6 +119,7 @@ struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.help = "Change the value of a core parameter",
 		.callback_func = mgmtcmd_set_core_parameter,
 		.usage = "set core parameter <parameter> <value>",
+		.completion = mgmtcmd_set_core_parameter_completion,
 	},
 
 	{
@@ -419,6 +420,27 @@ int mgmtcmd_set_core_parameter(struct mgmt_connection *c, int argc, char *argv[]
 	return POM_OK;
 }
 
+struct mgmt_command_arg *mgmtcmd_set_core_parameter_completion(int argc, char *argv[]) {
+
+
+	if (argc != 3)
+		return NULL;
+
+	struct mgmt_command_arg *res = NULL;
+	
+	struct core_param *p = core_params;
+	while (p) {
+		struct mgmt_command_arg *item = malloc(sizeof(struct mgmt_command_arg));
+		memset(item, 0, sizeof(struct mgmt_command_arg));
+		item->word = malloc(strlen(p->name) + 1);
+		strcpy(item->word, p->name);
+		item->next = res;
+		res = item;
+		p = p->next;
+	}
+
+	return res;
+}
 
 int mgmtcmd_load_match(struct mgmt_connection *c, int argc, char *argv[]) {
 

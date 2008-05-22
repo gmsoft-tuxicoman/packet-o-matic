@@ -194,6 +194,9 @@ int mgmtcmd_load_conntrack(struct mgmt_connection *c, int argc, char *argv[]) {
 
 struct mgmt_command_arg* mgmtcmd_load_conntrack_completion(int argc, char *argv[]) {
 
+	if (argc != 2)
+		return NULL;
+
 	struct mgmt_command_arg *res = NULL;
 	res = mgmtcmd_list_modules("conntrack");
 	return res;
