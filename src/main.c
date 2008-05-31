@@ -53,6 +53,7 @@
 #include <sys/time.h>
 #endif
 
+#define INPUTSIG SIGUSR1
 
 pthread_mutex_t reader_mutex = PTHREAD_MUTEX_INITIALIZER; ///< Mutex used to lock the reader thread if changes are made or modules are loaded/unloaded
 pthread_t input_thread;
@@ -65,11 +66,21 @@ void signal_handler(int signal) {
 	
 	pom_log("Received signal. Finishing ... !\r\n");
 	finish = 1;
-	if (rbuf->state != rb_state_closed)
+	if (rbuf && rbuf->state != rb_state_closed)
 		rbuf->state = rb_state_stopping;
 
 }
 
+void input_signal_handler(int signal) {
+
+	if (!rbuf || !rbuf->i)
+		return;
+
+	pom_log(POM_LOG_TSHOOT "Interrupting input syscall ...\r\n");
+
+	input_interrupt(rbuf->i);
+
+}
 
 void print_usage() {
 
@@ -269,7 +280,7 @@ int start_input(struct ringbuffer *r) {
 
 int stop_input(struct ringbuffer *r) {
 
-	if (r->state != rb_state_open) {
+	if (r->state != rb_state_open && r->state != rb_state_stopping) {
 		pom_log(POM_LOG_WARN "Input not yet started\r\n");
 		return POM_ERR;
 	}
@@ -285,6 +296,10 @@ int stop_input(struct ringbuffer *r) {
 		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
 		return POM_ERR;
 	}
+
+	// interrupt current read()
+	pom_log(POM_LOG_TSHOOT "Sending signal to interrupt the input thread\r\n");
+	pthread_kill(input_thread, INPUTSIG);
 
 	pthread_join(input_thread, NULL);
 
@@ -303,6 +318,20 @@ void *input_thread_func(void *params) {
 		return NULL;
 	}
 
+	// allow INPUTSIG to interrupt syscall
+	static sigset_t sigmask;
+	sigemptyset(&sigmask);
+	sigaddset(&sigmask, INPUTSIG);
+	pthread_sigmask(SIG_UNBLOCK, &sigmask, NULL);
+	siginterrupt(INPUTSIG, 1);
+
+	// set SIGIGN for the INPUTSIG
+	struct sigaction mysigaction;
+	sigemptyset(&mysigaction.sa_mask);
+	mysigaction.sa_flags = 0;
+	mysigaction.sa_handler = input_signal_handler;
+	sigaction(INPUTSIG, &mysigaction, NULL);
+
 	pom_log(POM_LOG_DEBUG "Input thead started\r\n");
 
 	while (r->state == rb_state_open) {
@@ -312,31 +341,6 @@ void *input_thread_func(void *params) {
 			finish = 1;
 			return NULL;
 		}
-
-		if (r->fd != POM_OK)
-			while (r->state == rb_state_open) {
-				fd_set rfds;
-				struct timeval tv;
-				int retval;
-
-				FD_ZERO(&rfds);
-				FD_SET(r->fd, &rfds);
-
-				tv.tv_sec = 1;
-				tv.tv_usec = 0;
-
-				retval = select(1, &rfds, NULL, NULL, &tv);
-
-				if (retval == -1) {
-					pom_log("Error while select() on the input\r\n");
-					r->state = rb_state_stopping;
-					break;
-				} else if (retval)
-					break;
-
-				// Timeout
-				continue;
-			}
 
 		if (r->state != rb_state_open)
 			break;
@@ -580,8 +584,18 @@ int main(int argc, char *argv[]) {
 	}
 
 	// Install the signal handler
-	signal(SIGHUP, signal_handler);
-	signal(SIGINT, signal_handler);
+	struct sigaction mysigaction;
+	sigemptyset(&mysigaction.sa_mask);
+	mysigaction.sa_flags = 0;
+	mysigaction.sa_handler = signal_handler;
+	sigaction(SIGINT, &mysigaction, NULL);
+	sigaction(SIGHUP, &mysigaction, NULL);
+
+	// Ignore INPUTSIG in this thread and subsequent ones
+	static sigset_t sigmask;
+	sigemptyset(&sigmask);
+	sigaddset(&sigmask, INPUTSIG);
+	pthread_sigmask(SIG_BLOCK, &sigmask, NULL);
 
 	main_config = config_alloc();
 	if (empty_config) {

@@ -254,7 +254,7 @@ struct input *input_alloc(int input_type) {
 /**
  * @ingroup input_core
  * @param i Pointer to an allocated struct input
- * @return A selectable file descriptor or POM_ERR on failure.
+ * @return POM_OK or POM_ERR on failure.
  **/
 int input_open(struct input *i) {
 
@@ -450,4 +450,21 @@ void input_print_help() {
 
 		printf("\n");
 	}
+}
+
+/**
+ * @ingroup input_core
+ * @param i Input to interrupt
+ * @return POM_OK on success, POM_ERR on failure
+ */
+
+int input_interrupt(struct input *i) {
+
+	if (!i)
+		return POM_ERR;
+
+	if (inputs[i->type]->interrupt)
+		return (*inputs[i->type]->interrupt) (i);
+
+	return POM_OK;
 }

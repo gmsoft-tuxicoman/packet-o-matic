@@ -36,6 +36,7 @@ int input_register_pcap(struct input_reg *r) {
 	r->cleanup = input_cleanup_pcap;
 	r->getcaps = input_getcaps_pcap;
 	r->unregister = input_unregister_pcap;
+	r->interrupt = input_interrupt_pcap;
 
 	mode_interface = input_register_mode(r->type, "interface", "Read packets from an interface");
 	mode_file = input_register_mode(r->type, "file", "Read packets from a pcap file");
@@ -188,10 +189,7 @@ int input_open_pcap(struct input *i) {
 
 	}
 
-	int fd = pcap_get_selectable_fd(p->p);
-	if (fd == -1)
-		return POM_OK; //Means open but no fd (*wtf*)
-	return fd;
+	return POM_OK; //Means open but no fd (*wtf*)
 }
 
 int input_read_pcap(struct input *i, struct frame *f) {
@@ -274,4 +272,15 @@ int input_getcaps_pcap(struct input *i, struct input_caps *ic) {
 
 }
 
+int input_interrupt_pcap(struct input *i) {
+
+	struct input_priv_pcap *p = i->input_priv;
+
+	if (!p || !p->p)
+		return POM_ERR;
+
+	pcap_breakloop(p->p);
+	return POM_OK;
+
+}
 

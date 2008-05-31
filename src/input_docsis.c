@@ -347,7 +347,6 @@ int input_open_docsis(struct input *i) {
 
 	pom_log("Docsis stream opened successfullly\r\n");
 	
-	// Do not return file descriptor, select() doesn't work on these files
 	return POM_OK;
 
 err:

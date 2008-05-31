@@ -101,7 +101,7 @@ struct input_reg {
 	/**
 	 * The open function is called when opening the input.
 	 * @param i The input to init
-	 * @return A selectable file descriptor or POM_OK on success and POM_ERR on failure.
+	 * @return POM_OK on success and POM_ERR on failure.
 	 **/
 	int (*open) (struct input *i);
 
@@ -148,6 +148,14 @@ struct input_reg {
 	 * @return POM_OK on success and POM_ERR on failure.
 	 **/
 	int (*getcaps) (struct input *i, struct input_caps *ic);
+
+	/// Pointer to interrupt that should be called when interrupting the current read
+	/**
+	 * This function is actually a signal handler. Make sure it only calls signal safe functions.
+	 * @param sig Signal that was delivered
+	 * @return POM_OK on success and POM_ERR on failure.
+	 */
+	int (*interrupt) (struct input *i);
 
 	/// Pointer to the different possible modes.
 	struct input_mode *modes;
@@ -202,6 +210,8 @@ void input_print_help();
 /// Return current input caps.
 int input_getcaps(struct input *i, struct input_caps *ic); 
 
+/// Execute code to help interrupting input reading
+int input_interrupt(struct input *i);
 
 #endif
 

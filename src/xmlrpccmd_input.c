@@ -26,7 +26,7 @@
 
 #include "main.h"
 
-#define XMLRPC_INPUT_COMMANDS_NUM 8
+#define XMLRPC_INPUT_COMMANDS_NUM 9
 
 struct xmlrpc_command xmlrpc_input_commands[XMLRPC_INPUT_COMMANDS_NUM] = { 
 
@@ -62,6 +62,14 @@ struct xmlrpc_command xmlrpc_input_commands[XMLRPC_INPUT_COMMANDS_NUM] = {
 		.callback_func = xmlrpccmd_set_input_mode,
 		.signature = "n:s",
 		.help = "Set the mode of the input",
+	},
+
+	{
+		.name = "input.setParameter",
+		.callback_func = xmlrpccmd_set_input_parameter,
+		.signature = "n:ss",
+		.help = "Set a value for an input parameter",
+
 	},
 
 	{
@@ -178,15 +186,9 @@ xmlrpc_value *xmlrpccmd_stop_input(xmlrpc_env * const envP, xmlrpc_value * const
 
 xmlrpc_value *xmlrpccmd_set_input_type(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
 
-	char *type;
-
-	xmlrpc_decompose_value(envP, paramArrayP, "(s)", &type);
 
 	if (envP->fault_occurred)
 		return NULL;
-
-	char err[256];
-	memset(err, 0, sizeof(err));
 
 	if (rbuf->i && rbuf->i->running) {
 		xmlrpc_faultf(envP, "Input is running. You need to stop it before doing any change");
@@ -198,8 +200,12 @@ xmlrpc_value *xmlrpccmd_set_input_type(xmlrpc_env * const envP, xmlrpc_value * c
 		return NULL;
 	}
 
+	char *type;
+	xmlrpc_decompose_value(envP, paramArrayP, "(s)", &type);
+
 	if (rbuf->i && !strcmp(type, input_get_name(rbuf->i->type))) {
 		xmlrpc_faultf(envP, "Input type is already %s", type);
+		free(type);
 		pthread_mutex_unlock(&rbuf->mutex);
 		return NULL;
 	}
@@ -208,6 +214,7 @@ xmlrpc_value *xmlrpccmd_set_input_type(xmlrpc_env * const envP, xmlrpc_value * c
 	int input_type = input_register(type);
 	if (input_type == POM_ERR) {
 		xmlrpc_faultf(envP, "Unable to register input %s", type);
+		free(type);
 		pthread_mutex_unlock(&rbuf->mutex);
 		return POM_OK;
 	}
@@ -216,9 +223,12 @@ xmlrpc_value *xmlrpccmd_set_input_type(xmlrpc_env * const envP, xmlrpc_value * c
 
 	if (!i) {
 		xmlrpc_faultf(envP, "Unable to allocate input %s", type);
+		free(type);
 		pthread_mutex_unlock(&rbuf->mutex);
 		return NULL;
 	}
+
+	free(type);
 
 	if (rbuf->i)
 		input_cleanup(rbuf->i);
@@ -235,25 +245,73 @@ xmlrpc_value *xmlrpccmd_set_input_type(xmlrpc_env * const envP, xmlrpc_value * c
 
 xmlrpc_value *xmlrpccmd_set_input_mode(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
 
-	char *mode;
+	if (!rbuf->i) {
+		xmlrpc_faultf(envP, "No input configured yet");
+		return NULL;
+	}
 
+	if (rbuf->i->running) {
+		xmlrpc_faultf(envP, "Input is running. You need to stop it before doing any change");
+		return NULL;
+	}
+
+	char *mode;
 	xmlrpc_decompose_value(envP, paramArrayP, "(s)", &mode);
 
 	if (envP->fault_occurred)
 		return NULL;
 
-	char err[256];
-	memset(err, 0, sizeof(err));
+	if (input_set_mode(rbuf->i, mode) != POM_OK) {
+		xmlrpc_faultf(envP, "No mode %s for this input", mode);
+		free(mode);
+		return NULL;
+	}
+	free(mode);
+	
+	return xmlrpc_nil_new(envP);
+}
 
-	if (rbuf->i && rbuf->i->running) {
+xmlrpc_value *xmlrpccmd_set_input_parameter(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
+
+	if (!rbuf->i) {
+		xmlrpc_faultf(envP, "No input configured yet");
+		return NULL;
+	}
+
+	if (rbuf->i->running) {
 		xmlrpc_faultf(envP, "Input is running. You need to stop it before doing any change");
 		return NULL;
 	}
 
-	if (input_set_mode(rbuf->i, mode) != POM_OK) {
-		xmlrpc_faultf(envP, "No mode %s for this input", mode);
+	char *name, *value;
+	xmlrpc_decompose_value(envP, paramArrayP, "(ss)", &name, &value);
+
+	if (envP->fault_occurred)
+		return NULL;
+
+	struct input_param *p = rbuf->i->mode->params;
+	while (p) {
+		if (!strcmp(p->name, name))
+			break;
+		p = p->next;
+	}
+
+	if (!p) {
+		xmlrpc_faultf(envP, "Parameter %s doesn't exists", name);
+		free(name);
+		free(value);
 		return NULL;
 	}
+
+	free(name);
+
+	if (ptype_parse_val(p->value, value) != POM_OK) {
+		xmlrpc_faultf(envP, "Could not parse \"%s\"", value);
+		free(value);
+		return NULL;
+	}
+
+	free(value);
 
 	return xmlrpc_nil_new(envP);
 }

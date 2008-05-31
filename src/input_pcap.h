@@ -48,6 +48,7 @@ int input_unregister_pcap(struct input_reg *r);
 int input_close_pcap(struct input *i);
 int input_cleanup_pcap(struct input *i);
 int input_getcaps_pcap(struct input *i, struct input_caps *ic);
+int input_interrupt_pcap(struct input *i);
 
 
 #endif
