@@ -43,6 +43,7 @@ struct input_priv_docsis {
 	int frontend_fd; ///< The fd of /dev/dvb/adapterX/frontendX.
 	int demux_fd; ///< The fd of /dev/dvb/adapterX/demuxX.
 	int dvr_fd; ///< The fd of /dev/dvb/adapterX/dvrX.
+	fe_type_t frontend_type; ///< Type of the frontend (either FE_QAM or FE_ATSC)
 	unsigned char *temp_buff; ///< A small temporary buffer.
 	int output_layer; ///< The type of packet we output.
 	unsigned int temp_buff_len; ///< The length of our temporary buffer.

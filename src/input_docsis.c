@@ -221,10 +221,11 @@ int input_open_docsis(struct input *i) {
 		goto err;
 	}
 
-	if (info.type != FE_QAM) {
-		pom_log(POM_LOG_ERR "Error, device %s is not a DVB-C device\r\n", frontend);
+	if (info.type != FE_QAM && info.type != FE_ATSC) {
+		pom_log(POM_LOG_ERR "Error, device %s is not a DVB-C or an ATSC device\r\n", frontend);
 		goto err;
 	}
+	p->frontend_type = info.type;
 
 	// Open the demux
 	char demux[NAME_MAX];
@@ -478,9 +479,14 @@ int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symbolRate, 
 	memset(&frp, 0, sizeof(struct dvb_frontend_parameters));
 	frp.frequency = frequency;
 	frp.inversion = INVERSION_AUTO; // DOCSIS explicitly prohibit inversion but we keep AUTO to play it safe
-	frp.u.qam.symbol_rate = symbolRate;
-	frp.u.qam.fec_inner = FEC_AUTO;
-	frp.u.qam.modulation = modulation;
+	if (p->frontend_type == FE_QAM) { // DVB-C card
+		frp.u.qam.symbol_rate = symbolRate;
+		frp.u.qam.fec_inner = FEC_AUTO;
+		frp.u.qam.modulation = modulation;
+	} else if (p->frontend_type == FE_ATSC) { // ATSC card
+		frp.u.vsb.modulation = modulation;
+	} else
+		return -1;
 
 	// Let's do some tuning
 
