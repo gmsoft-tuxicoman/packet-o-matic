@@ -187,6 +187,9 @@ int ptype_print_val(struct ptype *pt, char *val, size_t size);
 /// Give the type of the ptype from its name.
 int ptype_get_type(char* ptype_name);
 
+/// Give the name of the ptype type
+char *ptype_get_name(unsigned int type);
+
 /// Give the ptype operation identifier from it's string representation.
 int ptype_get_op(struct ptype *pt, char *op);
 

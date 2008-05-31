@@ -26,6 +26,10 @@
 #include "mgmtsrv.h"
 #include "ptype.h"
 
+#ifdef USE_XMLRPC
+#include "xmlrpcsrv.h"
+#endif
+
 #include "main.h"
 
 #include "ptype_bool.h"
@@ -78,8 +82,13 @@ void print_usage() {
 		" -h, --help                 display the help\n"
 		"     --no-cli               disable the CLI console\n"
 		" -p, --port=PORT            specify the CLI console port (default 4655)\n"
-		" -w, --password=PASSWORD    specify a password to enter the CLI console\n"
+		" -w, --password=PASS        specify a password to enter the CLI console\n"
 		" -d, --debug-level=LEVEL    specify the debug level <1-4> (default 3)\n"
+#ifdef USE_XMLRPC
+		" -X  --enable-xmlrpc        enable the XML-RPC interface\n"
+		" -P, --xmlrpc-port=PORT     specify the XML-RPC port (default 8080)\n"
+		" -W, --xmlrpc-password=PASS specify the password for XML-RPC calls\n"
+#endif
 		"\n"
 		);
 	
@@ -193,6 +202,16 @@ void *mgmtsrv_thread_func(void *params) {
 	}
 	return NULL;
 }
+
+#ifdef USE_XMLRPC
+void *xmlrpcsrv_thread_func(void *params) {
+
+	while (!finish) {
+		xmlrpcsrv_process();
+	}
+	return NULL;
+}
+#endif
 
 int start_input(struct ringbuffer *r) {
 
@@ -417,6 +436,10 @@ int main(int argc, char *argv[]) {
 	int empty_config = 0;
 	int disable_mgmtsrv = 0;
 	char *cli_port = "4655";
+#ifdef USE_XMLRPC
+	int disable_xmlrpcsrv = 1;
+	char *xmlrpc_port = "8080";
+#endif
 
 	int c;
 
@@ -430,10 +453,20 @@ int main(int argc, char *argv[]) {
 			{ "password", 1, 0, 'w'},
 			{ "no-cli", 0, 0, 1},
 			{ "debug-level", 1, 0, 'd'},
+#ifdef USE_XMLRPC
+			{ "enable-xmlrpc", 0, 0, 'X'},
+			{ "xmlrpc-port", 1, 0, 'P'},
+			{ "xmlrcp-password", 1, 0, 'W'},
+#endif
 			{ 0, 0, 0, 0}
 		};
 
-		c = getopt_long(argc, argv, "hbc:ep:w:d:", long_options, NULL);
+		char *args = "hbc:ep:w:d:";
+#ifdef USE_XMLRPC
+		args = "hbc:ep:w:d:XP:W:";
+#endif
+
+		c = getopt_long(argc, argv, args, long_options, NULL);
 
 		if (c == -1)
 			break;
@@ -496,6 +529,19 @@ int main(int argc, char *argv[]) {
 				} else {
 					printf("Invalid debug level \"%s\"\n", optarg);
 				}
+#ifdef USE_XMLRPC
+			case 'X':
+				disable_xmlrpcsrv = 0;
+				break;
+			case 'P':
+				xmlrpc_port = optarg;
+				pom_log("Using port %s for XML-RPC interface\r\n",xmlrpc_port);
+				break;
+			case 'W':
+				xmlrpcsrv_set_password(optarg);
+				pom_log("XML-RPC interface is password protected\r\n");
+				break;
+#endif
 			case '?':
 			default:
 				print_usage();
@@ -547,16 +593,31 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	if (!disable_mgmtsrv && mgmtsrv_init(cli_port) == POM_ERR) {
-		pom_log(POM_LOG_ERR "Error when initializing the management console. Abording\r\n");
-		goto err;
+	pthread_t mgmtsrv_thread;
+	if (!disable_mgmtsrv) {
+		if (mgmtsrv_init(cli_port) == POM_ERR) {
+			pom_log(POM_LOG_ERR "Error when initializing the management console. Abording\r\n");
+			goto err;
+		}
+		if (pthread_create(&mgmtsrv_thread, NULL, mgmtsrv_thread_func, NULL)) {
+			pom_log(POM_LOG_ERR "Error when creating the management console thread. Abording\r\n");
+			goto err;
+		}
 	}
 
-	pthread_t mgmtsrv_thread;
-	if (!disable_mgmtsrv && pthread_create(&mgmtsrv_thread, NULL, mgmtsrv_thread_func, NULL)) {
-		pom_log(POM_LOG_ERR "Error when creating the management console thread. Abording\r\n");
-		goto err;
+#ifdef USE_XMLRPC
+	pthread_t xmlrpcsrv_thread;
+	if (!disable_xmlrpcsrv) {
+		if (xmlrpcsrv_init(xmlrpc_port) == POM_ERR) {
+			pom_log(POM_LOG_ERR "Error while initializing the XML-RPC interface. Abording\r\n");
+			goto err;
+		}
+		if (pthread_create(&xmlrpcsrv_thread, NULL, xmlrpcsrv_thread_func, NULL)) {
+			pom_log(POM_LOG_ERR "Error when creating the XML-RPC thread. Abording\r\n");
+			goto err;
+		}
 	}
+#endif
 
 	if (main_config->input && start_input(rbuf) == POM_ERR) {
 		pom_log(POM_LOG_ERR "Error when starting the input. Abording\r\n");
@@ -681,6 +742,11 @@ finish:
 	if (!disable_mgmtsrv)
 		pthread_join(mgmtsrv_thread, NULL);
 
+#ifdef USE_XMLRPC
+	if (!disable_xmlrpcsrv)
+		pthread_join(xmlrpcsrv_thread, NULL);
+#endif
+
 	pom_log("Total packets read : %lu, dropped %lu (%.2f%%)\r\n", rbuf->total_packets, rbuf->dropped_packets, 100.0 / rbuf->total_packets * rbuf->dropped_packets);
 
 	// Process remaining queued frames
@@ -695,6 +761,13 @@ finish:
 
 err:
 
+	if (!disable_mgmtsrv)
+		mgmtsrv_cleanup();
+#ifdef USE_XMLRPC	
+	if (!disable_xmlrpcsrv)
+		xmlrpcsrv_cleanup();
+#endif
+
 	config_cleanup(main_config);
 
 	helper_unregister_all();
@@ -703,9 +776,6 @@ err:
 	conntrack_cleanup();
 	timers_cleanup();
 	target_cleanup();
-
-	if (!disable_mgmtsrv)
-		mgmtsrv_cleanup();
 
 	target_unregister_all();
 	

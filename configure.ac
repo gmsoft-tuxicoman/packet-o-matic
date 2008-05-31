@@ -110,19 +110,12 @@ fi
 
 LIB_DL=''
 AC_CHECK_LIB([dl], [dlopen], [LIB_DL='-ldl'])
-LIBS=[$LIB_DL $LIBS]
-AC_SUBST(d[LIB_DL])
+LIBS="$LIB_DL $LIBS"
 
 AC_CHECK_LIB([nsl], [gethostbyname])
 AC_CHECK_LIB([socket], [socket])
 
-AC_CHECK_HEADERS([pcap.h pcap-bpf.h], [pcap_headers=yes], [pcap_headers=no])
-AC_CHECK_LIB([pcap], [pcap_open_offline, pcap_open_dead, pcap_close], [want_pcap=yes], [want_pcap=no])
 
-AC_CHECK_HEADER([libnet.h])
-AC_CHECK_LIB([net], [libnet_init, libnet_write_link], [want_libnet=yes], [want_libnet=no])
-
-AC_CHECK_HEADERS([linux/socket.h netpacket/packet.h], [want_netpacket=yes], [want_netpacket=no])
 
 # Checks for packages.
 PKG_CHECK_MODULES(libxml2, [libxml-2.0], [], [AC_MSG_ERROR([libxml2 is required to build this program])])
@@ -136,12 +129,9 @@ AC_CONFIG_FILES([Makefile
 LIB_DIR='${libdir}'
 AC_SUBST(LIB_DIR)
 
-#
-# Select build targets
-#
-
-
 # Check for PCAP
+AC_CHECK_HEADERS([pcap.h pcap-bpf.h], [pcap_headers=yes], [pcap_headers=no])
+AC_CHECK_LIB([pcap], [pcap_open_offline, pcap_open_dead, pcap_close], [want_pcap=yes], [want_pcap=no])
 if test "x$pcap_headers" = "xyes" -a "x$want_pcap" = "xyes"
 then
 	INPUT_OBJS="$INPUT_OBJS input_pcap.la"
@@ -149,12 +139,17 @@ then
 fi
 
 # Check for Libnet
+AC_CHECK_HEADER([libnet.h])
+AC_CHECK_LIB([net], [libnet_init, libnet_write_link], [want_libnet=yes], [want_libnet=no])
+
 if test "x$want_libnet" = "xyes"
 then
 	TARGET_OBJS="$TARGET_OBJS target_inject.la target_tcpkill.la"
 fi
 
 # Check for Linux' raw socket iface
+AC_CHECK_HEADERS([linux/socket.h netpacket/packet.h], [want_netpacket=yes], [want_netpacket=no])
+
 if test "x$want_netpacket" = "xyes"
 then
 	AC_DEFINE(HAVE_LINUX_IP_SOCKET, , [Linux' raw socket iface])
@@ -172,6 +167,39 @@ fi
 # Check for Linux' tun header
 AC_CHECK_HEADERS([linux/if_tun.h], [TARGET_TAP='target_tap.la'])
 TARGET_OBJS="$TARGET_OBJS $TARGET_TAP"
+
+
+# Check for xmlrpc-c
+
+OLD_LIBS=[$LIBS]
+AC_CHECK_HEADERS([xmlrpc-c/base.h xmlrpc-c/server.h xmlrpc-c/server_abyss.h], [xmlrpc_headers=no], [xmlrpc_headers=yes])
+AC_CHECK_LIB([xmlrpc_util], [xmlrpc_millisecond_sleep], [LIB_XMLRPC_UTIL='-lxmlrpc_util'])
+LIBS="$LIB_XMLRPC_UTIL $LIBS"
+AC_CHECK_LIB([xmlrpc_abyss], [ServerRunConn2], [want_xmlrpc=yes], [want_xmlrpc=$xmlrpc_headers])
+
+XMLRPC_CONFIG=`which xmlrpc-c-config 2>/dev/null`
+if [ test ! -x "${XMLRPC_CONFIG}" ]
+then
+	want_xmlrpc=no
+fi
+
+
+AM_CONDITIONAL([USE_XMLRPC], [test "x$want_xmlrpc" = "xyes"])
+
+if test "x$want_xmlrpc" = "xyes"
+then
+	xmlrpc_LIBS=`xmlrpc-c-config abyss-server --libs`
+	xmlrpc_CFLAGS=`xmlrpc-c-config abyss-server --cflags`
+	AC_DEFINE(USE_XMLRPC, , [Compile XML-RPC interface])
+fi
+LIBS="$OLD_LIBS"
+
+AC_SUBST(xmlrpc_SRC)
+AC_SUBST(xmlrpc_LIBS)
+AC_SUBST(xmlrpc_CFLAGS)
+
+
+
 
 
 AC_SUBST(INPUT_OBJS)

@@ -346,6 +346,23 @@ int ptype_get_type(char* ptype_name) {
 
 /**
  * @ingroup ptype_core
+ * @param type Type of the ptype
+ * @return String representation of the type or NULL on failure.
+ */
+
+char * ptype_get_name(unsigned int type) {
+
+	if (type > MAX_PTYPE)
+		return NULL;
+
+	if (ptypes[type])
+		return ptypes[type]->name;
+
+	return NULL;
+}
+
+/**
+ * @ingroup ptype_core
  * @param ptype_type Type of the ptype
  * @return POM_OK on success, POM_ERR on failure.
  */

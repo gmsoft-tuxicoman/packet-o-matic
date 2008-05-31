@@ -190,7 +190,7 @@ struct match_field *match_alloc_field(int match_type, char *field_type) {
 			break;
 	}
 
-	if (!i >= MAX_LAYER_FIELDS || !matches[match_type]->fields[i])
+	if (i >= MAX_LAYER_FIELDS || !matches[match_type]->fields[i])
 		return NULL;
 	
 	struct match_field *ret;

@@ -149,7 +149,7 @@ int mgmtcmd_start_input(struct mgmt_connection *c, int argc, char *argv[]) {
 	}
 
 	if (start_input(rbuf) == POM_ERR)
-		mgmtsrv_send(c, "Error while opening input\r\n");
+		mgmtsrv_send(c, "Error while starting the input\r\n");
 	return POM_OK;
 
 }
@@ -162,7 +162,10 @@ int mgmtcmd_stop_input(struct mgmt_connection *c, int argc, char *argv[]) {
 		return POM_OK;
 	}
 
-	stop_input(rbuf);
+	if (stop_input(rbuf) == POM_ERR) {
+		mgmtsrv_send(c, "Error while stopping the input\r\n");
+		return POM_OK;
+	}
 	return POM_OK;
 
 }

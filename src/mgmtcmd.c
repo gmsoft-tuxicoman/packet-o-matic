@@ -160,9 +160,9 @@ int mgmtcmd_register_all() {
 
 	int i;
 
-
 	for (i = 0; i < MGMT_COMMANDS_NUM; i++) {
-		mgmtsrv_register_command(&mgmt_commands[i]);
+		if (mgmtsrv_register_command(&mgmt_commands[i]) == POM_ERR)
+			return POM_ERR;
 	}
 
 	mgmtcmd_conntrack_register_all();

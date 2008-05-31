@@ -213,7 +213,7 @@ int helper_unregister(int helper_type) {
 int helper_unregister_all() {
 
 	int i;
-	int result;
+	int result = POM_OK;
 
 	for (i = 0; i < MAX_HELPER; i++) {
 		if (helpers[i] && helper_unregister(i) == POM_ERR)

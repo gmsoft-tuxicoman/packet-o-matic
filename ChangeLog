@@ -1,3 +1,12 @@
+* 2008/05/31 Guy Martin <gmsoft@tuxicoman.be>
+Added partial XML-RPC interface.
+Fix unintialized value in helper_unregister_all().
+Added function ptype_get_name().
+Added and fixed error message when starting/stopping and input.
+Fix typo in match.c.
+Report error in mgmtcmd_register_all().
+Improved error logging in mgmtsrv_init().
+
 * 2008/05/22 Guy Martin <gmsoft@tuxicoman.be>
 Added completion for "set core parameter".
 Fix completion of "load conntrack".

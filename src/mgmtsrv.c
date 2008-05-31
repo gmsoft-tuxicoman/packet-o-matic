@@ -71,7 +71,7 @@ int mgmtsrv_init(const char *port) {
 		memset(host, 0, NI_MAXHOST);
 		memset(port, 0, NI_MAXSERV);
 
-		getnameinfo((struct sockaddr*)tmpres->ai_addr, tmpres->ai_addrlen, host, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST);
+		getnameinfo((struct sockaddr*)tmpres->ai_addr, tmpres->ai_addrlen, host, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST | NI_NUMERICSERV);
 
 		sockfd = socket(tmpres->ai_family, tmpres->ai_socktype, tmpres->ai_protocol);
 		if (sockfd < 0) {
@@ -92,9 +92,10 @@ int mgmtsrv_init(const char *port) {
 
 		if (bind(sockfd, tmpres->ai_addr, tmpres->ai_addrlen) < 0) {
 			int my_errno = errno;
-			strerror_r(my_errno, errbuff, 256);
-			if (! (my_errno == EADDRINUSE && conn_head)) // Do not show an error in case we did bind already
+			if (! (my_errno == EADDRINUSE && conn_head)) { // Do not show an error in case we did bind already
+				strerror_r(my_errno, errbuff, 256);
 				pom_log(POM_LOG_ERR "Error while binding socket on address %s : %s\r\n", host, errbuff);
+			}
 			close(sockfd);
 			tmpres = tmpres->ai_next;
 			continue;

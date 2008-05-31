@@ -1,12 +1,18 @@
 CFLAGS += -Wall
 
-MGMT_OBJS = mgmtsrv.c mgmtsrv.h mgmtvty.c mgmtvty.h mgmtcmd.c mgmtcmd.h mgmtcmd_helper.c mgmtcmd_helper.h mgmtcmd_conntrack.c mgmtcmd_conntrack.h mgmtcmd_input.c mgmtcmd_input.h mgmtcmd_rule.c mgmtcmd_rule.h mgmtcmd_target.c mgmtcmd_target.h
+MGMT_SRC = mgmtsrv.c mgmtsrv.h mgmtvty.c mgmtvty.h mgmtcmd.c mgmtcmd.h mgmtcmd_helper.c mgmtcmd_helper.h mgmtcmd_conntrack.c mgmtcmd_conntrack.h mgmtcmd_input.c mgmtcmd_input.h mgmtcmd_rule.c mgmtcmd_rule.h mgmtcmd_target.c mgmtcmd_target.h
+
+if USE_XMLRPC
+XMLRPC_SRC = xmlrpcsrv.c xmlrpcsrv.h xmlrpccmd.c xmlrpccmd.h xmlrpccmd_input.c xmlrpccmd_input.h
+endif
+
 
 bin_PROGRAMS = packet-o-matic
-packet_o_matic_SOURCES = main.c main.h rules.c rules.h conf.c conf.h layer.c layer.h $(MGMT_OBJS)
-packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"'
-packet_o_matic_LDFLAGS = @LIBS@ @libxml2_LIBS@ 
-packet_o_matic_LDADD = libpom.la
+packet_o_matic_SOURCES = main.c main.h rules.c rules.h conf.c conf.h layer.c layer.h $(MGMT_SRC) $(XMLRPC_SRC)
+packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"' @xmlrpc_CFLAGS@
+packet_o_matic_LDFLAGS = @LIBS@ @libxml2_LIBS@
+packet_o_matic_LDADD = libpom.la @xmlrpc_LIBS@
+
 
 libpom_la_SOURCES = input.c input.h match.c match.h conntrack.c conntrack.h jhash.h target.c target.h timers.c timers.h helper.c helper.h ptype.c ptype.h expectation.c expectation.h common.c common.h
 libpom_la_CFLAGS = -DLIBDIR='"@LIB_DIR@"'
