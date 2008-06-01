@@ -88,6 +88,7 @@ struct input_reg {
 	char *name; ///< Name of the input
 	int type; ///< Unique ID of the input
 	void *dl_handle; ///< Handle of the library
+	unsigned int refcount; ///< Reference count
 
 	/// Pointer to the initialization function of the input
 	/**
@@ -212,6 +213,13 @@ int input_getcaps(struct input *i, struct input_caps *ic);
 
 /// Execute code to help interrupting input reading
 int input_interrupt(struct input *i);
+
+/// Get a read or write lock on the input
+int input_lock(int write);
+
+/// Release a read or write lock on the input
+int input_unlock();
+
 
 #endif
 

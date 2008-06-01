@@ -75,7 +75,7 @@ struct xmlrpc_command xmlrpc_input_commands[XMLRPC_INPUT_COMMANDS_NUM] = {
 	{
 		.name = "input.listLoaded",
 		.callback_func = xmlrpccmd_list_loaded_input,
-		.signature = "A:,n:",
+		.signature = "A:",
 		.help = "List all the loaded inputs",
 	},
 
@@ -210,9 +210,12 @@ xmlrpc_value *xmlrpccmd_set_input_type(xmlrpc_env * const envP, xmlrpc_value * c
 		return NULL;
 	}
 
+	input_lock(1);
+
 	struct input *i;
 	int input_type = input_register(type);
 	if (input_type == POM_ERR) {
+		input_unlock();
 		xmlrpc_faultf(envP, "Unable to register input %s", type);
 		free(type);
 		pthread_mutex_unlock(&rbuf->mutex);
@@ -220,6 +223,9 @@ xmlrpc_value *xmlrpccmd_set_input_type(xmlrpc_env * const envP, xmlrpc_value * c
 	}
 
 	i = input_alloc(input_type);
+
+	// we can safely unlock since our input has a positive refcount
+	input_unlock();
 
 	if (!i) {
 		xmlrpc_faultf(envP, "Unable to allocate input %s", type);
@@ -323,7 +329,9 @@ xmlrpc_value *xmlrpccmd_list_loaded_input(xmlrpc_env * const envP, xmlrpc_value 
 	if (envP->fault_occurred)
 		return NULL;
 
-	int i, input_count = 0;
+	input_lock(0);
+
+	int i;
 	for (i = 0; i < MAX_INPUT; i++) {
 
 		if (!inputs[i])
@@ -368,17 +376,12 @@ xmlrpc_value *xmlrpccmd_list_loaded_input(xmlrpc_env * const envP, xmlrpc_value 
 		xmlrpc_array_append_item(envP, result, input);
 		xmlrpc_DECREF(input);
 
-		input_count++;
-
 	}
+
+	input_unlock();
 
 	if (envP->fault_occurred)
 		return NULL;
-
-	if (input_count == 0) {
-		xmlrpc_DECREF(result);
-		return xmlrpc_nil_new(envP);
-	}
 
 	return result;
 
@@ -395,17 +398,22 @@ xmlrpc_value *xmlrpccmd_load_input(xmlrpc_env * const envP, xmlrpc_value * const
 	if (envP->fault_occurred)
 		return NULL;
 
+	input_lock(1);
+
 	if (input_get_type(name) != POM_ERR) {
+		input_unlock();
 		xmlrpc_faultf(envP, "Input %s is already registered", name);
 		free(name);
 		return NULL;
 	}
 
 	if (input_register(name) == POM_ERR) {
+		input_unlock();
 		xmlrpc_faultf(envP, "Error while loading input %s", name);
 		free(name);
 		return NULL;
 	}
+	input_unlock();
 
 	free(name);
 	return xmlrpc_nil_new(envP);
@@ -421,19 +429,24 @@ xmlrpc_value *xmlrpccmd_unload_input(xmlrpc_env * const envP, xmlrpc_value * con
 	if (envP->fault_occurred)
 		return NULL;
 
+	input_lock(1);
+
 	int id = input_get_type(name);
 
 	if (id == POM_ERR) {
+		input_unlock();
 		xmlrpc_faultf(envP, "Input %s is not loaded", name);
 		free(name);
 		return NULL;
 	}
 
 	if (input_unregister(id) == POM_ERR) {
+		input_unlock();
 		xmlrpc_faultf(envP, "Error while unloading input %s", name);
 		free(name);
 		return NULL;
 	}
+	input_unlock();
 
 	free(name);
 

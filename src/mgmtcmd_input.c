@@ -131,7 +131,6 @@ int mgmtcmd_show_input(struct mgmt_connection *c, int argc, char *argv[]) {
 		p = p->next;
 	}
 
-
 	return POM_OK;
 }
 
@@ -191,21 +190,27 @@ int mgmtcmd_set_input_type(struct mgmt_connection *c, int argc, char *argv[]) {
 		return POM_OK;
 	}
 
+	input_lock(1);
 	struct input *i;
 	int input_type = input_register(argv[0]);
 	if (input_type == POM_ERR) {
 		mgmtsrv_send(c, "Unable to register input %s\r\n", argv[0]);
+		input_unlock();
 		pthread_mutex_unlock(&rbuf->mutex);
 		return POM_OK;
 	}
 
 	i = input_alloc(input_type);
 
+	// we can unlock the inputs, we got a refcount
+	input_unlock();
+
 	if (!i) {
 		mgmtsrv_send(c, "Unable to allocate input %s\r\n", argv[0]);
 		pthread_mutex_unlock(&rbuf->mutex);
 		return POM_OK;
 	}
+
 	if (rbuf->i)
 		input_cleanup(rbuf->i);
 	rbuf->i = i;
@@ -359,8 +364,11 @@ int mgmtcmd_load_input(struct mgmt_connection *c, int argc, char*argv[]) {
 
 	if (argc != 1)
 		return MGMT_USAGE;
-	
+
+	input_lock(1);
+
 	if (input_get_type(argv[0]) != POM_ERR) {
+		input_unlock();
 		mgmtsrv_send(c, "Input %s is already registered\r\n", argv[0]);
 		return POM_OK;
 	}
@@ -370,6 +378,8 @@ int mgmtcmd_load_input(struct mgmt_connection *c, int argc, char*argv[]) {
 		mgmtsrv_send(c, "Error while loading input %s\r\n", argv[0]);
 	else
 		mgmtsrv_send(c, "Input %s regitered with id %u\r\n", argv[0], id);
+
+	input_unlock();
 
 	return POM_OK;
 
@@ -391,25 +401,28 @@ int mgmtcmd_unload_input(struct mgmt_connection *c, int argc, char *argv[]) {
 	if (argc != 1)
 		return MGMT_USAGE;
 
+
+	input_lock(1);
 	int id = input_get_type(argv[0]);
 
 	if (id == POM_ERR) {
+		input_unlock();
 		mgmtsrv_send(c, "Input %s not loaded\r\n", argv[0]);
 		return POM_OK;
 	}
 
 	if (rbuf->i && rbuf->i->type == id) {
+		input_unlock();
 		mgmtsrv_send(c, "Input %s is still in use. Cannot unload it\r\n", argv[0]);
 		return POM_OK;
 	}
 
-	reader_process_lock();
 	if (input_unregister(id) != POM_ERR) {
 		mgmtsrv_send(c, "Input unloaded successfully\r\n");
 	} else {
 		mgmtsrv_send(c, "Error while unloading input\r\n");
 	}
-	reader_process_unlock();
+	input_unlock();
 	
 	return POM_OK;
 
@@ -421,6 +434,8 @@ struct mgmt_command_arg* mgmtcmd_unload_input_completion(int argc, char *argv[])
 
 	if (argc != 2)
 		return NULL;
+
+	input_lock(0);
 
 	int i;
 	for (i = 0; i < MAX_INPUT; i++) {
@@ -435,6 +450,8 @@ struct mgmt_command_arg* mgmtcmd_unload_input_completion(int argc, char *argv[])
 		}
 
 	}
+
+	input_unlock();
 
 	return res;
 }

@@ -121,6 +121,12 @@ int helper_unregister(int helper_type);
 /// Unregister all the helpers
 int helper_unregister_all();
 
+/// Get a read or write lock on the helpers
+int helper_lock(int write);
+
+/// Release a read or write lock on the helpers
+int helper_unlock();
+
 /// Cleanup the helper subsystem
 int helper_cleanup();
 

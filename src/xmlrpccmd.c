@@ -27,6 +27,7 @@
 #include "main.h"
 
 #include "xmlrpccmd_input.h"
+#include "xmlrpccmd_helper.h"
 
 #define XMLRPC_COMMANDS_NUM 2
 
@@ -59,6 +60,7 @@ int xmlrpccmd_register_all() {
 	}
 
 	xmlrpccmd_input_register_all();
+	xmlrpccmd_helper_register_all();
 
 	return POM_OK;
 }

@@ -47,8 +47,11 @@ struct conf *config_alloc() {
 }
 
 int config_cleanup(struct conf* c) {
-
+	
+	input_lock(0);
 	input_cleanup(c->input);
+	input_unlock();
+
 	list_destroy(c->rules);
 
 	free(c);
@@ -63,19 +66,28 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 		return NULL;
 	}
 	pom_log(POM_LOG_TSHOOT "Parsing input of type %s\r\n", input_type);
+
+	input_lock(0);
+
 	int it = input_register(input_type);
 	if (it == POM_ERR) {
+		input_unlock();
 		pom_log(POM_LOG_ERR "Could not load input %s !\r\n", input_type);
 		xmlFree(input_type);
 		return NULL;
 	}
 	struct input *ip = input_alloc(it);
+
+	// we got a refcount, we can safely unlock
+	input_unlock();
+
 	if (!ip) {
 		
 		pom_log(POM_LOG_ERR "Error, unable to allocate input of type %s\r\n", input_type);
 		xmlFree(input_type);
 		return NULL;
 	}
+
 
 	char *input_mode;
 	input_mode = (char *) xmlGetProp(cur, (const xmlChar*) "mode");

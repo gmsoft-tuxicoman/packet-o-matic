@@ -102,8 +102,11 @@ int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct ru
 					(*l)->next = layer_pool_get();
 					(*l)->next->prev = *l;
 					(*l)->next->type = next_layer;
-
-					if (helper_need_help(f, (*l)->prev->payload_start, (*l)->prev->payload_size, *l) == H_NEED_HELP) // If it needs help, we don't process it
+	
+					helper_lock(0);
+					int res = helper_need_help(f, (*l)->prev->payload_start, (*l)->prev->payload_size, *l);
+					helper_unlock();
+					if (res == H_NEED_HELP)// If it needs help, we don't process it
 						return 0;
 				
 					// check the calculated size and adjust the max len of the packet
@@ -254,8 +257,10 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 			}
 		}
 
-
-		if (helper_need_help(f, new_start, new_len, l) == H_NEED_HELP) // If it needs help, we don't process it
+		helper_lock(0);
+		int res = helper_need_help(f, new_start, new_len, l);
+		helper_unlock();
+		if (res == H_NEED_HELP) // If it needs help, we don't process it
 			return POM_OK;
 	
 		// check the calculated size and adjust the max len of the packet

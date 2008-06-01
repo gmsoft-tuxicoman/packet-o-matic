@@ -25,7 +25,11 @@
 #include "ptype.h"
 #include "rules.h"
 
-struct helper_frame *frame_head, *frame_tail;
+#include <pthread.h>
+
+static struct helper_frame *frame_head, *frame_tail;
+
+static pthread_rwlock_t helper_global_lock = PTHREAD_RWLOCK_INITIALIZER;
 
 /**
  * @ingroup helper_core
@@ -280,5 +284,43 @@ int helper_process_queue(struct rule_list *list) {
 	frame_tail = NULL;
 
 	return POM_OK;
+}
+
+/**
+ * @ingroup helper_core
+ * @param write Set to 1 if helpers will be modified, 0 if not
+ * @return POM_OK on success, POM_ERR on failure.
+ */
+int helper_lock(int write) {
+
+	int result = 0;
+	if (write) {
+		result = pthread_rwlock_wrlock(&helper_global_lock);
+	} else {
+		result = pthread_rwlock_rdlock(&helper_global_lock);
+	}
+
+	if (result) {
+		pom_log(POM_LOG_ERR "Error while locking the helper lock\r\n");
+		return POM_ERR;
+	}
+
+	return POM_OK;
+
+}
+
+/**
+ * @ingroup helper_core
+ * @return POM_OK on success, POM_ERR on failure.
+ */
+int helper_unlock() {
+
+	if (pthread_rwlock_unlock(&helper_global_lock)) {
+		pom_log(POM_LOG_ERR "Error while unlocking the helper lock\r\n");
+		return POM_ERR;
+	}
+
+	return POM_OK;
+
 }
 

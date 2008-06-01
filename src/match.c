@@ -79,8 +79,11 @@ int match_register(const char *match_name) {
 			// Automatically load the conntrack
 			conntrack_register(match_name);
 
-			if (PTYPE_BOOL_GETVAL(param_autoload_helper))
+			if (PTYPE_BOOL_GETVAL(param_autoload_helper)) {
+				helper_lock(1);
 				helper_register(match_name);
+				helper_unlock();
+			}
 
 			// Update match dependencies
 			
@@ -401,10 +404,12 @@ int match_unregister(unsigned int match_type) {
 		return POM_ERR;
 	}
 
+	helper_lock(1);
 	if (helper_unregister(match_type) == POM_ERR) {
 		pom_log(POM_LOG_WARN "Warning, cannot unregister match %s since helper is still registered\r\n", r->name);
 		return POM_ERR;
 	}
+	helper_unlock();
 
 	if (r->refcount) {
 		pom_log(POM_LOG_WARN "Warning, reference count not 0 for match %s\r\n", r->name);

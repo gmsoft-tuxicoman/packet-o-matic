@@ -30,6 +30,10 @@
 #include "ptype.h"
 #include "ptype_uint64.h"
 
+#include <pthread.h>
+
+static pthread_rwlock_t input_global_lock = PTHREAD_RWLOCK_INITIALIZER;
+
 /**
  * @ingroup input_api
  * @param input_name Name of the input
@@ -239,6 +243,8 @@ struct input *input_alloc(int input_type) {
 			free(i);
 			return NULL;
 		}
+
+	inputs[input_type]->refcount++;
 	
 	i->pkt_cnt = ptype_alloc("uint64", "packets");
 	i->pkt_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
@@ -332,6 +338,8 @@ int input_cleanup(struct input *i) {
 	if (inputs[i->type] && inputs[i->type]->cleanup)
 		(*inputs[i->type]->cleanup) (i);
 
+	inputs[i->type]->refcount--;
+
 	ptype_cleanup(i->pkt_cnt);
 	ptype_cleanup(i->byte_cnt);
 	free (i);
@@ -349,6 +357,11 @@ int input_unregister(int input_type) {
 	
 	if (!inputs[input_type])
 		return POM_ERR;
+
+	if (inputs[input_type]->refcount) {
+		pom_log(POM_LOG_ERR "Cannot unload input %s. Reference count > 0\r\n", inputs[input_type]->name);
+		return POM_ERR;
+	}
 
 	if (inputs[input_type]->unregister)
 		(*inputs[input_type]->unregister) (inputs[input_type]);
@@ -468,3 +481,42 @@ int input_interrupt(struct input *i) {
 
 	return POM_OK;
 }
+
+/**
+ * @ingroup input_core
+ * @param write Set to 1 if helpers will be modified, 0 if not
+ * @return POM_OK on success, POM_ERR on failure.
+ */
+int input_lock(int write) {
+
+	int result = 0;
+	if (write) {
+		result = pthread_rwlock_wrlock(&input_global_lock);
+	} else {
+		result = pthread_rwlock_rdlock(&input_global_lock);
+	}
+
+	if (result) {
+		pom_log(POM_LOG_ERR "Error while locking the input lock\r\n");
+		return POM_ERR;
+	}
+
+	return POM_OK;
+
+}
+
+/**
+ * @ingroup input_core
+ * @return POM_OK on success, POM_ERR on failure.
+ */
+int input_unlock() {
+
+	if (pthread_rwlock_unlock(&input_global_lock)) {
+		pom_log(POM_LOG_ERR "Error while unlocking the input lock\r\n");
+		return POM_ERR;
+	}
+
+	return POM_OK;
+
+}
+

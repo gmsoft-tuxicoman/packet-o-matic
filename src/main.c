@@ -691,7 +691,9 @@ int main(int argc, char *argv[]) {
 		if (rbuf->buffer[rbuf->read_pos]->len > 0) { // Need to queue that in the buffer
 			timers_process(); // This is not real-time timers but we don't really need it
 			do_rules(rbuf->buffer[rbuf->read_pos], main_config->rules);
+			helper_lock(0);
 			helper_process_queue(main_config->rules); // Process frames that needed some help
+			helper_unlock();
 		}
 
 
