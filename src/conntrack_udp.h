@@ -36,12 +36,11 @@ struct conntrack_priv_udp {
 };
 
 int conntrack_register_udp(struct conntrack_reg *r);
-uint32_t conntrack_get_hash_udp(struct frame *f, unsigned int start, unsigned int flags);
-int conntrack_doublecheck_udp(struct frame *f, unsigned int start, void *priv, unsigned int flags);
-void *conntrack_alloc_match_priv_udp(struct frame *f, unsigned int start, struct conntrack_entry *ce);
-int conntrack_cleanup_match_priv_udp(void *priv);
-int conntrack_do_timeouts_udp( int (*conntrack_close_connection) (struct conntrack_entry *ce));
-int conntrack_unregister_udp(struct conntrack_reg *r);
+static uint32_t conntrack_get_hash_udp(struct frame *f, unsigned int start, unsigned int flags);
+static int conntrack_doublecheck_udp(struct frame *f, unsigned int start, void *priv, unsigned int flags);
+static void *conntrack_alloc_match_priv_udp(struct frame *f, unsigned int start, struct conntrack_entry *ce);
+static int conntrack_cleanup_match_priv_udp(void *priv);
+static int conntrack_unregister_udp(struct conntrack_reg *r);
 
 #endif
 

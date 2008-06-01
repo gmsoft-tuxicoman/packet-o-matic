@@ -25,11 +25,11 @@
 #include "ptype_uint16.h"
 #include "ptype_uint32.h"
 
-struct match_dep *match_undefined;
+static struct match_dep *match_undefined;
 
-int field_payload, field_ssrc, field_seq, field_timestamp;
+static int field_payload, field_ssrc, field_seq, field_timestamp;
 
-struct ptype *ptype_uint8, *ptype_uint16, *ptype_uint32, *ptype_uint32_hex;
+static struct ptype *ptype_uint8, *ptype_uint16, *ptype_uint32, *ptype_uint32_hex;
 
 int match_register_rtp(struct match_reg *r) {
 
@@ -59,7 +59,7 @@ int match_register_rtp(struct match_reg *r) {
 
 }
 
-int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
+static int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
 	struct rtphdr *hdr = f->buff + start;
 
@@ -104,7 +104,7 @@ int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, uns
 
 }
 
-int match_get_expectation_rtp(int field_id, int direction) {
+static int match_get_expectation_rtp(int field_id, int direction) {
 
 	if (field_id == field_ssrc && direction == EXPT_DIR_FWD)
 		return field_ssrc;
@@ -112,7 +112,7 @@ int match_get_expectation_rtp(int field_id, int direction) {
 	return POM_ERR;
 }
 
-int match_unregister_rtp(struct match_reg *r) {
+static int match_unregister_rtp(struct match_reg *r) {
 
 	ptype_cleanup(ptype_uint8);
 	ptype_cleanup(ptype_uint16);

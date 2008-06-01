@@ -25,45 +25,12 @@
 #include "modules_common.h"
 #include "match.h"
 
-struct rtphdr {
-	
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-	unsigned char csrc_count:4;
-	unsigned char extension:1;
-	unsigned char padding:1;
-	unsigned char version:2;
-
-	unsigned char payload_type:7;
-	unsigned char marker:1;
-#elif __BYTE_ORDER == __BIG_ENDIAN
-	unsigned char version:2;
-	unsigned char padding:1;
-	unsigned char extension:1;
-	unsigned char csrc_count:4;
-
-	unsigned char marker:1;
-	unsigned char payload_type:7;
-#else
-# error "Please fix <endian.h>"
-#endif
-	uint16_t seq_num;
-	uint32_t timestamp;
-	uint32_t ssrc;
-
-};
-
-struct rtphdrext {
-	uint16_t profile_defined;
-	uint16_t length;
-	char *header_extension;
-};
-
-
+#include <rtp.h>
 
 int match_register_rtp(struct match_reg *r);
-int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
-int match_get_expectation_rtp(int field_id, int direction);
-int match_unregister_rtp(struct match_reg *r);
+static int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
+static int match_get_expectation_rtp(int field_id, int direction);
+static int match_unregister_rtp(struct match_reg *r);
 
 
 #endif

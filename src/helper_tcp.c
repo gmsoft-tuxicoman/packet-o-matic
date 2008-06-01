@@ -24,11 +24,11 @@
 
 #include <netinet/tcp.h>
 
-struct ptype *pkt_timeout;
-struct ptype *conn_buff;
+static struct ptype *pkt_timeout;
+static struct ptype *conn_buff;
 
 // Helps to track all the connections
-struct helper_priv_tcp *conn_head;
+static struct helper_priv_tcp *conn_head;
 
 int helper_register_tcp(struct helper_reg *r) {
 	
@@ -56,7 +56,7 @@ err:
 
 }
 
-int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
+static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
 
 
 	struct tcphdr* hdr = f->buff + start;
@@ -284,7 +284,7 @@ int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, 
 	return POM_OK;
 }
 
-int helper_process_timer_tcp(void *priv) {
+static int helper_process_timer_tcp(void *priv) {
 
 	struct helper_timer_priv_tcp *p = priv;
 	if (!p->priv->pkts[p->dir]) {
@@ -298,7 +298,7 @@ int helper_process_timer_tcp(void *priv) {
 
 }
 
-int helper_process_next_tcp(struct helper_priv_tcp *p, int dir) {
+static int helper_process_next_tcp(struct helper_priv_tcp *p, int dir) {
 
 
 	struct helper_priv_tcp_packet *pkt = p->pkts[dir];
@@ -332,7 +332,7 @@ int helper_process_next_tcp(struct helper_priv_tcp *p, int dir) {
 }
 
 
-int helper_flush_buffer_tcp(struct conntrack_entry *ce, void *conntrack_priv) {
+static int helper_flush_buffer_tcp(struct conntrack_entry *ce, void *conntrack_priv) {
 
 	struct helper_priv_tcp *cp = conntrack_priv;
 
@@ -349,7 +349,7 @@ int helper_flush_buffer_tcp(struct conntrack_entry *ce, void *conntrack_priv) {
 	return POM_ERR;
 }
 
-int helper_cleanup_connection_tcp(struct conntrack_entry *ce, void *conntrack_priv) {
+static int helper_cleanup_connection_tcp(struct conntrack_entry *ce, void *conntrack_priv) {
 
 	struct helper_priv_tcp *cp = conntrack_priv;
 
@@ -392,7 +392,7 @@ int helper_cleanup_connection_tcp(struct conntrack_entry *ce, void *conntrack_pr
 	return POM_OK;
 }
 
-int helper_cleanup_tcp() {
+static int helper_cleanup_tcp() {
 
 	while (conn_head) {
 		conntrack_remove_helper_priv(conn_head, conn_head->ce);	

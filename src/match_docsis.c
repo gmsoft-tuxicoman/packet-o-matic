@@ -21,11 +21,11 @@
 #include "match_docsis.h"
 #include "ptype_uint8.h"
 
-struct match_dep *match_atm, *match_ethernet;
+static struct match_dep *match_atm, *match_ethernet;
 
-int field_fc_type, field_fc_parm;
+static int field_fc_type, field_fc_parm;
 
-struct ptype *ptype_uint8;
+static struct ptype *ptype_uint8;
 
 int match_register_docsis(struct match_reg *r) {
 
@@ -46,7 +46,7 @@ int match_register_docsis(struct match_reg *r) {
 }
 
 
-int match_identify_docsis(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
+static int match_identify_docsis(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
 	struct docsis_hdr *dhdr = f->buff + start;
 	
@@ -93,7 +93,7 @@ int match_identify_docsis(struct frame *f, struct layer* l, unsigned int start, 
 	return POM_ERR;
 }
 
-int match_unregister_docsis(struct match_reg *r) {
+static int match_unregister_docsis(struct match_reg *r) {
 
 	ptype_cleanup(ptype_uint8);
 	return POM_OK;

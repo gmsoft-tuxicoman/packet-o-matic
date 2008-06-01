@@ -26,14 +26,15 @@
 #include <errno.h>
 
 #include "target_rtp.h"
-#include "match_rtp.h"
 
 #include "ptype_string.h"
 #include "ptype_uint16.h"
 
-unsigned int match_rtp_id;
+#include <rtp.h>
 
-struct target_mode *mode_default;
+static unsigned int match_rtp_id;
+
+static struct target_mode *mode_default;
 
 int target_register_rtp(struct target_reg *r) {
 
@@ -56,7 +57,7 @@ int target_register_rtp(struct target_reg *r) {
 
 }
 
-int target_init_rtp(struct target *t) {
+static int target_init_rtp(struct target *t) {
 
 	struct target_priv_rtp *priv = malloc(sizeof(struct target_priv_rtp));
 	memset(priv, 0, sizeof(struct target_priv_rtp));
@@ -78,7 +79,7 @@ int target_init_rtp(struct target *t) {
 }
 
 
-int target_close_rtp(struct target *t) {
+static int target_close_rtp(struct target *t) {
 
 	struct target_priv_rtp *priv = t->target_priv;
 
@@ -90,7 +91,7 @@ int target_close_rtp(struct target *t) {
 	return POM_OK;
 }
 
-int target_cleanup_rtp(struct target *t) {
+static int target_cleanup_rtp(struct target *t) {
 
 	struct target_priv_rtp *priv = t->target_priv;
 
@@ -104,10 +105,7 @@ int target_cleanup_rtp(struct target *t) {
 	return POM_OK;
 }
 
-
-
-
-int target_process_rtp(struct target *t, struct frame *f) {
+static int target_process_rtp(struct target *t, struct frame *f) {
 
 	struct target_priv_rtp *priv = t->target_priv;
 
@@ -246,9 +244,9 @@ int target_process_rtp(struct target *t, struct frame *f) {
 	}
 
 	return write_packet(cp, priv, dir, f->buff + rtpl->payload_start, rtpl->payload_size);
-};
+}
 
-int write_packet(struct target_conntrack_priv_rtp *cp, struct target_priv_rtp *priv, int dir, void *data, int len) {
+static int write_packet(struct target_conntrack_priv_rtp *cp, struct target_priv_rtp *priv, int dir, void *data, int len) {
 
 
 	struct rtp_buffer* buff = &cp->buffer[dir];
@@ -301,7 +299,7 @@ int write_packet(struct target_conntrack_priv_rtp *cp, struct target_priv_rtp *p
 
 }
 
-int open_file(struct target_priv_rtp *priv, struct target_conntrack_priv_rtp *cp) {
+static int open_file(struct target_priv_rtp *priv, struct target_conntrack_priv_rtp *cp) {
 
 
 	cp->fd = target_file_open(NULL, cp->filename, O_RDWR | O_CREAT, 0666);
@@ -359,7 +357,7 @@ int open_file(struct target_priv_rtp *priv, struct target_conntrack_priv_rtp *cp
 }
 
 
-int target_close_connection_rtp(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
+static int target_close_connection_rtp(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
 	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
 
@@ -423,7 +421,7 @@ int target_close_connection_rtp(struct target *t, struct conntrack_entry *ce, vo
 
 }
 
-int flush_buffers(struct target_conntrack_priv_rtp *cp, int dir) {
+static int flush_buffers(struct target_conntrack_priv_rtp *cp, int dir) {
 
 	struct rtp_buffer* buff = &cp->buffer[dir];
 	if (cp->channels == 1) {

@@ -19,13 +19,14 @@
  */
 
 
-#include "match_rtp.h"
 #include "conntrack_rtp.h"
 #include "ptype_uint16.h"
 
+#include <rtp.h>
+
 #define INITVAL 0x83f0e1b6
 
-struct ptype *rtp_timeout;
+static struct ptype *rtp_timeout;
 
 int conntrack_register_rtp(struct conntrack_reg *r) {
 	
@@ -46,7 +47,7 @@ int conntrack_register_rtp(struct conntrack_reg *r) {
 }
 
 
-uint32_t conntrack_get_hash_rtp(struct frame *f, unsigned int start, unsigned int flags) {
+static uint32_t conntrack_get_hash_rtp(struct frame *f, unsigned int start, unsigned int flags) {
 
 	struct rtphdr* hdr;
 	
@@ -60,7 +61,7 @@ uint32_t conntrack_get_hash_rtp(struct frame *f, unsigned int start, unsigned in
 
 }
 
-int conntrack_doublecheck_rtp(struct frame *f, unsigned int start, void *priv, unsigned int flags) {
+static int conntrack_doublecheck_rtp(struct frame *f, unsigned int start, void *priv, unsigned int flags) {
 
 	
 
@@ -86,7 +87,7 @@ int conntrack_doublecheck_rtp(struct frame *f, unsigned int start, void *priv, u
 }
 
 
-void *conntrack_alloc_match_priv_rtp(struct frame *f, unsigned int start, struct conntrack_entry *ce) {
+static void *conntrack_alloc_match_priv_rtp(struct frame *f, unsigned int start, struct conntrack_entry *ce) {
 	
 	struct rtphdr* hdr;
 	hdr = f->buff + start;
@@ -114,7 +115,7 @@ void *conntrack_alloc_match_priv_rtp(struct frame *f, unsigned int start, struct
 
 }
 
-int conntrack_cleanup_match_priv_rtp(void *priv) {
+static int conntrack_cleanup_match_priv_rtp(void *priv) {
 
 	struct conntrack_priv_rtp *p = priv;
 
@@ -126,7 +127,7 @@ int conntrack_cleanup_match_priv_rtp(void *priv) {
 	return POM_OK;
 }
 
-int conntrack_unregister_rtp(struct conntrack_reg *r) {
+static int conntrack_unregister_rtp(struct conntrack_reg *r) {
 
 	ptype_cleanup(rtp_timeout);
 	return POM_OK;

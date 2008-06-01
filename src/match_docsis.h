@@ -25,60 +25,11 @@
 
 #include "modules_common.h"
 #include "match.h"
-
-
-struct docsis_hdr {
-
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-	unsigned char ehdr_on:1;
-	unsigned char fc_parm:5;
-	unsigned char fc_type:2;
-#elif __BYTE_ORDER == __BIG_ENDIAN
-	unsigned char fc_type:2;
-	unsigned char fc_parm:5;
-	unsigned char ehdr_on:1;
-#else
-# error "Please fix <bits/endian.h>"
-#endif
-	char mac_parm;
-	uint16_t len;
-	uint16_t hcs; // can also be start of ehdr. See SCTE 22-12002 section 6.2.1.4
-
-};
-
-struct docsis_ehdr {
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-	unsigned int eh_len:4;
-	unsigned int eh_type:4;
-#elif __BYTE_ORDER == __BIG_ENDIAN
-	unsigned int eh_type:4;
-	unsigned int eh_len:4;
-#else
-# error "Please fix <bits/endian.h>"
-#endif
-
-	char eh_value[15];
-
-};
-
-
-// Definition of the standard types
-
-#define FC_TYPE_PKT_MAC	0x0 // Packet-based MAC frame
-#define FC_TYPE_ATM	0x1 // ATM cell MAC frame
-#define FC_TYPE_RSVD	0x2 // Reserved PDU MAC frame
-#define FC_TYPE_MAC_SPC 0x3 // MAC-specific header
-
-
-// Definition of mac management mac_parm values
-#define FCP_TIMING	0x00 // Timing header
-#define FCP_MGMT	0x01 // Management header
-#define FCP_REQ		0x02 // Request header (upstream only)
-#define FCP_CONCAT	0x1C // Concatenation header (upstream only)
+#include <docsis.h>
 
 
 int match_register_docsis(struct match_reg *r);
-int match_identify_docsis(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
-int match_unregister_docsis(struct match_reg *r);
+static int match_identify_docsis(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
+static int match_unregister_docsis(struct match_reg *r);
 
 #endif

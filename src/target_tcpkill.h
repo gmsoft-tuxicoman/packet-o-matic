@@ -49,10 +49,10 @@ struct target_priv_tcpkill {
 
 int target_register_tcpkill(struct target_reg *r);
 
-int target_init_tcpkill(struct target *t);
-int target_open_tcpkill(struct target *t);
-int target_process_tcpkill(struct target *t, struct frame *f);
-int target_close_tcpkill(struct target *t);
-int target_cleanup_tcpkill(struct target *t);
+static int target_init_tcpkill(struct target *t);
+static int target_open_tcpkill(struct target *t);
+static int target_process_tcpkill(struct target *t, struct frame *f);
+static int target_close_tcpkill(struct target *t);
+static int target_cleanup_tcpkill(struct target *t);
 
 #endif

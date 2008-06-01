@@ -26,7 +26,7 @@
 
 #define INITVAL 0x7513adf4
 
-struct ptype *udp_timeout;
+static struct ptype *udp_timeout;
 
 int conntrack_register_udp(struct conntrack_reg *r) {
 	
@@ -48,7 +48,7 @@ int conntrack_register_udp(struct conntrack_reg *r) {
 }
 
 
-uint32_t conntrack_get_hash_udp(struct frame *f, unsigned int start, unsigned int flags) {
+static uint32_t conntrack_get_hash_udp(struct frame *f, unsigned int start, unsigned int flags) {
 
 	struct udphdr* hdr;
 	
@@ -75,7 +75,7 @@ uint32_t conntrack_get_hash_udp(struct frame *f, unsigned int start, unsigned in
 
 }
 
-int conntrack_doublecheck_udp(struct frame *f, unsigned int start, void *priv, unsigned int flags) {
+static int conntrack_doublecheck_udp(struct frame *f, unsigned int start, void *priv, unsigned int flags) {
 
 	struct udphdr* hdr;
 	hdr = f->buff + start;
@@ -113,7 +113,7 @@ int conntrack_doublecheck_udp(struct frame *f, unsigned int start, void *priv, u
 }
 
 
-void *conntrack_alloc_match_priv_udp(struct frame *f, unsigned int start, struct conntrack_entry *ce) {
+static void *conntrack_alloc_match_priv_udp(struct frame *f, unsigned int start, struct conntrack_entry *ce) {
 	
 	struct udphdr* hdr;
 	hdr = f->buff + start;
@@ -141,7 +141,7 @@ void *conntrack_alloc_match_priv_udp(struct frame *f, unsigned int start, struct
 
 }
 
-int conntrack_cleanup_match_priv_udp(void *priv) {
+static int conntrack_cleanup_match_priv_udp(void *priv) {
 
 	struct conntrack_priv_udp *p = priv;
 	
@@ -154,7 +154,7 @@ int conntrack_cleanup_match_priv_udp(void *priv) {
 }
 
 
-int conntrack_unregister_udp(struct conntrack_reg *r) {
+static int conntrack_unregister_udp(struct conntrack_reg *r) {
 
 	ptype_cleanup(udp_timeout);
 	return POM_OK;

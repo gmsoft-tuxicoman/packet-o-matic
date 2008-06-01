@@ -28,6 +28,6 @@
 
 int target_register_null(struct target_reg *r);
 
-int target_process_null(struct target *t, struct frame *f);
+static int target_process_null(struct target *t, struct frame *f);
 
 #endif

@@ -35,9 +35,9 @@
 #define IP_OFFSET_MASK 0x1fff
 
 
-struct helper_priv_ipv4 *frags_head;
+static struct helper_priv_ipv4 *frags_head;
 
-struct ptype *frag_timeout;
+static struct ptype *frag_timeout;
 
 int helper_register_ipv4(struct helper_reg *r) {
 	
@@ -55,7 +55,7 @@ int helper_register_ipv4(struct helper_reg *r) {
 }
 
 
-int helper_ipv4_process_frags(struct helper_priv_ipv4 *p) {
+static int helper_ipv4_process_frags(struct helper_priv_ipv4 *p) {
 
 	struct frame *f = p->f;
 
@@ -97,7 +97,7 @@ int helper_ipv4_process_frags(struct helper_priv_ipv4 *p) {
 
 }
 
-int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
+static int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len, struct layer *l) {
 
 
 	struct ip* hdr;
@@ -279,7 +279,7 @@ int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len,
 	return H_NEED_HELP;
 }
 
-int helper_cleanup_ipv4_frag(void *priv) {
+static int helper_cleanup_ipv4_frag(void *priv) {
 
 	struct helper_priv_ipv4 *p = priv;
 
@@ -312,7 +312,7 @@ int helper_cleanup_ipv4_frag(void *priv) {
 	return POM_OK;
 }
 
-int helper_cleanup_ipv4() {
+static int helper_cleanup_ipv4() {
 
 	ptype_cleanup(frag_timeout);
 

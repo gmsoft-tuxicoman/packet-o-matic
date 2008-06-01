@@ -49,16 +49,15 @@ struct target_priv_display {
 
 int target_register_display(struct target_reg *r);
 
-int target_init_display(struct target *t);
-int target_open_display(struct target *t);
-int target_process_display(struct target *t, struct frame *f);
-int target_close_display(struct target *t);
-int target_cleanup_display(struct target *t);
+static int target_init_display(struct target *t);
+static int target_process_display(struct target *t, struct frame *f);
+static int target_close_display(struct target *t);
+static int target_cleanup_display(struct target *t);
 
-int target_display_print_hex(void *frame, unsigned int start, unsigned int len, struct target_priv_display *p);
-int target_display_print_ascii(void *frame, unsigned int start, unsigned int len, struct target_priv_display *p);
+static int target_display_print_hex(void *frame, unsigned int start, unsigned int len, struct target_priv_display *p);
+static int target_display_print_ascii(void *frame, unsigned int start, unsigned int len, struct target_priv_display *p);
 
-int target_close_connection_display(struct target *t, struct conntrack_entry *ce, void *conntrack_priv);
+static int target_close_connection_display(struct target *t, struct conntrack_entry *ce, void *conntrack_priv);
 
 
 #endif

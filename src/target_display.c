@@ -26,9 +26,9 @@
 #include "ptype_uint8.h"
 #include "ptype_uint16.h"
 
-int match_undefined_id;
+static int match_undefined_id;
 
-struct target_mode *mode_normal, *mode_connection;
+static struct target_mode *mode_normal, *mode_connection;
 
 int target_register_display(struct target_reg *r) {
 
@@ -57,7 +57,7 @@ int target_register_display(struct target_reg *r) {
 
 }
 
-int target_init_display(struct target *t) {
+static int target_init_display(struct target *t) {
 
 	struct target_priv_display *priv = malloc(sizeof(struct target_priv_display));
 	memset(priv, 0, sizeof(struct target_priv_display));
@@ -87,7 +87,7 @@ int target_init_display(struct target *t) {
 }
 
 
-int target_process_display(struct target *t, struct frame *f) {
+static int target_process_display(struct target *t, struct frame *f) {
 
 	struct target_priv_display *p = t->target_priv;
 
@@ -244,7 +244,7 @@ int target_process_display(struct target *t, struct frame *f) {
 
 }
 
-int target_display_print_hex(void *frame, unsigned int start, unsigned int len, struct target_priv_display *p) {
+static int target_display_print_hex(void *frame, unsigned int start, unsigned int len, struct target_priv_display *p) {
 
 
 	unsigned char *f = frame + start;
@@ -309,7 +309,7 @@ int target_display_print_hex(void *frame, unsigned int start, unsigned int len, 
 }
 
 
-int target_display_print_ascii(void *frame, unsigned int start, unsigned int len, struct target_priv_display *p) {
+static int target_display_print_ascii(void *frame, unsigned int start, unsigned int len, struct target_priv_display *p) {
 
 	unsigned char *f = frame + start;
 	int i;
@@ -341,7 +341,7 @@ int target_display_print_ascii(void *frame, unsigned int start, unsigned int len
 
 }
 
-int target_close_display(struct target *t) {
+static int target_close_display(struct target *t) {
 
 	struct target_priv_display *priv = t->target_priv;
 
@@ -355,7 +355,7 @@ int target_close_display(struct target *t) {
 	return POM_OK;
 }
 
-int target_cleanup_display(struct target *t) {
+static int target_cleanup_display(struct target *t) {
 
 	struct target_priv_display *priv = t->target_priv;
 

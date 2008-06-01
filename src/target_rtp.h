@@ -94,14 +94,14 @@ struct target_priv_rtp {
 
 int target_register_rtp(struct target_reg *r);
 
-int target_init_rtp(struct target *t);
-int target_process_rtp(struct target *t, struct frame *f);
-int target_close_connection_rtp(struct target *t, struct conntrack_entry *ce, void *conntrack_priv);
-int target_close_rtp(struct target *t);
-int target_cleanup_rtp(struct target *t);
+static int target_init_rtp(struct target *t);
+static int target_process_rtp(struct target *t, struct frame *f);
+static int target_close_connection_rtp(struct target *t, struct conntrack_entry *ce, void *conntrack_priv);
+static int target_close_rtp(struct target *t);
+static int target_cleanup_rtp(struct target *t);
 
-int write_packet(struct target_conntrack_priv_rtp *cp, struct target_priv_rtp *priv, int dir, void *data, int len);
-int open_file(struct target_priv_rtp *priv, struct target_conntrack_priv_rtp *cp);
-int flush_buffers(struct target_conntrack_priv_rtp *cp, int dir);
+static int write_packet(struct target_conntrack_priv_rtp *cp, struct target_priv_rtp *priv, int dir, void *data, int len);
+static int open_file(struct target_priv_rtp *priv, struct target_conntrack_priv_rtp *cp);
+static int flush_buffers(struct target_conntrack_priv_rtp *cp, int dir);
 
 #endif

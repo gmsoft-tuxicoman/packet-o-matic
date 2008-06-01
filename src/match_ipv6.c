@@ -27,11 +27,11 @@
 #include "ptype_uint8.h"
 #include "ptype_ipv6.h"
 
-struct match_dep *match_icmpv6, *match_tcp, *match_udp;
+static struct match_dep *match_icmpv6, *match_tcp, *match_udp;
 
-int field_saddr, field_daddr, field_flabel, field_hlim;
+static int field_saddr, field_daddr, field_flabel, field_hlim;
 
-struct ptype *ptype_ipv6, *ptype_uint8, *ptype_uint32;
+static struct ptype *ptype_ipv6, *ptype_uint8, *ptype_uint32;
 
 int match_register_ipv6(struct match_reg *r) {
 
@@ -63,7 +63,7 @@ int match_register_ipv6(struct match_reg *r) {
 
 
 
-int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
+static int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
 	struct ip6_hdr* hdr = f->buff + start;
 	unsigned int hdrlen = sizeof(struct ip6_hdr);
@@ -116,7 +116,7 @@ int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int start, un
 
 }
 
-int match_get_expectation_ipv6(int field_id, int direction) {
+static int match_get_expectation_ipv6(int field_id, int direction) {
 
 	if (field_id == field_saddr) {
 		if (direction == EXPT_DIR_FWD) {
@@ -136,7 +136,7 @@ int match_get_expectation_ipv6(int field_id, int direction) {
 
 }
 
-int match_unregister_ipv6(struct match_reg *r) {
+static int match_unregister_ipv6(struct match_reg *r) {
 	
 	ptype_cleanup(ptype_ipv6);
 	ptype_cleanup(ptype_uint8);

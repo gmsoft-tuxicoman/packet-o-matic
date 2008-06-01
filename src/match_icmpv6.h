@@ -27,7 +27,7 @@
 #include "match.h"
 
 int match_register_icmpv6(struct match_reg *r);
-int match_identify_icmpv6(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
-int match_unregister_icmpv6(struct match_reg *r);
+static int match_identify_icmpv6(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
+static int match_unregister_icmpv6(struct match_reg *r);
 
 #endif

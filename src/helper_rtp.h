@@ -61,13 +61,12 @@ struct helper_timer_priv_rtp {
 };
 
 int helper_register_rtp(struct helper_reg *r);
-int helper_need_help_rtp(struct frame *f, unsigned int start, unsigned int len, struct layer *l);
-int helper_process_next_rtp(struct helper_priv_rtp *p, int dir);
-int helper_process_timer_rtp(void *priv);
-int helper_flush_buffer_rtp(struct conntrack_entry *ce, void *conntrack_priv);
-int helper_unregister(int helper_type);
-int helper_cleanup_connection_rtp(struct conntrack_entry *ce, void *conntrack_priv);
-int helper_cleanup_rtp();
+static int helper_need_help_rtp(struct frame *f, unsigned int start, unsigned int len, struct layer *l);
+static int helper_process_next_rtp(struct helper_priv_rtp *p, int dir);
+static int helper_process_timer_rtp(void *priv);
+static int helper_flush_buffer_rtp(struct conntrack_entry *ce, void *conntrack_priv);
+static int helper_cleanup_connection_rtp(struct conntrack_entry *ce, void *conntrack_priv);
+static int helper_cleanup_rtp();
 
 #endif
 

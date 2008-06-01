@@ -26,11 +26,11 @@
 #include "ptype_uint16.h"
 #include "ptype_uint32.h"
 
-struct match_dep *match_undefined;
+static struct match_dep *match_undefined;
 
-int field_sport, field_dport, field_flags, field_seq, field_ack, field_win;
+static int field_sport, field_dport, field_flags, field_seq, field_ack, field_win;
 
-struct ptype *ptype_uint8, *ptype_uint16, *ptype_uint32;
+static struct ptype *ptype_uint8, *ptype_uint16, *ptype_uint32;
 
 int match_register_tcp(struct match_reg *r) {
 
@@ -61,7 +61,7 @@ int match_register_tcp(struct match_reg *r) {
 }
 
 
-int match_identify_tcp(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
+static int match_identify_tcp(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
 	struct tcphdr* hdr = f->buff + start;
 	
@@ -80,7 +80,7 @@ int match_identify_tcp(struct frame *f, struct layer* l, unsigned int start, uns
 
 }
 
-int match_get_expectation_tcp(int field_id, int direction) {
+static int match_get_expectation_tcp(int field_id, int direction) {
 
 	if (field_id == field_sport) {
 		if (direction == EXPT_DIR_FWD) {
@@ -99,7 +99,7 @@ int match_get_expectation_tcp(int field_id, int direction) {
 	return POM_ERR;
 }
 
-int match_unregister_tcp(struct match_reg *r) {
+static int match_unregister_tcp(struct match_reg *r) {
 
 	ptype_cleanup(ptype_uint8);
 	ptype_cleanup(ptype_uint16);

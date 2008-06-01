@@ -25,8 +25,7 @@
 
 #define INITVAL 0x84fa0b2c
 
-struct ptype *tcp_syn_sent_t, *tcp_syn_recv_t, *tcp_last_ack_t, *tcp_close_t, *tcp_time_wait_t, *tcp_established_t;
-
+static struct ptype *tcp_syn_sent_t, *tcp_syn_recv_t, *tcp_last_ack_t, *tcp_close_t, *tcp_time_wait_t, *tcp_established_t;
 
 int conntrack_register_tcp(struct conntrack_reg *r) {
 	
@@ -61,7 +60,7 @@ int conntrack_register_tcp(struct conntrack_reg *r) {
 }
 
 
-uint32_t conntrack_get_hash_tcp(struct frame *f, unsigned int start, unsigned int flags) {
+static uint32_t conntrack_get_hash_tcp(struct frame *f, unsigned int start, unsigned int flags) {
 
 	struct tcphdr* hdr;
 	
@@ -89,7 +88,7 @@ uint32_t conntrack_get_hash_tcp(struct frame *f, unsigned int start, unsigned in
 
 }
 
-int conntrack_tcp_update_timer(struct conntrack_priv_tcp *priv, struct tcphdr *hdr) {
+static int conntrack_tcp_update_timer(struct conntrack_priv_tcp *priv, struct tcphdr *hdr) {
 
 	if (hdr->th_flags & TH_SYN && hdr->th_flags & TH_ACK) {
 	        priv->state = STATE_TCP_SYN_RECV;
@@ -125,7 +124,7 @@ int conntrack_tcp_update_timer(struct conntrack_priv_tcp *priv, struct tcphdr *h
 
 }
 
-int conntrack_doublecheck_tcp(struct frame *f, unsigned int start, void *priv, unsigned int flags) {
+static int conntrack_doublecheck_tcp(struct frame *f, unsigned int start, void *priv, unsigned int flags) {
 
 	
 	struct tcphdr* hdr;
@@ -158,7 +157,7 @@ int conntrack_doublecheck_tcp(struct frame *f, unsigned int start, void *priv, u
 }
 
 
-void *conntrack_alloc_match_priv_tcp(struct frame *f, unsigned int start, struct conntrack_entry *ce) {
+static void *conntrack_alloc_match_priv_tcp(struct frame *f, unsigned int start, struct conntrack_entry *ce) {
 	
 	struct tcphdr* hdr;
 	hdr = f->buff + start;
@@ -193,7 +192,7 @@ void *conntrack_alloc_match_priv_tcp(struct frame *f, unsigned int start, struct
 
 }
 
-int conntrack_cleanup_match_priv_tcp(void *priv) {
+static int conntrack_cleanup_match_priv_tcp(void *priv) {
 
 	struct conntrack_priv_tcp *p = priv;
 
@@ -205,7 +204,7 @@ int conntrack_cleanup_match_priv_tcp(void *priv) {
 	return POM_OK;
 }
 
-int conntrack_unregister_tcp(struct conntrack_reg *r) {
+static int conntrack_unregister_tcp(struct conntrack_reg *r) {
 
 	ptype_cleanup(tcp_syn_sent_t);
 	ptype_cleanup(tcp_syn_recv_t);

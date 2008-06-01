@@ -48,7 +48,7 @@
 #define TYPE_DOC 0x20
 
 
-const char *mime_types[MIME_TYPES_COUNT][3] = {
+static const char *mime_types[MIME_TYPES_COUNT][3] = {
 
 	{ "private/unknown", "unk", MIME_BIN }, // Special non-existant type
 	{ "application/x-javascript", "js", MIME_TXT },
@@ -99,10 +99,10 @@ const char *mime_types[MIME_TYPES_COUNT][3] = {
 
 };
 
-unsigned char mime_types_hash[MIME_TYPES_COUNT];
+static unsigned char mime_types_hash[MIME_TYPES_COUNT];
 
-unsigned int match_undefined_id;
-struct target_mode *mode_default;
+static unsigned int match_undefined_id;
+static struct target_mode *mode_default;
 
 int target_register_http(struct target_reg *r) {
 
@@ -140,7 +140,7 @@ int target_register_http(struct target_reg *r) {
 }
 
 
-int target_init_http(struct target *t) {
+static int target_init_http(struct target *t) {
 
 	struct target_priv_http *priv = malloc(sizeof(struct target_priv_http));
 	memset(priv, 0, sizeof(struct target_priv_http));
@@ -172,7 +172,7 @@ int target_init_http(struct target *t) {
 	return POM_OK;
 }
 
-int target_close_http(struct target *t) {
+static int target_close_http(struct target *t) {
 
 	struct target_priv_http *priv = t->target_priv;
 
@@ -184,7 +184,7 @@ int target_close_http(struct target *t) {
 	return POM_OK;
 }
 
-int target_cleanup_http(struct target *t) {
+static int target_cleanup_http(struct target *t) {
 
 	struct target_priv_http *priv = t->target_priv;
 
@@ -204,7 +204,7 @@ int target_cleanup_http(struct target *t) {
 }
 
 
-int target_open_http(struct target *t) {
+static int target_open_http(struct target *t) {
 
 	struct target_priv_http *priv = t->target_priv;
 
@@ -225,7 +225,7 @@ int target_open_http(struct target *t) {
 
 }
 
-int target_process_http(struct target *t, struct frame *f) {
+static int target_process_http(struct target *t, struct frame *f) {
 
 	struct target_priv_http *priv = t->target_priv;
 	
@@ -459,7 +459,7 @@ int target_process_http(struct target *t, struct frame *f) {
 	return POM_OK;
 };
 
-int target_close_connection_http(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
+static int target_close_connection_http(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
 	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
 

@@ -43,10 +43,10 @@ struct target_priv_tap {
 
 int target_register_tap(struct target_reg *r);
 
-int target_init_tap(struct target *t);
-int target_open_tap(struct target *t);
-int target_process_tap(struct target *t, struct frame *f);
-int target_close_tap(struct target *t);
-int target_cleanup_tap(struct target *t);
+static int target_init_tap(struct target *t);
+static int target_open_tap(struct target *t);
+static int target_process_tap(struct target *t, struct frame *f);
+static int target_close_tap(struct target *t);
+static int target_cleanup_tap(struct target *t);
 
 #endif

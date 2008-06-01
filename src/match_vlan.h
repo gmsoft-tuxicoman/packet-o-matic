@@ -26,27 +26,12 @@
 #include "modules_common.h"
 #include "match.h"
 
-struct vlan_header {
-
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-	uint16_t vid:12;
-	uint16_t cfi:1;
-	uint16_t user_priority:3;
-#elif __BYTE_ORDER == __BIG_ENDIAN
-	uint16_t user_priority:3;
-	uint16_t cfi:1;
-	uint16_t vid:12;
-#else
-# error "Please fix <endian.h>"
-#endif
-
-	uint16_t ether_type;
-};
+#include <vlan.h>
 
 int match_register_vlan(struct match_reg *r);
-int match_identify_vlan(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
-int match_get_expectation_vlan(int field_id, int direction);
-int match_unregister_vlan(struct match_reg *r);
+static int match_identify_vlan(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
+static int match_get_expectation_vlan(int field_id, int direction);
+static int match_unregister_vlan(struct match_reg *r);
 
 
 #endif

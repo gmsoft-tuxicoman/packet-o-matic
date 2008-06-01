@@ -35,8 +35,8 @@ struct ip6_ehdr {
 };
 
 int match_register_ipv6(struct match_reg *r);
-int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
-int match_get_expectation_ipv6(int field_id, int direction);
-int match_unregister_ipv6(struct match_reg *r);
+static int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
+static int match_get_expectation_ipv6(int field_id, int direction);
+static int match_unregister_ipv6(struct match_reg *r);
 
 #endif

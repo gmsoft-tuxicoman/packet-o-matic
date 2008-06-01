@@ -19,30 +19,16 @@
  */
 
 
-#ifndef __TARGET_INJECT_H__
-#define __TARGET_INJECT_H__
+#ifndef __ETHERNET_H__
+#define __ETHERNET_H__
 
-#include <unistd.h>
-#include <string.h>
-#include <libnet.h>
+#define ETH_ALEN 6
 
-
-#include "modules_common.h"
-#include "target.h"
-
-struct target_priv_inject {
-
-	libnet_t *lc;
-	unsigned int size;
-	struct ptype *iface;
-};
-
-int target_register_inject(struct target_reg *r);
-
-static int target_init_inject(struct target *t);
-static int target_open_inject(struct target *t);
-static int target_process_inject(struct target *t, struct frame *f);
-static int target_close_inject(struct target *t);
-static int target_cleanup_inject(struct target *t);
+struct ether_header
+{
+	uint8_t  ether_dhost[ETH_ALEN];
+	uint8_t  ether_shost[ETH_ALEN];
+	uint16_t ether_type;
+} __attribute__ ((__packed__));
 
 #endif

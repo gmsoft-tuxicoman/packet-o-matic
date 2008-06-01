@@ -22,11 +22,11 @@
 #include "match_vlan.h"
 #include "ptype_uint16.h"
 
-struct match_dep *match_ipv4, *match_ipv6, *match_arp, *match_vlan;
+static struct match_dep *match_ipv4, *match_ipv6, *match_arp, *match_vlan;
 
-int field_vid;
+static int field_vid;
 
-struct ptype *ptype_vid;
+static struct ptype *ptype_vid;
 
 int match_register_vlan(struct match_reg *r) {
 
@@ -50,7 +50,7 @@ int match_register_vlan(struct match_reg *r) {
 
 }
 
-int match_identify_vlan(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
+static int match_identify_vlan(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
 	struct vlan_header *vhdr = f->buff + start;
 
@@ -74,7 +74,7 @@ int match_identify_vlan(struct frame *f, struct layer* l, unsigned int start, un
 	return POM_ERR;
 }
 
-int match_get_expectation_vlan(int field_id, int direction) {
+static int match_get_expectation_vlan(int field_id, int direction) {
 
 	if (field_id == field_vid)
 		return field_vid;
@@ -82,7 +82,7 @@ int match_get_expectation_vlan(int field_id, int direction) {
 	return POM_ERR;
 }
 
-int match_unregister_vlan(struct match_reg *r) {
+static int match_unregister_vlan(struct match_reg *r) {
 
 	ptype_cleanup(ptype_vid);
 

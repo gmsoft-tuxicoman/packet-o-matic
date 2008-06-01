@@ -41,14 +41,14 @@ struct input_priv_pcap {
 
 int input_register_pcap(struct input_reg *r);
 
-int input_init_pcap(struct input *i);
-int input_open_pcap(struct input *i);
-int input_read_pcap(struct input *i, struct frame *f);
-int input_unregister_pcap(struct input_reg *r);
-int input_close_pcap(struct input *i);
-int input_cleanup_pcap(struct input *i);
-int input_getcaps_pcap(struct input *i, struct input_caps *ic);
-int input_interrupt_pcap(struct input *i);
+static int input_init_pcap(struct input *i);
+static int input_open_pcap(struct input *i);
+static int input_read_pcap(struct input *i, struct frame *f);
+static int input_unregister_pcap(struct input_reg *r);
+static int input_close_pcap(struct input *i);
+static int input_cleanup_pcap(struct input *i);
+static int input_getcaps_pcap(struct input *i, struct input_caps *ic);
+static int input_interrupt_pcap(struct input *i);
 
 
 #endif

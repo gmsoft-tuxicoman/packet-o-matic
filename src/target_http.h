@@ -66,11 +66,11 @@ struct target_priv_http {
 
 int target_register_http(struct target_reg *r);
 
-int target_init_http(struct target *t);
-int target_open_http(struct target *t);
-int target_process_http(struct target *t, struct frame *f);
-int target_close_connection_http(struct target *t, struct conntrack_entry *ce, void *conntrack_priv);
-int target_close_http(struct target *t);
-int target_cleanup_http(struct target *t);
+static int target_init_http(struct target *t);
+static int target_open_http(struct target *t);
+static int target_process_http(struct target *t, struct frame *f);
+static int target_close_connection_http(struct target *t, struct conntrack_entry *ce, void *conntrack_priv);
+static int target_close_http(struct target *t);
+static int target_cleanup_http(struct target *t);
 
 #endif

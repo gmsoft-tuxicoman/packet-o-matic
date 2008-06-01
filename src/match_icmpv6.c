@@ -25,11 +25,11 @@
 #include "match_icmpv6.h"
 #include "ptype_uint8.h"
 
-struct match_dep *match_ipv6;
+static struct match_dep *match_ipv6;
 
-int field_type, field_code;
+static int field_type, field_code;
 
-struct ptype *ptype_uint8;
+static struct ptype *ptype_uint8;
 
 int match_register_icmpv6(struct match_reg *r) {
 
@@ -49,7 +49,7 @@ int match_register_icmpv6(struct match_reg *r) {
 	return POM_OK;
 }
 
-int match_identify_icmpv6(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
+static int match_identify_icmpv6(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
 	struct icmp6_hdr *ihdr = f->buff + start;
 
@@ -66,7 +66,7 @@ int match_identify_icmpv6(struct frame *f, struct layer* l, unsigned int start, 
 	return POM_ERR;
 }
 
-int match_unregister_icmpv6(struct match_reg *r) {
+static int match_unregister_icmpv6(struct match_reg *r) {
 
 	ptype_cleanup(ptype_uint8);
 	return POM_OK;

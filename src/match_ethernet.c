@@ -25,11 +25,11 @@
 #include <sys/socket.h>
 
 
-struct match_dep *match_ipv4, *match_ipv6, *match_arp, *match_vlan;
+static struct match_dep *match_ipv4, *match_ipv6, *match_arp, *match_vlan;
 
-int field_saddr, field_daddr;
+static int field_saddr, field_daddr;
 
-struct ptype *ptype_mac;
+static struct ptype *ptype_mac;
 
 int match_register_ethernet(struct match_reg *r) {
 
@@ -53,7 +53,7 @@ int match_register_ethernet(struct match_reg *r) {
 
 }
 
-int match_identify_ethernet(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
+static int match_identify_ethernet(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
 	struct ether_header *ehdr = f->buff + start;
 
@@ -78,7 +78,7 @@ int match_identify_ethernet(struct frame *f, struct layer* l, unsigned int start
 	return POM_ERR;
 }
 
-int match_unregister_ethernet(struct match_reg *r) {
+static int match_unregister_ethernet(struct match_reg *r) {
 
 	ptype_cleanup(ptype_mac);
 

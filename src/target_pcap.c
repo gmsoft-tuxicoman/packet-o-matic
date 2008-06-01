@@ -22,7 +22,7 @@
 #include "ptype_string.h"
 #include "ptype_uint16.h"
 
-struct target_mode *mode_default;
+static struct target_mode *mode_default;
 
 int target_register_pcap(struct target_reg *r) {
 
@@ -46,7 +46,7 @@ int target_register_pcap(struct target_reg *r) {
 
 }
 
-int target_init_pcap(struct target *t) {
+static int target_init_pcap(struct target *t) {
 
 	struct target_priv_pcap *priv = malloc(sizeof(struct target_priv_pcap));
 	memset(priv, 0, sizeof(struct target_priv_pcap));
@@ -69,7 +69,7 @@ int target_init_pcap(struct target *t) {
 	return POM_OK;
 }
 
-int target_cleanup_pcap(struct target *t) {
+static int target_cleanup_pcap(struct target *t) {
 
 	struct target_priv_pcap *priv = t->target_priv;
 
@@ -84,7 +84,7 @@ int target_cleanup_pcap(struct target *t) {
 }
 
 
-int target_open_pcap(struct target *t) {
+static int target_open_pcap(struct target *t) {
 
 	struct target_priv_pcap *priv = t->target_priv;
 
@@ -127,7 +127,7 @@ int target_open_pcap(struct target *t) {
 }
 
 
-int target_process_pcap(struct target *t, struct frame *f) {
+static int target_process_pcap(struct target *t, struct frame *f) {
 
 	struct target_priv_pcap *priv = t->target_priv;
 	
@@ -169,7 +169,7 @@ int target_process_pcap(struct target *t, struct frame *f) {
 	return POM_OK;
 };
 
-int target_close_pcap(struct target *t) {
+static int target_close_pcap(struct target *t) {
 	
 	struct target_priv_pcap *priv = t->target_priv;
 

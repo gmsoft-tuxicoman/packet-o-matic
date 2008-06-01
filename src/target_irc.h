@@ -89,12 +89,11 @@ struct target_priv_irc {
 
 
 int target_register_irc(struct target_reg *r);
-int target_init_irc(struct target *t);
-int target_open_irc(struct target *t);
-int target_process_irc(struct target *t, struct frame *f);
-int target_close_connection_irc(struct target *t, struct conntrack_entry *ce, void *conntrack_priv);
-int target_close_irc(struct target *t);
-int target_cleanup_irc(struct target *t);
+static int target_init_irc(struct target *t);
+static int target_process_irc(struct target *t, struct frame *f);
+static int target_close_connection_irc(struct target *t, struct conntrack_entry *ce, void *conntrack_priv);
+static int target_close_irc(struct target *t);
+static int target_cleanup_irc(struct target *t);
 
 /*
  * Contain the token of IRC message along with
@@ -111,20 +110,19 @@ struct irc_tok {
 };
 
 /* utility functions */
-int 	add_of(struct open_file*, struct open_file*);
-int 	del_of(struct open_file*, const char* what);
-struct 	open_file* get_of(struct open_file*, const char* what);
-int 	open_of(struct open_file*, struct target_conntrack_priv_irc*);
-int 	remove_all_of(struct open_file*);
-char*	get_timestamp(void);
-char*	get_time(void);
-char*	getNick(char *);
+static int 	add_of(struct open_file*, struct open_file*);
+static struct 	open_file* get_of(struct open_file*, const char* what);
+static int 	open_of(struct open_file*, struct target_conntrack_priv_irc*);
+static int 	remove_all_of(struct open_file*);
+static char*	get_timestamp(void);
+static char*	get_time(void);
+static char*	getNick(char *);
 
 /* irc processing functions */
-#define TOKEN_FCT(x) 	int x(	struct target_conntrack_priv_irc *, \
-				unsigned int is_srv, \
-				char *from, \
-				char *line);
+#define TOKEN_FCT(x) 	static int x(	struct target_conntrack_priv_irc *, \
+					unsigned int is_srv, \
+					char *from, \
+					char *line);
 
 TOKEN_FCT(process_privmsg);
 TOKEN_FCT(process_notice);
@@ -137,12 +135,12 @@ TOKEN_FCT(process_topic);
 TOKEN_FCT(process_oper);
 TOKEN_FCT(process_kick);
 
-int	parse_msg(struct target_conntrack_priv_irc *,
+static int parse_msg(struct target_conntrack_priv_irc *,
 		  char * line,
 		  unsigned int len);
 
 #define NB_TOKENS 10
-struct irc_tok Irc_MSG[] = {
+static struct irc_tok Irc_MSG[] = {
 	{ "PRIVMSG", process_privmsg, 0 }, 	/* no password in PRIVMSG */
 	{ "NOTICE", process_notice, 0 }, 	/* no password in NOTICE */
 	{ "PART", process_part, 0 },		/* no password in PART */

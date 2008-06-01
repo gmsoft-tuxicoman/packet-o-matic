@@ -34,8 +34,9 @@
 #include <sys/ioctl.h>
 #include <errno.h>
 
+
+#include <docsis.h>
 #include "input_docsis.h"
-#include "match_docsis.h" // For docsis header definition
 
 #include "ptype_string.h"
 #include "ptype_bool.h"
@@ -45,10 +46,10 @@
 /// We use a bigger buffer size of the demux interface. This way we can cope with some burst.
 #define DEMUX_BUFFER_SIZE 2097152 // 2Megs
 
-int match_ethernet_id, match_docsis_id, match_atm_id;
+static int match_ethernet_id, match_docsis_id, match_atm_id;
 
-struct input_mode *mode_normal, *mode_scan;
-struct ptype *p_eurodocsis, *p_frequency, *p_modulation, *p_adapter, *p_frontend, *p_outlayer, *p_startfreq, *p_frontend_reinit, *p_tuning_timeout;
+static struct input_mode *mode_normal, *mode_scan;
+static struct ptype *p_eurodocsis, *p_frequency, *p_modulation, *p_adapter, *p_frontend, *p_outlayer, *p_startfreq, *p_frontend_reinit, *p_tuning_timeout;
 
 /// Register input_docsis
 int input_register_docsis(struct input_reg *r) {
@@ -110,7 +111,7 @@ int input_register_docsis(struct input_reg *r) {
 }
 
 /** Always returns POM_OK. */
-int input_init_docsis(struct input *i) {
+static int input_init_docsis(struct input *i) {
 
 	i->input_priv = malloc(sizeof(struct input_priv_docsis));
 	memset(i->input_priv, 0, sizeof(struct input_priv_docsis));
@@ -125,7 +126,7 @@ int input_init_docsis(struct input *i) {
 }
 
 /** Always returns POM_OK */
-int input_cleanup_docsis(struct input *i) {
+static int input_cleanup_docsis(struct input *i) {
 
 	struct input_priv_docsis *p = i->input_priv;
 	free(p->temp_buff);
@@ -135,7 +136,7 @@ int input_cleanup_docsis(struct input *i) {
 
 }
 
-int input_unregister_docsis(struct input_reg *r) {
+static int input_unregister_docsis(struct input_reg *r) {
 
 	ptype_cleanup(p_eurodocsis);
 	ptype_cleanup(p_frequency);
@@ -154,7 +155,7 @@ int input_unregister_docsis(struct input_reg *r) {
  * If a frequency is not specified, it will scan for a tuneable freq.
  * Returns POM_ERR on failure or a file descriptor useable with select().
  **/
-int input_open_docsis(struct input *i) {
+static int input_open_docsis(struct input *i) {
 
 	struct input_priv_docsis *p = i->input_priv;
 	struct dmx_pes_filter_params filter;
@@ -366,7 +367,7 @@ err:
  * Returns POM_OK on success and POM_ERR on failure.
  **/
 
-int input_docsis_check_downstream(struct input *i) {
+static int input_docsis_check_downstream(struct input *i) {
 
 	struct input_priv_docsis *p = i->input_priv;
 
@@ -463,7 +464,7 @@ int input_docsis_check_downstream(struct input *i) {
  * This function will try to obtain a lock for tune_timeout seconds.
  * Returns 0 if not tuned in, 1 on success and -1 on fatal error.
  **/
-int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symbolRate, fe_modulation_t modulation) {
+static int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symbolRate, fe_modulation_t modulation) {
 	
 	fe_status_t status;
 	struct dvb_frontend_parameters frp;
@@ -559,7 +560,7 @@ int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symbolRate, 
  * Returns 0 on success, 1 if PUSI is set, -1 if it's and invalid packet, -2 if there was an error while reading.
  */
 
-int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_docsis *p) {
+static int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_docsis *p) {
 	
 
 		// Fill the mpeg buffer
@@ -631,7 +632,7 @@ int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_docsis *
  * Scan for a docsis stream on the current frequency. Change mode to normal once found or increase curfreq if not.
  * Return POM_ERR if whole range was scanned or in case of error.
  */
-int input_scan_docsis(struct input *i) {
+static int input_scan_docsis(struct input *i) {
 
 
 	struct input_priv_docsis *p = i->input_priv;
@@ -688,7 +689,7 @@ int input_scan_docsis(struct input *i) {
  * Returns POM_OK or POM_ERR in case of fatal error.
  **/
 
-int input_read_docsis(struct input *i, struct frame *f) {
+static int input_read_docsis(struct input *i, struct frame *f) {
 
 	if (i->mode == mode_scan)
 		return input_scan_docsis(i);
@@ -922,7 +923,7 @@ int input_read_docsis(struct input *i, struct frame *f) {
 /**
  * Returns POM_OK on success and POM_ERR on failure.
  **/
-int input_close_docsis(struct input *i) {
+static int input_close_docsis(struct input *i) {
 
 	struct input_priv_docsis *p = i->input_priv;
 	if (!p)
@@ -954,7 +955,7 @@ int input_close_docsis(struct input *i) {
 
 }
 
-int input_getcaps_docsis(struct input *i, struct input_caps *ic) {
+static int input_getcaps_docsis(struct input *i, struct input_caps *ic) {
 
 	ic->snaplen = 1800; /// Must be at least that high for internal processing
 	ic->is_live = 1;

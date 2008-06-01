@@ -19,38 +19,40 @@
  */
 
 
-#ifndef __TARGET_DUMP_PAYLOAD_H__
-#define __TARGET_DUMP_PAYLOAD_H__
+#ifndef __RTP_H__
+#define __RTP_H__
 
+struct rtphdr {
+	
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+	unsigned char csrc_count:4;
+	unsigned char extension:1;
+	unsigned char padding:1;
+	unsigned char version:2;
 
-#include "modules_common.h"
-#include "rules.h"
+	unsigned char payload_type:7;
+	unsigned char marker:1;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+	unsigned char version:2;
+	unsigned char padding:1;
+	unsigned char extension:1;
+	unsigned char csrc_count:4;
 
-struct target_conntrack_priv_dump_payload {
-
-	int fd;
-
-	struct conntrack_entry *ce;
-
-	struct target_conntrack_priv_dump_payload *next;
-	struct target_conntrack_priv_dump_payload *prev;
+	unsigned char marker:1;
+	unsigned char payload_type:7;
+#else
+# error "Please fix <endian.h>"
+#endif
+	uint16_t seq_num;
+	uint32_t timestamp;
+	uint32_t ssrc;
 
 };
 
-struct target_priv_dump_payload {
-
-	struct ptype *prefix;
-	struct ptype *markdir;
-	struct target_conntrack_priv_dump_payload *ct_privs;
-
+struct rtphdrext {
+	uint16_t profile_defined;
+	uint16_t length;
+	char *header_extension;
 };
-
-int target_register_dump_payload(struct target_reg *r);
-
-static int target_init_dump_payload(struct target *t);
-static int target_process_dump_payload(struct target *t, struct frame *f);
-static int target_close_connection_dump_payload(struct target *t, struct conntrack_entry* ce, void *conntrack_priv);
-static int target_close_dump_payload(struct target *t);
-static int target_cleanup_dump_payload(struct target *t);
 
 #endif

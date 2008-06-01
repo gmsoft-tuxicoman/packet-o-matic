@@ -31,8 +31,8 @@
 #include "ptype_string.h"
 
 
-unsigned int match_undefined_id;
-struct target_mode *mode_default;
+static unsigned int match_undefined_id;
+static struct target_mode *mode_default;
 
 int target_register_dump_payload(struct target_reg *r) {
 
@@ -55,7 +55,7 @@ int target_register_dump_payload(struct target_reg *r) {
 
 }
 
-int target_init_dump_payload(struct target *t) {
+static int target_init_dump_payload(struct target *t) {
 
 	struct target_priv_dump_payload *priv = malloc(sizeof(struct target_priv_dump_payload));
 	memset(priv, 0, sizeof(struct target_priv_dump_payload));
@@ -76,7 +76,7 @@ int target_init_dump_payload(struct target *t) {
 	return POM_OK;
 }
 
-int target_close_dump_payload(struct target *t) {
+static int target_close_dump_payload(struct target *t) {
 
 	struct target_priv_dump_payload *priv = t->target_priv;
 
@@ -88,7 +88,7 @@ int target_close_dump_payload(struct target *t) {
 	return POM_OK;
 }
 
-int target_cleanup_dump_payload(struct target *t) {
+static int target_cleanup_dump_payload(struct target *t) {
 
 	struct target_priv_dump_payload *priv = t->target_priv;
 
@@ -105,7 +105,7 @@ int target_cleanup_dump_payload(struct target *t) {
 
 
 
-int target_process_dump_payload(struct target *t, struct frame *f) {
+static int target_process_dump_payload(struct target *t, struct frame *f) {
 
 	struct target_priv_dump_payload *priv = t->target_priv;
 
@@ -181,9 +181,9 @@ int target_process_dump_payload(struct target *t, struct frame *f) {
 	pom_log(POM_LOG_TSHOOT "Saved %u bytes of payload\r\n", lastl->payload_size);
 
 	return POM_OK;
-};
+}
 
-int target_close_connection_dump_payload(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
+static int target_close_connection_dump_payload(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
 	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
 

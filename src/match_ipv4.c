@@ -27,11 +27,11 @@
 #include "ptype_ipv4.h"
 #include "ptype_uint8.h"
 
-struct match_dep *match_icmp, *match_tcp, *match_udp, *match_ipv6;
+static struct match_dep *match_icmp, *match_tcp, *match_udp, *match_ipv6;
 
-int field_saddr, field_daddr, field_tos, field_ttl;
+static int field_saddr, field_daddr, field_tos, field_ttl;
 
-struct ptype *ptype_ipv4, *ptype_uint8, *ptype_uint8_hex;
+static struct ptype *ptype_ipv4, *ptype_uint8, *ptype_uint8_hex;
 
 int match_register_ipv4(struct match_reg *r) {
 	
@@ -99,7 +99,7 @@ int match_identify_ipv4(struct frame *f, struct layer* l, unsigned int start, un
 	return POM_ERR;
 }
 
-int match_get_expectation_ipv4(int field_id, int direction) {
+static int match_get_expectation_ipv4(int field_id, int direction) {
 
 	if (field_id == field_saddr) {
 		if (direction == EXPT_DIR_FWD) {
@@ -119,7 +119,7 @@ int match_get_expectation_ipv4(int field_id, int direction) {
 
 }
 
-int match_unregister_ipv4(struct match_reg *r) {
+static int match_unregister_ipv4(struct match_reg *r) {
 
 	ptype_cleanup(ptype_ipv4);
 	ptype_cleanup(ptype_uint8);

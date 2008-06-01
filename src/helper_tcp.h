@@ -63,13 +63,12 @@ struct helper_timer_priv_tcp {
 };
 
 int helper_register_tcp(struct helper_reg *r);
-int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, struct layer *l);
-int helper_process_next_tcp(struct helper_priv_tcp *p, int dir);
-int helper_process_timer_tcp(void *priv);
-int helper_flush_buffer_tcp(struct conntrack_entry *ce, void *conntrack_priv);
-int helper_unregister(int helper_type);
-int helper_cleanup_connection_tcp(struct conntrack_entry *ce, void *conntrack_priv);
-int helper_cleanup_tcp();
+static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, struct layer *l);
+static int helper_process_next_tcp(struct helper_priv_tcp *p, int dir);
+static int helper_process_timer_tcp(void *priv);
+static int helper_flush_buffer_tcp(struct conntrack_entry *ce, void *conntrack_priv);
+static int helper_cleanup_connection_tcp(struct conntrack_entry *ce, void *conntrack_priv);
+static int helper_cleanup_tcp();
 
 #endif
 

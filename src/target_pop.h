@@ -56,15 +56,15 @@ struct target_priv_pop {
 
 int target_register_pop(struct target_reg *r);
 
-int target_init_pop(struct target *t);
-int target_process_pop(struct target *t, struct frame *f);
-int target_close_connection_pop(struct target *t, struct conntrack_entry* ce, void *conntrack_priv);
-int target_close_pop(struct target *t);
-int target_cleanup_pop(struct target *t);
+static int target_init_pop(struct target *t);
+static int target_process_pop(struct target *t, struct frame *f);
+static int target_close_connection_pop(struct target *t, struct conntrack_entry* ce, void *conntrack_priv);
+static int target_close_pop(struct target *t);
+static int target_cleanup_pop(struct target *t);
 
-int pop_process_line(struct target_conntrack_priv_pop *cp, char *line, int size, struct frame *f);
-int pop_file_open(struct target_conntrack_priv_pop *cp, struct timeval *recvd_time);
-int pop_file_close(struct target_conntrack_priv_pop *cp);
-int pop_write_login_info(struct target_conntrack_priv_pop *cp, struct frame *f);
+static int pop_process_line(struct target_conntrack_priv_pop *cp, char *line, int size, struct frame *f);
+static int pop_file_open(struct target_conntrack_priv_pop *cp, struct timeval *recvd_time);
+static int pop_file_close(struct target_conntrack_priv_pop *cp);
+static int pop_write_login_info(struct target_conntrack_priv_pop *cp, struct frame *f);
 
 #endif

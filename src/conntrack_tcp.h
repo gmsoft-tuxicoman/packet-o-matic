@@ -49,14 +49,14 @@ struct conntrack_priv_tcp {
 };
 
 int conntrack_register_tcp(struct conntrack_reg *r);
-uint32_t conntrack_get_hash_tcp(struct frame *f, unsigned int start, unsigned int flags);
-int conntrack_doublecheck_tcp(struct frame *f, unsigned int start, void *priv, unsigned int flags);
-void *conntrack_alloc_match_priv_tcp(struct frame *f, unsigned int start, struct conntrack_entry *ce);
-int conntrack_cleanup_match_priv_tcp(void *priv);
-int conntrack_unregister_tcp(struct conntrack_reg *r);
+static uint32_t conntrack_get_hash_tcp(struct frame *f, unsigned int start, unsigned int flags);
+static int conntrack_doublecheck_tcp(struct frame *f, unsigned int start, void *priv, unsigned int flags);
+static void *conntrack_alloc_match_priv_tcp(struct frame *f, unsigned int start, struct conntrack_entry *ce);
+static int conntrack_cleanup_match_priv_tcp(void *priv);
+static int conntrack_unregister_tcp(struct conntrack_reg *r);
 
 
-int conntrack_tcp_update_timer(struct conntrack_priv_tcp *priv, struct tcphdr *hdr);
+static int conntrack_tcp_update_timer(struct conntrack_priv_tcp *priv, struct tcphdr *hdr);
 
 #endif
 

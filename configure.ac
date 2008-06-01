@@ -156,8 +156,12 @@ then
 fi
 
 # Check for DVB
-AC_CHECK_HEADERS([linux/dvb/dmx.h linux/dvb/frontend.h], [INPUT_DOCSIS='input_docsis.la'])
-INPUT_OBJS="$INPUT_DOCSIS $INPUT_OBJS"
+AC_CHECK_HEADERS([linux/dvb/dmx.h linux/dvb/frontend.h], [want_dvb=yes], [want_dvb=no])
+
+if test "x$want_dvb" = "xyes"
+then
+	INPUT_OBJS="input_docsis.la $INPUT_OBJS"
+fi
 
 if test "x$INPUT_OBJS" = "x"
 then
@@ -165,8 +169,11 @@ then
 fi
 
 # Check for Linux' tun header
-AC_CHECK_HEADERS([linux/if_tun.h], [TARGET_TAP='target_tap.la'])
-TARGET_OBJS="$TARGET_OBJS $TARGET_TAP"
+AC_CHECK_HEADERS([linux/if_tun.h], [want_tun=yes], [want_tun=no])
+if test "x$want_tun" = "xyes"
+then
+	TARGET_OBJS="$TARGET_OBJS target_tap.la"
+fi
 
 
 # Check for xmlrpc-c
@@ -205,8 +212,26 @@ AC_SUBST(xmlrpc_CFLAGS)
 AC_SUBST(INPUT_OBJS)
 AC_SUBST(TARGET_OBJS)
 
-
-
-
 AC_OUTPUT
+
+echo ""
+echo "=============================================================="                                                              
+echo "               |         |                         |    o     "
+echo ",---.,---.,---.|__/ ,---.|---    ,---.   ,-.-.,---.|--- .,---."
+echo "|   |,---||    |  \ |---'|    ---|   |---| | |,---||    ||    "
+echo "|---'\`---^\`---'\`   \`\`---'\`---'   \`---'   \` ' '\`---^\`---'\`\`---'"
+echo "|"
+echo "=============================================================="
+echo " Configuration result :"
+echo " ----------------------"
+echo ""
+echo " * Found libpcap     : $want_pcap"
+echo " * Found libnet      : $want_libnet"
+echo " * Found xmlrpc-c    : $want_xmlrpc"
+echo " * Linux raw socket  : $want_netpacket"
+echo " * Linux DVB headers : $want_dvb"
+echo " * Linux TUN headers : $want_tun"
+echo ""
+echo "Author : Guy Martin <gmsoft@tuxicoman.be>"
+
 

@@ -30,8 +30,8 @@
 #include "ptype_bool.h"
 #include "ptype_string.h"
 
-unsigned int match_undefined_id;
-struct target_mode *mode_default;
+static unsigned int match_undefined_id;
+static struct target_mode *mode_default;
 
 int target_register_tftp(struct target_reg *r) {
 
@@ -53,7 +53,7 @@ int target_register_tftp(struct target_reg *r) {
 
 }
 
-int target_init_tftp(struct target *t) {
+static int target_init_tftp(struct target *t) {
 
 	struct target_priv_tftp *priv = malloc(sizeof(struct target_priv_tftp));
 	memset(priv, 0, sizeof(struct target_priv_tftp));
@@ -73,7 +73,7 @@ int target_init_tftp(struct target *t) {
 }
 
 
-int target_close_tftp(struct target *t) {
+static int target_close_tftp(struct target *t) {
 
 	struct target_priv_tftp *priv = t->target_priv;
 
@@ -85,7 +85,7 @@ int target_close_tftp(struct target *t) {
 	return POM_OK;
 }
 
-int target_cleanup_tftp(struct target *t) {
+static int target_cleanup_tftp(struct target *t) {
 
 	struct target_priv_tftp *priv = t->target_priv;
 
@@ -101,7 +101,7 @@ int target_cleanup_tftp(struct target *t) {
 
 
 
-int target_process_tftp(struct target *t, struct frame *f) {
+static int target_process_tftp(struct target *t, struct frame *f) {
 
 	struct target_priv_tftp *priv = t->target_priv;
 
@@ -156,7 +156,7 @@ int target_process_tftp(struct target *t, struct frame *f) {
 
 };
 
-int tftp_process_packet(struct target *t, struct conntrack_entry *ce, struct target_conntrack_priv_tftp *cp, char *payload, int size, struct frame *f) {
+static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, struct target_conntrack_priv_tftp *cp, char *payload, int size, struct frame *f) {
 
 	enum tftp_opcodes {
 		tftp_rrq = 1,
@@ -277,7 +277,7 @@ int tftp_process_packet(struct target *t, struct conntrack_entry *ce, struct tar
 }
 
 
-int target_close_connection_tftp(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
+static int target_close_connection_tftp(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
 
 	struct target_conntrack_priv_tftp *cp;
@@ -311,7 +311,7 @@ int target_close_connection_tftp(struct target *t, struct conntrack_entry *ce, v
 
 }
 
-int tftp_file_open(struct target_conntrack_priv_tftp *cp, struct timeval *recvd_time) {
+static int tftp_file_open(struct target_conntrack_priv_tftp *cp, struct timeval *recvd_time) {
 
 	char final_name[NAME_MAX + 1];
 
@@ -334,7 +334,7 @@ int tftp_file_open(struct target_conntrack_priv_tftp *cp, struct timeval *recvd_
 	return POM_OK;
 }
 
-int tftp_file_close(struct target_conntrack_priv_tftp *cp) {
+static int tftp_file_close(struct target_conntrack_priv_tftp *cp) {
 
 	struct target_connection_priv_tftp *conn = cp->conn;
 

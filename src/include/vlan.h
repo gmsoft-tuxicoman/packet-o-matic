@@ -19,38 +19,24 @@
  */
 
 
-#ifndef __TARGET_DUMP_PAYLOAD_H__
-#define __TARGET_DUMP_PAYLOAD_H__
+#ifndef __VLAN_H__
+#define __VLAN_H__
 
+struct vlan_header {
 
-#include "modules_common.h"
-#include "rules.h"
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+	uint16_t vid:12;
+	uint16_t cfi:1;
+	uint16_t user_priority:3;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+	uint16_t user_priority:3;
+	uint16_t cfi:1;
+	uint16_t vid:12;
+#else
+# error "Please fix <endian.h>"
+#endif
 
-struct target_conntrack_priv_dump_payload {
-
-	int fd;
-
-	struct conntrack_entry *ce;
-
-	struct target_conntrack_priv_dump_payload *next;
-	struct target_conntrack_priv_dump_payload *prev;
-
+	uint16_t ether_type;
 };
-
-struct target_priv_dump_payload {
-
-	struct ptype *prefix;
-	struct ptype *markdir;
-	struct target_conntrack_priv_dump_payload *ct_privs;
-
-};
-
-int target_register_dump_payload(struct target_reg *r);
-
-static int target_init_dump_payload(struct target *t);
-static int target_process_dump_payload(struct target *t, struct frame *f);
-static int target_close_connection_dump_payload(struct target *t, struct conntrack_entry* ce, void *conntrack_priv);
-static int target_close_dump_payload(struct target *t);
-static int target_cleanup_dump_payload(struct target *t);
 
 #endif

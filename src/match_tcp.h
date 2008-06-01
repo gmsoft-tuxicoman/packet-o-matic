@@ -27,8 +27,8 @@
 #include "match.h"
 
 int match_register_tcp(struct match_reg *r);
-int match_identify_tcp(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
-int match_get_expectation_tcp(int field_id, int direction);
-int match_unregister_tcp(struct match_reg *r);
+static int match_identify_tcp(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
+static int match_get_expectation_tcp(int field_id, int direction);
+static int match_unregister_tcp(struct match_reg *r);
 
 #endif

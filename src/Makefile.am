@@ -1,4 +1,4 @@
-CFLAGS += -Wall
+CFLAGS += -Wall -I$(srcdir)/include
 
 MGMT_SRC = mgmtsrv.c mgmtsrv.h mgmtvty.c mgmtvty.h mgmtcmd.c mgmtcmd.h mgmtcmd_helper.c mgmtcmd_helper.h mgmtcmd_conntrack.c mgmtcmd_conntrack.h mgmtcmd_input.c mgmtcmd_input.h mgmtcmd_rule.c mgmtcmd_rule.h mgmtcmd_target.c mgmtcmd_target.h
 
@@ -13,8 +13,9 @@ packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"' @xmlrpc_CFLAGS@
 packet_o_matic_LDFLAGS = @LIBS@ @libxml2_LIBS@
 packet_o_matic_LDADD = libpom.la @xmlrpc_LIBS@
 
+noinst_HEADERS = include/jhash.h
 
-libpom_la_SOURCES = input.c input.h match.c match.h conntrack.c conntrack.h jhash.h target.c target.h timers.c timers.h helper.c helper.h ptype.c ptype.h expectation.c expectation.h common.c common.h
+libpom_la_SOURCES = input.c input.h match.c match.h conntrack.c conntrack.h target.c target.h timers.c timers.h helper.c helper.h ptype.c ptype.h expectation.c expectation.h common.c common.h include/jhash.h
 libpom_la_CFLAGS = -DLIBDIR='"@LIB_DIR@"'
 
 INPUT_OBJS = @INPUT_OBJS@
@@ -29,20 +30,20 @@ lib_LTLIBRARIES = libpom.la $(INPUT_OBJS) $(MATCH_OBJS) $(CONNTRACK_OBJS) $(HELP
 EXTRA_LTLIBRARIES = input_docsis.la input_pcap.la target_pcap.la target_tcpkill.la target_inject.la target_tap.la
 
 
-input_docsis_la_SOURCES = input_docsis.c input_docsis.h modules_common.h
+input_docsis_la_SOURCES = input_docsis.c input_docsis.h modules_common.h include/docsis.h
 input_docsis_la_LDFLAGS = -module -avoid-version -rpath '$(libdir)'
 input_docsis_la_LIBADD = libpom.la
 input_pcap_la_SOURCES = input_pcap.c input_pcap.h modules_common.h
 input_pcap_la_LDFLAGS = -module -avoid-version -rpath '$(libdir)' -lpcap
 input_pcap_la_LIBADD = libpom.la
 
-match_docsis_la_SOURCES = match_docsis.c match_docsis.h modules_common.h
+match_docsis_la_SOURCES = match_docsis.c match_docsis.h modules_common.h include/docsis.h
 match_docsis_la_LDFLAGS = -module -avoid-version
 match_docsis_la_LIBADD = libpom.la
-match_ethernet_la_SOURCES = match_ethernet.c match_ethernet.h modules_common.h
+match_ethernet_la_SOURCES = match_ethernet.c match_ethernet.h modules_common.h include/ethernet.h
 match_ethernet_la_LDFLAGS = -module -avoid-version
 match_ethernet_la_LIBADD = libpom.la
-match_vlan_la_SOURCES = match_vlan.c match_vlan.h modules_common.h
+match_vlan_la_SOURCES = match_vlan.c match_vlan.h modules_common.h include/vlan.h
 match_vlan_la_LDFLAGS = -module -avoid-version
 match_vlan_la_LIBADD = libpom.la
 match_ipv4_la_SOURCES = match_ipv4.c match_ipv4.h modules_common.h
@@ -63,29 +64,29 @@ match_tcp_la_LIBADD = libpom.la
 match_udp_la_SOURCES = match_udp.c match_udp.h modules_common.h
 match_udp_la_LDFLAGS = -module -avoid-version
 match_udp_la_LIBADD = libpom.la
-match_rtp_la_SOURCES = match_rtp.c match_rtp.h modules_common.h
+match_rtp_la_SOURCES = match_rtp.c match_rtp.h modules_common.h include/rtp.h
 match_rtp_la_LDFLAGS = -module -avoid-version
 match_rtp_la_LIBADD = libpom.la
 match_undefined_la_SOURCES = match_undefined.c match_undefined.h modules_common.h
 match_undefined_la_LDFLAGS = -module -avoid-version
 match_undefined_la_LIBADD = libpom.la
-match_linux_cooked_la_SOURCES = match_linux_cooked.c match_linux_cooked.h modules_common.h sll.h
+match_linux_cooked_la_SOURCES = match_linux_cooked.c match_linux_cooked.h modules_common.h include/sll.h
 match_linux_cooked_la_LDFLAGS = -module -avoid-version
 match_linux_cooked_la_LIBADD = libpom.la
 
-conntrack_ipv4_la_SOURCES = conntrack_ipv4.c conntrack_ipv4.h modules_common.h jhash.h
+conntrack_ipv4_la_SOURCES = conntrack_ipv4.c conntrack_ipv4.h modules_common.h include/jhash.h
 conntrack_ipv4_la_LDFLAGS = -module -avoid-version
 conntrack_ipv4_la_LIBADD = libpom.la
-conntrack_ipv6_la_SOURCES = conntrack_ipv6.c conntrack_ipv6.h modules_common.h jhash.h
+conntrack_ipv6_la_SOURCES = conntrack_ipv6.c conntrack_ipv6.h modules_common.h include/jhash.h
 conntrack_ipv6_la_LDFLAGS = -module -avoid-version
 conntrack_ipv6_la_LIBADD = libpom.la
-conntrack_rtp_la_SOURCES = conntrack_rtp.c conntrack_rtp.h modules_common.h jhash.h
+conntrack_rtp_la_SOURCES = conntrack_rtp.c conntrack_rtp.h modules_common.h include/jhash.h include/rtp.h
 conntrack_rtp_la_LDFLAGS = -module -avoid-version
 conntrack_rtp_la_LIBADD = libpom.la
-conntrack_tcp_la_SOURCES = conntrack_tcp.c conntrack_tcp.h modules_common.h jhash.h
+conntrack_tcp_la_SOURCES = conntrack_tcp.c conntrack_tcp.h modules_common.h include/jhash.h
 conntrack_tcp_la_LDFLAGS = -module -avoid-version
 conntrack_tcp_la_LIBADD = libpom.la
-conntrack_udp_la_SOURCES = conntrack_udp.c conntrack_udp.h modules_common.h jhash.h
+conntrack_udp_la_SOURCES = conntrack_udp.c conntrack_udp.h modules_common.h include/jhash.h
 conntrack_udp_la_LDFLAGS = -module -avoid-version
 conntrack_udp_la_LIBADD = libpom.la
 
@@ -95,7 +96,7 @@ helper_ipv4_la_LIBADD = libpom.la
 helper_tcp_la_SOURCES = helper_tcp.c helper_tcp.h modules_common.h
 helper_tcp_la_LDFLAGS = -module -avoid-version
 helper_tcp_la_LIBADD = libpom.la
-helper_rtp_la_SOURCES = helper_rtp.c helper_rtp.h modules_common.h
+helper_rtp_la_SOURCES = helper_rtp.c helper_rtp.h modules_common.h include/rtp.h
 helper_rtp_la_LDFLAGS = -module -avoid-version
 helper_rtp_la_LIBADD = libpom.la
 
@@ -127,7 +128,7 @@ target_tcpkill_la_LIBADD = libpom.la
 target_pop_la_SOURCES = target_pop.c target_pop.h modules_common.h
 target_pop_la_LDFLAGS = -module -avoid-version
 target_pop_la_LIBADD = libpom.la
-target_rtp_la_SOURCES = target_rtp.c target_rtp.h modules_common.h
+target_rtp_la_SOURCES = target_rtp.c target_rtp.h modules_common.h include/rtp.h
 target_rtp_la_LDFLAGS = -module -avoid-version
 target_rtp_la_LIBADD = libpom.la
 target_tftp_la_SOURCES = target_tftp.c target_tftp.h modules_common.h

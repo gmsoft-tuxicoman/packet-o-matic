@@ -23,11 +23,11 @@
 
 #include "ptype_uint16.h"
 
-struct match_dep *match_undefined;
+static struct match_dep *match_undefined;
 
-int field_sport, field_dport;
+static int field_sport, field_dport;
 
-struct ptype *ptype_uint16;
+static struct ptype *ptype_uint16;
 
 int match_register_udp(struct match_reg *r) {
 
@@ -52,7 +52,7 @@ int match_register_udp(struct match_reg *r) {
 }
 
 
-int match_identify_udp(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
+static int match_identify_udp(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 	struct udphdr *hdr = f->buff + start;
 
 	l->payload_start = start + sizeof(struct udphdr);
@@ -65,7 +65,7 @@ int match_identify_udp(struct frame *f, struct layer* l, unsigned int start, uns
 
 }
 
-int match_get_expectation_udp(int field_id, int direction) {
+static int match_get_expectation_udp(int field_id, int direction) {
 
 	if (field_id == field_sport) {
 		if (direction == EXPT_DIR_FWD) {
@@ -84,7 +84,7 @@ int match_get_expectation_udp(int field_id, int direction) {
 	return POM_ERR;
 }
 
-int match_unregister_udp(struct match_reg *r) {
+static int match_unregister_udp(struct match_reg *r) {
 
 	ptype_cleanup(ptype_uint16);
 	return POM_OK;

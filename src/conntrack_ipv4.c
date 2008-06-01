@@ -45,7 +45,7 @@ int conntrack_register_ipv4(struct conntrack_reg *r) {
 }
 
 
-uint32_t conntrack_get_hash_ipv4(struct frame *f, unsigned int start, unsigned int flags) {
+static uint32_t conntrack_get_hash_ipv4(struct frame *f, unsigned int start, unsigned int flags) {
 
 	struct ip* hdr;
 	
@@ -74,7 +74,7 @@ uint32_t conntrack_get_hash_ipv4(struct frame *f, unsigned int start, unsigned i
 
 }
 
-int conntrack_doublecheck_ipv4(struct frame *f, unsigned int start, void *priv, unsigned int flags) {
+static int conntrack_doublecheck_ipv4(struct frame *f, unsigned int start, void *priv, unsigned int flags) {
 
 	
 
@@ -106,7 +106,7 @@ int conntrack_doublecheck_ipv4(struct frame *f, unsigned int start, void *priv, 
 }
 
 
-void *conntrack_alloc_match_priv_ipv4(struct frame *f, unsigned int start, struct conntrack_entry *ce) {
+static void *conntrack_alloc_match_priv_ipv4(struct frame *f, unsigned int start, struct conntrack_entry *ce) {
 	
 	struct ip* hdr;
 	hdr = f->buff + start;
@@ -120,7 +120,7 @@ void *conntrack_alloc_match_priv_ipv4(struct frame *f, unsigned int start, struc
 
 }
 
-int conntrack_cleanup_match_priv_ipv4(void *priv) {
+static int conntrack_cleanup_match_priv_ipv4(void *priv) {
 
 	free(priv);
 	return POM_OK;

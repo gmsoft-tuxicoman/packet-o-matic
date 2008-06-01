@@ -24,8 +24,8 @@
 #include "ptype_bool.h"
 #include "ptype_uint16.h"
 
-struct input_mode *mode_interface, *mode_file;
-struct ptype *p_filename, *p_interface, *p_snaplen, *p_promisc, *p_filter;
+static struct input_mode *mode_interface, *mode_file;
+static struct ptype *p_filename, *p_interface, *p_snaplen, *p_promisc, *p_filter;
 
 int input_register_pcap(struct input_reg *r) {
 
@@ -72,7 +72,7 @@ int input_register_pcap(struct input_reg *r) {
 }
 
 
-int input_init_pcap(struct input *i) {
+static int input_init_pcap(struct input *i) {
 
 	i->input_priv = malloc(sizeof(struct input_priv_pcap));
 	memset(i->input_priv, 0, sizeof(struct input_priv_pcap));
@@ -81,7 +81,7 @@ int input_init_pcap(struct input *i) {
 
 }
 
-int input_cleanup_pcap(struct input *i) {
+static int input_cleanup_pcap(struct input *i) {
 
 	if (i->input_priv)
 		free(i->input_priv);
@@ -90,7 +90,7 @@ int input_cleanup_pcap(struct input *i) {
 
 }
 
-int input_unregister_pcap(struct input_reg *r) {
+static int input_unregister_pcap(struct input_reg *r) {
 
 	ptype_cleanup(p_interface);
 	ptype_cleanup(p_snaplen);
@@ -100,7 +100,7 @@ int input_unregister_pcap(struct input_reg *r) {
 	return POM_OK;
 }
 
-int input_open_pcap(struct input *i) {
+static int input_open_pcap(struct input *i) {
 
 
 	struct input_priv_pcap *p = i->input_priv;
@@ -192,7 +192,7 @@ int input_open_pcap(struct input *i) {
 	return POM_OK; //Means open but no fd (*wtf*)
 }
 
-int input_read_pcap(struct input *i, struct frame *f) {
+static int input_read_pcap(struct input *i, struct frame *f) {
 
 	struct input_priv_pcap *p = i->input_priv;
 	const u_char *next_pkt;
@@ -226,7 +226,7 @@ int input_read_pcap(struct input *i, struct frame *f) {
 	return POM_OK;
 }
 
-int input_close_pcap(struct input *i) {
+static int input_close_pcap(struct input *i) {
 
 	struct input_priv_pcap *p = i->input_priv;
 	if (!p)
@@ -247,7 +247,7 @@ int input_close_pcap(struct input *i) {
 
 }
 
-int input_getcaps_pcap(struct input *i, struct input_caps *ic) {
+static int input_getcaps_pcap(struct input *i, struct input_caps *ic) {
 
 	struct input_priv_pcap *p = i->input_priv;
 
@@ -272,7 +272,7 @@ int input_getcaps_pcap(struct input *i, struct input_caps *ic) {
 
 }
 
-int input_interrupt_pcap(struct input *i) {
+static int input_interrupt_pcap(struct input *i) {
 
 	struct input_priv_pcap *p = i->input_priv;
 

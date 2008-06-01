@@ -27,7 +27,7 @@
 #include "timers.h"
 #include "helper.h"
 
-#include "jhash.h"
+#include <jhash.h>
 
 /**
  * @defgroup conntrack_api Conntrack API
@@ -124,7 +124,6 @@ struct conntrack_reg {
 	int (*doublecheck) (struct frame *f, unsigned int start, void *priv, unsigned int flags);
 	void* (*alloc_match_priv) (struct frame *f, unsigned int start, struct conntrack_entry *ce);
 	int (*cleanup_match_priv) (void *priv);
-	int (*conntrack_do_timeouts) (int (*conntrack_close_connection)(struct conntrack_entry *ce));
 	int (*unregister) (struct conntrack_reg *r);
 	struct conntrack_param *params;
 

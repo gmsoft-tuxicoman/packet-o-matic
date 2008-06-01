@@ -43,11 +43,11 @@ struct target_priv_pcap {
 };
 
 int target_register_pcap(struct target_reg *r);
-int target_init_pcap(struct target *t);
-int target_open_pcap(struct target *t);
-int target_process_pcap(struct target *t, struct frame *f);
-int target_close_pcap(struct target *t);
-int target_cleanup_pcap(struct target *t);
+static int target_init_pcap(struct target *t);
+static int target_open_pcap(struct target *t);
+static int target_process_pcap(struct target *t, struct frame *f);
+static int target_close_pcap(struct target *t);
+static int target_cleanup_pcap(struct target *t);
 
 
 

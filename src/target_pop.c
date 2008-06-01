@@ -30,10 +30,10 @@
 #include "ptype_bool.h"
 #include "ptype_string.h"
 
-unsigned int match_undefined_id;
-struct target_mode *mode_default;
+static unsigned int match_undefined_id;
+static struct target_mode *mode_default;
 
-unsigned long long total_delivery = 0; ///< Used in mail filename to avoid duplicate
+static unsigned long long total_delivery = 0; ///< Used in mail filename to avoid duplicate
 
 enum pop_cmd {
 	pop_cmd_other = 0,
@@ -64,7 +64,7 @@ int target_register_pop(struct target_reg *r) {
 
 }
 
-int target_init_pop(struct target *t) {
+static int target_init_pop(struct target *t) {
 
 	struct target_priv_pop *priv = malloc(sizeof(struct target_priv_pop));
 	memset(priv, 0, sizeof(struct target_priv_pop));
@@ -84,7 +84,7 @@ int target_init_pop(struct target *t) {
 }
 
 
-int target_close_pop(struct target *t) {
+static int target_close_pop(struct target *t) {
 
 	struct target_priv_pop *priv = t->target_priv;
 
@@ -96,7 +96,7 @@ int target_close_pop(struct target *t) {
 	return POM_OK;
 }
 
-int target_cleanup_pop(struct target *t) {
+static int target_cleanup_pop(struct target *t) {
 
 	struct target_priv_pop *priv = t->target_priv;
 
@@ -112,7 +112,7 @@ int target_cleanup_pop(struct target *t) {
 
 
 
-int target_process_pop(struct target *t, struct frame *f) {
+static int target_process_pop(struct target *t, struct frame *f) {
 
 	struct target_priv_pop *priv = t->target_priv;
 
@@ -190,9 +190,9 @@ int target_process_pop(struct target *t, struct frame *f) {
 
 
 	return POM_OK;
-};
+}
 
-int pop_process_line(struct target_conntrack_priv_pop *cp, char *line, int size, struct frame *f) {
+static int pop_process_line(struct target_conntrack_priv_pop *cp, char *line, int size, struct frame *f) {
 
 	enum pop_reply {
 		pop_reply_unk = 0,
@@ -366,7 +366,7 @@ int pop_process_line(struct target_conntrack_priv_pop *cp, char *line, int size,
 }
 
 
-int target_close_connection_pop(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
+static int target_close_connection_pop(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
 	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
 
@@ -401,7 +401,7 @@ int target_close_connection_pop(struct target *t, struct conntrack_entry *ce, vo
 
 }
 
-int pop_file_open(struct target_conntrack_priv_pop *cp, struct timeval *recvd_time) {
+static int pop_file_open(struct target_conntrack_priv_pop *cp, struct timeval *recvd_time) {
 
 		char filename[NAME_MAX + 1];
 		memset(filename, 0, NAME_MAX + 1);
@@ -438,7 +438,7 @@ int pop_file_open(struct target_conntrack_priv_pop *cp, struct timeval *recvd_ti
 	return POM_OK;
 }
 
-int pop_file_close(struct target_conntrack_priv_pop *cp) {
+static int pop_file_close(struct target_conntrack_priv_pop *cp) {
 
 	if (cp->fd == -1)
 		return POM_ERR;
@@ -484,7 +484,7 @@ int pop_file_close(struct target_conntrack_priv_pop *cp) {
 
 }
 
-int pop_write_login_info(struct target_conntrack_priv_pop *cp, struct frame *f) {
+static int pop_write_login_info(struct target_conntrack_priv_pop *cp, struct frame *f) {
 
 	char final_name[NAME_MAX + 1];
 	memset(final_name, 0, sizeof(final_name));
@@ -523,9 +523,6 @@ int pop_write_login_info(struct target_conntrack_priv_pop *cp, struct frame *f) 
 	fd = target_file_open(NULL, final_name, O_RDWR | O_APPEND | O_CREAT, 0666);
 	write(fd, line, strlen(line));
 	close(fd);
-
-
-
 
 	return POM_OK;
 }

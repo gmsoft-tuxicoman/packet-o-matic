@@ -25,10 +25,10 @@
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
 
-struct match_dep *match_ipv4;
-int field_type, field_code;
+static struct match_dep *match_ipv4;
+static int field_type, field_code;
 
-struct ptype *ptype_uint8;
+static struct ptype *ptype_uint8;
 
 int match_register_icmp(struct match_reg *r) {
 
@@ -49,7 +49,7 @@ int match_register_icmp(struct match_reg *r) {
 	return POM_OK;
 }
 
-int match_identify_icmp(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
+static int match_identify_icmp(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
 	struct icmp *ihdr = f->buff + start;
 
@@ -62,7 +62,7 @@ int match_identify_icmp(struct frame *f, struct layer* l, unsigned int start, un
 	return POM_ERR;
 }
 
-int match_unregister_icmp(struct match_reg *r) {
+static int match_unregister_icmp(struct match_reg *r) {
 
 	ptype_cleanup(ptype_uint8);
 	return POM_OK;

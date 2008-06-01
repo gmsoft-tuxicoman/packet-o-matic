@@ -28,8 +28,8 @@
 
 
 int match_register_icmp(struct match_reg *r);
-int match_identify_icmp(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
-int match_unregister_icmp(struct match_reg *r);
+static int match_identify_icmp(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
+static int match_unregister_icmp(struct match_reg *r);
 
 
 #endif

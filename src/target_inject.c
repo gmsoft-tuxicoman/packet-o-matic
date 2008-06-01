@@ -27,8 +27,8 @@
 // Maximum segment len with ethernet header
 #define MAX_SEGMENT_LEN 1518
 
-int match_ethernet_id;
-struct target_mode *mode_default;
+static int match_ethernet_id;
+static struct target_mode *mode_default;
 
 int target_register_inject(struct target_reg *r) {
 
@@ -51,7 +51,7 @@ int target_register_inject(struct target_reg *r) {
 }
 
 
-int target_init_inject(struct target *t) {
+static int target_init_inject(struct target *t) {
 
 	if (match_ethernet_id == -1)
 		return POM_ERR;
@@ -72,7 +72,7 @@ int target_init_inject(struct target *t) {
 	return POM_OK;
 }
 
-int target_cleanup_inject(struct target *t) {
+static int target_cleanup_inject(struct target *t) {
 
 	struct target_priv_inject *priv = t->target_priv;
 
@@ -84,7 +84,7 @@ int target_cleanup_inject(struct target *t) {
 	return POM_OK;
 }
 
-int target_open_inject(struct target *t) {
+static int target_open_inject(struct target *t) {
 
 	
 	struct target_priv_inject *priv = t->target_priv;
@@ -107,7 +107,7 @@ int target_open_inject(struct target *t) {
 	return POM_OK;
 }
 
-int target_process_inject(struct target *t, struct frame *f) {
+static int target_process_inject(struct target *t, struct frame *f) {
 	
 	struct target_priv_inject *priv = t->target_priv;
 
@@ -138,7 +138,7 @@ int target_process_inject(struct target *t, struct frame *f) {
 
 }
 
-int target_close_inject(struct target *t) {
+static int target_close_inject(struct target *t) {
 
 	if (!t->target_priv)
 		return POM_ERR;

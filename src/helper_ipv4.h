@@ -52,9 +52,9 @@ struct helper_priv_ipv4 {
 
 
 int helper_register_ipv4(struct helper_reg *r);
-int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len, struct layer *l);
-int helper_cleanup_ipv4_frag(void *priv);
-int helper_cleanup_ipv4();
+static int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len, struct layer *l);
+static int helper_cleanup_ipv4_frag(void *priv);
+static int helper_cleanup_ipv4();
 
 
 #endif

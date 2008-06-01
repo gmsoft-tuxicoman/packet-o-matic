@@ -22,11 +22,11 @@
 #include "ptype_uint16.h"
 #include "ptype_bytes.h"
 
-struct match_dep *match_ipv4, *match_ipv6;
+static struct match_dep *match_ipv4, *match_ipv6;
 
-int field_pkt_type, field_ha_type, field_addr;
+static int field_pkt_type, field_ha_type, field_addr;
 
-struct ptype *ptype_uint16, *ptype_bytes;
+static struct ptype *ptype_uint16, *ptype_bytes;
 
 int match_register_linux_cooked(struct match_reg *r) {
 
@@ -53,7 +53,7 @@ int match_register_linux_cooked(struct match_reg *r) {
 	return POM_OK;
 }
 
-int match_identify_linux_cooked(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
+static int match_identify_linux_cooked(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
 	struct sll_header *chdr = f->buff + start;
 
@@ -80,7 +80,7 @@ int match_identify_linux_cooked(struct frame *f, struct layer* l, unsigned int s
 	return POM_ERR;
 }
 
-int match_get_expectation_linux_cooked(int field_id, int direction) {
+static int match_get_expectation_linux_cooked(int field_id, int direction) {
 	
 	if (field_id == field_addr && direction == EXPT_DIR_FWD)
 		return field_addr;
@@ -89,7 +89,7 @@ int match_get_expectation_linux_cooked(int field_id, int direction) {
 
 }
 
-int match_unregister_linux_cooked(struct match_reg *r) {
+static int match_unregister_linux_cooked(struct match_reg *r) {
 
 	ptype_cleanup(ptype_uint16);
 	ptype_cleanup(ptype_bytes);

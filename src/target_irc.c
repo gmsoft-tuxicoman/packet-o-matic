@@ -35,14 +35,13 @@
 #include "ptype_string.h"
 
 
-unsigned int match_undefined_id;
-struct target_mode *mode_dump;
+static unsigned int match_undefined_id;
+static struct target_mode *mode_dump;
 
 
 int target_register_irc(struct target_reg *r) {
 
 	r->init = target_init_irc;
-	r->open = target_open_irc;
 	r->process = target_process_irc;
 	r->close = target_close_irc;
 	r->cleanup = target_cleanup_irc;
@@ -61,7 +60,7 @@ int target_register_irc(struct target_reg *r) {
 }
 
 
-int target_init_irc(struct target *t) {
+static int target_init_irc(struct target *t) {
 
 	struct target_priv_irc *priv = malloc(sizeof(struct target_priv_irc));
 	memset(priv, 0, sizeof(struct target_priv_irc));
@@ -80,7 +79,7 @@ int target_init_irc(struct target *t) {
 	return POM_OK;
 }
 
-int target_close_irc(struct target *t) {
+static int target_close_irc(struct target *t) {
 
 	struct target_priv_irc *priv = t->target_priv;
 
@@ -92,7 +91,7 @@ int target_close_irc(struct target *t) {
 	return POM_OK;
 }
 
-int target_cleanup_irc(struct target *t) {
+static int target_cleanup_irc(struct target *t) {
 
 	struct target_priv_irc *priv = t->target_priv;
 
@@ -105,13 +104,7 @@ int target_cleanup_irc(struct target *t) {
 	return POM_OK;
 }
 
-
-int target_open_irc(struct target *t) {
-
-	return POM_OK;
-}
-
-int target_process_irc(struct target *t, struct frame *f) {
+static int target_process_irc(struct target *t, struct frame *f) {
 
 	struct target_priv_irc *priv = t->target_priv;
 	struct layer *lastl = f->l;
@@ -193,7 +186,7 @@ int target_process_irc(struct target *t, struct frame *f) {
 	return POM_OK;
 };
 
-int target_close_connection_irc(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
+static int target_close_connection_irc(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
 	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
 
@@ -223,7 +216,7 @@ int target_close_connection_irc(struct target *t, struct conntrack_entry *ce, vo
 /*
  * Parse the line and execute proper process_* function. 
  */
-int     parse_msg(struct target_conntrack_priv_irc *cp,
+static int parse_msg(struct target_conntrack_priv_irc *cp,
                   char * line,
 		  unsigned int len) {
 
@@ -290,7 +283,7 @@ int     parse_msg(struct target_conntrack_priv_irc *cp,
 /*
  * Parse and log the MODE command.
  */
-int     process_mode(struct target_conntrack_priv_irc *cp,
+static int process_mode(struct target_conntrack_priv_irc *cp,
 			unsigned int is_srv,
 			char *from,
 			char *line) {
@@ -367,7 +360,7 @@ int     process_mode(struct target_conntrack_priv_irc *cp,
 /*
  * Parse and log the OPER command.
  */
-int     process_oper(struct target_conntrack_priv_irc *cp,
+static int process_oper(struct target_conntrack_priv_irc *cp,
 			unsigned int is_srv,
 			char *from,
 			char *line) {
@@ -423,7 +416,7 @@ int     process_oper(struct target_conntrack_priv_irc *cp,
 /*
  * Parse and log the KICK command.
  */
-int     process_kick(struct target_conntrack_priv_irc *cp,
+static int process_kick(struct target_conntrack_priv_irc *cp,
 			unsigned int is_srv,
 			char *from,
 			char *line) {
@@ -502,7 +495,7 @@ int     process_kick(struct target_conntrack_priv_irc *cp,
 /*
  * Parse and log the TOPIC command.
  */
-int     process_topic(struct target_conntrack_priv_irc *cp,
+static int process_topic(struct target_conntrack_priv_irc *cp,
 			unsigned int is_srv,
 			char *from,
 			char *line) {
@@ -582,7 +575,7 @@ int     process_topic(struct target_conntrack_priv_irc *cp,
 /*
  * Parse and log the NICK command.
  */
-int     process_nick(struct target_conntrack_priv_irc *cp,
+static int process_nick(struct target_conntrack_priv_irc *cp,
 			unsigned int is_srv,
 			char *from,
 			char *line) {
@@ -654,7 +647,7 @@ int     process_nick(struct target_conntrack_priv_irc *cp,
 /*
  * Parse and log the PASS command.
  */
-int     process_pass(struct target_conntrack_priv_irc *cp,
+static int process_pass(struct target_conntrack_priv_irc *cp,
 			unsigned int is_srv,
 			char *from,
 			char *line) {
@@ -701,7 +694,7 @@ int     process_pass(struct target_conntrack_priv_irc *cp,
 /*
  * Parse and log the JOIN command.
  */
-int     process_join(struct target_conntrack_priv_irc *cp,
+static int process_join(struct target_conntrack_priv_irc *cp,
 			unsigned int is_srv,
 			char *from,
 			char *line) {
@@ -780,7 +773,7 @@ int     process_join(struct target_conntrack_priv_irc *cp,
 /*
  * Parse and log the PART command.
  */
-int     process_part(struct target_conntrack_priv_irc *cp,
+static int process_part(struct target_conntrack_priv_irc *cp,
 			unsigned int is_srv,
 			char *from,
 			char *line) {
@@ -856,7 +849,7 @@ int     process_part(struct target_conntrack_priv_irc *cp,
 /*
  * Parse and log the NOTICE command.
  */
-int     process_notice(struct target_conntrack_priv_irc *cp,
+static int process_notice(struct target_conntrack_priv_irc *cp,
 			unsigned int is_srv,
 			char *from,
 			char *line) {
@@ -924,7 +917,7 @@ int     process_notice(struct target_conntrack_priv_irc *cp,
 /*
  * Parse and log the PRIVMSG command.
  */
-int     process_privmsg(struct target_conntrack_priv_irc *cp,
+static int process_privmsg(struct target_conntrack_priv_irc *cp,
 			unsigned int is_srv,
 			char *from,
 			char *line) {
@@ -995,7 +988,7 @@ int     process_privmsg(struct target_conntrack_priv_irc *cp,
  * split nickname from nick!ident@host
  * to be only nick.
  */
-char *getNick(char *nick) {
+static char *getNick(char *nick) {
 
 	static char ret[MAX_NICK + 1];
 	char * pos;
@@ -1011,7 +1004,7 @@ char *getNick(char *nick) {
 /*
  * Get timestamp with HH:MM:SS format
  */
-char*	get_time(void) {
+static char* get_time(void) {
 
 	static char out[32];
 	char *format = "%H:%M:%S";
@@ -1028,7 +1021,7 @@ char*	get_time(void) {
 /*
  * Get timestamp with format YYYYMMDD-HH:MM:SS
  */
-char*	get_timestamp(void) {
+static char* get_timestamp(void) {
 
 	static char out[32];
 	char *format = "%Y%m%d-%H:%M:%S";
@@ -1049,7 +1042,7 @@ char*	get_timestamp(void) {
 /*
  * Add a struct open_file to the list i
  */
-int add_of(struct open_file *first, struct open_file *el) {
+static int add_of(struct open_file *first, struct open_file *el) {
 
 	if (!first)
 		return POM_ERR;
@@ -1066,7 +1059,7 @@ int add_of(struct open_file *first, struct open_file *el) {
  * (warning: the first element has to be assigned with NULL
  * after the execution of this function)
  */
-int remove_all_of(struct open_file *first) {
+static int remove_all_of(struct open_file *first) {
 	struct open_file *tmp,*tmp2;
 	if (!first)
 		return POM_ERR;
@@ -1084,42 +1077,9 @@ int remove_all_of(struct open_file *first) {
 }
 
 /*
- * Delete an element of the list
- * (warning: can never delete the first one (status))
- */
-int del_of(struct open_file *first, const char *what) {
-
-	struct open_file *tmp;
-
-	if (!first)
-		return POM_ERR;
-
-	do {
-		if (!strncmp(first->what, what, MAX_NICK)) {
-			
-			if (first->fd != -1) {
-				close(first->fd);
-			}
-			tmp = first;
-			if (first->p)
-				first->p->n = first->n;
-			if (first->n)
-				first->n->p = first->p;
-			free(tmp);
-			
-			return POM_OK;
-		}
-		first = first->n;
-
-	} while (first);
-
-	return POM_OK;
-}
-
-/*
  * Find and return an opened file.
  */
-struct open_file *get_of(struct open_file *first, const char* what) {
+static struct open_file *get_of(struct open_file *first, const char* what) {
 
 	if (!first)
 		return NULL;
@@ -1137,7 +1097,7 @@ struct open_file *get_of(struct open_file *first, const char* what) {
 /*
  * Open the file descriptor of the struct open_file
  */
-int open_of(struct open_file *of, struct target_conntrack_priv_irc *cp) {
+static int open_of(struct open_file *of, struct target_conntrack_priv_irc *cp) {
 
 	char filename[NAME_MAX];
 	strcpy(filename, PTYPE_STRING_GETVAL(cp->tp->path));

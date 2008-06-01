@@ -1,3 +1,8 @@
+* 2008/06/01 Guy Martin <gmsoft@tuxicoman.be>
+Added static keyword at relevant places in modules.
+Added status report at the end of the configure script.
+Moved shared includes into the include directory.
+
 * 2008/05/31 Guy Martin <gmsoft@tuxicoman.be>
 Added partial XML-RPC interface.
 Fix unintialized value in helper_unregister_all().

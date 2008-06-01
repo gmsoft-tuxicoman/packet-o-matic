@@ -68,37 +68,37 @@ struct input_priv_docsis {
 int input_register_docsis(struct input_reg *r);
 
 /// Init the docsis modules
-int input_init_docsis(struct input *i);
+static int input_init_docsis(struct input *i);
 
 /// Open the cable interface to read from it.
-int input_open_docsis(struct input *i);
+static int input_open_docsis(struct input *i);
 
 /// Scan the current frequency for a docsis stream
-int input_scan_docsis(struct input *i);
+static int input_scan_docsis(struct input *i);
 
 /// Read packets from the DOCSIS cable interface and saves it into buffer.
-int input_read_docsis(struct input *i, struct frame *f);
+static int input_read_docsis(struct input *i, struct frame *f);
 
 /// Close the cable interface.
-int input_close_docsis(struct input *i);
+static int input_close_docsis(struct input *i);
 
 /// Cleanup the docsis input.
-int input_cleanup_docsis(struct input *i);
+static int input_cleanup_docsis(struct input *i);
 
 /// Cleanup the memory allocated at registration time
-int input_unregister_docsis(struct input_reg *r);
+static int input_unregister_docsis(struct input_reg *r);
 
 /// Reads an MPEG packet from the cable interface.
-int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_docsis *p);
+static int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_docsis *p);
 
 /// Tune to the given frequency, symbole rate and modulation.
-int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symboleRate, fe_modulation_t modulation);
+static int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symboleRate, fe_modulation_t modulation);
 
 /// Check the validity of the MPEG stream to make sure we tuned on a DOCSIS stream.
-int input_docsis_check_downstream(struct input *i);
+static int input_docsis_check_downstream(struct input *i);
 
 /// Provide the capabilities of the input
-int input_getcaps_docsis(struct input *i, struct input_caps *ic);
+static int input_getcaps_docsis(struct input *i, struct input_caps *ic);
 
 #endif
 

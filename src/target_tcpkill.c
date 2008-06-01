@@ -35,7 +35,7 @@
 #include "ptype_string.h"
 
 
-int cksum(uint16_t *addr, int len)
+static int cksum(uint16_t *addr, int len)
 {
 	int sum;
 	uint16_t last_byte;
@@ -56,9 +56,9 @@ int cksum(uint16_t *addr, int len)
 }
 
 
-int match_ipv4_id, match_ipv6_id, match_tcp_id, match_ethernet_id;
+static int match_ipv4_id, match_ipv6_id, match_tcp_id, match_ethernet_id;
 
-struct target_mode *mode_routed, *mode_interface;
+static struct target_mode *mode_routed, *mode_interface;
 
 int target_register_tcpkill(struct target_reg *r) {
 
@@ -95,7 +95,7 @@ int target_register_tcpkill(struct target_reg *r) {
 }
 
 
-int target_init_tcpkill(struct target *t) {
+static int target_init_tcpkill(struct target *t) {
 
 	if (match_tcp_id == -1)
 		return POM_ERR;
@@ -124,7 +124,7 @@ int target_init_tcpkill(struct target *t) {
 	return POM_OK;
 }
 
-int target_cleanup_tcpkill(struct target *t) {
+static int target_cleanup_tcpkill(struct target *t) {
 
 	struct target_priv_tcpkill *priv = t->target_priv;
 
@@ -137,7 +137,7 @@ int target_cleanup_tcpkill(struct target *t) {
 	return POM_OK;
 }
 
-int target_open_tcpkill(struct target *t) {
+static int target_open_tcpkill(struct target *t) {
 
 	struct target_priv_tcpkill *p = t->target_priv;
 	
@@ -182,7 +182,7 @@ int target_open_tcpkill(struct target *t) {
 	return POM_OK;
 }
 
-int target_process_tcpkill(struct target *t, struct frame *f) {
+static int target_process_tcpkill(struct target *t, struct frame *f) {
 
 
 	struct target_priv_tcpkill *priv = t->target_priv;
@@ -384,7 +384,7 @@ int target_process_tcpkill(struct target *t, struct frame *f) {
 	
 }
 
-int target_close_tcpkill(struct target *t) {
+static int target_close_tcpkill(struct target *t) {
 
 	if (!t->target_priv)
 		return POM_ERR;

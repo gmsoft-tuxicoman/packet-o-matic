@@ -60,14 +60,14 @@ struct target_priv_tftp {
 
 int target_register_tftp(struct target_reg *r);
 
-int target_init_tftp(struct target *t);
-int target_process_tftp(struct target *t, struct frame *f);
-int target_close_connection_tftp(struct target *t, struct conntrack_entry* ce, void *conntrack_priv);
-int target_close_tftp(struct target *t);
-int target_cleanup_tftp(struct target *t);
+static int target_init_tftp(struct target *t);
+static int target_process_tftp(struct target *t, struct frame *f);
+static int target_close_connection_tftp(struct target *t, struct conntrack_entry* ce, void *conntrack_priv);
+static int target_close_tftp(struct target *t);
+static int target_cleanup_tftp(struct target *t);
 
-int tftp_process_packet(struct target *t, struct conntrack_entry *ce, struct target_conntrack_priv_tftp *cp, char *line, int size, struct frame *f);
-int tftp_file_open(struct target_conntrack_priv_tftp *cp, struct timeval *recvd_time);
-int tftp_file_close(struct target_conntrack_priv_tftp *cp);
+static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, struct target_conntrack_priv_tftp *cp, char *line, int size, struct frame *f);
+static int tftp_file_open(struct target_conntrack_priv_tftp *cp, struct timeval *recvd_time);
+static int tftp_file_close(struct target_conntrack_priv_tftp *cp);
 
 #endif
