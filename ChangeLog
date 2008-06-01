@@ -4,6 +4,7 @@ Added status report at the end of the configure script.
 Moved shared includes into the include directory.
 Added reference count on the inputs.
 Added rwlocks on helpers and inputs.
+Added XML-RPC functions for helpers.
 
 * 2008/05/31 Guy Martin <gmsoft@tuxicoman.be>
 Added partial XML-RPC interface.
