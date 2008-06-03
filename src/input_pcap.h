@@ -24,11 +24,11 @@
 #define __INPUT_PCAP_H__
 
 
-#include <pcap.h>
-
 #include "modules_common.h"
 
 #include "input.h"
+
+#include <pcap.h>
 
 /// Private structure of the pcap input.
 struct input_priv_pcap {

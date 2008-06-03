@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#include <strings.h>
 #include <dlfcn.h>
 #include <arpa/inet.h>
 
@@ -49,7 +50,7 @@
 
 // Those types are missing on some systems
 #ifndef u_int
-typedef unsigned char u_int;
+typedef unsigned int u_int;
 #endif
 #ifndef u_short
 typedef unsigned short u_short;
