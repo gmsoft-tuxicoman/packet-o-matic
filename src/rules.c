@@ -45,9 +45,24 @@ int rules_init() {
 }
 
 
-int rule_update(struct rule_list *r) {
+int rule_update(struct rule_list *rule, struct rule_list *list) {
 
-	r->uid = (uint32_t) rand_r(&random_seed);
+	uint32_t new_uid = (uint32_t) rand_r(&random_seed);
+
+
+	if (list) {
+		struct rule_list *rl = list;
+		while (rl) {
+			if (rl->uid == new_uid) {
+				new_uid = (uint32_t) rand_r(&random_seed);
+				rl = list;
+				continue;
+			}
+			rl = rl->next;
+		}
+	}
+
+	rule->uid = new_uid;
 
 	rules_serial++;
 

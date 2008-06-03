@@ -62,7 +62,7 @@ struct rule_list {
 
 int rules_init();
 
-int rule_update(struct rule_list *r);
+int rule_update(struct rule_list *rule, struct rule_list *list);
 
 int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct rule_node *last);
 

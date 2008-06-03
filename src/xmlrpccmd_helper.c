@@ -96,11 +96,12 @@ xmlrpc_value *xmlrpccmd_list_loaded_helper(xmlrpc_env * const envP, xmlrpc_value
 			
 			char buff[256];
 			ptype_print_val(p->value, buff, sizeof(buff) - 1);
-			xmlrpc_value *param = xmlrpc_build_value(envP, "{s:s,s:s,s:s,s:s}",
+			xmlrpc_value *param = xmlrpc_build_value(envP, "{s:s,s:s,s:s,s:s,s:s}",
 						"name", p->name,
 						"defval", p->defval,
 						"descr", p->descr,
-						"value", buff);
+						"value", buff,
+						"unit", p->value->unit);
 			xmlrpc_array_append_item(envP, params, param);
 			xmlrpc_DECREF(param);
 

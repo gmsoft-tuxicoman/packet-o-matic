@@ -658,7 +658,7 @@ int mgmtcmd_set_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	for (i = 0; i < rule_id && rl; i++)
 		rl = rl->next;
 	node_destroy(rl->node, 0);
-	rule_update(rl);
+	rule_update(rl, main_config->rules);
 	rl->node = start;
 	main_config_rules_unlock();
 
@@ -741,7 +741,7 @@ int mgmtcmd_add_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	memset(rl, 0, sizeof(struct rule_list));
 
 	main_config_rules_lock(1);
-	rule_update(rl);
+	rule_update(rl, main_config->rules);
 
 	int rule_id = 0;
 

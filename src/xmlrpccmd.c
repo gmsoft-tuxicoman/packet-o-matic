@@ -78,9 +78,10 @@ xmlrpc_value *xmlrpccmd_get_core_parmeters(xmlrpc_env * const envP, xmlrpc_value
 		char buff[256];
 		memset(buff, 0, sizeof(buff));
 		ptype_print_val(p->value, buff, sizeof(buff) - 1);
-		xmlrpc_value *entry = xmlrpc_build_value(envP, "{s:s,s:s,s:s}",
+		xmlrpc_value *entry = xmlrpc_build_value(envP, "{s:s,s:s,s:s,s:s}",
 					"name", p->name,
 					"value", buff,
+					"unit", p->value->unit,
 					"type", ptype_get_name(p->value->type));
 		xmlrpc_array_append_item(envP, result, entry);
 		xmlrpc_DECREF(entry);

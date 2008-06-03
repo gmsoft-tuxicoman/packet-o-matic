@@ -1,3 +1,7 @@
+* 2008/06/03 Guy Martin <gmsoft@tuxicoman.be>
+Make rule_update() check for possible duplicated uid.
+Provide unit as well when providing a parameter via XML-RPC.
+
 * 2008/06/02 Guy Martin <gmsoft@tuxicoman.be>
 Fix compilation on some Unix systems.
 Fix xmlrpc-c detection.

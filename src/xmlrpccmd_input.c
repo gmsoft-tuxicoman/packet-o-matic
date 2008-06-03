@@ -124,9 +124,10 @@ xmlrpc_value *xmlrpccmd_get_input(xmlrpc_env * const envP, xmlrpc_value * const 
 	while (p) {
 		char buff[256];
 		ptype_print_val(p->value, buff, sizeof(buff) - 1);
-		xmlrpc_value *entry = xmlrpc_build_value(envP, "{s:s,s:s,s:s}",
+		xmlrpc_value *entry = xmlrpc_build_value(envP, "{s:s,s:s,s:s,s:s}",
 					"name", p->name,
 					"value", buff,
+					"unit", p->value->unit,
 					"type", ptype_get_name(p->value->type));
 		xmlrpc_array_append_item(envP, params, entry);
 		xmlrpc_DECREF(entry);
@@ -346,8 +347,9 @@ xmlrpc_value *xmlrpccmd_list_loaded_input(xmlrpc_env * const envP, xmlrpc_value 
 			xmlrpc_value *params = xmlrpc_array_new(envP);
 
 			while (p) {
-				xmlrpc_value *param = xmlrpc_build_value(envP, "{s:s,s:s,s:s}",
+				xmlrpc_value *param = xmlrpc_build_value(envP, "{s:s,s:s,s:s,s:s}",
 							"name", p->name,
+							"unit", p->value->unit,
 							"defval", p->defval,
 							"descr", p->descr);
 				xmlrpc_array_append_item(envP, params, param);
