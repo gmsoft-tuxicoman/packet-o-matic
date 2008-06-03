@@ -18,22 +18,15 @@
  *
  */
 
-#ifndef __TARGET_INJECT_H__
-#define __TARGET_INJECT_H__
+#ifndef __TARGET_TCPKILL_H__
+#define __TARGET_TCPKILL_H__
 
 #include "modules_common.h"
 #include "target.h"
 
-#ifdef HAVE_LINUX_IP_SOCKET
-#include <sys/ioctl.h>
-#include <net/if.h>
-#include <linux/if_ether.h>
-#include <sys/socket.h>
-#include <netpacket/packet.h>
-#endif
-#include <unistd.h>
-#include <string.h>
-#include <net/ethernet.h>
+#define __USE_MISC 1
+#define __FAVOR_BSD 1 // We use BSD favor of the tcp header
+#define __USE_BSD 1 // We use BSD favor of the ip header
 #include <libnet.h>
 
 struct target_priv_tcpkill {

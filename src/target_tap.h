@@ -25,14 +25,6 @@
 #include "modules_common.h"
 #include "rules.h"
 
-#include <linux/if_tun.h>
-#include <net/if.h>
-#include <unistd.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <sys/ioctl.h>
-
-
 struct target_priv_tap {
 
 	int fd;

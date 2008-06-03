@@ -1,4 +1,4 @@
-CFLAGS += -Wall -I$(srcdir)/include
+CFLAGS += -Wall -I$(srcdir)/include -D_XOPEN_SOURCE=600
 
 MGMT_SRC = mgmtsrv.c mgmtsrv.h mgmtvty.c mgmtvty.h mgmtcmd.c mgmtcmd.h mgmtcmd_helper.c mgmtcmd_helper.h mgmtcmd_conntrack.c mgmtcmd_conntrack.h mgmtcmd_input.c mgmtcmd_input.h mgmtcmd_rule.c mgmtcmd_rule.h mgmtcmd_target.c mgmtcmd_target.h
 

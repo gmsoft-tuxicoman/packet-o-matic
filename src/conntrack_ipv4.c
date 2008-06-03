@@ -21,6 +21,7 @@
 
 #include "conntrack_ipv4.h"
 
+#define __USE_BSD 1 // We use BSD favor of the ip header
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>

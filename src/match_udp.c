@@ -19,9 +19,10 @@
  */
 
 #include "match_udp.h"
-#include <netinet/udp.h>
-
 #include "ptype_uint16.h"
+
+#define __FAVOR_BSD // We use BSD favor of the udp header
+#include <netinet/udp.h>
 
 static struct match_dep *match_undefined;
 

@@ -20,6 +20,8 @@
 
 #include "match_icmp.h"
 #include "ptype_uint8.h"
+
+#define __USE_BSD // We use BSD favor of the icmp header
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>

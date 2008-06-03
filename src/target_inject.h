@@ -22,13 +22,12 @@
 #ifndef __TARGET_INJECT_H__
 #define __TARGET_INJECT_H__
 
+#include "modules_common.h"
+#include "target.h"
+
 #include <unistd.h>
 #include <string.h>
 #include <libnet.h>
-
-
-#include "modules_common.h"
-#include "target.h"
 
 struct target_priv_inject {
 

@@ -20,9 +20,11 @@
 
 
 #include "conntrack_udp.h"
+#include "ptype_uint16.h"
+
+#define __FAVOR_BSD // We use BSD favor of the udp header
 #include <netinet/udp.h>
 
-#include "ptype_uint16.h"
 
 #define INITVAL 0x7513adf4
 

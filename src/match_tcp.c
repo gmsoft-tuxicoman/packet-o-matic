@@ -20,11 +20,13 @@
 
 
 #include "match_tcp.h"
-#include <netinet/tcp.h>
-
 #include "ptype_uint8.h"
 #include "ptype_uint16.h"
 #include "ptype_uint32.h"
+
+#define __USE_MISC
+#define __FAVOR_BSD // We use BSD favor of the tcp header
+#include <netinet/tcp.h>
 
 static struct match_dep *match_undefined;
 

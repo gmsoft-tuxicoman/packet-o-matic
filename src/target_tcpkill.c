@@ -24,16 +24,22 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <net/ethernet.h>
+#include <netinet/ip6.h>
+#include "ptype_uint16.h"
+#include "ptype_string.h"
+
+#ifdef HAVE_LINUX_IP_SOCKET
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <sys/socket.h>
+#include <netpacket/packet.h>
+#endif
+
+#include <netinet/tcp.h>
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
 #include <netinet/ip.h>
-#include <netinet/ip6.h>
-#include <netinet/tcp.h>
-
-#include "ptype_uint16.h"
-#include "ptype_string.h"
-
 
 static int cksum(uint16_t *addr, int len)
 {

@@ -23,17 +23,6 @@
 
 #include "config.h"
 
-#ifdef __linux__
-#define __FAVOR_BSD
-#ifndef __USE_BSD
-#define __USE_BSD
-#endif
-#endif
-
-
-// need to define this to get rwlocks definitions and strerror_r
-#define _XOPEN_SOURCE 600
-
 #include <sys/types.h>
 #include <arpa/inet.h>
 #include <netdb.h>

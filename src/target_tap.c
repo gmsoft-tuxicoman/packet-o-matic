@@ -23,6 +23,14 @@
 #include "ptype_string.h"
 #include "ptype_bool.h"
 
+#include <linux/if_tun.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+
+#define __USE_MISC 1
+#include <net/if.h>
 
 static int match_ethernet_id;
 

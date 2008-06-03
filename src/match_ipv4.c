@@ -20,12 +20,13 @@
 
 #include "match_ipv4.h"
 
+#include "ptype_ipv4.h"
+#include "ptype_uint8.h"
+
+#define __USE_BSD 1 // We use BSD favor of the ip header
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
-
-#include "ptype_ipv4.h"
-#include "ptype_uint8.h"
 
 static struct match_dep *match_icmp, *match_tcp, *match_udp, *match_ipv6;
 
