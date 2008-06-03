@@ -22,19 +22,37 @@
 #include "rules.h"
 #include "helper.h"
 
+#include <pthread.h>
+
 #include "ptype_uint64.h"
 
-int match_undefined_id;
+static int match_undefined_id;
 
+/// Value incremented each time a rule changes
+static uint32_t rules_serial;
+
+unsigned int random_seed;
 
 int rules_init() {
 
 	match_undefined_id = match_register("undefined");
+	rules_serial = 0;
+
+	srand((unsigned int) time(NULL) + (unsigned int) pthread_self());
 
 	return POM_OK;
 
 }
 
+
+int rule_update(struct rule_list *r) {
+
+	r->uid = (uint32_t) rand_r(&random_seed);
+
+	rules_serial++;
+
+	return POM_OK;
+}
 
 int dump_invalid_packet(struct frame *f) {
 
@@ -203,14 +221,7 @@ int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct ru
 	return 1;
 }
 
-int do_rules(struct frame *f, struct rule_list *rules) {
-
-	
-	
-	struct rule_list *r = rules;
-	if (r == NULL) {
-		return POM_OK;
-	}
+int do_rules(struct frame *f, struct rule_list *rules, pthread_rwlock_t *rule_lock) {
 
 
 	// We need to discard the previous pool of layer before doing anything else
@@ -279,6 +290,18 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 
 	// Now, check each rule and see if it matches
 
+
+	if (rule_lock && pthread_rwlock_rdlock(rule_lock)) {
+		pom_log(POM_LOG_ERR "Unable to lock the given rules\r\n");
+		return POM_ERR;
+	}
+
+	struct rule_list *r = rules;
+	if (r == NULL) {
+		pthread_rwlock_unlock(rule_lock);
+		return POM_OK;
+	}
+
 	while (r) {
 		r->result = 0;
 
@@ -318,7 +341,7 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 			cp = cp_next;
 		}
 	}
-
+	
 	// Process the matched rules
 	r = rules;
 	while (r) {
@@ -336,8 +359,6 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 
 	}
 
-
-
 	// reset matched_conntrack value
 	
 	r = rules;
@@ -348,6 +369,11 @@ int do_rules(struct frame *f, struct rule_list *rules) {
 			t = t->next;
 		}
 		r = r->next;
+	}
+
+	if (rule_lock && pthread_rwlock_unlock(rule_lock)) {
+		pom_log(POM_LOG_ERR "Unable to unlock the given rule_lock\r\n");
+		return POM_ERR;
 	}
 
 	return POM_OK;
@@ -439,3 +465,4 @@ int list_destroy(struct rule_list *list) {
 
 
 }
+

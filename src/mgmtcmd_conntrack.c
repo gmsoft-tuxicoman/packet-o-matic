@@ -23,7 +23,7 @@
 
 #define MGMT_CONNTRACK_COMMANDS_NUM 4
 
-struct mgmt_command mgmt_conntrack_commands[MGMT_CONNTRACK_COMMANDS_NUM] = {
+static struct mgmt_command mgmt_conntrack_commands[MGMT_CONNTRACK_COMMANDS_NUM] = {
 
 	{
 		.words = { "show", "conntracks", NULL },

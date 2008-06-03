@@ -220,4 +220,10 @@ int ptype_unregister(int ptype_type);
 /// Unregister all ptypes.
 int ptype_unregister_all(void);
 
+/// Get a read or write lock on the ptype global table
+int ptype_lock(int write);
+
+/// Release a read or write lock on the ptype global table
+int ptype_unlock();
+
 #endif

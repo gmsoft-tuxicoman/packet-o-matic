@@ -266,15 +266,16 @@ int helper_queue_frame(struct frame *f) {
 /**
  * @ingroup helper_core
  * @param list Rule list to use when processing queued packets
+ * @param lock Lock on the whole rule list
  * @return POM_OK on success, POM_ERR on failure
  */
-int helper_process_queue(struct rule_list *list) {
+int helper_process_queue(struct rule_list *list, pthread_rwlock_t *lock) {
 
 	if (!frame_head)
 		return POM_OK;
 
 	while (frame_head) {
-		do_rules(frame_head->f, list);
+		do_rules(frame_head->f, list, lock);
 		free(frame_head->f->buff_base);
 		free(frame_head->f);
 		struct helper_frame *tmpf = frame_head;

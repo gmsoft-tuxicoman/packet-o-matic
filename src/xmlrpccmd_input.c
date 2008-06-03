@@ -28,7 +28,7 @@
 
 #define XMLRPC_INPUT_COMMANDS_NUM 9
 
-struct xmlrpc_command xmlrpc_input_commands[XMLRPC_INPUT_COMMANDS_NUM] = { 
+static struct xmlrpc_command xmlrpc_input_commands[XMLRPC_INPUT_COMMANDS_NUM] = { 
 
 	{
 		.name = "input.get",

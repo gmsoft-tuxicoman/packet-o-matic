@@ -25,6 +25,8 @@
 #include <errno.h>
 #include <sys/stat.h>
 
+#include <pthread.h>
+
 #include "conf.h"
 #include "input.h"
 #include "target.h"
@@ -42,6 +44,12 @@ struct conf *config_alloc() {
 	struct conf *c;
 	c = malloc(sizeof(struct conf));
 	memset(c, 0, sizeof(struct conf));
+	if (pthread_rwlock_init(&c->rules_lock, NULL)) {
+		pom_log(POM_LOG_ERR "Unable to init the config rules lock\r\n");
+		free(c);
+		return NULL;
+	}
+
 	return c;
 
 }
@@ -54,8 +62,12 @@ int config_cleanup(struct conf* c) {
 
 	list_destroy(c->rules);
 
+	if (pthread_rwlock_destroy(&c->rules_lock)) {
+		pom_log(POM_LOG_ERR "Unable to destroy the config rules lock\r\n");
+	}
+
 	free(c);
-	return 1;
+	return POM_OK ;
 }
 
 struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
@@ -417,6 +429,8 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 	struct rule_list *r;
 	r = malloc(sizeof(struct rule_list));
 	memset(r, 0, sizeof(struct rule_list));
+
+	rule_update(r);
 	
 	struct ptype *disabled_pt = ptype_alloc("bool", NULL);
 	if (!disabled_pt) {
@@ -504,9 +518,15 @@ int config_parse(struct conf *c, char * filename) {
 			else
 				c->input = config_parse_input(doc, cur);
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "rule")) {
-			struct rule_list *r = parse_rule(doc, cur);
-			if (!r)
+			if (pthread_rwlock_wrlock(&c->rules_lock)) {
+				pom_log(POM_LOG_ERR "Unable to aquire lock on the rules\r\n");
 				return POM_ERR;
+			}
+			struct rule_list *r = parse_rule(doc, cur);
+			if (!r) {
+				pthread_rwlock_unlock(&c->rules_lock);
+				return POM_ERR;
+			}
 
 			if (!c->rules) {
 				c->rules = r;
@@ -517,6 +537,9 @@ int config_parse(struct conf *c, char * filename) {
 				tmpr->next = r;
 				r->prev = tmpr;
 
+			}
+			if (pthread_rwlock_unlock(&c->rules_lock)) {
+				pom_log(POM_LOG_ERR "Unable to unlock the rules\r\n");
 			}
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "param")) {
 			char *name = (char *) xmlGetProp(cur, (const xmlChar*) "name");
@@ -850,6 +873,12 @@ int config_write(struct conf *c, char *filename) {
 	
 	struct rule_list *rl = c->rules;
 
+
+	if (pthread_rwlock_rdlock(&c->rules_lock)) {
+		pom_log(POM_LOG_ERR "Unable to aquire the lock on the rules\r\n");
+		return POM_ERR;
+	}
+
 	while (rl) {
 		
 		strcat(buffer, "<rule");
@@ -904,15 +933,19 @@ int config_write(struct conf *c, char *filename) {
 
 			t = t->next;
 
-			if (write(fd, buffer, strlen(buffer)) == -1)
+			if (write(fd, buffer, strlen(buffer)) == -1) {
+				pthread_rwlock_unlock(&c->rules_lock);
 				goto err;
+			}
 			memset(buffer, 0, sizeof(buffer));
 		}
 
 		strcat(buffer, "\t<matches>\n");
 
-		if (write(fd, buffer, strlen(buffer)) == -1)
+		if (write(fd, buffer, strlen(buffer)) == -1) {
+			pthread_rwlock_unlock(&c->rules_lock);
 			goto err;
+		}
 		memset(buffer, 0, sizeof(buffer));
 
 		config_write_rule(fd, rl->node, NULL, 2);
@@ -922,6 +955,11 @@ int config_write(struct conf *c, char *filename) {
 		strcat(buffer, "</rule>\n\n");
 		
 		rl = rl->next;
+	}
+
+	if (pthread_rwlock_unlock(&c->rules_lock)) {
+		pom_log(POM_LOG_ERR "Unable to unlock the rules lock\r\n");
+		return POM_ERR;
 	}
 
 	// finish the config

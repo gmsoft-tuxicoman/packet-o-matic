@@ -24,7 +24,7 @@
 
 #define MGMT_HELPER_COMMANDS_NUM 4
 
-struct mgmt_command mgmt_helper_commands[MGMT_HELPER_COMMANDS_NUM] = {
+static struct mgmt_command mgmt_helper_commands[MGMT_HELPER_COMMANDS_NUM] = {
 
 	{
 		.words = { "show", "helpers", NULL },

@@ -28,8 +28,8 @@
 
 #define INITVAL 0xdf92b6eb
 
-struct conntrack_list *ct_table[CONNTRACK_SIZE];
-struct conntrack_list *ct_table_rev[CONNTRACK_SIZE];
+static struct conntrack_list *ct_table[CONNTRACK_SIZE];
+static struct conntrack_list *ct_table_rev[CONNTRACK_SIZE];
 
 /**
  * @ingroup conntrack_core
@@ -758,9 +758,10 @@ int conntrack_close_connection(struct conntrack_entry *ce) {
 /**
  * @ingroup conntrack_core
  * @param r Rule list to use for packets that are still in the buffer
+ * @param lock Lock for the whole list of rules
  * @return POM_OK on success, POM_ERR on failure.
  */
-int conntrack_close_connections(struct rule_list *r) {
+int conntrack_close_connections(struct rule_list *r, pthread_rwlock_t *lock) {
 
 	int i;
 
@@ -775,7 +776,7 @@ int conntrack_close_connections(struct rule_list *r) {
 			struct conntrack_helper_priv *hp = cl->ce->helper_privs;
 			while (hp) {
 				while ((*hp->flush_buffer) (cl->ce, hp->priv) == POM_OK)
-					helper_process_queue(r);
+					helper_process_queue(r, lock);
 
 				hp = hp->next;
 			}

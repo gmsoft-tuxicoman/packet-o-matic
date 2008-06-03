@@ -31,7 +31,7 @@
 
 #define XMLRPC_COMMANDS_NUM 2
 
-struct xmlrpc_command xmlrpc_commands[XMLRPC_COMMANDS_NUM] = { 
+static struct xmlrpc_command xmlrpc_commands[XMLRPC_COMMANDS_NUM] = { 
 
 	{
 		.name = "core.getParameters",

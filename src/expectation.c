@@ -25,9 +25,9 @@
 #include "conntrack.h"
 #include "timers.h"
 
-struct expectation_list *expt_head;
+static struct expectation_list *expt_head;
 
-int match_undefined_id;
+static int match_undefined_id;
 
 
 int expectation_init() {

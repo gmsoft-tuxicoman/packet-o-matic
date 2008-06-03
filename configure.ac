@@ -131,7 +131,7 @@ AC_SUBST(LIB_DIR)
 
 # Check for PCAP
 AC_CHECK_HEADERS([pcap.h pcap-bpf.h], [pcap_headers=yes], [pcap_headers=no])
-AC_CHECK_LIB([pcap], [pcap_open_offline, pcap_open_dead, pcap_close], [want_pcap=yes], [want_pcap=no])
+AC_CHECK_LIB([pcap], [pcap_open_offline, pcap_open_dead, pcap_close, pcap_breakloop], [want_pcap=yes], [want_pcap=no])
 if test "x$pcap_headers" = "xyes" -a "x$want_pcap" = "xyes"
 then
 	INPUT_OBJS="$INPUT_OBJS input_pcap.la"
@@ -179,17 +179,18 @@ fi
 # Check for xmlrpc-c
 
 OLD_LIBS=[$LIBS]
-AC_CHECK_HEADERS([xmlrpc-c/base.h xmlrpc-c/server.h xmlrpc-c/server_abyss.h], [xmlrpc_headers=no], [xmlrpc_headers=yes])
+AC_CHECK_HEADERS([xmlrpc-c/base.h xmlrpc-c/server.h xmlrpc-c/server_abyss.h], [xmlrpc_headers=yes], [xmlrpc_headers=no])
 AC_CHECK_LIB([xmlrpc_util], [xmlrpc_millisecond_sleep], [LIB_XMLRPC_UTIL='-lxmlrpc_util'])
 LIBS="$LIB_XMLRPC_UTIL $LIBS"
-AC_CHECK_LIB([xmlrpc_abyss], [ServerRunConn2], [want_xmlrpc=yes], [want_xmlrpc=$xmlrpc_headers])
+AC_CHECK_LIB([xmlrpc_abyss], [ServerRunConn2], [want_xmlrpc=$xmlrpc_headers], [want_xmlrpc=no])
 
+AC_MSG_CHECKING([for xmlrpc-c-config])
 XMLRPC_CONFIG=`which xmlrpc-c-config 2>/dev/null`
 if [ test ! -x "${XMLRPC_CONFIG}" ]
 then
 	want_xmlrpc=no
 fi
-
+AC_MSG_RESULT($want_xmlrpc)
 
 AM_CONDITIONAL([USE_XMLRPC], [test "x$want_xmlrpc" = "xyes"])
 

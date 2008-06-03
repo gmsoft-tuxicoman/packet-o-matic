@@ -25,7 +25,7 @@
 
 #define MGMT_RULE_COMMANDS_NUM 6
 
-struct mgmt_command mgmt_rule_commands[MGMT_RULE_COMMANDS_NUM] = {
+static struct mgmt_command mgmt_rule_commands[MGMT_RULE_COMMANDS_NUM] = {
 
 	{
 		.words = { "show", "rules", NULL },
@@ -80,11 +80,13 @@ struct mgmt_command_arg* mgmtcmd_rule_id_completion(int argc, char *argv[]) {
 
 	if (argc != 2)
 		return NULL;
-
+	
+	main_config_rules_lock(0);
 	struct rule_list *rl;
 	int count = 0;
 	for (rl = main_config->rules; rl; rl = rl->next)
 		count++;
+	main_config_rules_unlock();
 
 	return mgmtcmd_completion_int_range(0, count);
 	
@@ -252,10 +254,14 @@ int mgmtcmd_show_rule_print_node_tree(struct mgmt_connection *c, struct rule_nod
 }
 
 int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]) {
-	
+
+
+	main_config_rules_lock(0);
+
 	struct rule_list *rl = main_config->rules;
 
 	if (!rl) {
+		main_config_rules_unlock();
 		mgmtsrv_send(c, "No rules\r\n");
 		return POM_OK;
 	}
@@ -287,8 +293,10 @@ int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]) {
 			} else if (!strcmp(argv[0], "flat")) {
 				mgmtcmd_show_rule_print_node_flat(c, rl->node, NULL);
 				mgmtsrv_send(c, "\r\n");
-			} else
+			} else  {
+				main_config_rules_unlock();
 				return MGMT_USAGE;
+			}
 		} else
 			mgmtcmd_show_rule_print_node_flat(c, rl->node, NULL);
 
@@ -297,6 +305,8 @@ int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]) {
 		rl = rl->next;
 		rule_num++;
 	}
+
+	main_config_rules_unlock();
 
 	return POM_OK;
 }
@@ -607,6 +617,7 @@ int mgmtcmd_set_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	if (sscanf(argv[0], "%u", &rule_id) < 1)
 		return MGMT_USAGE;
 
+	main_config_rules_lock(0);
 	struct rule_list *rl = main_config->rules;
 
 	unsigned int i;
@@ -614,9 +625,11 @@ int mgmtcmd_set_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 		rl = rl->next;
 
 	if (!rl) {
+		main_config_rules_unlock();
 		mgmtsrv_send(c, "Rule not found\r\n");
 		return POM_OK;
 	}
+	main_config_rules_unlock();
 
 	// first, let's reconstruct the whole rule
 	int rule_len = 0;
@@ -640,13 +653,14 @@ int mgmtcmd_set_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	free(rule_str);
 
 	// rule parsed, let's replace it
+	main_config_rules_lock(1);
 	rl = main_config->rules;
 	for (i = 0; i < rule_id && rl; i++)
 		rl = rl->next;
-	reader_process_lock();
 	node_destroy(rl->node, 0);
+	rule_update(rl);
 	rl->node = start;
-	reader_process_unlock();
+	main_config_rules_unlock();
 
 	return POM_OK;
 }
@@ -656,19 +670,18 @@ int mgmtcmd_disable_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	if (argc < 1)
 		return MGMT_USAGE;
 
+	main_config_rules_lock(1);
 	struct rule_list *rl = mgmtcmd_get_rule(argv[0]);
 
 	if (!rl) {
 		mgmtsrv_send(c, "Rule not found\r\n");
-		return POM_OK;
-	}
-
-	if (!rl->enabled) {
+	} else if (!rl->enabled) {
 		mgmtsrv_send(c, "Rule already disabled\n");
-		return POM_OK;
+	} else {
+		rl->enabled = 0;
 	}
 
-	rl->enabled = 0;
+	main_config_rules_unlock();
 
 	return POM_OK;
 
@@ -679,19 +692,17 @@ int mgmtcmd_enable_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	if (argc < 1)
 		return MGMT_USAGE;
 
+	main_config_rules_lock(1);
 	struct rule_list *rl = mgmtcmd_get_rule(argv[0]);
 
 	if (!rl) {
 		mgmtsrv_send(c, "Rule not found\r\n");
-		return POM_OK;
-	}
-
-	if (rl->enabled) {
+	} else 	if (rl->enabled) {
 		mgmtsrv_send(c, "Rule already enabled\n");
-		return POM_OK;
+	} else {
+		rl->enabled = 1;
 	}
-
-	rl->enabled = 1;
+	main_config_rules_unlock();
 
 	return POM_OK;
 
@@ -727,11 +738,11 @@ int mgmtcmd_add_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	struct rule_list *rl;
 	rl = malloc(sizeof(struct rule_list));
-
 	memset(rl, 0, sizeof(struct rule_list));
 
-	reader_process_lock();
-	
+	main_config_rules_lock(1);
+	rule_update(rl);
+
 	int rule_id = 0;
 
 	if (!main_config->rules) {
@@ -753,7 +764,7 @@ int mgmtcmd_add_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	rl->byte_cnt = ptype_alloc("uint64", "bytes");
 	rl->byte_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
 
-	reader_process_unlock();
+	main_config_rules_unlock();
 	
 	mgmtsrv_send(c, "Added rule with id %u\r\n", rule_id);
 
@@ -781,14 +792,14 @@ int mgmtcmd_remove_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	if (argc < 1)
 		return MGMT_USAGE;
 
+	main_config_rules_lock(1);
+
 	struct rule_list *rl = mgmtcmd_get_rule(argv[0]);
 
 	if (!rl) {
 		mgmtsrv_send(c, "Rule not found\r\n");
 		return POM_OK;
 	}
-
-	reader_process_lock();
 
 	node_destroy(rl->node, 0);
 
@@ -816,7 +827,7 @@ int mgmtcmd_remove_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	ptype_cleanup(rl->byte_cnt);
 	free(rl);
 
-	reader_process_unlock();
+	main_config_rules_unlock();
 
 	mgmtsrv_send(c, "Rule removed\r\n");
 

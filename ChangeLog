@@ -1,3 +1,11 @@
+* 2008/06/02 Guy Martin <gmsoft@tuxicoman.be>
+Fix compilation on some Unix systems.
+Fix xmlrpc-c detection.
+Added rw lock on the config rules.
+Improved locking on the ring buffer.
+Added some more static keywords.
+Added rw locks on ptypes.
+
 * 2008/06/01 Guy Martin <gmsoft@tuxicoman.be>
 Added static keyword at relevant places in modules.
 Added status report at the end of the configure script.

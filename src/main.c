@@ -55,12 +55,12 @@
 
 #define INPUTSIG SIGUSR1
 
-pthread_mutex_t reader_mutex = PTHREAD_MUTEX_INITIALIZER; ///< Mutex used to lock the reader thread if changes are made or modules are loaded/unloaded
-pthread_t input_thread;
+static pthread_mutex_t reader_mutex = PTHREAD_MUTEX_INITIALIZER; ///< Mutex used to lock the reader thread if changes are made or modules are loaded/unloaded
+static pthread_t input_thread;
 
-int finish = 0;
+static int finish = 0;
 
-struct timeval now; ///< Used to get the current time from the input perspective
+static struct timeval now; ///< Used to get the current time from the input perspective
 
 void signal_handler(int signal) {
 	
@@ -347,9 +347,10 @@ void *input_thread_func(void *params) {
 
 		if (input_read(r->i, r->buffer[r->write_pos]) == POM_ERR) {
 			pom_log(POM_LOG_ERR "Error while reading from input\r\n");
-			r->state = rb_state_closing;
 			// We need to aquire the lock
 			pthread_mutex_lock(&r->mutex);
+
+			r->state = rb_state_closing;
 
 			struct ptype* param_quit_on_input_error =  core_get_param_value("quit_on_input_error");
 			if (PTYPE_BOOL_GETVAL(param_quit_on_input_error)) {
@@ -669,7 +670,6 @@ int main(int argc, char *argv[]) {
 
 
 	while (rbuf->usage > 0) {
-
 		
 		if (pthread_mutex_unlock(&rbuf->mutex)) {
 			pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
@@ -690,9 +690,9 @@ int main(int argc, char *argv[]) {
 	
 		if (rbuf->buffer[rbuf->read_pos]->len > 0) { // Need to queue that in the buffer
 			timers_process(); // This is not real-time timers but we don't really need it
-			do_rules(rbuf->buffer[rbuf->read_pos], main_config->rules);
+			do_rules(rbuf->buffer[rbuf->read_pos], main_config->rules, &main_config->rules_lock);
 			helper_lock(0);
-			helper_process_queue(main_config->rules); // Process frames that needed some help
+			helper_process_queue(main_config->rules, &main_config->rules_lock); // Process frames that needed some help
 			helper_unlock();
 		}
 
@@ -719,7 +719,7 @@ int main(int argc, char *argv[]) {
 		while (rbuf->usage <= 0) {
 			if (rbuf->state == rb_state_stopping || rbuf->state == rb_state_closed) {
 				// Process remaining queued frames
-				conntrack_close_connections(main_config->rules);
+				conntrack_close_connections(main_config->rules, &main_config->rules_lock);
 				expectation_cleanup_all();
 			}
 
@@ -766,7 +766,7 @@ finish:
 	pom_log("Total packets read : %lu, dropped %lu (%.2f%%)\r\n", rbuf->total_packets, rbuf->dropped_packets, 100.0 / rbuf->total_packets * rbuf->dropped_packets);
 
 	// Process remaining queued frames
-	conntrack_close_connections(main_config->rules);
+	conntrack_close_connections(main_config->rules, &main_config->rules_lock);
 
 	expectation_cleanup_all();
 
@@ -992,3 +992,33 @@ int core_param_unregister_all() {
 	}
 	return POM_OK;
 }
+
+int main_config_rules_lock(int write) {
+
+	int result = 0;
+	if (write) {
+		result = pthread_rwlock_wrlock(&main_config->rules_lock);
+	} else {
+		result = pthread_rwlock_rdlock(&main_config->rules_lock);
+	}
+
+	if (result) {
+		pom_log(POM_LOG_ERR "Error while locking the rule lock\r\n");
+		return POM_ERR;
+	}
+
+	return POM_OK;
+
+}
+
+int main_config_rules_unlock() {
+
+	if (pthread_rwlock_unlock(&main_config->rules_lock)) {
+		pom_log(POM_LOG_ERR "Error while unlocking the rule lock\r\n");
+		return POM_ERR;
+	}
+
+	return POM_OK;
+
+}
+

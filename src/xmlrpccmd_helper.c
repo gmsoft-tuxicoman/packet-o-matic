@@ -30,7 +30,7 @@
 
 #define XMLRPC_HELPER_COMMANDS_NUM 4
 
-struct xmlrpc_command xmlrpc_helper_commands[XMLRPC_HELPER_COMMANDS_NUM] = { 
+static struct xmlrpc_command xmlrpc_helper_commands[XMLRPC_HELPER_COMMANDS_NUM] = { 
 
 	{
 		.name = "helper.listLoaded",

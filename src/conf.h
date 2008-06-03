@@ -30,7 +30,7 @@ struct conf {
 	struct input* input;
 	struct rule_list *rules;
 	char filename[NAME_MAX + 1];
-
+	pthread_rwlock_t rules_lock;
 };
 
 struct conf *config_alloc();

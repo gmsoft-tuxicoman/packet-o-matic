@@ -97,4 +97,7 @@ struct ptype* core_get_param_value(char *param);
 int core_set_param_value(char *param, char *value, char *msg, size_t size);
 int core_param_unregister_all();
 
+int main_config_rules_lock(int write);
+int main_config_rules_unlock();
+
 #endif

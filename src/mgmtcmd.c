@@ -36,7 +36,7 @@
 
 #define MGMT_COMMANDS_NUM 17
 
-struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
+static struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
 	{
 		.words = { "exit", NULL },
@@ -455,7 +455,7 @@ int mgmtcmd_load_match(struct mgmt_connection *c, int argc, char *argv[]) {
 		return POM_OK;
 	}
 
-	reader_process_lock();
+	reader_process_lock(); // we need to lock the process lock because match dependencies will be updated
 	id = match_register(argv[0]);
 	if (id != POM_ERR) {
 		mgmtsrv_send(c, "Match %s registered with id %u\r\n", argv[0], id);
@@ -507,7 +507,7 @@ int mgmtcmd_unload_match(struct mgmt_connection *c, int argc, char *argv[]) {
 		return POM_OK;
 	}
 
-	reader_process_lock();
+	reader_process_lock(); // need to lock because match dependencies will be updated
 	if (match_unregister(id) != POM_ERR) {
 		mgmtsrv_send(c, "Match unloaded successfully\r\n");
 	} else {
@@ -549,8 +549,11 @@ int mgmtcmd_load_ptype(struct mgmt_connection *c, int argc, char*argv[]) {
 
 	if (argc != 1)
 		return MGMT_USAGE;
-	
+
+	ptype_lock(1);
+
 	if (ptype_get_type(argv[0]) != POM_ERR) {
+		ptype_unlock();
 		mgmtsrv_send(c, "Ptype %s is already registered\r\n", argv[0]);
 		return POM_OK;
 	}
@@ -560,6 +563,8 @@ int mgmtcmd_load_ptype(struct mgmt_connection *c, int argc, char*argv[]) {
 		mgmtsrv_send(c, "Error while loading ptype %s\r\n", argv[0]);
 	else
 		mgmtsrv_send(c, "Ptype %s regitered with id %u\r\n", argv[0], id);
+
+	ptype_unlock();
 
 	return POM_OK;
 
@@ -582,25 +587,21 @@ int mgmtcmd_unload_ptype(struct mgmt_connection *c, int argc, char *argv[]) {
 	if (argc != 1)
 		return MGMT_USAGE;
 
+	ptype_lock(1);
+
 	int id = ptype_get_type(argv[0]);
 
 	if (id == POM_ERR) {
 		mgmtsrv_send(c, "Ptype %s not loaded\r\n", argv[0]);
-		return POM_OK;
-	}
-
-	if (ptypes[id]->refcount) {
+	} else 	if (ptypes[id]->refcount) {
 		mgmtsrv_send(c, "Ptype %s is still in use. Cannot unload it\r\n", argv[0]);
-		return POM_OK;
-	}
-
-	reader_process_lock();
-	if (ptype_unregister(id) != POM_ERR) {
+	} else 	if (ptype_unregister(id) != POM_ERR) {
 		mgmtsrv_send(c, "Ptype unloaded successfully\r\n");
 	} else {
 		mgmtsrv_send(c, "Error while unloading ptype\r\n");
 	}
-	reader_process_unlock();
+
+	ptype_unlock();
 	
 	return POM_OK;
 
@@ -612,6 +613,8 @@ struct mgmt_command_arg* mgmtcmd_unload_ptype_completion(int argc, char *argv[])
 
 	if (argc != 2)
 		return NULL;
+
+	ptype_lock(0);
 
 	int i;
 	for (i = 0; i < MAX_PTYPE; i++) {
@@ -626,6 +629,8 @@ struct mgmt_command_arg* mgmtcmd_unload_ptype_completion(int argc, char *argv[])
 		}
 
 	}
+
+	ptype_unlock();
 
 	return res;
 }

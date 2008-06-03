@@ -21,6 +21,10 @@
 #include "common.h"
 #include "ptype.h"
 
+#include <pthread.h>
+
+static pthread_rwlock_t ptype_global_lock = PTHREAD_RWLOCK_INITIALIZER;
+
 
 /**
  * @ingroup ptype_core
@@ -95,9 +99,12 @@ int ptype_register(const char *ptype_name) {
  */
 struct ptype* ptype_alloc(const char* type, char* unit) {
 
+	ptype_lock(1);
+
 	int idx = ptype_register(type);
 
 	if (idx == POM_ERR) {
+		ptype_unlock();
 		pom_log(POM_LOG_ERR "Error, could not allocate ptype of type %s\r\n", type);
 		return NULL;
 	}
@@ -112,6 +119,8 @@ struct ptype* ptype_alloc(const char* type, char* unit) {
 		strncpy(ret->unit, unit, PTYPE_MAX_UNIT);
 
 	ptypes[idx]->refcount++;
+
+	ptype_unlock();
 
 	return ret;
 }
@@ -399,3 +408,42 @@ int ptype_unregister_all() {
 	return result;
 
 }
+
+/**
+ * @ingroup ptype_core
+ * @param write Set to 1 if ptypes will be modified, 0 if not
+ * @return POM_OK on success, POM_ERR on failure.
+ */
+int ptype_lock(int write) {
+
+	int result = 0;
+	if (write) {
+		result = pthread_rwlock_wrlock(&ptype_global_lock);
+	} else {
+		result = pthread_rwlock_rdlock(&ptype_global_lock);
+	}
+
+	if (result) {
+		pom_log(POM_LOG_ERR "Error while locking the ptype lock\r\n");
+		return POM_ERR;
+	}
+
+	return POM_OK;
+
+}
+
+/**
+ * @ingroup ptype_core
+ * @return POM_OK on success, POM_ERR on failure.
+ */
+int ptype_unlock() {
+
+	if (pthread_rwlock_unlock(&ptype_global_lock)) {
+		pom_log(POM_LOG_ERR "Error while unlocking the ptype lock\r\n");
+		return POM_ERR;
+	}
+
+	return POM_OK;
+
+}
+

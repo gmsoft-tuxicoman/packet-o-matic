@@ -29,10 +29,10 @@
 
 #include <signal.h>
 
-struct mgmt_connection *conn_head;
-struct mgmt_connection *conn_tail;
+static struct mgmt_connection *conn_head;
+static struct mgmt_connection *conn_tail;
 
-char *mgmt_password = NULL;
+static char *mgmt_password = NULL;
 
 int mgmtsrv_init(const char *port) {
 

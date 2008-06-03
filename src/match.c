@@ -26,9 +26,9 @@
 #include "main.h"
 #include "ptype_bool.h"
 
-int match_undefined_id;
+static int match_undefined_id;
 
-struct ptype *param_autoload_helper;
+static struct ptype *param_autoload_helper;
 
 /**
  * @ingroup match_core

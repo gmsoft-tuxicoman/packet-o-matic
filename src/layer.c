@@ -28,7 +28,7 @@
 static struct layer** pool;
 static int poolsize, poolused;
 
-regex_t parse_regex;
+static regex_t parse_regex;
 
 static struct layer_field_pool field_pool[MAX_MATCH];
 

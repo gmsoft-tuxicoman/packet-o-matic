@@ -26,12 +26,12 @@
 #include "xmlrpcsrv.h"
 #include "xmlrpccmd.h"
 
-struct xmlrpc_connection *sockets_head;
+static struct xmlrpc_connection *sockets_head;
 
-TServer abyssServer;
-xmlrpc_registry * registryP;
+static TServer abyssServer;
+static xmlrpc_registry * registryP;
 
-char *xmlrpc_password = NULL;
+static char *xmlrpc_password = NULL;
 
 #ifdef XMLRPC_IPV6
 void socketGetPeerName(const TSocket *socketP, TIPAddr *ipAddrP, uint16_t *portNumberP, abyss_bool *successP) {

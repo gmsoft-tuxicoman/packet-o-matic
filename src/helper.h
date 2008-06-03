@@ -113,7 +113,7 @@ int helper_need_help(struct frame *f, unsigned int start, unsigned int len, stru
 int helper_queue_frame(struct frame *f);
 
 /// Process queued frames
-int helper_process_queue(struct rule_list *list);
+int helper_process_queue(struct rule_list *list, pthread_rwlock_t *lock);
 
 /// Unregister a helper
 int helper_unregister(int helper_type);

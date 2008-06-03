@@ -25,8 +25,7 @@
 #include "input.h"
 #include "main.h"
 
-struct timer_queue *timer_queues;
-struct timeval next_run;
+static struct timer_queue *timer_queues;
 
 
 int timers_process() {

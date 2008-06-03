@@ -30,8 +30,6 @@
 #include "ptype.h"
 #include "ptype_uint64.h"
 
-#include <pthread.h>
-
 static pthread_rwlock_t input_global_lock = PTHREAD_RWLOCK_INITIALIZER;
 
 /**
@@ -484,6 +482,9 @@ int input_interrupt(struct input *i) {
 
 /**
  * @ingroup input_core
+ * This lock will be used each time an input is registered or
+ * unregistered. Also used when looking informations about inputs
+ * which may not have a positive refcount.
  * @param write Set to 1 if helpers will be modified, 0 if not
  * @return POM_OK on success, POM_ERR on failure.
  */

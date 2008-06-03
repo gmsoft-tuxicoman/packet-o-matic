@@ -49,6 +49,7 @@ struct rule_list {
 	struct target *target; ///< what to do if we match
 	unsigned int result; ///< true if the packet has to be processed
 	int enabled; ///< true if rule is enabled and has to be proccessed
+	uint32_t uid; ///< unique id of the rule which changes each time it's modified
 
 	struct ptype* pkt_cnt; ///< matched packet count
 	struct ptype* byte_cnt; ///< matched byte count
@@ -61,15 +62,15 @@ struct rule_list {
 
 int rules_init();
 
+int rule_update(struct rule_list *r);
+
 int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct rule_node *last);
 
-int do_rules(struct frame *f, struct rule_list *rules);
+int do_rules(struct frame *f, struct rule_list *rules, pthread_rwlock_t *rule_lock);
 
 int node_destroy(struct rule_node *node, int sub);
 
 int list_destroy(struct rule_list *list);
-
-
 
 #endif
 

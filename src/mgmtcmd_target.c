@@ -27,7 +27,7 @@
 
 #define MGMT_TARGET_COMMANDS_NUM 9
 
-struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
+static struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 
 	{
 		.words = { "show", "targets", NULL },
@@ -118,8 +118,10 @@ struct mgmt_command_arg *mgmctcmd_target_id_completion(int argc, char *argv[], i
 	if (pos == 0) {
 		struct rule_list *rl;
 		int count = 0;
+		main_config_rules_lock(0);
 		for (rl = main_config->rules; rl; rl = rl->next)
 			count++;
+		main_config_rules_unlock();
 		res = mgmtcmd_completion_int_range(0, count);
 	} else if (pos == 1) {
 		struct rule_list *rl;
@@ -127,7 +129,7 @@ struct mgmt_command_arg *mgmctcmd_target_id_completion(int argc, char *argv[], i
 		int rule_id = -1;
 		if (sscanf(argv[argc - 1], "%u", &rule_id) != 1)
 			return NULL;
-
+		main_config_rules_lock(0);
 		for (rl = main_config->rules; rl && i < rule_id; rl = rl->next)
 			i++;
 
@@ -135,6 +137,7 @@ struct mgmt_command_arg *mgmctcmd_target_id_completion(int argc, char *argv[], i
 		int count = 0;
 		for (t = rl->target; t; t = t->next)
 			count++;
+		main_config_rules_unlock();
 		res = mgmtcmd_completion_int_range(0, count);
 
 	}
@@ -150,6 +153,7 @@ struct mgmt_command_arg *mgmtcmd_completion_id2(int argc, char *argv[]) {
 
 int mgmtcmd_show_targets(struct mgmt_connection *c, int argc, char *argv[]) {
 
+	main_config_rules_lock(0);
 
 	struct rule_list *rl = main_config->rules;
 
@@ -200,6 +204,8 @@ int mgmtcmd_show_targets(struct mgmt_connection *c, int argc, char *argv[]) {
 		rule_num++;
 	}
 
+	main_config_rules_unlock();
+
 	return POM_OK;
 }
 
@@ -208,9 +214,12 @@ int mgmtcmd_start_target(struct mgmt_connection *c, int argc, char *argv[]) {
 	if (argc < 2)
 		return MGMT_USAGE;
 
+
+	main_config_rules_lock(1);
 	struct rule_list *rl = mgmtcmd_get_rule(argv[0]);
 
 	if (!rl) {
+		main_config_rules_unlock();
 		mgmtsrv_send(c, "Rule not found\r\n");
 		return POM_OK;
 	}
@@ -219,24 +228,13 @@ int mgmtcmd_start_target(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (!t) {
 		mgmtsrv_send(c, "Target not found\r\n");
-		return POM_OK;
-	}
-
-
-	if (t->started) {
+	} else if (t->started) {
 		mgmtsrv_send(c, "Target already started\r\n");
-		return POM_OK;
-	}
-	
-	reader_process_lock();
-
-	if (target_open(t) != POM_OK) {
+	} else if (target_open(t) != POM_OK) {
 		mgmtsrv_send(c, "Error while starting the target\r\n");
-		reader_process_unlock();
-		return POM_OK;
 	}
 
-	reader_process_unlock();
+	main_config_rules_unlock();
 
 	return POM_OK;
 
@@ -247,6 +245,8 @@ int mgmtcmd_stop_target(struct mgmt_connection *c, int argc, char *argv[]) {
 	if (argc < 2)
 		return MGMT_USAGE;
 
+	main_config_rules_lock(1);
+
 	struct rule_list *rl = mgmtcmd_get_rule(argv[0]);
 
 	if (!rl) {
@@ -258,24 +258,13 @@ int mgmtcmd_stop_target(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (!t) {
 		mgmtsrv_send(c, "Target not found\r\n");
-		return POM_OK;
-	}
-
-
-	if (!t->started) {
+	} else if (!t->started) {
 		mgmtsrv_send(c, "Target already stopped\r\n");
-		return POM_OK;
-	}
-	
-	reader_process_lock();
-
-	if (target_close(t) != POM_OK) {
+	} else if (target_close(t) != POM_OK) {
 		mgmtsrv_send(c, "Error while stopping the target\r\n");
-		reader_process_unlock();
-		return POM_OK;
 	}
 
-	reader_process_unlock();
+	main_config_rules_unlock();
 
 	return POM_OK;
 
@@ -286,9 +275,12 @@ int mgmtcmd_add_target(struct mgmt_connection *c, int argc, char *argv[]) {
 	if (argc < 2)
 		return MGMT_USAGE;
 
+	main_config_rules_lock(1);
+
 	struct rule_list *rl = mgmtcmd_get_rule(argv[0]);
 
 	if (!rl) {
+		main_config_rules_unlock();
 		mgmtsrv_send(c, "Rule not found\r\n");
 		return POM_OK;
 	}
@@ -296,17 +288,17 @@ int mgmtcmd_add_target(struct mgmt_connection *c, int argc, char *argv[]) {
 	int target_type = target_register(argv[1]);
 
 	if (target_type == POM_ERR) {
+		main_config_rules_unlock();
 		mgmtsrv_send(c, "Target %s not found\r\n", argv[1]);
 		return POM_OK;
 	}
 	
 	struct target *t = target_alloc(target_type);
 	if (!t) {
+		main_config_rules_unlock();
 		mgmtsrv_send(c, "Error while allocating the target !!!\r\n");
 		return POM_ERR;
 	}
-
-	reader_process_lock();
 
 	int target_id = 0;
 
@@ -324,7 +316,7 @@ int mgmtcmd_add_target(struct mgmt_connection *c, int argc, char *argv[]) {
 		t->prev = tmpt;
 	}
 
-	reader_process_unlock();
+	main_config_rules_unlock();
 
 	mgmtsrv_send(c, "Added target with id %u to rule %s\r\n", target_id, argv[0]);
 
@@ -364,9 +356,12 @@ int mgmtcmd_remove_target(struct mgmt_connection *c, int argc, char *argv[]) {
 	if (argc < 2)
 		return MGMT_USAGE;
 
+	main_config_rules_lock(1);
+
 	struct rule_list *rl = mgmtcmd_get_rule(argv[0]);
 
 	if (!rl) {
+		main_config_rules_unlock();
 		mgmtsrv_send(c, "Rule not found\r\n");
 		return POM_OK;
 	}
@@ -374,13 +369,11 @@ int mgmtcmd_remove_target(struct mgmt_connection *c, int argc, char *argv[]) {
 	struct target *t = mgmtcmd_get_target(rl, argv[1]);
 
 	if (!t) {
+		main_config_rules_unlock();
 		mgmtsrv_send(c, "Target not found\r\n");
 		return POM_OK;
 	}
-
-
-	reader_process_lock();
-
+	
 	if (t->started)
 		target_close(t);
 
@@ -394,7 +387,7 @@ int mgmtcmd_remove_target(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	target_cleanup_module(t);
 
-	reader_process_unlock();
+	main_config_rules_unlock();
 
 	mgmtsrv_send(c, "Target removed\r\n");
 
@@ -407,9 +400,12 @@ int mgmtcmd_set_target_parameter(struct mgmt_connection *c, int argc, char *argv
 	if (argc < 4)
 		return MGMT_USAGE;
 
+	main_config_rules_lock(1);
+
 	struct rule_list *rl = mgmtcmd_get_rule(argv[0]);
 
 	if (!rl) {
+		main_config_rules_unlock();
 		mgmtsrv_send(c, "Rule not found\r\n");
 		return POM_OK;
 	}
@@ -417,12 +413,14 @@ int mgmtcmd_set_target_parameter(struct mgmt_connection *c, int argc, char *argv
 	struct target *t = mgmtcmd_get_target(rl, argv[1]);
 
 	if (!t) {
+		main_config_rules_unlock();
 		mgmtsrv_send(c, "Target not found\r\n");
 		return POM_OK;
 	}
 
 
 	if (t->started) {
+		main_config_rules_unlock();
 		mgmtsrv_send(c, "Target must be stopped to change a parameter\r\n");
 		return POM_OK;
 	}
@@ -430,19 +428,19 @@ int mgmtcmd_set_target_parameter(struct mgmt_connection *c, int argc, char *argv
 
 	struct ptype *value =  target_get_param_value(t, argv[2]);
 	if (!value) {
+		main_config_rules_unlock();
 		mgmtsrv_send(c, "No parameter %s for target %s\r\n", argv[2], target_get_name(t->type));
 		return POM_OK;
 	}
 
-	reader_process_lock();
-
 	if (ptype_parse_val(value, argv[3]) == POM_ERR) {
+		main_config_rules_unlock();
 		mgmtsrv_send(c, "Unable to parse \"%s\" for parameter %s\r\n", argv[3], argv[2]);
 		reader_process_unlock();
 		return POM_OK;
 	}
 
-	reader_process_unlock();
+	main_config_rules_unlock();
 
 	return POM_OK;
 
@@ -463,20 +461,24 @@ struct mgmt_command_arg *mgmtcmd_set_target_parameter_completion(int argc, char 
 		if (sscanf(argv[argc - 2], "%u", &rule_id) != 1)
 			return NULL;
 
-		struct rule_list *rl;
-		for (rl = main_config->rules; rl && i < rule_id; rl = rl->next)
-			i++;
-
 		int target_id = -1;
 		if (sscanf(argv[argc - 1], "%u", &target_id) != 1)
 			return NULL;
+
+		main_config_rules_lock(0);
+
+		struct rule_list *rl;
+		for (rl = main_config->rules; rl && i < rule_id; rl = rl->next)
+			i++;
 
 		struct target *t;
 		for (t = rl->target, i = 0; t && i < target_id; t = t->next)
 			i++;
 		
-		if (!t || !targets[t->type] || !targets[t->type]->modes)
+		if (!t || !targets[t->type] || !targets[t->type]->modes) {
+			main_config_rules_unlock();
 			return NULL;
+		}
 
 		struct target_mode *m = targets[t->type]->modes;
 
@@ -494,6 +496,7 @@ struct mgmt_command_arg *mgmtcmd_set_target_parameter_completion(int argc, char 
 			p = p->next;
 		}
 
+		main_config_rules_unlock();
 
 	}
 	return res;
@@ -504,9 +507,12 @@ int mgmtcmd_set_target_mode(struct mgmt_connection *c, int argc, char *argv[]) {
 	if (argc < 3)
 		return MGMT_USAGE;
 
+	main_config_rules_lock(1);
+
 	struct rule_list *rl = mgmtcmd_get_rule(argv[0]);
 
 	if (!rl) {
+		main_config_rules_unlock();
 		mgmtsrv_send(c, "Rule not found\r\n");
 		return POM_OK;
 	}
@@ -515,24 +521,13 @@ int mgmtcmd_set_target_mode(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (!t) {
 		mgmtsrv_send(c, "Target not found\r\n");
-		return POM_OK;
-	}
-
-
-	if (t->started) {
+	} else if (t->started) {
 		mgmtsrv_send(c, "Target must be stopped to change a parameter\r\n");
-		return POM_OK;
-	}
-	
-	reader_process_lock();
-
-	if (target_set_mode(t, argv[2]) == POM_ERR) {
+	} else if (target_set_mode(t, argv[2]) == POM_ERR) {
 		mgmtsrv_send(c, "No mode \"%s\" for target %s\r\n", argv[3], target_get_name(t->type));
-		reader_process_unlock();
-		return POM_OK;
 	}
 
-	reader_process_unlock();
+	main_config_rules_unlock();
 
 	return POM_OK;
 
@@ -553,20 +548,24 @@ struct mgmt_command_arg *mgmtcmd_set_target_mode_completion(int argc, char *argv
 		if (sscanf(argv[argc - 2], "%u", &rule_id) != 1)
 			return NULL;
 
-		struct rule_list *rl;
-		for (rl = main_config->rules; rl && i < rule_id; rl = rl->next)
-			i++;
-
 		int target_id = -1;
 		if (sscanf(argv[argc - 1], "%u", &target_id) != 1)
 			return NULL;
+
+		main_config_rules_lock(0);
+		struct rule_list *rl;
+		for (rl = main_config->rules; rl && i < rule_id; rl = rl->next)
+			i++;
 
 		struct target *t;
 		for (t = rl->target, i = 0; t && i < target_id; t = t->next)
 			i++;
 		
-		if (!t || !targets[t->type] || !targets[t->type]->modes)
+		if (!t || !targets[t->type] || !targets[t->type]->modes) {
+			main_config_rules_unlock();
 			return NULL;
+		}
+
 
 		struct target_mode *m = targets[t->type]->modes;
 
@@ -582,6 +581,7 @@ struct mgmt_command_arg *mgmtcmd_set_target_mode_completion(int argc, char *argv
 			m = m->next;
 		}
 
+		main_config_rules_unlock();
 
 	}
 	return res;
@@ -636,13 +636,11 @@ int mgmtcmd_unload_target(struct mgmt_connection *c, int argc, char *argv[]) {
 		return POM_OK;
 	}
 
-	reader_process_lock();
 	if (target_unregister(id) != POM_ERR) {
 		mgmtsrv_send(c, "Target % unloaded successfully\r\n", argv[0]);
 	} else {
 		mgmtsrv_send(c, "Error while unloading target %\r\n", argv[0]);
 	}
-	reader_process_unlock();
 	
 	return POM_OK;
 

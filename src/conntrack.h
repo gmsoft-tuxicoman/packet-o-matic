@@ -219,7 +219,7 @@ int conntrack_do_timer(void * ce);
 struct timer *conntrack_timer_alloc(struct conntrack_entry *ce, struct input *i);
 
 /// Close a connection
-int conntrack_close_connections(struct rule_list *r);
+int conntrack_close_connections(struct rule_list *r, pthread_rwlock_t *lock);
 
 /// Cleanup the conntrack subsystem
 int conntrack_cleanup();
