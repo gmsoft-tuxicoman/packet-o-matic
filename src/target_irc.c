@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <ctype.h>
 #include <string.h>
+#include <stdio.h>
 
 #include "target_irc.h"
 
