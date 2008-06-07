@@ -21,6 +21,7 @@
 #include "target_pcap.h"
 #include "ptype_string.h"
 #include "ptype_uint16.h"
+#include "ptype_bool.h"
 
 static struct target_mode *mode_default;
 
@@ -40,6 +41,7 @@ int target_register_pcap(struct target_reg *r) {
 	target_register_param(mode_default, "filename", "dump.cap", "Filename to save packets to");
 	target_register_param(mode_default, "snaplen", "1522", "Maximum size of saved packets");
 	target_register_param(mode_default, "layer", "ethernet", "Type of layer to capture. Either ethernet, linux_cooked, docsis or ipv4");
+	target_register_param(mode_default, "unbuffered", "no", "Write each packet to the output file directly without using a buffer");
 
 
 	return POM_OK;
@@ -55,8 +57,9 @@ static int target_init_pcap(struct target *t) {
 	priv->filename = ptype_alloc("string", NULL);
 	priv->snaplen = ptype_alloc("uint16", NULL);
 	priv->layer = ptype_alloc("string", NULL);
+	priv->unbuffered = ptype_alloc("bool", NULL);
 
-	if (!priv->filename || !priv->snaplen || !priv->layer) {
+	if (!priv->filename || !priv->snaplen || !priv->layer || !priv->unbuffered) {
 		target_cleanup_pcap(t);
 		return POM_ERR;
 	}
@@ -64,7 +67,8 @@ static int target_init_pcap(struct target *t) {
 	target_register_param_value(t, mode_default, "filename", priv->filename);
 	target_register_param_value(t, mode_default, "snaplen", priv->snaplen);
 	target_register_param_value(t, mode_default, "layer", priv->layer);
-
+	target_register_param_value(t, mode_default, "unbuffered", priv->unbuffered);
+	
 
 	return POM_OK;
 }
@@ -77,6 +81,7 @@ static int target_cleanup_pcap(struct target *t) {
 		ptype_cleanup(priv->filename);
 		ptype_cleanup(priv->snaplen);
 		ptype_cleanup(priv->layer);
+		ptype_cleanup(priv->unbuffered);
 		free(priv);
 	}
 
@@ -160,7 +165,9 @@ static int target_process_pcap(struct target *t, struct frame *f) {
 		phdr.caplen = SNAPLEN;
 	
 	pcap_dump((u_char*)priv->pdump, &phdr, f->buff + start);
-	//pcap_dump_flush(priv->pdump);
+
+	if (PTYPE_BOOL_GETVAL(priv->unbuffered)) 
+		pcap_dump_flush(priv->pdump);
 
 	priv->size += len;
 

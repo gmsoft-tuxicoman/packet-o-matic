@@ -1,3 +1,12 @@
+* 2008/06/06 Guy Martin <gmsoft@tuxicoman.be>
+Added XML-RPC functions to handle the rules.
+Moved rule parsing/printing from mgmtcmd_rules.c to rules.c.
+Moved the rules serial to struct conf.
+Added unbuffered parameter to target_pcap.
+Call rule_update when enabling/disabling a rule.
+Added locks on target instances.
+Fix initialization of random seed for rules UID.
+
 * 2008/06/03 Guy Martin <gmsoft@tuxicoman.be>
 Make rule_update() check for possible duplicated uid.
 Provide unit as well when providing a parameter via XML-RPC.

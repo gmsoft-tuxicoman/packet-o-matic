@@ -38,14 +38,15 @@ int rules_init() {
 	match_undefined_id = match_register("undefined");
 	rules_serial = 0;
 
-	srand((unsigned int) time(NULL) + (unsigned int) pthread_self());
+	random_seed = (unsigned int) time(NULL) + (unsigned int) pthread_self();
+	srand(random_seed);
 
 	return POM_OK;
 
 }
 
 
-int rule_update(struct rule_list *rule, struct rule_list *list) {
+int rule_update(struct rule_list *rule, struct rule_list *list, uint32_t *serial) {
 
 	uint32_t new_uid = (uint32_t) rand_r(&random_seed);
 
@@ -64,7 +65,8 @@ int rule_update(struct rule_list *rule, struct rule_list *list) {
 
 	rule->uid = new_uid;
 
-	rules_serial++;
+	if (serial)
+		(*serial)++;
 
 	return POM_OK;
 }
@@ -481,3 +483,406 @@ int list_destroy(struct rule_list *list) {
 
 }
 
+int rule_print_flat(struct rule_node *n, struct rule_node *last, char *buffer, size_t buff_len) {
+
+	if (n == last)
+		return 0;
+
+
+	int display_parenthesis = 0;
+
+	if (last != NULL && n->a && n->a->op != RULE_OP_TAIL)
+		display_parenthesis = 1;
+
+
+	if (n->op & RULE_OP_NOT && n->b) {
+		strncat(buffer, "!", buff_len);
+		buff_len--;
+		if (!buff_len)
+			return POM_ERR;
+		display_parenthesis = 1;
+	}
+
+
+
+	if (display_parenthesis) {
+		strncat(buffer, "(", buff_len);
+		buff_len--;
+		if (!buff_len)
+			return POM_ERR;
+	}
+
+	while (n != last) {
+
+		if (!n->b) {
+			if (n->op != RULE_OP_TAIL) {
+				if (n->op & RULE_OP_NOT) {
+					strncat(buffer, "!", buff_len);
+					buff_len--;
+					if (!buff_len)
+						return POM_ERR;
+				}
+				char *match_name = match_get_name(n->layer);
+				int len = strlen(match_name);
+				if (buff_len < len)
+					return POM_ERR;
+				strncat(buffer, match_name, buff_len);
+				buff_len -= len;
+				if (n->match) {
+
+					strncat(buffer, ".", buff_len);
+					buff_len--;
+					if (!buff_len)
+						return POM_ERR;
+
+					struct match_field_reg *field = match_get_field(n->layer, n->match->id);
+
+					if (buff_len < strlen(field->name))
+						return POM_ERR;
+					strncat(buffer, field->name, buff_len);
+					buff_len -= strlen(field->name);
+
+					strncat(buffer, " ", buff_len);
+					buff_len--;
+					if (!buff_len)
+						return POM_ERR;
+
+					char *op = ptype_get_op_sign(n->match->op);
+					if (buff_len < strlen(op))
+						return POM_ERR;
+					strncat(buffer, op, buff_len);
+					buff_len -= strlen(op);
+
+					strncat(buffer, " ", buff_len);
+					buff_len--;
+					if (!buff_len)
+						return POM_ERR;
+
+					char val_buff[255];
+					ptype_print_val(n->match->value, val_buff, sizeof(val_buff) - 1);
+					if (buff_len < strlen(val_buff))
+						return POM_ERR;
+					strncat(buffer, val_buff, buff_len);
+					buff_len -= strlen(val_buff);
+
+				}
+			}
+			n = n->a;
+
+		} else {
+			// fin the last one that needs to be processed
+			struct rule_node *new_last = NULL, *rn = n;
+			int depth = 0;
+			while (rn && rn != last) {
+				if (rn->b) {
+					depth++;
+				} else if (rn->op == RULE_OP_TAIL) {
+					depth--;
+					if (depth == 0) {
+						new_last = rn;
+						break;
+					}
+				}
+				rn = rn->a;
+			}
+
+			rule_print_flat(n->a, new_last, buffer, buff_len);
+			if (n->op & RULE_OP_OR) {
+				char *or = " or ";
+				strncat(buffer, or, buff_len);
+				buff_len -= strlen(or);
+			} else if (n->op & RULE_OP_AND) {
+				char *or = " and ";
+				strncat(buffer, or, buff_len);
+				buff_len -= strlen(or);
+			}
+			rule_print_flat(n->b, new_last, buffer, buff_len);
+
+			n = new_last;
+		}
+		if (n && n->op != RULE_OP_TAIL) {
+			char *sep = " | ";
+			strncat(buffer, sep, buff_len);
+			buff_len -= strlen(sep);
+		}
+	}
+	if (display_parenthesis) {
+		strncat(buffer, ")", buff_len);
+		buff_len--;
+		if (!buff_len)
+			return POM_ERR;
+	}
+	return POM_OK;
+}
+
+
+static struct rule_node *rule_parse_block(char *expr, char *errbuff, int errlen) {
+
+	char *words[3]; 
+	int wordcount = 0;
+
+	char *str, *token, *saveptr = NULL;
+
+	for (str = expr; ; str = NULL) {
+		token = strtok_r(str, " ", &saveptr);
+		if (token == NULL)
+			break;
+		if (strlen(token) == 0)
+			continue;
+		
+		// there should not be more than 3 words
+		if (wordcount >= 3) {
+			snprintf(errbuff, errlen, "Could not parse \"%s\"\r\n", expr);
+			return NULL;
+		}
+
+		words[wordcount] = token;
+		wordcount++;
+		
+	}
+
+	if (wordcount == 2) {
+		snprintf(errbuff, errlen, "Could not parse \"%s\"\r\n", expr);
+		return NULL;
+	}
+
+	if (wordcount == 1) {
+		int layer = match_get_type(words[0]);
+		if (layer == POM_ERR) 
+			layer = match_register(words[0]);
+		if (layer == POM_ERR) {
+			snprintf(errbuff, errlen, "Unknown match \"%s\"\r\n", words[0]);
+			return NULL;
+		}
+		struct rule_node *rn = malloc(sizeof(struct rule_node));
+		memset(rn, 0, sizeof(struct rule_node));
+
+		rn->layer = layer;
+		match_refcount_inc(layer);
+		return rn;
+	}
+	
+
+	// wordcount is supposed to be 3 now
+	char *field = strchr(words[0], '.');
+	if (!field) {
+		snprintf(errbuff, errlen, "Expression \"%s\" doesn't not contain a field specifier\r\n", words[0]);
+		return NULL;
+	}
+
+	*field = 0;
+	field++;
+	int layer = match_get_type(words[0]);
+	if (layer == POM_ERR)
+		layer = match_register(words[0]);
+	if (layer == POM_ERR) {
+		snprintf(errbuff, errlen, "Unknown match \"%s\"\r\n", words[0]);
+		return NULL;
+	}
+	
+	struct match_field *param;
+	param = match_alloc_field(layer, field);
+	if (param == NULL) {
+		snprintf(errbuff, errlen, "Unknown field \"%s\" for match \"%s\"\r\n", field, words[0]);
+		return NULL;
+	}
+
+	param->op = ptype_get_op(param->value, words[1]);
+	if (param->op == POM_ERR) {
+		snprintf(errbuff, errlen, "Unknown or unsuported operation \"%s\" for field \"%s\" and match \"%s\"\r\n", words[1], field, words[0]);
+		free(param);
+		return NULL;
+	}
+
+	if (ptype_parse_val(param->value, words[2]) == POM_ERR) {
+		snprintf(errbuff, errlen, "Unable to parse \"%s\" for field \"%s\" and match \"%s\"\r\n", words[2], field, words[0]);
+		free(param);
+		return NULL;
+	}
+
+	struct rule_node *rn = malloc(sizeof(struct rule_node));
+	memset(rn, 0, sizeof(struct rule_node));
+	rn->layer = layer;
+	rn->match = param;
+	match_refcount_inc(layer);
+	return rn;
+
+}
+
+static int rule_parse_branch(char *expr, struct rule_node **start, struct rule_node **end, char *errbuff, int errlen) {
+
+	int stack_size = 0;
+	int i, len;
+	len = strlen(expr);
+	
+	int found = 0; // what operation was found
+	int found_len = 0; // lenght of the string matched
+
+	// let's see if there is a branch
+	for (i = 0; i < len - 2; i++) {
+		if (stack_size == 0 && expr[i] == 'o' && expr[i + 1] == 'r') {
+			found = RULE_OP_OR;
+			found_len = 2;
+		}
+		if (stack_size == 0 && expr[i] == 'a' && expr[i + 1] == 'n' && expr[i + 2] == 'd') {
+			found = RULE_OP_AND;
+			found_len = 3;
+		}
+
+		if (found) {
+			if (i < 1 || i > len - found_len) {
+				found = 0;
+				continue;
+			}
+			if (expr[i - 1] != ')' && expr[i - 1] != ' ') {
+				found = 0;
+				continue;
+			}
+
+			if (expr[i + found_len] != ' ' && expr[i + found_len] != '(' && expr[i + found_len] != '!') {
+				found = 0;
+				continue;
+			}
+
+			expr[i] = 0;
+
+			struct rule_node *my_start = malloc(sizeof(struct rule_node));
+			memset(my_start, 0, sizeof(struct rule_node));
+
+			struct rule_node *my_end = malloc(sizeof(struct rule_node));
+			memset(my_end, 0, sizeof(struct rule_node));
+			my_start->op = found;
+			my_end->op = RULE_OP_TAIL;
+
+			*start = my_start;
+			*end = my_end;
+
+			struct rule_node *the_end = NULL;
+			if (rule_parse(expr, &my_start->a, &the_end, errbuff, errlen) == POM_ERR)
+				return POM_ERR;
+			if (!the_end)
+				return POM_ERR;
+
+			the_end->a = my_end;
+			if (rule_parse(expr + i + found_len, &my_start->b, &the_end, errbuff, errlen) == POM_ERR)
+				return POM_ERR;
+			the_end->a = my_end;
+
+			return POM_OK;
+		}
+				
+
+		if (expr[i] == '(') {
+			stack_size++;
+			continue;
+		}
+
+		if (expr[i] == ')') {
+			stack_size--;
+			if (stack_size < 0) {
+				snprintf(errbuff, errlen, "Unmatched )\r\n");
+				return POM_ERR;
+			}
+		}
+
+
+	}
+
+
+
+	int inv = 0; // should this match be inverted
+	// first, trim this expr
+	while(*expr == ' ')
+		expr++;
+	while (strlen(expr) > 0 && expr[strlen(expr) - 1] == ' ')
+		expr[strlen(expr) - 1] = 0;
+
+	if (expr[0] == '!') {
+		inv = 1;
+		expr++;
+		while(*expr == ' ')
+			expr++;
+	}
+	if (expr[0] == '(' && strlen(expr) > 0 && expr[strlen(expr) - 1] == ')') { // parenthesis at begining and end of block
+		expr++;
+		expr[strlen(expr) - 1] = 0;
+		if (rule_parse(expr, start, end, errbuff, errlen) == POM_ERR)
+			return POM_ERR;
+
+		if (inv) {
+			if ((*start)->b){
+				snprintf(errbuff, errlen,"Unexpected \"!\"\r\n");
+				return POM_ERR;
+			}
+			(*start)->op |= RULE_OP_NOT;
+		}
+		return POM_OK;
+	}
+
+	*start = rule_parse_block(expr, errbuff, errlen);
+	if (!*start)
+		return POM_ERR;
+	*end = *start;
+
+	if (inv) {
+		if ((*start)->b) {
+			snprintf(errbuff, errlen, "Cannot use '!' with or/and operation\r\n");
+			return POM_ERR;
+		} else
+			(*start)->op |= RULE_OP_NOT;
+	}
+	return POM_OK;
+}
+
+
+int rule_parse(char *expr, struct rule_node **start, struct rule_node **end, char *errbuff, int errlen) {
+
+	int pstart = 0;
+	int stack_size = 0;
+	int i, len;
+
+	struct rule_node *my_start, **my_start_addr;
+	my_start_addr = &my_start;
+
+	*start = NULL;
+
+	len = strlen(expr);
+	for (i = 0; i < len; i++) {
+		if (stack_size == 0 && expr[i] == '|') {
+			expr[i] = 0;
+			if (rule_parse_branch(expr + pstart, my_start_addr, end, errbuff, errlen) == POM_ERR)
+				return POM_ERR;
+			if (!*start)
+				*start = *my_start_addr;
+			my_start_addr = &(*end)->a;
+
+			pstart = i + 1;
+		}
+		if (expr[i] == '(') {
+			stack_size++;
+			continue;
+		}
+		
+		if (expr[i] == ')') {
+			stack_size--;
+			if (stack_size < 0) {
+				snprintf(errbuff, errlen, "Unmatched )\r\n");
+				return POM_ERR;
+			}
+		}
+	}
+
+	if (stack_size > 0) {
+		snprintf(errbuff, errlen, "Unmatched (\r\n");
+		return POM_ERR;
+	}
+
+	// parse the last block
+	if (rule_parse_branch(expr + pstart, my_start_addr, end, errbuff, errlen) == POM_ERR)
+		return POM_ERR;
+	if (!*start)
+		*start = *my_start_addr;
+
+
+	return POM_OK;
+}

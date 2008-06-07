@@ -430,7 +430,7 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 	r = malloc(sizeof(struct rule_list));
 	memset(r, 0, sizeof(struct rule_list));
 
-	rule_update(r, NULL);
+	rule_update(r, NULL, NULL);
 	
 	struct ptype *disabled_pt = ptype_alloc("bool", NULL);
 	if (!disabled_pt) {

@@ -39,6 +39,7 @@ struct target_priv_pcap {
 	struct ptype *snaplen;
 	struct ptype *filename;
 	struct ptype *layer;
+	struct ptype *unbuffered;
 
 };
 

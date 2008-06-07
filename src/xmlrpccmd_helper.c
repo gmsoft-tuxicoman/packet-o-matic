@@ -198,7 +198,6 @@ xmlrpc_value *xmlrpccmd_load_helper(xmlrpc_env * const envP, xmlrpc_value * cons
 		helper_unlock();
 		xmlrpc_faultf(envP, "Error while loading helper %s", name);
 		free(name);
-		reader_process_unlock();
 		return NULL;
 	}
 
@@ -232,7 +231,6 @@ xmlrpc_value *xmlrpccmd_unload_helper(xmlrpc_env * const envP, xmlrpc_value * co
 		helper_unlock();
 		xmlrpc_faultf(envP, "Error while unloading helper %s", name);
 		free(name);
-		reader_process_unlock();
 		return NULL;
 	}
 

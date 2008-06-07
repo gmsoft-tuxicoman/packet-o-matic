@@ -31,6 +31,7 @@ struct conf {
 	struct rule_list *rules;
 	char filename[NAME_MAX + 1];
 	pthread_rwlock_t rules_lock;
+	uint32_t rules_serial;
 };
 
 struct conf *config_alloc();

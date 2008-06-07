@@ -256,15 +256,19 @@ int target_set_mode(struct target *t, const char *mode_name) {
 	if (!t)
 		return POM_ERR;
 	
+	target_lock_instance(t, 1);
+	
 	struct target_mode *mode = targets[t->type]->modes;
 	while (mode) {
 		if (!strcmp(mode->name, mode_name)) {
 			t->mode = mode;
+			target_unlock_instance(t);
 			return POM_OK;
 		}
 		mode = mode->next;
 	}
 
+	target_unlock_instance(t);
 	return POM_ERR;
 }
 
@@ -300,7 +304,7 @@ struct ptype *target_get_param_value(struct target *t, const char *param) {
 		p = p->next;
 	}
 	
-	if (!p)
+	if (!p) 
 		return NULL;
 
 	return p->value;
@@ -344,14 +348,24 @@ int target_get_type(char* target_name) {
  */
 int target_open(struct target *t) {
 
-	if (!t && t->started)
+	if (!t)
 		return POM_ERR;
 
+	target_lock_instance(t, 1);
+	if (t->started) {
+		target_unlock_instance(t);
+		return POM_ERR;
+	}
+
 	if (targets[t->type] && targets[t->type]->open)
-		if ((*targets[t->type]->open) (t) != POM_OK)
+		if ((*targets[t->type]->open) (t) != POM_OK) {
+			target_unlock_instance(t);
 			return POM_ERR;
+		}
 
 	t->started = 1;
+
+	target_unlock_instance(t);
 	return POM_OK;
 
 }
@@ -365,15 +379,18 @@ int target_open(struct target *t) {
  */
 int target_process(struct target *t, struct frame *f) {
 
+	target_lock_instance(t, 0);
 	if (t->started) {
 		PTYPE_UINT64_INC(t->pkt_cnt, 1);
 		PTYPE_UINT64_INC(t->byte_cnt, f->len);
 		if (targets[t->type]->process && (*targets[t->type]->process) (t, f) == POM_ERR) {
 			pom_log(POM_LOG_ERR "Target %s returned an error. Stopping it\r\n", target_get_name(t->type));
+			target_unlock_instance(t);
 			target_close(t);
 			return POM_ERR;
 		}
 	}
+	target_unlock_instance(t);
 	return POM_OK;
 
 }
@@ -385,19 +402,29 @@ int target_process(struct target *t, struct frame *f) {
  */
 int target_close(struct target *t) {
 
-	if (!t || !t->started)
+	if (!t)
 		return POM_ERR;
+
+	target_lock_instance(t, 1);
+	if (!t->started) {
+		target_unlock_instance(t);
+		return POM_ERR;
+	}
 
 	t->started = 0;
 
+	int result = POM_OK;
+
 	if (targets[t->type] && targets[t->type]->close)
-		return (*targets[t->type]->close) (t);
+		result = (*targets[t->type]->close) (t);
+
+	target_unlock_instance(t);
 	return POM_OK;
 
 }
 
 /**
- * @ingroup ptype_core
+ * @ingroup target_core
  * @param t Target to cleanup
  * @return POM_OK on sucess, POM_ERR on failure.
  */
@@ -405,6 +432,8 @@ int target_cleanup_module(struct target *t) {
 
 	if (!t)
 		return POM_ERR;
+
+	target_lock_instance(t, 1);
 
 	if (targets[t->type]) {
 		if (targets[t->type]->cleanup)
@@ -419,6 +448,9 @@ int target_cleanup_module(struct target *t) {
 	}
 	ptype_cleanup(t->pkt_cnt);
 	ptype_cleanup(t->byte_cnt);
+
+	target_unlock_instance(t);
+
 	free (t);
 
 	return POM_OK;
@@ -582,4 +614,42 @@ int target_file_open(struct layer *l, char *filename, int flags, mode_t mode) {
 
 
 }
+/**
+ * @ingroup target_core
+ * @param t Target to lock
+ * @param write Get a write or read lock
+ * @return POM_OK on success, POM_ERR on failure
+ */
+int target_lock_instance(struct target *t, int write) {
 
+	int result = 0;
+
+	if (write) {
+		result = pthread_rwlock_wrlock(&t->lock);
+	} else {
+		result = pthread_rwlock_rdlock(&t->lock);
+	}
+
+	if (result) {
+		pom_log(POM_LOG_ERR "Error while locking a target instance lock\r\n");
+		return POM_ERR;
+	}
+
+	return POM_OK;
+
+}
+
+/**
+ * @ingroup target_core
+ * @param t Target to unlock
+ * @return POM_OK on success, POM_ERR on failure
+ */
+int target_unlock_instance(struct target *t) {
+
+	if (pthread_rwlock_unlock(&t->lock)) {
+		pom_log(POM_LOG_ERR "Error while unlocking the helper lock\r\n");
+		return POM_ERR;
+	}
+
+	return POM_OK;
+}

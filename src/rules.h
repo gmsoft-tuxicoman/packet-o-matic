@@ -62,7 +62,7 @@ struct rule_list {
 
 int rules_init();
 
-int rule_update(struct rule_list *rule, struct rule_list *list);
+int rule_update(struct rule_list *rule, struct rule_list *list, uint32_t *serial);
 
 int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct rule_node *last);
 
@@ -71,6 +71,10 @@ int do_rules(struct frame *f, struct rule_list *rules, pthread_rwlock_t *rule_lo
 int node_destroy(struct rule_node *node, int sub);
 
 int list_destroy(struct rule_list *list);
+
+int rule_print_flat(struct rule_node *n, struct rule_node *last, char *buffer, size_t buff_len);
+
+int rule_parse(char *expr, struct rule_node **start, struct rule_node **end, char *errbuff, int errlen);
 
 #endif
 

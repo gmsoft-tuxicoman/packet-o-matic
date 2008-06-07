@@ -40,9 +40,6 @@ int mgmtcmd_remove_rule(struct mgmt_connection *c, int argc, char *argv[]);
 
 struct rule_list *mgmtcmd_get_rule(char *rule);
 struct target *mgmtcmd_get_target(struct rule_list *rl, char *target);
-struct rule_node *mgmtcmd_set_rule_parse_block(struct mgmt_connection *c, char *expr);
-int mgmtcmd_set_rule_parse_branch(struct mgmt_connection *c, char *expr, struct rule_node **start, struct rule_node **end);
-int mgmtcmd_set_rule_split(struct mgmt_connection *c, char *expr, struct rule_node **start, struct rule_node **end);
 
 
 #endif
