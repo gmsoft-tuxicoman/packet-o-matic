@@ -21,6 +21,7 @@
 
 #include "common.h"
 #include "xmlrpcsrv.h"
+#include "xmlrpccmd.h"
 #include "xmlrpccmd_helper.h"
 #include "ptype.h"
 
@@ -28,7 +29,7 @@
 
 #include "main.h"
 
-#define XMLRPC_HELPER_COMMANDS_NUM 4
+#define XMLRPC_HELPER_COMMANDS_NUM 5
 
 static struct xmlrpc_command xmlrpc_helper_commands[XMLRPC_HELPER_COMMANDS_NUM] = { 
 
@@ -40,23 +41,30 @@ static struct xmlrpc_command xmlrpc_helper_commands[XMLRPC_HELPER_COMMANDS_NUM] 
 	},
 
 	{
+		.name = "helper.listAvail",
+		.callback_func = xmlrpccmd_list_avail_helper,
+		.signature = "A:",
+		.help = "List available helpers",
+	},
+
+	{
 		.name = "helper.setParameter",
 		.callback_func = xmlrpccmd_set_helper_parameter,
-		.signature = "n:sss",
+		.signature = "i:sss",
 		.help = "Set an helper given its name and value",
 	},
 
 	{
 		.name = "helper.load",
 		.callback_func = xmlrpccmd_load_helper,
-		.signature = "n:",
+		.signature = "i:",
 		.help = "List a helper given its name",
 	},
 
 	{
 		.name = "helper.unload",
 		.callback_func = xmlrpccmd_unload_helper,
-		.signature = "n:",
+		.signature = "i:",
 		.help = "Unload a helper given its name",
 	},
 };
@@ -164,7 +172,7 @@ xmlrpc_value *xmlrpccmd_set_helper_parameter(xmlrpc_env * const envP, xmlrpc_val
 
 	free(value);
 
-	return xmlrpc_nil_new(envP);
+	return xmlrpc_int_new(envP, 0);
 }
 
 xmlrpc_value *xmlrpccmd_load_helper(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
@@ -204,7 +212,7 @@ xmlrpc_value *xmlrpccmd_load_helper(xmlrpc_env * const envP, xmlrpc_value * cons
 	helper_unlock();
 
 	free(name);
-	return xmlrpc_nil_new(envP);
+	return xmlrpc_int_new(envP, 0);
 }
 
 xmlrpc_value *xmlrpccmd_unload_helper(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
@@ -238,5 +246,11 @@ xmlrpc_value *xmlrpccmd_unload_helper(xmlrpc_env * const envP, xmlrpc_value * co
 
 	free(name);
 
-	return xmlrpc_nil_new(envP);
+	return xmlrpc_int_new(envP, 0);
+}
+
+xmlrpc_value *xmlrpccmd_list_avail_helper(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
+
+	return xmlrpccmd_list_avail_modules(envP, "helper");
+
 }

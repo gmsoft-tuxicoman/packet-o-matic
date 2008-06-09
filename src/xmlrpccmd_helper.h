@@ -31,6 +31,7 @@ xmlrpc_value *xmlrpccmd_list_loaded_helper(xmlrpc_env * const envP, xmlrpc_value
 xmlrpc_value *xmlrpccmd_set_helper_parameter(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);
 xmlrpc_value *xmlrpccmd_load_helper(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);
 xmlrpc_value *xmlrpccmd_unload_helper(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);
+xmlrpc_value *xmlrpccmd_list_avail_helper(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);
 
 
 #endif

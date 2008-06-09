@@ -425,6 +425,7 @@ int ptype_lock(int write) {
 
 	if (result) {
 		pom_log(POM_LOG_ERR "Error while locking the ptype lock\r\n");
+		abort();
 		return POM_ERR;
 	}
 
@@ -440,6 +441,7 @@ int ptype_unlock() {
 
 	if (pthread_rwlock_unlock(&ptype_global_lock)) {
 		pom_log(POM_LOG_ERR "Error while unlocking the ptype lock\r\n");
+		abort();
 		return POM_ERR;
 	}
 

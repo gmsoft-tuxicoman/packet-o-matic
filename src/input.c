@@ -68,12 +68,15 @@ int input_register(const char *input_name) {
 			inputs[i] = my_input;
 			inputs[i]->dl_handle = handle;
 
+			match_lock(1); // Allow safe registration of the matches
 			if ((*register_my_input) (my_input) != POM_OK) {
+				match_unlock();
 				pom_log(POM_LOG_ERR "Error while loading input %s. Could not register input !\r\n", input_name);
 				inputs[i] = NULL;
 				free(my_input);
 				return POM_ERR;
 			}
+			match_unlock();
 
 			inputs[i] = my_input;
 			inputs[i]->name = malloc(strlen(input_name) + 1);
@@ -499,6 +502,7 @@ int input_lock(int write) {
 
 	if (result) {
 		pom_log(POM_LOG_ERR "Error while locking the input lock\r\n");
+		abort();
 		return POM_ERR;
 	}
 
@@ -514,6 +518,7 @@ int input_unlock() {
 
 	if (pthread_rwlock_unlock(&input_global_lock)) {
 		pom_log(POM_LOG_ERR "Error while unlocking the input lock\r\n");
+		abort();
 		return POM_ERR;
 	}
 

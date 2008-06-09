@@ -37,6 +37,7 @@ xmlrpc_value *xmlrpccmd_set_input_parameter(xmlrpc_env * const envP, xmlrpc_valu
 xmlrpc_value *xmlrpccmd_list_loaded_input(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);
 xmlrpc_value *xmlrpccmd_load_input(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);
 xmlrpc_value *xmlrpccmd_unload_input(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);
+xmlrpc_value *xmlrpccmd_list_avail_input(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);
 
 #endif
 

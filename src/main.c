@@ -370,12 +370,12 @@ void *input_thread_func(void *params) {
 		if (r->buffer[r->write_pos]->len == 0)
 			continue;
 
-		r->total_packets++;
-		r->usage++;
-
-		if (r->usage == 1) {
+		if (!r->usage) {
 			pthread_cond_signal(&r->underrun_cond);
 		}
+
+		r->total_packets++;
+		r->usage++;
 
 		while (r->usage >= PTYPE_UINT32_GETVAL(r->size) - 1) {
 			if (r->ic.is_live) {
@@ -403,7 +403,8 @@ void *input_thread_func(void *params) {
 
 	input_close(r->i);
 
-	while (r->usage > 0) {
+	while (r->usage) {
+		pthread_cond_signal(&r->underrun_cond);
 		pthread_mutex_unlock(&r->mutex);
 		pom_log(POM_LOG_TSHOOT "Waiting for ringbuffer to be empty\r\n");
 		usleep(50000);
@@ -645,7 +646,7 @@ int main(int argc, char *argv[]) {
 	}
 
 	// wait for at least one packet to be available
-	while (rbuf->usage <= 0) {
+	while (!rbuf->usage) {
 		if (finish) {
 			pthread_mutex_unlock(&rbuf->mutex);
 			goto finish;
@@ -669,7 +670,7 @@ int main(int argc, char *argv[]) {
 	}
 
 
-	while (rbuf->usage > 0) {
+	while (1) {
 		
 		if (pthread_mutex_unlock(&rbuf->mutex)) {
 			pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
@@ -716,7 +717,7 @@ int main(int argc, char *argv[]) {
 			rbuf->read_pos = 0;
 
 
-		while (rbuf->usage <= 0) {
+		while (!rbuf->usage) {
 			if (rbuf->state == rb_state_stopping || rbuf->state == rb_state_closed) {
 				// Process remaining queued frames
 				conntrack_close_connections(main_config->rules, &main_config->rules_lock);
@@ -1004,6 +1005,7 @@ int main_config_rules_lock(int write) {
 
 	if (result) {
 		pom_log(POM_LOG_ERR "Error while locking the rule lock\r\n");
+		abort();
 		return POM_ERR;
 	}
 
@@ -1015,6 +1017,7 @@ int main_config_rules_unlock() {
 
 	if (pthread_rwlock_unlock(&main_config->rules_lock)) {
 		pom_log(POM_LOG_ERR "Error while unlocking the rule lock\r\n");
+		abort();
 		return POM_ERR;
 	}
 

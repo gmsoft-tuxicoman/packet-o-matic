@@ -50,7 +50,6 @@ int mgmtcmd_unload_ptype(struct mgmt_connection *c, int argc, char *argv[]);
 struct mgmt_command_arg* mgmtcmd_unload_ptype_completion(int argc, char *argv[]);
 
 struct mgmt_command_arg* mgmtcmd_list_modules(char *type);
-struct mgmt_command_arg* mgmtcmd_list_modules_browse(char *path, char *type);
 struct mgmt_command_arg *mgmtcmd_completion_int_range(int start, int count);
 
 #endif

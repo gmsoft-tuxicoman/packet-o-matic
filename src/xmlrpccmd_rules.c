@@ -34,7 +34,7 @@ static struct xmlrpc_command xmlrpc_rules_commands[XMLRPC_RULES_COMMANDS_NUM] = 
 	{
 		.name = "rules.get",
 		.callback_func = xmlrpccmd_get_rules,
-		.signature = "A:,n:",
+		.signature = "A:",
 		.help = "Get all the rules",
 	},
 
@@ -48,7 +48,7 @@ static struct xmlrpc_command xmlrpc_rules_commands[XMLRPC_RULES_COMMANDS_NUM] = 
 	{
 		.name = "rules.add",
 		.callback_func = xmlrpccmd_add_rule,
-		.signature = "i:i",
+		.signature = "i:s",
 		.help = "Add a rule and get it's UID",
 	},
 
@@ -62,7 +62,7 @@ static struct xmlrpc_command xmlrpc_rules_commands[XMLRPC_RULES_COMMANDS_NUM] = 
 	{
 		.name = "rules.remove",
 		.callback_func = xmlrpccmd_remove_rule,
-		.signature = "n:",
+		.signature = "i:",
 		.help = "Remove a rule given its UID",
 	},
 
@@ -102,7 +102,7 @@ xmlrpc_value *xmlrpccmd_get_rules(xmlrpc_env * const envP, xmlrpc_value * const 
 
 	if (!rl) {
 		main_config_rules_unlock();
-		return xmlrpc_nil_new(envP);
+		return xmlrpc_array_new(envP);
 	}
 
 	xmlrpc_value *rules = xmlrpc_array_new(envP);
@@ -299,7 +299,7 @@ xmlrpc_value *xmlrpccmd_remove_rule(xmlrpc_env * const envP, xmlrpc_value * cons
 
 	main_config_rules_unlock();
 
-	return xmlrpc_nil_new(envP);
+	return xmlrpc_int_new(envP, 0);
 
 }
 

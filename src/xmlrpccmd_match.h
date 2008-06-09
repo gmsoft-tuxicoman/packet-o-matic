@@ -19,19 +19,19 @@
  */
 
 
-#ifndef __XMLRPCCMD_H__
-#define __XMLRPCCMD_H__
+#ifndef __XMLRPCCMD_MATCH_H__
+#define __XMLRPCCMD_MATCH_H__
 
 #include <xmlrpc-c/base.h>
 #include <xmlrpc-c/server.h>
 
-int xmlrpccmd_register_all();
+int xmlrpccmd_match_register_all();
 
+xmlrpc_value *xmlrpccmd_list_loaded_match(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);
+xmlrpc_value *xmlrpccmd_load_match(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);
+xmlrpc_value *xmlrpccmd_unload_match(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);
+xmlrpc_value *xmlrpccmd_list_avail_match(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);
 
-xmlrpc_value *xmlrpccmd_get_core_parmeters(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);
-xmlrpc_value *xmlrpccmd_set_core_parmeter(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);
-
-xmlrpc_value *xmlrpccmd_list_avail_modules(xmlrpc_env * const envP, char *type);
 
 #endif
 

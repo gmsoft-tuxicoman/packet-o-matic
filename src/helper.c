@@ -303,6 +303,7 @@ int helper_lock(int write) {
 
 	if (result) {
 		pom_log(POM_LOG_ERR "Error while locking the helper lock\r\n");
+		abort();
 		return POM_ERR;
 	}
 
@@ -318,6 +319,7 @@ int helper_unlock() {
 
 	if (pthread_rwlock_unlock(&helper_global_lock)) {
 		pom_log(POM_LOG_ERR "Error while unlocking the helper lock\r\n");
+		abort();
 		return POM_ERR;
 	}
 

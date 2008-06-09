@@ -102,4 +102,6 @@ void pom_log(const char *format, ...);
 
 int frame_alloc_aligned_buff(struct frame *f, int length);
 
+char ** list_modules(char *type);
+
 #endif

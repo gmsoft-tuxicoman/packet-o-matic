@@ -456,12 +456,14 @@ int mgmtcmd_load_match(struct mgmt_connection *c, int argc, char *argv[]) {
 	}
 
 	reader_process_lock(); // we need to lock the process lock because match dependencies will be updated
+	match_lock(1);
 	id = match_register(argv[0]);
 	if (id != POM_ERR) {
 		mgmtsrv_send(c, "Match %s registered with id %u\r\n", argv[0], id);
 	} else {
 		mgmtsrv_send(c, "Error while loading match %s\r\n", argv[0]);
 	}
+	match_unlock(0);
 	reader_process_unlock();
 	
 	return POM_OK;
@@ -640,91 +642,21 @@ struct mgmt_command_arg* mgmtcmd_list_modules(char *type) {
 
 	struct mgmt_command_arg *res = NULL;
 
-	char *path = getenv("LD_LIBRARY_PATH");
-
-	if (!path) {
-		res = mgmtcmd_list_modules_browse(LIBDIR, type);
-	} else {
-		char *my_path = malloc(strlen(path) + 1);
-		strcpy(my_path, path);
-
-		char *str, *token, *saveptr = NULL;
-		for (str = my_path; ; str = NULL) {
-			token = strtok_r(str, ":", &saveptr);
-			if (!token)
-				break;
-
-			struct mgmt_command_arg *list;
-			list = mgmtcmd_list_modules_browse(token, type);
-			while (list) {
-				struct mgmt_command_arg *tmp = res;
-				int dupe = 0;
-				while (tmp) {
-					if (!strcmp(list->word, tmp->word)) {
-						dupe = 1;
-						break;
-					}
-					tmp = tmp->next;
-				}
-				struct mgmt_command_arg *tmp2;
-				if (dupe) {
-					tmp2 = list;
-					list = list->next;
-					free(tmp2->word);
-					free(tmp2);
-				} else {
-					tmp2 = list->next;
-					list->next = res;
-					res = list;
-					list = tmp2;
-				}
-			}
-		}
-
-		free(my_path);
+	char **list = list_modules(type);
+	int i;
+	for (i = 0; list[i]; i++) {
+		struct mgmt_command_arg* item = malloc(sizeof(struct mgmt_command_arg));
+		memset(item, 0, sizeof(struct mgmt_command_arg));
+		item->word = malloc(strlen(list[i]) + 1);
+		strcpy(item->word, list[i]);
+		item->next = res;
+		res = item;
+		free(list[i]);
 	}
 	
+	free(list);
 
 	return res;
-}
-
-struct mgmt_command_arg* mgmtcmd_list_modules_browse(char *path, char *type) {
-
-
-	DIR *d;
-	d = opendir(path);
-	if (!d) 
-		return 0;
-
-	struct dirent *dp;
-	char name[NAME_MAX];
-
-	char *scanstr = malloc(strlen(type) + 4);
-	strcpy(scanstr, type);
-	strcat(scanstr, "_%s");
-
-
-	struct mgmt_command_arg* res = NULL;
-
-	while ((dp = readdir(d))) {
-
-		if (sscanf(dp->d_name, scanstr, name) == 1) {
-			char *dot = strchr(name, '.');
-			*dot = 0;
-			struct mgmt_command_arg* item = malloc(sizeof(struct mgmt_command_arg));
-			memset(item, 0, sizeof(struct mgmt_command_arg));
-			item->word = malloc(strlen(name) + 1);
-			strcpy(item->word, name);
-			item->next = res;
-			res = item;
-		}
-	}
-
-	closedir(d);
-	free(scanstr);
-
-	return res;
-
 }
 
 struct mgmt_command_arg *mgmtcmd_completion_int_range(int start, int count) {

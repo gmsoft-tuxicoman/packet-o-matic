@@ -21,53 +21,54 @@
 
 #include "common.h"
 #include "xmlrpcsrv.h"
+#include "xmlrpccmd.h"
 #include "xmlrpccmd_input.h"
 #include "ptype.h"
 
 #include "main.h"
 
-#define XMLRPC_INPUT_COMMANDS_NUM 9
+#define XMLRPC_INPUT_COMMANDS_NUM 10
 
 static struct xmlrpc_command xmlrpc_input_commands[XMLRPC_INPUT_COMMANDS_NUM] = { 
 
 	{
 		.name = "input.get",
 		.callback_func = xmlrpccmd_get_input,
-		.signature = "A:,n:",
-		.help = "Get all the information related to the current input or nil if no input is configured",
+		.signature = "A:",
+		.help = "Get all the information related to the current input an empty arrayif no input is configured",
 	},
 	{
 		.name = "input.start",
 		.callback_func = xmlrpccmd_start_input,
-		.signature = "n:",
+		.signature = "i:",
 		.help = "Start the input",
 	},
 
 	{
 		.name = "input.stop",
 		.callback_func = xmlrpccmd_stop_input,
-		.signature = "n:",
+		.signature = "i:",
 		.help = "Stop the input",
 	},
 
 	{
 		.name = "input.setType",
 		.callback_func = xmlrpccmd_set_input_type,
-		.signature = "n:s",
+		.signature = "i:s",
 		.help = "Set the type of the input",
 	},
 
 	{
 		.name = "input.setMode",
 		.callback_func = xmlrpccmd_set_input_mode,
-		.signature = "n:s",
+		.signature = "i:s",
 		.help = "Set the mode of the input",
 	},
 
 	{
 		.name = "input.setParameter",
 		.callback_func = xmlrpccmd_set_input_parameter,
-		.signature = "n:ss",
+		.signature = "i:ss",
 		.help = "Set a value for an input parameter",
 
 	},
@@ -80,9 +81,16 @@ static struct xmlrpc_command xmlrpc_input_commands[XMLRPC_INPUT_COMMANDS_NUM] = 
 	},
 
 	{
+		.name = "input.listAvail",
+		.callback_func = xmlrpccmd_list_avail_input,
+		.signature = "A:",
+		.help = "List all the available inputs",
+	},
+
+	{
 		.name = "input.load",
 		.callback_func = xmlrpccmd_load_input,
-		.signature = "n:s",
+		.signature = "i:s",
 		.help = "Load an input given its name",
 
 	},
@@ -90,7 +98,7 @@ static struct xmlrpc_command xmlrpc_input_commands[XMLRPC_INPUT_COMMANDS_NUM] = 
 	{
 		.name = "input.unload",
 		.callback_func = xmlrpccmd_unload_input,
-		.signature = "n:s",
+		.signature = "i:s",
 		.help = "Unload an input given its name",
 
 	},
@@ -114,7 +122,7 @@ xmlrpc_value *xmlrpccmd_get_input(xmlrpc_env * const envP, xmlrpc_value * const 
 	struct input* i = main_config->input;
 
 	if (!i)
-		return xmlrpc_nil_new(envP);
+		return xmlrpc_array_new(envP);
 
 	xmlrpc_value *params = xmlrpc_array_new(envP);
 	if (envP->fault_occurred)
@@ -166,7 +174,7 @@ xmlrpc_value *xmlrpccmd_start_input(xmlrpc_env * const envP, xmlrpc_value * cons
 		return NULL;
 	}
 
-	return xmlrpc_nil_new(envP);
+	return xmlrpc_int_new(envP, 0);
 }
 
 xmlrpc_value *xmlrpccmd_stop_input(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
@@ -182,7 +190,7 @@ xmlrpc_value *xmlrpccmd_stop_input(xmlrpc_env * const envP, xmlrpc_value * const
 		return NULL;
 	}
 
-	return xmlrpc_nil_new(envP);
+	return xmlrpc_int_new(envP, 0);
 }
 
 xmlrpc_value *xmlrpccmd_set_input_type(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
@@ -247,7 +255,7 @@ xmlrpc_value *xmlrpccmd_set_input_type(xmlrpc_env * const envP, xmlrpc_value * c
 		return NULL;
 	}
 
-	return xmlrpc_nil_new(envP);
+	return xmlrpc_int_new(envP,0);
 }
 
 xmlrpc_value *xmlrpccmd_set_input_mode(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
@@ -275,7 +283,7 @@ xmlrpc_value *xmlrpccmd_set_input_mode(xmlrpc_env * const envP, xmlrpc_value * c
 	}
 	free(mode);
 	
-	return xmlrpc_nil_new(envP);
+	return xmlrpc_int_new(envP, 0);
 }
 
 xmlrpc_value *xmlrpccmd_set_input_parameter(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
@@ -320,7 +328,7 @@ xmlrpc_value *xmlrpccmd_set_input_parameter(xmlrpc_env * const envP, xmlrpc_valu
 
 	free(value);
 
-	return xmlrpc_nil_new(envP);
+	return xmlrpc_int_new(envP, 0);
 }
 
 xmlrpc_value *xmlrpccmd_list_loaded_input(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
@@ -418,7 +426,7 @@ xmlrpc_value *xmlrpccmd_load_input(xmlrpc_env * const envP, xmlrpc_value * const
 	input_unlock();
 
 	free(name);
-	return xmlrpc_nil_new(envP);
+	return xmlrpc_int_new(envP, 0);
 }
 
 xmlrpc_value *xmlrpccmd_unload_input(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
@@ -452,5 +460,12 @@ xmlrpc_value *xmlrpccmd_unload_input(xmlrpc_env * const envP, xmlrpc_value * con
 
 	free(name);
 
-	return xmlrpc_nil_new(envP);
+	return xmlrpc_int_new(envP, 0);
+}
+
+
+xmlrpc_value *xmlrpccmd_list_avail_input(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
+
+	return xmlrpccmd_list_avail_modules(envP, "input");
+
 }

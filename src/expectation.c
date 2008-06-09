@@ -59,10 +59,11 @@ struct expectation_list *expectation_alloc(struct frame *f, struct target *t, st
 
 	while (l && l->type != match_undefined_id) {
 	
+		match_refcount_inc(l->type);
+
 		struct expectation_node *n = malloc(sizeof(struct expectation_node));
 		memset(n, 0, sizeof(struct expectation_node));
 		n->layer = l->type;
-		match_refcount_inc(l->type);
 
 
 		int i;

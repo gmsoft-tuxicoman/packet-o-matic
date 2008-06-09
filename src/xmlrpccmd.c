@@ -29,6 +29,7 @@
 #include "xmlrpccmd_input.h"
 #include "xmlrpccmd_helper.h"
 #include "xmlrpccmd_rules.h"
+#include "xmlrpccmd_match.h"
 
 #define XMLRPC_COMMANDS_NUM 2
 
@@ -44,7 +45,7 @@ static struct xmlrpc_command xmlrpc_commands[XMLRPC_COMMANDS_NUM] = {
 	{
 		.name = "core.setParameter",
 		.callback_func = xmlrpccmd_set_core_parmeter,
-		.signature = "n:ss",
+		.signature = "i:ss",
 		.help = "Set a core parameter given a its name and value",
 	},
 
@@ -63,6 +64,7 @@ int xmlrpccmd_register_all() {
 	xmlrpccmd_input_register_all();
 	xmlrpccmd_helper_register_all();
 	xmlrpccmd_rules_register_all();
+	xmlrpccmd_match_register_all();
 
 	return POM_OK;
 }
@@ -116,8 +118,33 @@ xmlrpc_value *xmlrpccmd_set_core_parmeter(xmlrpc_env * const envP, xmlrpc_value 
 	free(name);
 	free(value);
 
-	return xmlrpc_nil_new(envP);
+	return xmlrpc_int_new(envP, 0);
 
 }
 
 
+xmlrpc_value *xmlrpccmd_list_avail_modules(xmlrpc_env * const envP, char *type) {
+
+
+	char **list = list_modules(type);
+
+	xmlrpc_value *result = xmlrpc_array_new(envP);
+
+	if (envP->fault_occurred)
+		return NULL;
+
+	int i;
+	for (i = 0; list[i]; i++) {
+
+		xmlrpc_value *item = xmlrpc_string_new(envP, list[i]);
+		xmlrpc_array_append_item(envP, result, item);
+		xmlrpc_DECREF(item);
+		free(list[i]);
+
+	}
+	free(list[i]);
+	free(list);
+
+	return result;
+
+}

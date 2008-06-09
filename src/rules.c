@@ -654,11 +654,11 @@ static struct rule_node *rule_parse_block(char *expr, char *errbuff, int errlen)
 			snprintf(errbuff, errlen, "Unknown match \"%s\"\r\n", words[0]);
 			return NULL;
 		}
+		match_refcount_inc(layer);
 		struct rule_node *rn = malloc(sizeof(struct rule_node));
 		memset(rn, 0, sizeof(struct rule_node));
 
 		rn->layer = layer;
-		match_refcount_inc(layer);
 		return rn;
 	}
 	

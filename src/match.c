@@ -26,9 +26,13 @@
 #include "main.h"
 #include "ptype_bool.h"
 
+#include <pthread.h>
+
 static int match_undefined_id;
 
 static struct ptype *param_autoload_helper;
+
+static pthread_rwlock_t match_global_lock = PTHREAD_RWLOCK_INITIALIZER;
 
 /**
  * @ingroup match_core
@@ -501,5 +505,45 @@ void match_print_help() {
 		}
 		printf("\n");
 	}
+}
+
+/**
+ * @ingroup match_core
+ * @param write Set to 1 if helpers will be modified, 0 if not
+ * @return POM_OK on success, POM_ERR on failure.
+ */
+int match_lock(int write) {
+
+	int result = 0;
+	if (write) {
+		result = pthread_rwlock_wrlock(&match_global_lock);
+	} else {
+		result = pthread_rwlock_rdlock(&match_global_lock);
+	}
+
+	if (result) {
+		pom_log(POM_LOG_ERR "Error while locking the match lock\r\n");
+		abort();
+		return POM_ERR;
+	}
+
+	return POM_OK;
+
+}
+
+/**
+ * @ingroup match_core
+ * @return POM_OK on success, POM_ERR on failure.
+ */
+int match_unlock() {
+
+	if (pthread_rwlock_unlock(&match_global_lock)) {
+		pom_log(POM_LOG_ERR "Error while unlocking the match lock\r\n");
+		abort();
+		return POM_ERR;
+	}
+
+	return POM_OK;
+
 }
 

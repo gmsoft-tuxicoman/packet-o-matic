@@ -1,3 +1,10 @@
+* 2008/06/09 Guy Martin <gmsoft@tuxicoman.be>
+Added match locks when registering them.
+Avoid returning nil values in XML-RPC interface.
+Added match functions the for XML-RPC interface.
+Added abort() if a locking operation is failing.
+Added XML-RPC function listAvail to input, match and helper.
+
 * 2008/06/06 Guy Martin <gmsoft@tuxicoman.be>
 Added XML-RPC functions to handle the rules.
 Moved rule parsing/printing from mgmtcmd_rules.c to rules.c.

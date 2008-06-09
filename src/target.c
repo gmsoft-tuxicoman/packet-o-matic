@@ -70,13 +70,17 @@ int target_register(const char *target_name) {
 
 			targets[i] = my_target;
 			my_target->type = i;
-
+	
+			match_lock(1); // Allow safe registration of the matches
 			if ((*register_my_target) (my_target) != POM_OK) {
+				match_unlock();
 				pom_log(POM_LOG_ERR "Error while loading target %s. could not register target !\r\n", target_name);
 				targets[i] = NULL;
 				free(my_target);
 				return POM_ERR;
 			}
+
+			match_unlock();
 
 
 			targets[i]->name = malloc(strlen(target_name) + 1);
@@ -632,6 +636,7 @@ int target_lock_instance(struct target *t, int write) {
 
 	if (result) {
 		pom_log(POM_LOG_ERR "Error while locking a target instance lock\r\n");
+		abort();
 		return POM_ERR;
 	}
 
@@ -648,6 +653,7 @@ int target_unlock_instance(struct target *t) {
 
 	if (pthread_rwlock_unlock(&t->lock)) {
 		pom_log(POM_LOG_ERR "Error while unlocking the helper lock\r\n");
+		abort();
 		return POM_ERR;
 	}
 

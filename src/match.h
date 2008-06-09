@@ -155,6 +155,12 @@ int match_refcount_inc(int match_type);
 /// Decrease the reference count on a match
 int match_refcount_dec(int match_type);
 
+/// Get a read or write lock on the matches
+int match_lock(int write);
+
+/// Release a read or write lock on the matches
+int match_unlock();
+
 /// Cleanup the match subsystem
 int match_cleanup();
 

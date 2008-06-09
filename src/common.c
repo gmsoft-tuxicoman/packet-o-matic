@@ -24,6 +24,8 @@
 #include "mgmtsrv.h"
 #include "input.h"
 
+#include <dirent.h>
+
 void pom_log(const char *format, ...) {
 
 	int level = *POM_LOG_INFO;
@@ -111,3 +113,101 @@ int frame_alloc_aligned_buff(struct frame *f, int length) {
 	return POM_OK;
 
 }
+
+static char ** list_modules_browse(char *path, char *type) {
+
+
+	DIR *d;
+	d = opendir(path);
+	if (!d) 
+		return 0;
+
+	struct dirent *dp;
+	char name[NAME_MAX];
+
+	char *scanstr = malloc(strlen(type) + 4);
+	strcpy(scanstr, type);
+	strcat(scanstr, "_%s");
+
+
+	char **res = malloc(sizeof(char *));
+	*res = 0;
+	int size = 0;
+
+	while ((dp = readdir(d))) {
+
+		if (sscanf(dp->d_name, scanstr, name) == 1) {
+			char *dot = strchr(name, '.');
+			*dot = 0;
+			size++;
+			res = realloc(res, sizeof(char *) * (size + 1));
+			res[size] = NULL;
+			res[size - 1] = malloc(strlen(name) + 1);
+			strcpy(res[size - 1], name);
+		}
+	}
+
+	closedir(d);
+	free(scanstr);
+
+	return res;
+
+}
+
+char ** list_modules(char *type) {
+
+
+	char ** res = malloc(sizeof(char *));
+	*res = 0;
+	int size = 0;
+
+	char *path = getenv("LD_LIBRARY_PATH");
+
+	if (!path) {
+		res = list_modules_browse(LIBDIR, type);
+	} else {
+		char *my_path = malloc(strlen(path) + 1);
+		strcpy(my_path, path);
+
+		char *str, *token, *saveptr = NULL;
+		for (str = my_path; ; str = NULL) {
+			token = strtok_r(str, ":", &saveptr);
+			if (!token)
+				break;
+
+			int i, dupe = 0;
+			char **list;
+			list = list_modules_browse(token, type);
+			for (i = 0; list[i]; i++) {
+				int j;
+				for (j = 0; res[j]; j++) {
+					if (!strcmp(res[j], list[i])) {
+						dupe = 1;
+						break;
+					}
+				}
+				if (!dupe) {
+					size++;
+					res = realloc(res, sizeof(char *) * (size + 1));
+					res[size] = NULL;
+					res[size - 1] = malloc(strlen(list[i]) + 1);
+					strcpy(res[size - 1],list[i]);
+				}
+
+				dupe = 0;
+
+			}
+
+			for (i = 0; list[i]; i++)
+				free(list[i]);
+			free(list);
+		}
+
+
+		free(my_path);
+	}
+	
+
+	return res;
+}
+

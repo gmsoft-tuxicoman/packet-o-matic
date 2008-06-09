@@ -254,8 +254,10 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 				return NULL;
 			}
 			pom_log(POM_LOG_TSHOOT "Parsing match of layer %s\r\n", layer);
+			match_lock(1);
 			int mt = match_register(layer);
 			if (mt == -1) {
+				match_unlock();
 				pom_log(POM_LOG_ERR "Could not load match %s !\r\n", layer);
 				xmlFree(layer);
 				return NULL;
@@ -266,6 +268,7 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 			pom_log(POM_LOG_TSHOOT "Creating new rule_node\r\n");
 			n->layer = mt;
 			match_refcount_inc(mt);
+			match_unlock();
 
 			char *field = (char *) xmlGetProp(cur, (const xmlChar*) "field");
 			if (field) {
@@ -575,7 +578,9 @@ int config_parse(struct conf *c, char * filename) {
 				continue;
 			}
 			int ct_type;
+			match_lock(1);
 			ct_type = match_register(type);
+			match_unlock();
 			if (ct_type == POM_ERR) {
 				pom_log(POM_LOG_WARN "Unable to register match %s\r\n", type);
 				cur = cur->next;
