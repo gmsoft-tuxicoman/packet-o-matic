@@ -433,7 +433,7 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 	r = malloc(sizeof(struct rule_list));
 	memset(r, 0, sizeof(struct rule_list));
 
-	rule_update(r, NULL, NULL);
+	r->uid = get_uid();
 	
 	struct ptype *disabled_pt = ptype_alloc("bool", NULL);
 	if (!disabled_pt) {
@@ -464,7 +464,8 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 						tmpt = tmpt->next;
 					tmpt->next = t;
 					t->prev = tmpt;
-				}		
+				}
+				t->parent_serial = &r->target_serial;
 			}
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "matches")) {
 			if (r->node)

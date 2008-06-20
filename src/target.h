@@ -125,6 +125,9 @@ struct target {
 	struct target_mode *mode; ///< Mode of this target
 	int matched; ///< Used internally for rules processing
 	int started; ///< If the starget is started or not
+	uint32_t uid; ///< Unique ID of the target
+	uint32_t serial; ///< Serial of the target
+	uint32_t *parent_serial; ///< Serial stored at the rule level if any
 	pthread_rwlock_t lock; ///< Lock used to make each target operation atomic
 
 	struct ptype* pkt_cnt; ///< Number of packets processed by this target
@@ -205,11 +208,16 @@ int target_cleanup();
 /// Open a file for a target
 int target_file_open(struct layer *l, char *filename, int flags, mode_t mode);
 
-
 /// Lock an instance of a target
 int target_lock_instance(struct target *t, int write);
 
 /// Unlock an instance of a target
 int target_unlock_instance(struct target *t);
+
+/// Get a read or write lock on the targets
+int target_lock(int write);
+
+/// Release a read or write lock on the targets
+int target_unlock();
 
 #endif

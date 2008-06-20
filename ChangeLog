@@ -1,3 +1,15 @@
+* 2008/06/19 Guy Martin <gmsoft@tuxicoman.be>
+Added function get_uid() to generate new random unique id.
+Added serial on each rule and uid stays unchanged while rules are update.
+Added serial for the input helpers and core parameters.
+Removed rules.getSerial from XML-RPC interface.
+Added some target functions to the XML-RPC interface.
+Function match.get returns also the reference count.
+Function input.listLoaded returns also the parameter types.
+Added serial on each target.
+Added uid and locks on targets.
+Added XML-RPC function main.getSerial which returns serial of all components.
+
 * 2008/06/09 Guy Martin <gmsoft@tuxicoman.be>
 Added match locks when registering them.
 Avoid returning nil values in XML-RPC interface.

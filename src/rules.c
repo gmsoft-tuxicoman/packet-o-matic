@@ -28,47 +28,15 @@
 
 static int match_undefined_id;
 
-/// Value incremented each time a rule changes
-static uint32_t rules_serial;
-
-unsigned int random_seed;
 
 int rules_init() {
 
 	match_undefined_id = match_register("undefined");
-	rules_serial = 0;
 
-	random_seed = (unsigned int) time(NULL) + (unsigned int) pthread_self();
-	srand(random_seed);
+	uid_init();
 
 	return POM_OK;
 
-}
-
-
-int rule_update(struct rule_list *rule, struct rule_list *list, uint32_t *serial) {
-
-	uint32_t new_uid = (uint32_t) rand_r(&random_seed);
-
-
-	if (list) {
-		struct rule_list *rl = list;
-		while (rl) {
-			if (rl->uid == new_uid) {
-				new_uid = (uint32_t) rand_r(&random_seed);
-				rl = list;
-				continue;
-			}
-			rl = rl->next;
-		}
-	}
-
-	rule->uid = new_uid;
-
-	if (serial)
-		(*serial)++;
-
-	return POM_OK;
 }
 
 int dump_invalid_packet(struct frame *f) {
@@ -467,6 +435,7 @@ int list_destroy(struct rule_list *list) {
 
 		struct target* t = tmp->target;
 		while (t) {
+			target_lock_instance(t, 1);
 			struct target* next = t->next;
 			target_close(t);
 			target_cleanup_module(t);

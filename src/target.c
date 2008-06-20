@@ -28,6 +28,7 @@
 
 #include "ptype_uint64.h"
 
+static pthread_rwlock_t target_global_lock = PTHREAD_RWLOCK_INITIALIZER;
 
 /**
  * @ingroup target_core
@@ -236,6 +237,8 @@ struct target *target_alloc(int target_type) {
 			return NULL;
 		}
 
+	t->uid = get_uid();
+
 	t->pkt_cnt = ptype_alloc("uint64", "pkts");
 	t->pkt_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
 	t->byte_cnt = ptype_alloc("uint64", "bytes");
@@ -260,19 +263,15 @@ int target_set_mode(struct target *t, const char *mode_name) {
 	if (!t)
 		return POM_ERR;
 	
-	target_lock_instance(t, 1);
-	
 	struct target_mode *mode = targets[t->type]->modes;
 	while (mode) {
 		if (!strcmp(mode->name, mode_name)) {
 			t->mode = mode;
-			target_unlock_instance(t);
 			return POM_OK;
 		}
 		mode = mode->next;
 	}
 
-	target_unlock_instance(t);
 	return POM_ERR;
 }
 
@@ -347,6 +346,7 @@ int target_get_type(char* target_name) {
 
 /**
  * @ingroup target_core
+ * This function will grab a write lock on the target instance.
  * @param t Target to open
  * @return POM_OK on success, POM_ERR on failure.
  */
@@ -355,7 +355,6 @@ int target_open(struct target *t) {
 	if (!t)
 		return POM_ERR;
 
-	target_lock_instance(t, 1);
 	if (t->started) {
 		target_unlock_instance(t);
 		return POM_ERR;
@@ -369,7 +368,6 @@ int target_open(struct target *t) {
 
 	t->started = 1;
 
-	target_unlock_instance(t);
 	return POM_OK;
 
 }
@@ -377,6 +375,7 @@ int target_open(struct target *t) {
 /**
  * @ingroup target_core
  * If the target returns POM_ERR, it will be closed.
+ * This function will grab a read lock on the target instance.
  * @param t Target to send the packet to
  * @param f The frame to process
  * @return POM_OK on sucess, POM_ERR on failure.
@@ -401,6 +400,7 @@ int target_process(struct target *t, struct frame *f) {
 
 /**
  * @ingroup target_core
+ * This function will grab a write lock on the target instance.
  * @param t Target to close
  * @return POM_OK on sucess, POM_ERR on failure.
  */
@@ -409,7 +409,6 @@ int target_close(struct target *t) {
 	if (!t)
 		return POM_ERR;
 
-	target_lock_instance(t, 1);
 	if (!t->started) {
 		target_unlock_instance(t);
 		return POM_ERR;
@@ -422,13 +421,13 @@ int target_close(struct target *t) {
 	if (targets[t->type] && targets[t->type]->close)
 		result = (*targets[t->type]->close) (t);
 
-	target_unlock_instance(t);
 	return POM_OK;
 
 }
 
 /**
  * @ingroup target_core
+ * The target MUST be write locked when calling this function.
  * @param t Target to cleanup
  * @return POM_OK on sucess, POM_ERR on failure.
  */
@@ -437,7 +436,6 @@ int target_cleanup_module(struct target *t) {
 	if (!t)
 		return POM_ERR;
 
-	target_lock_instance(t, 1);
 
 	if (targets[t->type]) {
 		if (targets[t->type]->cleanup)
@@ -652,10 +650,51 @@ int target_lock_instance(struct target *t, int write) {
 int target_unlock_instance(struct target *t) {
 
 	if (pthread_rwlock_unlock(&t->lock)) {
-		pom_log(POM_LOG_ERR "Error while unlocking the helper lock\r\n");
+		pom_log(POM_LOG_ERR "Error while unlocking the target lock\r\n");
 		abort();
 		return POM_ERR;
 	}
 
 	return POM_OK;
 }
+
+/**
+ * @ingroup target_core
+ * @param write Set to 1 if targets will be modified, 0 if not
+ * @return POM_OK on success, POM_ERR on failure.
+ */
+int target_lock(int write) {
+
+	int result = 0;
+	if (write) {
+		result = pthread_rwlock_wrlock(&target_global_lock);
+	} else {
+		result = pthread_rwlock_rdlock(&target_global_lock);
+	}
+
+	if (result) {
+		pom_log(POM_LOG_ERR "Error while locking the target lock\r\n");
+		abort();
+		return POM_ERR;
+	}
+
+	return POM_OK;
+
+}
+
+/**
+ * @ingroup target_core
+ * @return POM_OK on success, POM_ERR on failure.
+ */
+int target_unlock() {
+
+	if (pthread_rwlock_unlock(&target_global_lock)) {
+		pom_log(POM_LOG_ERR "Error while unlocking the target lock\r\n");
+		abort();
+		return POM_ERR;
+	}
+
+	return POM_OK;
+
+}
+

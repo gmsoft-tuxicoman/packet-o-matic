@@ -240,11 +240,15 @@ int mgmtcmd_start_target(struct mgmt_connection *c, int argc, char *argv[]) {
 		mgmtsrv_send(c, "Target already started\r\n");
 		return POM_OK;
 	}
-	target_unlock_instance(t);
-
+	
 	if (target_open(t) != POM_OK) {
 		mgmtsrv_send(c, "Error while starting the target\r\n");
+	} else {
+		rl->target_serial++;
+		t->serial++;
 	}
+
+	target_unlock_instance(t);
 
 	return POM_OK;
 
@@ -280,12 +284,14 @@ int mgmtcmd_stop_target(struct mgmt_connection *c, int argc, char *argv[]) {
 		mgmtsrv_send(c, "Target already stopped\r\n");
 		return POM_OK;
 	}
-	target_unlock_instance(t);
-	
+
 	if (target_close(t) != POM_OK) {
 		mgmtsrv_send(c, "Error while stopping the target\r\n");
+	} else {
+		rl->target_serial++;
+		t->serial++;
 	}
-
+	target_unlock_instance(t);
 
 	return POM_OK;
 
@@ -305,16 +311,18 @@ int mgmtcmd_add_target(struct mgmt_connection *c, int argc, char *argv[]) {
 		mgmtsrv_send(c, "Rule not found\r\n");
 		return POM_OK;
 	}
-
+	target_lock(1);
 	int target_type = target_register(argv[1]);
 
 	if (target_type == POM_ERR) {
+		target_unlock();
 		main_config_rules_unlock();
 		mgmtsrv_send(c, "Target %s not found\r\n", argv[1]);
 		return POM_OK;
 	}
 	
 	struct target *t = target_alloc(target_type);
+	target_unlock();
 	if (!t) {
 		main_config_rules_unlock();
 		mgmtsrv_send(c, "Error while allocating the target !!!\r\n");
@@ -336,6 +344,9 @@ int mgmtcmd_add_target(struct mgmt_connection *c, int argc, char *argv[]) {
 		tmpt->next = t;
 		t->prev = tmpt;
 	}
+
+	t->parent_serial = &rl->target_serial;
+	rl->target_serial++;
 
 	main_config_rules_unlock();
 
@@ -386,7 +397,7 @@ int mgmtcmd_remove_target(struct mgmt_connection *c, int argc, char *argv[]) {
 		mgmtsrv_send(c, "Rule not found\r\n");
 		return POM_OK;
 	}
-
+	
 	struct target *t = mgmtcmd_get_target(rl, argv[1]);
 
 	if (!t) {
@@ -394,7 +405,8 @@ int mgmtcmd_remove_target(struct mgmt_connection *c, int argc, char *argv[]) {
 		mgmtsrv_send(c, "Target not found\r\n");
 		return POM_OK;
 	}
-	
+	target_lock_instance(t, 1);
+
 	target_close(t);
 
 	if (t->prev)
@@ -407,6 +419,7 @@ int mgmtcmd_remove_target(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	target_cleanup_module(t);
 
+	rl->target_serial++;
 	main_config_rules_unlock();
 
 	mgmtsrv_send(c, "Target removed\r\n");
@@ -429,16 +442,21 @@ int mgmtcmd_set_target_parameter(struct mgmt_connection *c, int argc, char *argv
 		mgmtsrv_send(c, "Rule not found\r\n");
 		return POM_OK;
 	}
-	main_config_rules_unlock();
 
+	target_lock(0);
 	struct target *t = mgmtcmd_get_target(rl, argv[1]);
 
+	main_config_rules_unlock();
+
 	if (!t) {
+		target_unlock();
 		mgmtsrv_send(c, "Target not found\r\n");
 		return POM_OK;
 	}
 
 	target_lock_instance(t, 1);
+	target_unlock();
+
 	if (t->started) {
 		target_unlock_instance(t);
 		mgmtsrv_send(c, "Target must be stopped to change a parameter\r\n");
@@ -458,6 +476,8 @@ int mgmtcmd_set_target_parameter(struct mgmt_connection *c, int argc, char *argv
 		mgmtsrv_send(c, "Unable to parse \"%s\" for parameter %s\r\n", argv[3], argv[2]);
 		return POM_OK;
 	}
+	rl->target_serial++;
+	t->serial++;
 	target_unlock_instance(t);
 
 	return POM_OK;
@@ -535,26 +555,34 @@ int mgmtcmd_set_target_mode(struct mgmt_connection *c, int argc, char *argv[]) {
 		return POM_OK;
 	}
 
-	main_config_rules_unlock();
-
+	target_lock(0);
 	struct target *t = mgmtcmd_get_target(rl, argv[1]);
 
+	main_config_rules_unlock();
+
 	if (!t) {
+		target_unlock();
 		mgmtsrv_send(c, "Target not found\r\n");
 		return POM_OK;
 	}
 
 	target_lock_instance(t, 0);
+	target_unlock();
+
 	if (t->started) {
 		target_unlock_instance(t);
 		mgmtsrv_send(c, "Target must be stopped to change a parameter\r\n");
 		return POM_OK;
 	}
-	target_unlock_instance(t);	
 
 	if (target_set_mode(t, argv[2]) == POM_ERR) {
 		mgmtsrv_send(c, "No mode \"%s\" for target %s\r\n", argv[3], target_get_name(t->type));
+	} else {
+		rl->target_serial++;
+		t->serial++;
 	}
+
+	target_unlock_instance(t);
 
 	return POM_OK;
 
@@ -619,13 +647,15 @@ int mgmtcmd_load_target(struct mgmt_connection *c, int argc, char*argv[]) {
 
 	if (argc != 1)
 		return MGMT_USAGE;
-	
+	target_lock(1);	
 	if (target_get_type(argv[0]) != POM_ERR) {
+		target_unlock();
 		mgmtsrv_send(c, "Target %s is already registered\r\n", argv[0]);
 		return POM_OK;
 	}
 
 	int id = target_register(argv[0]);
+	target_unlock();
 	if (id == POM_ERR)
 		mgmtsrv_send(c, "Error while loading target %s\r\n", argv[0]);
 	else
@@ -650,24 +680,21 @@ int mgmtcmd_unload_target(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (argc != 1)
 		return MGMT_USAGE;
-
+	
+	target_lock(1);
 	int id = target_get_type(argv[0]);
 
 	if (id == POM_ERR) {
 		mgmtsrv_send(c, "Target %s not loaded\r\n", argv[0]);
-		return POM_OK;
-	}
-
-	if (targets[id]->refcount) {
+	} else if (targets[id]->refcount) {
 		mgmtsrv_send(c, "Target %s is still in use. Cannot unload it\r\n", argv[0]);
-		return POM_OK;
-	}
-
-	if (target_unregister(id) != POM_ERR) {
+	} else if (target_unregister(id) != POM_ERR) {
 		mgmtsrv_send(c, "Target %s unloaded successfully\r\n", argv[0]);
 	} else {
 		mgmtsrv_send(c, "Error while unloading target %s\r\n", argv[0]);
 	}
+
+	target_unlock();
 	
 	return POM_OK;
 

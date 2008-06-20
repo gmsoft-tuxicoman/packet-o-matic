@@ -26,6 +26,8 @@
 
 #include <dirent.h>
 
+static unsigned int random_seed;
+
 void pom_log(const char *format, ...) {
 
 	int level = *POM_LOG_INFO;
@@ -209,5 +211,19 @@ char ** list_modules(char *type) {
 	
 
 	return res;
+}
+
+
+int uid_init() {
+
+	random_seed = (unsigned int) time(NULL) + (unsigned int) pthread_self();
+	srand(random_seed);
+
+	return POM_OK;
+}
+
+uint32_t get_uid() {
+
+	return (uint32_t) rand_r(&random_seed);
 }
 

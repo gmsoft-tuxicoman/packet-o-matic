@@ -350,6 +350,9 @@ void *input_thread_func(void *params) {
 			// We need to aquire the lock
 			pthread_mutex_lock(&r->mutex);
 
+			// Need to update serial because input stopped
+			main_config->input_serial++;
+
 			r->state = rb_state_closing;
 
 			struct ptype* param_quit_on_input_error =  core_get_param_value("quit_on_input_error");
@@ -784,7 +787,6 @@ err:
 	if (!disable_xmlrpcsrv)
 		xmlrpcsrv_cleanup();
 #endif
-
 	config_cleanup(main_config);
 
 	helper_unregister_all();
@@ -977,6 +979,8 @@ int core_set_param_value(char *param, char *value, char *msg, size_t size) {
 		snprintf(msg, size, "Unable to parse %s for parameter %s", value, param);
 		return POM_ERR;
 	}
+
+	core_params_serial++;
 
 	return POM_OK;
 }

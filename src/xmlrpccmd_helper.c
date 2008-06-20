@@ -104,11 +104,12 @@ xmlrpc_value *xmlrpccmd_list_loaded_helper(xmlrpc_env * const envP, xmlrpc_value
 			
 			char buff[256];
 			ptype_print_val(p->value, buff, sizeof(buff) - 1);
-			xmlrpc_value *param = xmlrpc_build_value(envP, "{s:s,s:s,s:s,s:s,s:s}",
+			xmlrpc_value *param = xmlrpc_build_value(envP, "{s:s,s:s,s:s,s:s,s:s,s:s}",
 						"name", p->name,
 						"defval", p->defval,
 						"descr", p->descr,
 						"value", buff,
+						"type", ptype_get_name(p->value->type),
 						"unit", p->value->unit);
 			xmlrpc_array_append_item(envP, params, param);
 			xmlrpc_DECREF(param);
@@ -168,6 +169,7 @@ xmlrpc_value *xmlrpccmd_set_helper_parameter(xmlrpc_env * const envP, xmlrpc_val
 		free(value);
 		return NULL;
 	}
+	helpers_serial++;
 	helper_unlock();
 
 	free(value);
@@ -209,6 +211,7 @@ xmlrpc_value *xmlrpccmd_load_helper(xmlrpc_env * const envP, xmlrpc_value * cons
 		return NULL;
 	}
 
+	helpers_serial++;
 	helper_unlock();
 
 	free(name);
@@ -242,6 +245,7 @@ xmlrpc_value *xmlrpccmd_unload_helper(xmlrpc_env * const envP, xmlrpc_value * co
 		return NULL;
 	}
 
+	helpers_serial++;
 	helper_unlock();
 
 	free(name);

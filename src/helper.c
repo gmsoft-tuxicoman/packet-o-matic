@@ -40,6 +40,8 @@ int helper_init() {
 	frame_head = NULL;
 	frame_tail = NULL;
 
+	helpers_serial = 0;
+
 	pom_log(POM_LOG_DEBUG "Helper initialized\r\n");
 
 	return POM_OK;

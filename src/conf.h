@@ -32,6 +32,7 @@ struct conf {
 	char filename[NAME_MAX + 1];
 	pthread_rwlock_t rules_lock;
 	uint32_t rules_serial;
+	uint32_t input_serial;
 };
 
 struct conf *config_alloc();

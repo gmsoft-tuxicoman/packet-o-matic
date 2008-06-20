@@ -104,4 +104,8 @@ int frame_alloc_aligned_buff(struct frame *f, int length);
 
 char ** list_modules(char *type);
 
+int uid_init();
+
+uint32_t get_uid();
+
 #endif

@@ -149,6 +149,9 @@ int mgmtcmd_start_input(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (start_input(rbuf) == POM_ERR)
 		mgmtsrv_send(c, "Error while starting the input\r\n");
+
+	main_config->input_serial++;
+
 	return POM_OK;
 
 }
@@ -165,6 +168,8 @@ int mgmtcmd_stop_input(struct mgmt_connection *c, int argc, char *argv[]) {
 		mgmtsrv_send(c, "Error while stopping the input\r\n");
 		return POM_OK;
 	}
+	main_config->input_serial++;
+
 	return POM_OK;
 
 }
@@ -217,6 +222,8 @@ int mgmtcmd_set_input_type(struct mgmt_connection *c, int argc, char *argv[]) {
 	rbuf->i = i;
 	main_config->input = i;
 
+	main_config->input_serial++;
+
 	if (pthread_mutex_unlock(&rbuf->mutex)) {
 		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex\r\n");
 		return POM_ERR;
@@ -248,6 +255,7 @@ int mgmtcmd_set_input_mode(struct mgmt_connection *c, int argc, char *argv[]) {
 		mgmtsrv_send(c, "Input is running. You need to stop it before doing any change\r\n");
 	} else if (input_set_mode(rbuf->i, argv[0]) != POM_OK) {
 		mgmtsrv_send(c, "No mode %s for this input\r\n");
+		main_config->input_serial++;
 	} else if (pthread_mutex_unlock(&rbuf->mutex)) {
 		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex\r\n");
 	}
@@ -337,6 +345,7 @@ int mgmtcmd_set_input_parameter(struct mgmt_connection *c, int argc, char *argv[
 	}
 
 	pthread_mutex_unlock(&rbuf->mutex);
+	main_config->input_serial++;
 
 	free(param);
 	return POM_OK;

@@ -316,7 +316,8 @@ int mgmtcmd_set_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	main_config_rules_lock(1);
 	node_destroy(rl->node, 0);
 	rl->node = start;
-	rule_update(rl, main_config->rules, &main_config->rules_serial);
+	main_config->rules_serial++;
+	rl->serial++;
 	main_config_rules_unlock();
 
 	return POM_OK;
@@ -336,9 +337,9 @@ int mgmtcmd_disable_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 		mgmtsrv_send(c, "Rule already disabled\n");
 	} else {
 		rl->enabled = 0;
+		main_config->rules_serial++;
+		rl->serial++;
 	}
-
-	rule_update(rl, main_config->rules, &main_config->rules_serial);
 	main_config_rules_unlock();
 
 	return POM_OK;
@@ -359,8 +360,9 @@ int mgmtcmd_enable_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 		mgmtsrv_send(c, "Rule already enabled\n");
 	} else {
 		rl->enabled = 1;
+		main_config->rules_serial++;
+		rl->serial++;
 	}
-	rule_update(rl, main_config->rules, &main_config->rules_serial);
 	main_config_rules_unlock();
 
 	return POM_OK;
@@ -403,7 +405,8 @@ int mgmtcmd_add_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	memset(rl, 0, sizeof(struct rule_list));
 
 	main_config_rules_lock(1);
-	rule_update(rl, main_config->rules, &main_config->rules_serial);
+	rl->uid = get_uid();
+	main_config->rules_serial++;
 
 	int rule_id = 0;
 
@@ -478,6 +481,7 @@ int mgmtcmd_remove_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 
 		struct target *tmpt = rl->target;
 		rl->target = rl->target->next;
+		target_lock_instance(tmpt, 1);
 
 		if (tmpt->started)
 			target_close(tmpt);

@@ -174,6 +174,8 @@ xmlrpc_value *xmlrpccmd_start_input(xmlrpc_env * const envP, xmlrpc_value * cons
 		return NULL;
 	}
 
+	main_config->input_serial++;
+
 	return xmlrpc_int_new(envP, 0);
 }
 
@@ -189,6 +191,8 @@ xmlrpc_value *xmlrpccmd_stop_input(xmlrpc_env * const envP, xmlrpc_value * const
 		xmlrpc_faultf(envP, "Error while starting the input");
 		return NULL;
 	}
+
+	main_config->input_serial++;
 
 	return xmlrpc_int_new(envP, 0);
 }
@@ -255,6 +259,8 @@ xmlrpc_value *xmlrpccmd_set_input_type(xmlrpc_env * const envP, xmlrpc_value * c
 		return NULL;
 	}
 
+	main_config->input_serial++;
+
 	return xmlrpc_int_new(envP,0);
 }
 
@@ -283,6 +289,8 @@ xmlrpc_value *xmlrpccmd_set_input_mode(xmlrpc_env * const envP, xmlrpc_value * c
 	}
 	free(mode);
 	
+	main_config->input_serial++;
+
 	return xmlrpc_int_new(envP, 0);
 }
 
@@ -328,6 +336,8 @@ xmlrpc_value *xmlrpccmd_set_input_parameter(xmlrpc_env * const envP, xmlrpc_valu
 
 	free(value);
 
+	main_config->input_serial++;
+
 	return xmlrpc_int_new(envP, 0);
 }
 
@@ -355,11 +365,12 @@ xmlrpc_value *xmlrpccmd_list_loaded_input(xmlrpc_env * const envP, xmlrpc_value 
 			xmlrpc_value *params = xmlrpc_array_new(envP);
 
 			while (p) {
-				xmlrpc_value *param = xmlrpc_build_value(envP, "{s:s,s:s,s:s,s:s}",
+				xmlrpc_value *param = xmlrpc_build_value(envP, "{s:s,s:s,s:s,s:s,s:s}",
 							"name", p->name,
 							"unit", p->value->unit,
 							"defval", p->defval,
-							"descr", p->descr);
+							"descr", p->descr,
+							"type", ptype_get_name(p->value->type));
 				xmlrpc_array_append_item(envP, params, param);
 				xmlrpc_DECREF(param);
 				p = p->next;

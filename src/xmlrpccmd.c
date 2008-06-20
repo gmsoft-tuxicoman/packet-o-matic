@@ -25,13 +25,15 @@
 #include "ptype.h"
 
 #include "main.h"
+#include "helper.h"
 
 #include "xmlrpccmd_input.h"
 #include "xmlrpccmd_helper.h"
 #include "xmlrpccmd_rules.h"
 #include "xmlrpccmd_match.h"
+#include "xmlrpccmd_target.h"
 
-#define XMLRPC_COMMANDS_NUM 2
+#define XMLRPC_COMMANDS_NUM 3
 
 static struct xmlrpc_command xmlrpc_commands[XMLRPC_COMMANDS_NUM] = { 
 
@@ -49,6 +51,13 @@ static struct xmlrpc_command xmlrpc_commands[XMLRPC_COMMANDS_NUM] = {
 		.help = "Set a core parameter given a its name and value",
 	},
 
+	{
+		.name = "main.getSerial",
+		.callback_func = xmlrpccmd_main_get_serial,
+		.signature = "A:",
+		.help = "Get the serial number of each component",
+	}
+
 };
 
 int xmlrpccmd_register_all() {
@@ -65,6 +74,7 @@ int xmlrpccmd_register_all() {
 	xmlrpccmd_helper_register_all();
 	xmlrpccmd_rules_register_all();
 	xmlrpccmd_match_register_all();
+	xmlrpccmd_target_register_all();
 
 	return POM_OK;
 }
@@ -122,6 +132,16 @@ xmlrpc_value *xmlrpccmd_set_core_parmeter(xmlrpc_env * const envP, xmlrpc_value 
 
 }
 
+xmlrpc_value *xmlrpccmd_main_get_serial(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
+	
+
+	return xmlrpc_build_value(envP, "{s:i,s:i,s:i,s:i}",
+				"rules", main_config->rules_serial,
+				"input", main_config->input_serial,
+				"core", core_params_serial,
+				"helper", helpers_serial);
+
+}
 
 xmlrpc_value *xmlrpccmd_list_avail_modules(xmlrpc_env * const envP, char *type) {
 

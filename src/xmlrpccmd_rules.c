@@ -27,7 +27,7 @@
 
 #include "ptype_uint64.h"
 
-#define XMLRPC_RULES_COMMANDS_NUM 7
+#define XMLRPC_RULES_COMMANDS_NUM 6
 
 static struct xmlrpc_command xmlrpc_rules_commands[XMLRPC_RULES_COMMANDS_NUM] = { 
 
@@ -36,13 +36,6 @@ static struct xmlrpc_command xmlrpc_rules_commands[XMLRPC_RULES_COMMANDS_NUM] = 
 		.callback_func = xmlrpccmd_get_rules,
 		.signature = "A:",
 		.help = "Get all the rules",
-	},
-
-	{
-		.name = "rules.getSerial",
-		.callback_func = xmlrpccmd_get_rules_serial,
-		.signature = "i:",
-		.help = "Get the rule serial number",
 	},
 
 	{
@@ -119,35 +112,25 @@ xmlrpc_value *xmlrpccmd_get_rules(xmlrpc_env * const envP, xmlrpc_value * const 
 			xmlrpc_faultf(envP, "Error while computing string representation of the rule");
 			return NULL;
 		}
-		xmlrpc_value *rule = xmlrpc_build_value(envP, "{s:s,s:b,s:i}",
+		xmlrpc_value *rule = xmlrpc_build_value(envP, "{s:s,s:b,s:i,s:i,s:i}",
 					"rule", buff,
 					"enabled", rl->enabled,
-					"uid", rl->uid);
+					"uid", rl->uid,
+					"serial", rl->serial,
+					"target_serial", rl->target_serial);
 		xmlrpc_array_append_item(envP, rules, rule);
 		xmlrpc_DECREF(rule);
 		rl = rl->next;
 	}
 
-
-
-	if (envP->fault_occurred) {
-		main_config_rules_unlock();
-		return NULL;
-	}
-
 	main_config_rules_unlock();
+
+
+	if (envP->fault_occurred) 
+		return NULL;
+
 
 	return rules;
-}
-
-xmlrpc_value *xmlrpccmd_get_rules_serial(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
-
-	main_config_rules_lock(0);
-	uint32_t serial = main_config->rules_serial;
-	main_config_rules_unlock();
-
-	return xmlrpc_int_new(envP, serial);
-
 }
 
 xmlrpc_value *xmlrpccmd_add_rule(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
@@ -178,7 +161,8 @@ xmlrpc_value *xmlrpccmd_add_rule(xmlrpc_env * const envP, xmlrpc_value * const p
 	memset(rl, 0, sizeof(struct rule_list));
 
 	main_config_rules_lock(1);
-	rule_update(rl, main_config->rules, &main_config->rules_serial);
+	rl->uid = get_uid();
+	main_config->rules_serial++;
 
 	if (!main_config->rules) {
 		main_config->rules = rl;
@@ -243,8 +227,8 @@ xmlrpc_value *xmlrpccmd_set_rule(xmlrpc_env * const envP, xmlrpc_value * const p
 
 	node_destroy(rl->node, 0);
 	rl->node = start;
-	rule_update(rl, main_config->rules, &main_config->rules_serial);
-
+	main_config->rules_serial++;
+	rl->serial++;
 	main_config_rules_unlock();
 
 	return xmlrpc_int_new(envP, rl->uid);
@@ -285,6 +269,7 @@ xmlrpc_value *xmlrpccmd_remove_rule(xmlrpc_env * const envP, xmlrpc_value * cons
 
 		struct target *tmpt = rl->target;
 		rl->target = rl->target->next;
+		target_lock_instance(tmpt, 1);
 
 		if (tmpt->started)
 			target_close(tmpt);
@@ -329,7 +314,8 @@ xmlrpc_value *xmlrpccmd_enable_rule(xmlrpc_env * const envP, xmlrpc_value * cons
 
 	rl->enabled = 1;
 
-	rule_update(rl, main_config->rules, &main_config->rules_serial);
+	main_config->rules_serial++;
+	rl->serial++;
 	main_config_rules_unlock();
 
 	return xmlrpc_int_new(envP, rl->uid);
@@ -362,7 +348,8 @@ xmlrpc_value *xmlrpccmd_disable_rule(xmlrpc_env * const envP, xmlrpc_value * con
 
 	rl->enabled = 0;
 
-	rule_update(rl, main_config->rules, &main_config->rules_serial);
+	main_config->rules_serial++;
+	rl->serial++;
 	main_config_rules_unlock();
 
 	return xmlrpc_int_new(envP, rl->uid);

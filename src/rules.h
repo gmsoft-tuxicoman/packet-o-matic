@@ -50,6 +50,8 @@ struct rule_list {
 	unsigned int result; ///< true if the packet has to be processed
 	int enabled; ///< true if rule is enabled and has to be proccessed
 	uint32_t uid; ///< unique id of the rule which changes each time it's modified
+	uint32_t serial; ///< Number of changes for this rule
+	uint32_t target_serial; ///< Number of changes of the associated targets
 
 	struct ptype* pkt_cnt; ///< matched packet count
 	struct ptype* byte_cnt; ///< matched byte count
@@ -62,7 +64,7 @@ struct rule_list {
 
 int rules_init();
 
-int rule_update(struct rule_list *rule, struct rule_list *list, uint32_t *serial);
+int rule_set_uid(struct rule_list *rule, struct rule_list *list);
 
 int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct rule_node *last);
 

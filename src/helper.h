@@ -92,6 +92,9 @@ struct helper_reg {
 /// This variable saves info about all the registered helpers
 struct helper_reg *helpers[MAX_HELPER];
 
+/// This variable keeps track of the changes that occured to the helpers
+uint32_t helpers_serial;
+
 /*@}*/
 
 /// Init the helper subsystem

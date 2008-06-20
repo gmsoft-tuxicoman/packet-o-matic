@@ -30,6 +30,7 @@
 struct conf *main_config;
 
 struct core_param *core_params;
+uint32_t core_params_serial;
 
 enum ringbuffer_state {
 	rb_state_closed,

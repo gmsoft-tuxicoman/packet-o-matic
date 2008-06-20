@@ -110,8 +110,9 @@ xmlrpc_value *xmlrpccmd_list_loaded_match(xmlrpc_env * const envP, xmlrpc_value 
 
 		}
 
-		xmlrpc_value *match = xmlrpc_build_value(envP, "{s:s,s:A}",
+		xmlrpc_value *match = xmlrpc_build_value(envP, "{s:s,s:i,s:A}",
 						"name", matches[i]->name,
+						"refcount", matches[i]->refcount,
 						"fields", fields);
 
 		xmlrpc_array_append_item(envP, result, match);
