@@ -33,7 +33,7 @@
 #include "xmlrpccmd_match.h"
 #include "xmlrpccmd_target.h"
 
-#define XMLRPC_COMMANDS_NUM 3
+#define XMLRPC_COMMANDS_NUM 5
 
 static struct xmlrpc_command xmlrpc_commands[XMLRPC_COMMANDS_NUM] = { 
 
@@ -56,7 +56,21 @@ static struct xmlrpc_command xmlrpc_commands[XMLRPC_COMMANDS_NUM] = {
 		.callback_func = xmlrpccmd_main_get_serial,
 		.signature = "A:",
 		.help = "Get the serial number of each component",
-	}
+	},
+
+	{
+		.name = "main.halt",
+		.callback_func = xmlrpccmd_main_halt,
+		.signature = "i:",
+		.help = "Halt packet-o-matic",
+	},
+
+	{
+		.name = "main.setPassword",
+		.callback_func = xmlrpccmd_main_set_password,
+		.signature = "i:,i:s",
+		.help = "Set or reset the password for the XML-RPC interface",
+	},
 
 };
 
@@ -141,6 +155,33 @@ xmlrpc_value *xmlrpccmd_main_get_serial(xmlrpc_env * const envP, xmlrpc_value * 
 				"core", core_params_serial,
 				"helper", helpers_serial);
 
+}
+
+xmlrpc_value *xmlrpccmd_main_halt(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
+
+	halt();
+
+	return xmlrpc_int_new(envP, 0);
+
+}
+
+
+xmlrpc_value *xmlrpccmd_main_set_password(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
+
+	char* password = NULL;
+
+	xmlrpc_decompose_value(envP, paramArrayP, "(s)", &password);
+	if (envP->fault_occurred) {
+		password = NULL;
+		envP->fault_occurred = 0;
+	}
+	
+	xmlrpcsrv_set_password(password);
+
+	if (password)
+		free(password);
+
+	return xmlrpc_int_new(envP, 0);
 }
 
 xmlrpc_value *xmlrpccmd_list_avail_modules(xmlrpc_env * const envP, char *type) {

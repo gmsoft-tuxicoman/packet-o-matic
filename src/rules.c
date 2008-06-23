@@ -601,7 +601,7 @@ static struct rule_node *rule_parse_block(char *expr, char *errbuff, int errlen)
 		
 		// there should not be more than 3 words
 		if (wordcount >= 3) {
-			snprintf(errbuff, errlen, "Could not parse \"%s\"\r\n", expr);
+			snprintf(errbuff, errlen, "Could not parse \"%s\"", expr);
 			return NULL;
 		}
 
@@ -611,7 +611,7 @@ static struct rule_node *rule_parse_block(char *expr, char *errbuff, int errlen)
 	}
 
 	if (wordcount == 2) {
-		snprintf(errbuff, errlen, "Could not parse \"%s\"\r\n", expr);
+		snprintf(errbuff, errlen, "Could not parse \"%s\"", expr);
 		return NULL;
 	}
 
@@ -620,7 +620,7 @@ static struct rule_node *rule_parse_block(char *expr, char *errbuff, int errlen)
 		if (layer == POM_ERR) 
 			layer = match_register(words[0]);
 		if (layer == POM_ERR) {
-			snprintf(errbuff, errlen, "Unknown match \"%s\"\r\n", words[0]);
+			snprintf(errbuff, errlen, "Unknown match \"%s\"", words[0]);
 			return NULL;
 		}
 		match_refcount_inc(layer);
@@ -635,7 +635,7 @@ static struct rule_node *rule_parse_block(char *expr, char *errbuff, int errlen)
 	// wordcount is supposed to be 3 now
 	char *field = strchr(words[0], '.');
 	if (!field) {
-		snprintf(errbuff, errlen, "Expression \"%s\" doesn't not contain a field specifier\r\n", words[0]);
+		snprintf(errbuff, errlen, "Expression \"%s\" doesn't not contain a field specifier", words[0]);
 		return NULL;
 	}
 
@@ -645,27 +645,27 @@ static struct rule_node *rule_parse_block(char *expr, char *errbuff, int errlen)
 	if (layer == POM_ERR)
 		layer = match_register(words[0]);
 	if (layer == POM_ERR) {
-		snprintf(errbuff, errlen, "Unknown match \"%s\"\r\n", words[0]);
+		snprintf(errbuff, errlen, "Unknown match \"%s\"", words[0]);
 		return NULL;
 	}
 	
 	struct match_field *param;
 	param = match_alloc_field(layer, field);
 	if (param == NULL) {
-		snprintf(errbuff, errlen, "Unknown field \"%s\" for match \"%s\"\r\n", field, words[0]);
+		snprintf(errbuff, errlen, "Unknown field \"%s\" for match \"%s\"", field, words[0]);
 		return NULL;
 	}
 
 	param->op = ptype_get_op(param->value, words[1]);
 	if (param->op == POM_ERR) {
-		snprintf(errbuff, errlen, "Unknown or unsuported operation \"%s\" for field \"%s\" and match \"%s\"\r\n", words[1], field, words[0]);
-		free(param);
+		snprintf(errbuff, errlen, "Unknown or unsuported operation \"%s\" for field \"%s\" and match \"%s\"", words[1], field, words[0]);
+		match_cleanup_field(param);
 		return NULL;
 	}
 
 	if (ptype_parse_val(param->value, words[2]) == POM_ERR) {
-		snprintf(errbuff, errlen, "Unable to parse \"%s\" for field \"%s\" and match \"%s\"\r\n", words[2], field, words[0]);
-		free(param);
+		snprintf(errbuff, errlen, "Unable to parse \"%s\" for field \"%s\" and match \"%s\"", words[2], field, words[0]);
+		match_cleanup_field(param);
 		return NULL;
 	}
 

@@ -150,6 +150,7 @@ xmlrpc_value *xmlrpccmd_add_rule(xmlrpc_env * const envP, xmlrpc_value * const p
 	if (rule_parse(rule_str, &start, &end, errbuff, sizeof(errbuff) - 1) == POM_ERR) {
 		free(rule_str);
 		xmlrpc_faultf(envP, "Error while parsing the rule : %s", errbuff);
+		node_destroy(start, 0);
 		return NULL;
 	}
 	free(rule_str);
@@ -218,6 +219,7 @@ xmlrpc_value *xmlrpccmd_set_rule(xmlrpc_env * const envP, xmlrpc_value * const p
 	if (rule_parse(rule_str, &start, &end, errbuff, sizeof(errbuff) - 1) == POM_ERR) {
 		free(rule_str);
 		xmlrpc_faultf(envP, "Error while parsing the rule : %s", errbuff);
+		node_destroy(start, 0);
 		return NULL;
 	}
 

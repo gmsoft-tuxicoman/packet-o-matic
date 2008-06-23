@@ -169,8 +169,9 @@ xmlrpc_value *xmlrpccmd_list_loaded_target(xmlrpc_env * const envP, xmlrpc_value
 
 		}
 
-		xmlrpc_value *target = xmlrpc_build_value(envP, "{s:s,s:A}",
+		xmlrpc_value *target = xmlrpc_build_value(envP, "{s:s,s:i,s:A}",
 						"name", targets[i]->name,
+						"refcount", targets[i]->refcount,
 						"modes", modes);
 	
 		xmlrpc_array_append_item(envP, result, target);
@@ -242,6 +243,9 @@ xmlrpc_value *xmlrpccmd_get_target(xmlrpc_env * const envP, xmlrpc_value * const
 				"uid", t->uid,
 				"serial", t->serial,
 				"params", params);
+		xmlrpc_DECREF(params);
+
+
 		xmlrpc_array_append_item(envP, result, target);
 		xmlrpc_DECREF(target);
 		if (t->next)

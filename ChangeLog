@@ -1,3 +1,9 @@
+* 2008/06/23 Guy Martin <gmsoft@tuxicoman.be>
+Fix memory leak when rule fail to parse in XML-RPC interface.
+Return targets refcount with target.listLoaded.
+Added functions main.halt and main.setPassword to XML-RPC.
+Fix error display with rule parsing.
+
 * 2008/06/19 Guy Martin <gmsoft@tuxicoman.be>
 Added function get_uid() to generate new random unique id.
 Added serial on each rule and uid stays unchanged while rules are update.
