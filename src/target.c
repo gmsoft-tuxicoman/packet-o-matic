@@ -35,7 +35,7 @@ static pthread_rwlock_t target_global_lock = PTHREAD_RWLOCK_INITIALIZER;
  */
 int target_init() {
 
-	pom_log(POM_LOG_DEBUG "Targets initialized\r\n");
+	pom_log(POM_LOG_DEBUG "Targets initialized");
 
 	return POM_OK;
 
@@ -75,7 +75,7 @@ int target_register(const char *target_name) {
 			match_lock(1); // Allow safe registration of the matches
 			if ((*register_my_target) (my_target) != POM_OK) {
 				match_unlock();
-				pom_log(POM_LOG_ERR "Error while loading target %s. could not register target !\r\n", target_name);
+				pom_log(POM_LOG_ERR "Error while loading target %s. could not register target !", target_name);
 				targets[i] = NULL;
 				free(my_target);
 				return POM_ERR;
@@ -88,7 +88,7 @@ int target_register(const char *target_name) {
 			strcpy(targets[i]->name, target_name);
 			targets[i]->dl_handle = handle;
 
-			pom_log(POM_LOG_DEBUG "Target %s registered\r\n", target_name);
+			pom_log(POM_LOG_DEBUG "Target %s registered", target_name);
 			
 			return i;
 		}
@@ -223,7 +223,7 @@ int target_register_param_value(struct target *t, struct target_mode *mode, cons
 struct target *target_alloc(int target_type) {
 
 	if (!targets[target_type]) {
-		pom_log(POM_LOG_ERR "Target type %u is not registered\r\n", target_type);
+		pom_log(POM_LOG_ERR "Target type %u is not registered", target_type);
 		return NULL;
 	}
 	struct target *t = malloc(sizeof(struct target));
@@ -387,7 +387,7 @@ int target_process(struct target *t, struct frame *f) {
 		PTYPE_UINT64_INC(t->pkt_cnt, 1);
 		PTYPE_UINT64_INC(t->byte_cnt, f->len);
 		if (targets[t->type]->process && (*targets[t->type]->process) (t, f) == POM_ERR) {
-			pom_log(POM_LOG_ERR "Target %s returned an error. Stopping it\r\n", target_get_name(t->type));
+			pom_log(POM_LOG_ERR "Target %s returned an error. Stopping it", target_get_name(t->type));
 			target_unlock_instance(t);
 			target_close(t);
 			return POM_ERR;
@@ -470,7 +470,7 @@ int target_unregister(int target_type) {
 		return POM_ERR;
 
 	if (targets[target_type]->refcount) {
-		pom_log(POM_LOG_WARN "Warning, reference count not 0 for target %s\r\n", targets[target_type]->name);
+		pom_log(POM_LOG_WARN "Warning, reference count not 0 for target %s", targets[target_type]->name);
 		return POM_ERR;
 	}
 
@@ -496,7 +496,7 @@ int target_unregister(int target_type) {
 	}
 
 	if(dlclose(targets[target_type]->dl_handle))
-		pom_log(POM_LOG_WARN "Error while closing library of target %s\r\n", targets[target_type]->name);
+		pom_log(POM_LOG_WARN "Error while closing library of target %s", targets[target_type]->name);
 	free(targets[target_type]->name);
 	free(targets[target_type]);
 	targets[target_type] = NULL;
@@ -588,7 +588,7 @@ int target_file_open(struct layer *l, char *filename, int flags, mode_t mode) {
 	else
 		strncpy(buffer, filename, NAME_MAX);
 
-	pom_log(POM_LOG_TSHOOT "Opening file %s\r\n", buffer);
+	pom_log(POM_LOG_TSHOOT "Opening file %s", buffer);
 
 	char *slash = buffer;
 	if (*slash == '/') // we assume that the root directory exists :)
@@ -633,7 +633,7 @@ int target_lock_instance(struct target *t, int write) {
 	}
 
 	if (result) {
-		pom_log(POM_LOG_ERR "Error while locking a target instance lock\r\n");
+		pom_log(POM_LOG_ERR "Error while locking a target instance lock");
 		abort();
 		return POM_ERR;
 	}
@@ -650,7 +650,7 @@ int target_lock_instance(struct target *t, int write) {
 int target_unlock_instance(struct target *t) {
 
 	if (pthread_rwlock_unlock(&t->lock)) {
-		pom_log(POM_LOG_ERR "Error while unlocking the target lock\r\n");
+		pom_log(POM_LOG_ERR "Error while unlocking the target lock");
 		abort();
 		return POM_ERR;
 	}
@@ -673,7 +673,7 @@ int target_lock(int write) {
 	}
 
 	if (result) {
-		pom_log(POM_LOG_ERR "Error while locking the target lock\r\n");
+		pom_log(POM_LOG_ERR "Error while locking the target lock");
 		abort();
 		return POM_ERR;
 	}
@@ -689,7 +689,7 @@ int target_lock(int write) {
 int target_unlock() {
 
 	if (pthread_rwlock_unlock(&target_global_lock)) {
-		pom_log(POM_LOG_ERR "Error while unlocking the target lock\r\n");
+		pom_log(POM_LOG_ERR "Error while unlocking the target lock");
 		abort();
 		return POM_ERR;
 	}

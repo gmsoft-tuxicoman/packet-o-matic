@@ -64,7 +64,7 @@ static struct timeval now; ///< Used to get the current time from the input pers
 
 void signal_handler(int signal) {
 	
-	pom_log("Received signal. Finishing ... !\r\n");
+	pom_log("Received signal. Finishing ... !");
 	finish = 1;
 	if (rbuf && rbuf->state != rb_state_closed)
 		rbuf->state = rb_state_stopping;
@@ -76,7 +76,7 @@ void input_signal_handler(int signal) {
 	if (!rbuf || !rbuf->i)
 		return;
 
-	pom_log(POM_LOG_TSHOOT "Interrupting input syscall ...\r\n");
+	pom_log(POM_LOG_TSHOOT "Interrupting input syscall ...");
 
 	input_interrupt(rbuf->i);
 
@@ -94,7 +94,7 @@ void print_usage() {
 		"     --no-cli               disable the CLI console\n"
 		" -p, --port=PORT            specify the CLI console port (default 4655)\n"
 		" -w, --password=PASS        specify a password to enter the CLI console\n"
-		" -d, --debug-level=LEVEL    specify the debug level <1-4> (default 3)\n"
+		" -d, --debug-level=LEVEL    specify the debug level for the console <0-5> (default 3)\n"
 #ifdef USE_XMLRPC
 		" -X  --enable-xmlrpc        enable the XML-RPC interface\n"
 		" -P, --xmlrpc-port=PORT     specify the XML-RPC port (default 8080)\n"
@@ -228,12 +228,12 @@ int start_input(struct ringbuffer *r) {
 
 
 	if (r->state != rb_state_closed) {
-		pom_log(POM_LOG_WARN "Input already started or being started\r\n");
+		pom_log(POM_LOG_WARN "Input already started or being started");
 		return POM_ERR;
 	}
 
 	if (pthread_mutex_lock(&r->mutex)) {
-		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording\r\n");
+		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording");
 		return POM_ERR;
 	}
 
@@ -242,7 +242,7 @@ int start_input(struct ringbuffer *r) {
 	int fd = input_open(main_config->input);
 
 	if (fd == POM_ERR) {
-		pom_log(POM_LOG_ERR "Error while opening input\r\n");
+		pom_log(POM_LOG_ERR "Error while opening input");
 		r->state = rb_state_closed;
 		pthread_mutex_unlock(&r->mutex);
 		return POM_ERR;
@@ -251,7 +251,7 @@ int start_input(struct ringbuffer *r) {
 	r->fd = fd;
 
 	if (ringbuffer_alloc(r, main_config->input) == POM_ERR) {
-		pom_log(POM_LOG_ERR "Error while allocating the ringbuffer\r\n");
+		pom_log(POM_LOG_ERR "Error while allocating the ringbuffer");
 		input_close(r->i);
 		r->state = rb_state_closed;
 		pthread_mutex_unlock(&r->mutex);
@@ -262,14 +262,14 @@ int start_input(struct ringbuffer *r) {
 
 
 	if (pthread_create(&input_thread, NULL, input_thread_func, (void*)r)) {
-		pom_log(POM_LOG_ERR "Error when creating the input thread. Abording\r\n");
+		pom_log(POM_LOG_ERR "Error when creating the input thread. Abording");
 		input_close(r->i);
 		r->state = rb_state_closed;
 		return POM_ERR;
 	}
 	
 	if (pthread_mutex_unlock(&r->mutex)) {
-		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
+		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording");
 		input_close(r->i);
 		r->state = rb_state_closed;
 		return POM_ERR;
@@ -281,24 +281,24 @@ int start_input(struct ringbuffer *r) {
 int stop_input(struct ringbuffer *r) {
 
 	if (r->state != rb_state_open && r->state != rb_state_stopping) {
-		pom_log(POM_LOG_WARN "Input not yet started\r\n");
+		pom_log(POM_LOG_WARN "Input not yet started");
 		return POM_ERR;
 	}
 
 	if (pthread_mutex_lock(&r->mutex)) {
-		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording\r\n");
+		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording");
 		return POM_ERR;
 	}
 
 	r->state = rb_state_stopping;
 
 	if (pthread_mutex_unlock(&r->mutex)) {
-		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
+		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording");
 		return POM_ERR;
 	}
 
 	// interrupt current read()
-	pom_log(POM_LOG_TSHOOT "Sending signal to interrupt the input thread\r\n");
+	pom_log(POM_LOG_TSHOOT "Sending signal to interrupt the input thread");
 	pthread_kill(input_thread, INPUTSIG);
 
 	pthread_join(input_thread, NULL);
@@ -313,7 +313,7 @@ void *input_thread_func(void *params) {
 
 
 	if (pthread_mutex_lock(&r->mutex)) {
-		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording\r\n");
+		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording");
 		finish = 1;
 		return NULL;
 	}
@@ -332,12 +332,12 @@ void *input_thread_func(void *params) {
 	mysigaction.sa_handler = input_signal_handler;
 	sigaction(INPUTSIG, &mysigaction, NULL);
 
-	pom_log(POM_LOG_DEBUG "Input thead started\r\n");
+	pom_log(POM_LOG_DEBUG "Input thead started");
 
 	while (r->state == rb_state_open) {
 
 		if (pthread_mutex_unlock(&r->mutex)) {
-			pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
+			pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording");
 			finish = 1;
 			return NULL;
 		}
@@ -346,7 +346,7 @@ void *input_thread_func(void *params) {
 			break;
 
 		if (input_read(r->i, r->buffer[r->write_pos]) == POM_ERR) {
-			pom_log(POM_LOG_ERR "Error while reading from input\r\n");
+			pom_log(POM_LOG_ERR "Error while reading from input");
 			// We need to aquire the lock
 			pthread_mutex_lock(&r->mutex);
 
@@ -357,7 +357,7 @@ void *input_thread_func(void *params) {
 
 			struct ptype* param_quit_on_input_error =  core_get_param_value("quit_on_input_error");
 			if (PTYPE_BOOL_GETVAL(param_quit_on_input_error)) {
-				pom_log("Terminating application. One moment ...\r\n");	
+				pom_log("Terminating application. One moment ...");	
 				finish = 1;
 			}
 			
@@ -365,7 +365,7 @@ void *input_thread_func(void *params) {
 		}
 
 		if (pthread_mutex_lock(&r->mutex)) {
-			pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording\r\n");
+			pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording");
 			finish = 1;
 			return NULL;
 		}
@@ -382,15 +382,15 @@ void *input_thread_func(void *params) {
 
 		while (r->usage >= PTYPE_UINT32_GETVAL(r->size) - 1) {
 			if (r->ic.is_live) {
-				//pom_log(POM_LOG_TSHOOT "Buffer overflow (%u). droping packet\r\n", r->usage);
+				//pom_log(POM_LOG_TSHOOT "Buffer overflow (%u). droping packet", r->usage);
 				r->write_pos--;
 				r->dropped_packets++;
 				r->usage--;
 				break;
 			} else {
-				//pom_log(POM_LOG_TSHOOT "Buffer is full. Waiting\r\n");
+				//pom_log(POM_LOG_TSHOOT "Buffer is full. Waiting");
 				if(pthread_cond_wait(&r->overflow_cond, &r->mutex)) {
-					pom_log(POM_LOG_ERR "Failed to wait for buffer to empty out\r\n");
+					pom_log(POM_LOG_ERR "Failed to wait for buffer to empty out");
 					pthread_mutex_unlock(&r->mutex);
 					pthread_exit(NULL);
 				}
@@ -409,7 +409,7 @@ void *input_thread_func(void *params) {
 	while (r->usage) {
 		pthread_cond_signal(&r->underrun_cond);
 		pthread_mutex_unlock(&r->mutex);
-		pom_log(POM_LOG_TSHOOT "Waiting for ringbuffer to be empty\r\n");
+		pom_log(POM_LOG_TSHOOT "Waiting for ringbuffer to be empty");
 		usleep(50000);
 		pthread_mutex_lock(&r->mutex);
 		
@@ -418,13 +418,13 @@ void *input_thread_func(void *params) {
 	ringbuffer_cleanup(r);
 
 	if (pthread_mutex_unlock(&r->mutex)) {
-		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
+		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording");
 		finish = 1;
 		return NULL;
 	}
 	r->state = rb_state_closed;
 
-	pom_log(POM_LOG_DEBUG "Input thread stopped\r\n");
+	pom_log(POM_LOG_DEBUG "Input thread stopped");
 
 	return NULL;
 }
@@ -438,7 +438,7 @@ int main(int argc, char *argv[]) {
 
 	core_params = NULL;
 
-	debug_level = *POM_LOG_INFO;
+	console_debug_level = *POM_LOG_INFO;
 	console_output = 1;
 
 	char *cfgfile = "pom.xml.conf";
@@ -483,7 +483,7 @@ int main(int argc, char *argv[]) {
 		switch(c) {
 			case 1:
 				disable_mgmtsrv = 1;
-				pom_log("Not starting CLI console because of --no-cli flag\r\n");
+				pom_log("Not starting CLI console because of --no-cli flag");
 				break;
 			case 'h':
 				ptype_init();
@@ -504,15 +504,16 @@ int main(int argc, char *argv[]) {
 				target_cleanup();
 				core_param_unregister_all();
 				ptype_unregister_all();
+				pom_log_cleanup();
 				return 0;
 			case 'c':
 				cfgfile = optarg;
-				pom_log("Config file is %s\r\n", optarg);
+				pom_log("Config file is %s", optarg);
 				break;
 			case 'b': {
 				pid_t pid = fork();
 				if (pid == -1)
-					pom_log("Error while forking, can't go in background mode\r\n");
+					pom_log("Error while forking, can't go in background mode");
 				else if (pid != 0)
 					return 0;
 				console_output = 0;
@@ -521,19 +522,19 @@ int main(int argc, char *argv[]) {
 				
 			case 'e':
 				empty_config = 1;
-				pom_log("Starting with an empty configuration\r\n");
+				pom_log("Starting with an empty configuration");
 				break;
 			case 'p':
 				cli_port = optarg;
-				pom_log("Using port %s for CLI console\r\n", cli_port);
+				pom_log("Using port %s for CLI console", cli_port);
 				break;
 			case 'w':
 				mgmtsrv_set_password(optarg);
-				pom_log("CLI is password protected\r\n");
+				pom_log("CLI is password protected");
 				break;
 			case 'd':
-				if (sscanf(optarg, "%u", &debug_level) == 1) {
-					printf("Debug level set to %u\n", debug_level);
+				if (sscanf(optarg, "%u", &console_debug_level) == 1) {
+					printf("Debug level set to %u\n", console_debug_level);
 					break;
 				} else {
 					printf("Invalid debug level \"%s\"\n", optarg);
@@ -544,11 +545,11 @@ int main(int argc, char *argv[]) {
 				break;
 			case 'P':
 				xmlrpc_port = optarg;
-				pom_log("Using port %s for XML-RPC interface\r\n",xmlrpc_port);
+				pom_log("Using port %s for XML-RPC interface",xmlrpc_port);
 				break;
 			case 'W':
 				xmlrpcsrv_set_password(optarg);
-				pom_log("XML-RPC interface is password protected\r\n");
+				pom_log("XML-RPC interface is password protected");
 				break;
 #endif
 			case '?':
@@ -575,7 +576,8 @@ int main(int argc, char *argv[]) {
 	struct ptype *param_quit_on_input_error = ptype_alloc("bool", NULL);
 	if (!param_autosave_on_exit || !param_quit_on_input_error) {
 		// This is the very first module to be loaded
-		pom_log(POM_LOG_ERR "Cannot allocate ptype bool. Abording\r\nDid you set LD_LIBRARY_PATH correctly ?\r\n");
+		pom_log(POM_LOG_ERR "Cannot allocate ptype bool. Abording");
+		pom_log(POM_LOG_ERR "Did you set LD_LIBRARY_PATH correctly ?\r\n");
 		return -1;
 	}
 	core_register_param("autosave_config_on_exit", "yes", param_autosave_on_exit, "Automatically save the configuration when exiting", NULL);
@@ -607,7 +609,7 @@ int main(int argc, char *argv[]) {
 		strncpy(main_config->filename, cfgfile, NAME_MAX);
 	} else {
 		if (config_parse(main_config, cfgfile) == POM_ERR) {
-			pom_log(POM_LOG_ERR "Error while parsing config\r\n");
+			pom_log(POM_LOG_ERR "Error while parsing config");
 			goto err;
 		}
 	}
@@ -615,11 +617,11 @@ int main(int argc, char *argv[]) {
 	pthread_t mgmtsrv_thread;
 	if (!disable_mgmtsrv) {
 		if (mgmtsrv_init(cli_port) == POM_ERR) {
-			pom_log(POM_LOG_ERR "Error when initializing the management console. Abording\r\n");
+			pom_log(POM_LOG_ERR "Error when initializing the management console. Abording");
 			goto err;
 		}
 		if (pthread_create(&mgmtsrv_thread, NULL, mgmtsrv_thread_func, NULL)) {
-			pom_log(POM_LOG_ERR "Error when creating the management console thread. Abording\r\n");
+			pom_log(POM_LOG_ERR "Error when creating the management console thread. Abording");
 			goto err;
 		}
 	}
@@ -628,23 +630,23 @@ int main(int argc, char *argv[]) {
 	pthread_t xmlrpcsrv_thread;
 	if (!disable_xmlrpcsrv) {
 		if (xmlrpcsrv_init(xmlrpc_port) == POM_ERR) {
-			pom_log(POM_LOG_ERR "Error while initializing the XML-RPC interface. Abording\r\n");
+			pom_log(POM_LOG_ERR "Error while initializing the XML-RPC interface. Abording");
 			goto err;
 		}
 		if (pthread_create(&xmlrpcsrv_thread, NULL, xmlrpcsrv_thread_func, NULL)) {
-			pom_log(POM_LOG_ERR "Error when creating the XML-RPC thread. Abording\r\n");
+			pom_log(POM_LOG_ERR "Error when creating the XML-RPC thread. Abording");
 			goto err;
 		}
 	}
 #endif
 
 	if (main_config->input && start_input(rbuf) == POM_ERR) {
-		pom_log(POM_LOG_ERR "Error when starting the input. Abording\r\n");
+		pom_log(POM_LOG_ERR "Error when starting the input. Abording");
 		goto err;
 	}
 
 	if (pthread_mutex_lock(&rbuf->mutex)) {
-		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording\r\n");
+		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording");
 		goto finish;
 	}
 
@@ -654,7 +656,7 @@ int main(int argc, char *argv[]) {
 			pthread_mutex_unlock(&rbuf->mutex);
 			goto finish;
 		}
-		//pom_log(POM_LOG_TSHOOT "Buffer empty (%u). Waiting\r\n", rbuf->usage);
+		//pom_log(POM_LOG_TSHOOT "Buffer empty (%u). Waiting", rbuf->usage);
 		struct timeval tv;
 		gettimeofday(&tv, NULL);
 		struct timespec tp;
@@ -665,7 +667,7 @@ int main(int argc, char *argv[]) {
 			case 0:
 				break;
 			default:
-				pom_log(POM_LOG_ERR "Error occured while waiting for next frame to be available\r\n");
+				pom_log(POM_LOG_ERR "Error occured while waiting for next frame to be available");
 				pthread_mutex_unlock(&rbuf->mutex);
 				goto finish;
 
@@ -676,7 +678,7 @@ int main(int argc, char *argv[]) {
 	while (1) {
 		
 		if (pthread_mutex_unlock(&rbuf->mutex)) {
-			pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording\r\n");
+			pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording");
 			goto finish;
 		}
 	
@@ -688,7 +690,7 @@ int main(int argc, char *argv[]) {
 		}
 
 		if (pthread_mutex_lock(&reader_mutex)) {
-			pom_log(POM_LOG_ERR "Error while locking the reader mutex. Abording\r\n");
+			pom_log(POM_LOG_ERR "Error while locking the reader mutex. Abording");
 			goto finish;
 		}
 	
@@ -702,13 +704,13 @@ int main(int argc, char *argv[]) {
 
 
 		if (pthread_mutex_unlock(&reader_mutex)) {
-			pom_log(POM_LOG_ERR "Error while locking the reader mutex. Abording\r\n");
+			pom_log(POM_LOG_ERR "Error while locking the reader mutex. Abording");
 			goto finish;
 		}
 
 
 		if (pthread_mutex_lock(&rbuf->mutex)) {
-			pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording\r\n");
+			pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording");
 			goto finish;
 		}
 		rbuf->usage--;
@@ -739,11 +741,11 @@ int main(int argc, char *argv[]) {
 			tp.tv_nsec = tv.tv_usec * 1000;
 			switch (pthread_cond_timedwait(&rbuf->underrun_cond, &rbuf->mutex, &tp)) {
 				case ETIMEDOUT:
-					//pom_log(POM_LOG_TSHOOT "Timeout occured while waiting for next frame to be available\r\n");
+					//pom_log(POM_LOG_TSHOOT "Timeout occured while waiting for next frame to be available");
 				case 0:
 					break;
 				default:
-					pom_log(POM_LOG_ERR "Error occured while waiting for next frame to be available\r\n");
+					pom_log(POM_LOG_ERR "Error occured while waiting for next frame to be available");
 					pthread_mutex_unlock(&rbuf->mutex);
 					goto finish;
 
@@ -767,7 +769,7 @@ finish:
 		pthread_join(xmlrpcsrv_thread, NULL);
 #endif
 
-	pom_log("Total packets read : %lu, dropped %lu (%.2f%%)\r\n", rbuf->total_packets, rbuf->dropped_packets, 100.0 / rbuf->total_packets * rbuf->dropped_packets);
+	pom_log("Total packets read : %lu, dropped %lu (%.2f%%)", rbuf->total_packets, rbuf->dropped_packets, 100.0 / rbuf->total_packets * rbuf->dropped_packets);
 
 	// Process remaining queued frames
 	conntrack_close_connections(main_config->rules, &main_config->rules_lock);
@@ -775,7 +777,7 @@ finish:
 	expectation_cleanup_all();
 
 	if (PTYPE_BOOL_GETVAL(param_autosave_on_exit)) {
-		pom_log("Autosaving configuration to %s\r\n", main_config->filename);
+		pom_log("Autosaving configuration to %s", main_config->filename);
 		config_write(main_config, main_config->filename);
 	}
 
@@ -815,6 +817,8 @@ err:
 
 	ptype_unregister_all();
 
+	pom_log_cleanup();
+
 	return 0;
 }
 
@@ -848,12 +852,12 @@ int ringbuffer_alloc(struct ringbuffer *r, struct input *in) {
 	r->i = in;
 
 	if (input_getcaps(r->i, &r->ic) == POM_ERR) {
-		pom_log(POM_LOG_ERR "Error while getting input capabilities\r\n");
+		pom_log(POM_LOG_ERR "Error while getting input capabilities");
 		return POM_ERR;
 	}
 
 	// Initialize the ring buffer
-	pom_log(POM_LOG_DEBUG "Using %u buffers of %u bytes\r\n", PTYPE_UINT32_GETVAL(r->size), r->ic.snaplen);
+	pom_log(POM_LOG_DEBUG "Using %u buffers of %u bytes", PTYPE_UINT32_GETVAL(r->size), r->ic.snaplen);
 
 	r->buffer = malloc(sizeof(struct frame*) * PTYPE_UINT32_GETVAL(r->size));
 
@@ -913,7 +917,7 @@ int get_current_input_time(struct timeval *cur_time) {
 
 int halt() {
 
-	pom_log("Stopping application ...\r\n");
+	pom_log("Stopping application ...");
 	finish = 1;
 	if (rbuf->state != rb_state_closed)
 		rbuf->state = rb_state_stopping;
@@ -1008,7 +1012,7 @@ int main_config_rules_lock(int write) {
 	}
 
 	if (result) {
-		pom_log(POM_LOG_ERR "Error while locking the rule lock\r\n");
+		pom_log(POM_LOG_ERR "Error while locking the rule lock");
 		abort();
 		return POM_ERR;
 	}
@@ -1020,7 +1024,7 @@ int main_config_rules_lock(int write) {
 int main_config_rules_unlock() {
 
 	if (pthread_rwlock_unlock(&main_config->rules_lock)) {
-		pom_log(POM_LOG_ERR "Error while unlocking the rule lock\r\n");
+		pom_log(POM_LOG_ERR "Error while unlocking the rule lock");
 		abort();
 		return POM_ERR;
 	}

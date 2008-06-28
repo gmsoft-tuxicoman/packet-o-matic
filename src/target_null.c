@@ -33,7 +33,7 @@ int target_register_null(struct target_reg *r) {
 
 static int target_process_null(struct target *t, struct frame *f) {
 
-	pom_log(POM_LOG_DEBUG "Packet processed\r\n");
+	pom_log(POM_LOG_DEBUG "Packet processed");
 
 	return POM_OK;
 

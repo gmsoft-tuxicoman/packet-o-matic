@@ -45,7 +45,7 @@ struct conf *config_alloc() {
 	c = malloc(sizeof(struct conf));
 	memset(c, 0, sizeof(struct conf));
 	if (pthread_rwlock_init(&c->rules_lock, NULL)) {
-		pom_log(POM_LOG_ERR "Unable to init the config rules lock\r\n");
+		pom_log(POM_LOG_ERR "Unable to init the config rules lock");
 		free(c);
 		return NULL;
 	}
@@ -63,7 +63,7 @@ int config_cleanup(struct conf* c) {
 	list_destroy(c->rules);
 
 	if (pthread_rwlock_destroy(&c->rules_lock)) {
-		pom_log(POM_LOG_ERR "Unable to destroy the config rules lock\r\n");
+		pom_log(POM_LOG_ERR "Unable to destroy the config rules lock");
 	}
 
 	free(c);
@@ -74,17 +74,17 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 	char *input_type;
 	input_type = (char*) xmlGetProp(cur, (const xmlChar*) "type");
 	if (!input_type) {
-		pom_log(POM_LOG_ERR "No type given in the input tag\r\n");
+		pom_log(POM_LOG_ERR "No type given in the input tag");
 		return NULL;
 	}
-	pom_log(POM_LOG_TSHOOT "Parsing input of type %s\r\n", input_type);
+	pom_log(POM_LOG_TSHOOT "Parsing input of type %s", input_type);
 
 	input_lock(0);
 
 	int it = input_register(input_type);
 	if (it == POM_ERR) {
 		input_unlock();
-		pom_log(POM_LOG_ERR "Could not load input %s !\r\n", input_type);
+		pom_log(POM_LOG_ERR "Could not load input %s !", input_type);
 		xmlFree(input_type);
 		return NULL;
 	}
@@ -95,7 +95,7 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 
 	if (!ip) {
 		
-		pom_log(POM_LOG_ERR "Error, unable to allocate input of type %s\r\n", input_type);
+		pom_log(POM_LOG_ERR "Error, unable to allocate input of type %s", input_type);
 		xmlFree(input_type);
 		return NULL;
 	}
@@ -104,10 +104,10 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 	char *input_mode;
 	input_mode = (char *) xmlGetProp(cur, (const xmlChar*) "mode");
 	if (!input_mode)
-		pom_log("Warning, no mode specified in the input tag. Will use the default\r\n");
+		pom_log("Warning, no mode specified in the input tag. Will use the default");
 	else {
 		if (input_set_mode(ip, input_mode) != POM_OK) {
-			pom_log(POM_LOG_ERR "Unable to set mode %s for input %s\r\n", input_type, input_mode);
+			pom_log(POM_LOG_ERR "Unable to set mode %s for input %s", input_type, input_mode);
 			free(ip);
 			xmlFree(input_type);
 			xmlFree(input_mode);
@@ -130,7 +130,7 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 			while (param) {
 				if (!strcmp(param->name, param_type)) {
 					if (ptype_unserialize(param->value, value) == POM_ERR) {
-						pom_log(POM_LOG_ERR "Unable to parse \"%s\" for parameter %s of input %s\r\n", value, param_type, input_type);
+						pom_log(POM_LOG_ERR "Unable to parse \"%s\" for parameter %s of input %s", value, param_type, input_type);
 					}
 					break;
 				}
@@ -138,9 +138,9 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 			}
 			if (!param) {
 				if (!ip->mode)
-					pom_log(POM_LOG_WARN "No parameter %s for input %s\r\n", param_type, input_type);
+					pom_log(POM_LOG_WARN "No parameter %s for input %s", param_type, input_type);
 				else
-					pom_log(POM_LOG_WARN "No parameter %s for input %s and mode %s\r\n", param_type, input_type, ip->mode->name);
+					pom_log(POM_LOG_WARN "No parameter %s for input %s and mode %s", param_type, input_type, ip->mode->name);
 			}
 
 			xmlFree(param_type);
@@ -161,20 +161,20 @@ struct target *parse_target(xmlDocPtr doc, xmlNodePtr cur) {
 	char *target_type;
 	target_type = (char*) xmlGetProp(cur, (const xmlChar*) "type");
 	if (!target_type) {
-		pom_log(POM_LOG_ERR "No type given in the target tag\r\n");
+		pom_log(POM_LOG_ERR "No type given in the target tag");
 		return NULL;
 	}
-	pom_log(POM_LOG_TSHOOT "Parsing target of type %s\r\n", target_type);
+	pom_log(POM_LOG_TSHOOT "Parsing target of type %s", target_type);
 	int tt = target_register(target_type);
 	if (tt == -1) {
-		pom_log(POM_LOG_ERR "Could not load target %s !\r\n", target_type);
+		pom_log(POM_LOG_ERR "Could not load target %s !", target_type);
 		xmlFree(target_type);
 		return NULL;
 	}
 	struct target *tp = target_alloc(tt);
 
 	if (!tp) {
-		pom_log(POM_LOG_ERR "Error, unable to allocate target of type %s\r\n", target_type);
+		pom_log(POM_LOG_ERR "Error, unable to allocate target of type %s", target_type);
 		xmlFree(target_type);
 		return NULL;
 	}
@@ -183,7 +183,7 @@ struct target *parse_target(xmlDocPtr doc, xmlNodePtr cur) {
 	target_mode = (char *) xmlGetProp(cur, (const xmlChar*) "mode");
 	if (target_mode) {
 		if (target_set_mode(tp, target_mode) != POM_OK) {
-			pom_log(POM_LOG_ERR "No mode %s for target %s\r\n", target_mode, target_type);
+			pom_log(POM_LOG_ERR "No mode %s for target %s", target_mode, target_type);
 			free(tp);
 			xmlFree(target_type);
 			xmlFree(target_mode);
@@ -208,12 +208,12 @@ struct target *parse_target(xmlDocPtr doc, xmlNodePtr cur) {
 			struct ptype *value = target_get_param_value(tp, param_type);
 			if (!value) {
 				if (!tp->mode)
-					pom_log(POM_LOG_WARN "Error, no parameter %s for target %s\r\n", param_type, target_type);
+					pom_log(POM_LOG_WARN "Error, no parameter %s for target %s", param_type, target_type);
 				else
-					pom_log(POM_LOG_WARN "Error, no parameter %s for target %s and mode %s\r\n", param_type, target_type, tp->mode->name);
+					pom_log(POM_LOG_WARN "Error, no parameter %s for target %s and mode %s", param_type, target_type, tp->mode->name);
 			} else { 
 				if (ptype_unserialize(value, param_value) != POM_OK) 
-					pom_log(POM_LOG_ERR "Error, could not parse value %s for parameter %s for target %s\r\n", param_value, param_type, target_type);
+					pom_log(POM_LOG_ERR "Error, could not parse value %s for parameter %s for target %s", param_value, param_type, target_type);
 			}
 
 			xmlFree(param_type);
@@ -250,22 +250,22 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 			
 			char *layer = (char *) xmlGetProp(cur, (const xmlChar*) "layer");
 			if (!layer) {
-				pom_log(POM_LOG_ERR "No layer given in the match tag\r\n");
+				pom_log(POM_LOG_ERR "No layer given in the match tag");
 				return NULL;
 			}
-			pom_log(POM_LOG_TSHOOT "Parsing match of layer %s\r\n", layer);
+			pom_log(POM_LOG_TSHOOT "Parsing match of layer %s", layer);
 			match_lock(1);
 			int mt = match_register(layer);
 			if (mt == -1) {
 				match_unlock();
-				pom_log(POM_LOG_ERR "Could not load match %s !\r\n", layer);
+				pom_log(POM_LOG_ERR "Could not load match %s !", layer);
 				xmlFree(layer);
 				return NULL;
 			}
 
 			n = malloc(sizeof(struct rule_node));
 			memset(n, 0, sizeof(struct rule_node));
-			pom_log(POM_LOG_TSHOOT "Creating new rule_node\r\n");
+			pom_log(POM_LOG_TSHOOT "Creating new rule_node");
 			n->layer = mt;
 			match_refcount_inc(mt);
 			match_unlock();
@@ -275,14 +275,14 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 
 				char *value = (char *) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
 				if (!value) {
-					pom_log(POM_LOG_WARN "Field specified for match %s but no value given\r\n", layer);
+					pom_log(POM_LOG_WARN "Field specified for match %s but no value given", layer);
 					xmlFree(field);
 				} else {
 					struct match_field *mf = match_alloc_field(mt, field);
 					if (!mf) {
-						pom_log(POM_LOG_ERR "No field %s for match %s\r\n", field, layer);
+						pom_log(POM_LOG_ERR "No field %s for match %s", field, layer);
 					} else if (ptype_unserialize(mf->value, value) == POM_ERR) {
-						pom_log(POM_LOG_ERR "Unable to parse value \"%s\" for field %s and match %s\r\n", value, field, layer);
+						pom_log(POM_LOG_ERR "Unable to parse value \"%s\" for field %s and match %s", value, field, layer);
 					} else {
 						n->match = mf;
 						char *op = (char*) xmlGetProp(cur, (const xmlChar*) "op");
@@ -291,7 +291,7 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 						else
 							mf->op = ptype_get_op(mf->value, op);
 						if (mf->op == POM_ERR) {
-							pom_log(POM_LOG_ERR "Invalid operation %s for field %s and layer %s\r\n", op, field, layer);
+							pom_log(POM_LOG_ERR "Invalid operation %s for field %s and layer %s", op, field, layer);
 							free(mf);
 							n->match = NULL;
 						}
@@ -308,7 +308,7 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 				if (!strcmp(inv, "yes"))
 					n->op |= RULE_OP_NOT;
 				else if (strcmp(inv, "no"))
-					pom_log(POM_LOG_ERR "Invalid value for 'inv'. Should be either 'yes' or 'no'\r\n");
+					pom_log(POM_LOG_ERR "Invalid value for 'inv'. Should be either 'yes' or 'no'");
 
 			}
 					
@@ -332,7 +332,7 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 
 			n = malloc(sizeof(struct rule_node));
 			memset(n, 0, sizeof(struct rule_node));
-			pom_log(POM_LOG_TSHOOT "Creating new rule_node\r\n");
+			pom_log(POM_LOG_TSHOOT "Creating new rule_node");
 
 			char *op =(char *)  xmlGetProp(cur, (const xmlChar *)"op");
 			if (op) {
@@ -341,7 +341,7 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 				else if (!strcmp(op, "or"))
 					n->op = RULE_OP_OR;
 				else {
-					pom_log(POM_LOG_ERR "Invalid operation %s for node\r\n", op);
+					pom_log(POM_LOG_ERR "Invalid operation %s for node", op);
 					xmlFree(op);
 					return NULL;
 				}
@@ -356,7 +356,7 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 				else if (!xmlStrcmp(pcur->name, (const xmlChar *) "b")  && !n->b)
 					n->b = parse_match(doc, pcur->xmlChildrenNode);
 				else if (xmlStrcmp(pcur->name,(const xmlChar *) "text") && xmlStrcmp(pcur->name,(const xmlChar *) "comment"))
-					pom_log (POM_LOG_WARN "Error in config, duplicate or unknown tag %s\r\n", pcur->name);
+					pom_log (POM_LOG_WARN "Error in config, duplicate or unknown tag %s", pcur->name);
 				pcur = pcur->next;
 						
 			}
@@ -365,11 +365,11 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 			if (inv) {
 				if (!strcmp(inv, "yes")) {
 					if (n->b)
-						pom_log(POM_LOG_WARN "The operation '!' is not supported on or/and operations\r\n");
+						pom_log(POM_LOG_WARN "The operation '!' is not supported on or/and operations");
 					else
 						n->op |= RULE_OP_NOT;
 				} else if (strcmp(inv, "no")) 
-					pom_log(POM_LOG_ERR "Invalid 'inv' value. Either 'yes' or 'no'\r\n");
+					pom_log(POM_LOG_ERR "Invalid 'inv' value. Either 'yes' or 'no'");
 				
 					
 			}
@@ -416,7 +416,7 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 		
 		} else {
 			if (xmlStrcmp(cur->name,(const xmlChar *) "text") && xmlStrcmp(cur->name,(const xmlChar *) "comment"))
-				pom_log(POM_LOG_WARN "Warning, unrecognized tag <%s> inside <matches> tags\r\n", cur->name);
+				pom_log(POM_LOG_WARN "Warning, unrecognized tag <%s> inside <matches> tags", cur->name);
 		}
 
 		cur = cur->next;
@@ -437,7 +437,7 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 	
 	struct ptype *disabled_pt = ptype_alloc("bool", NULL);
 	if (!disabled_pt) {
-		pom_log(POM_LOG_ERR "Unable to load ptype bool !\r\n");
+		pom_log(POM_LOG_ERR "Unable to load ptype bool !");
 		return NULL;
 	}
 
@@ -469,7 +469,7 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 			}
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "matches")) {
 			if (r->node)
-				pom_log(POM_LOG_WARN "Only one instance of matches supported. Skipping extra instances\r\n");
+				pom_log(POM_LOG_WARN "Only one instance of matches supported. Skipping extra instances");
 			else
 				r->node = parse_match(doc, cur->xmlChildrenNode);
 		}
@@ -496,20 +496,20 @@ int config_parse(struct conf *c, char * filename) {
 	doc = xmlParseFile(filename);
 
 	if (!doc) {
-		pom_log(POM_LOG_ERR "Parse error when parsing %s!\r\n", filename);
+		pom_log(POM_LOG_ERR "Parse error when parsing %s!", filename);
 		return POM_ERR;
 	}
 
 	root = xmlDocGetRootElement(doc);
 
 	if (!root) {
-		pom_log(POM_LOG_ERR "Hey dude, ya better gimme a non empty config file !\r\n");
+		pom_log(POM_LOG_ERR "Hey dude, ya better gimme a non empty config file !");
 		xmlFreeDoc(doc);
 		return POM_ERR;
 	}
 
 	if (xmlStrcmp(root->name, (const xmlChar *) "config")) {
-		pom_log(POM_LOG_ERR "The first node should be <config> !\r\n");
+		pom_log(POM_LOG_ERR "The first node should be <config> !");
 		return POM_ERR;
 	}
 
@@ -518,12 +518,12 @@ int config_parse(struct conf *c, char * filename) {
 	while (cur) {
 		if (!xmlStrcmp(cur->name, (const xmlChar *) "input")) {
 			if (c->input)
-				pom_log(POM_LOG_WARN "Only one input supported. Skipping extra input defined\r\n");
+				pom_log(POM_LOG_WARN "Only one input supported. Skipping extra input defined");
 			else
 				c->input = config_parse_input(doc, cur);
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "rule")) {
 			if (pthread_rwlock_wrlock(&c->rules_lock)) {
-				pom_log(POM_LOG_ERR "Unable to aquire lock on the rules\r\n");
+				pom_log(POM_LOG_ERR "Unable to aquire lock on the rules");
 				return POM_ERR;
 			}
 			struct rule_list *r = parse_rule(doc, cur);
@@ -543,7 +543,7 @@ int config_parse(struct conf *c, char * filename) {
 
 			}
 			if (pthread_rwlock_unlock(&c->rules_lock)) {
-				pom_log(POM_LOG_ERR "Unable to unlock the rules\r\n");
+				pom_log(POM_LOG_ERR "Unable to unlock the rules");
 			}
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "param")) {
 			char *name = (char *) xmlGetProp(cur, (const xmlChar*) "name");
@@ -552,16 +552,16 @@ int config_parse(struct conf *c, char * filename) {
 				if (value) {
 					char buffer[2048];
 					if (core_set_param_value(name, value, buffer, sizeof(buffer) - 1) == POM_ERR) {
-						pom_log(POM_LOG_WARN "Unable to set parameter %s to %s : %s\r\n", name, value, buffer);
+						pom_log(POM_LOG_WARN "Unable to set parameter %s to %s : %s", name, value, buffer);
 					}
 
 					xmlFree(value);
 				} else {
-					pom_log(POM_LOG_WARN "Warning, no value given for parameter %s\r\n", name);
+					pom_log(POM_LOG_WARN "Warning, no value given for parameter %s", name);
 				}
 				xmlFree(name);
 			} else { 
-				pom_log(POM_LOG_WARN "Param found but no name given\r\n");
+				pom_log(POM_LOG_WARN "Param found but no name given");
 			}
 
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "password")) {
@@ -574,7 +574,7 @@ int config_parse(struct conf *c, char * filename) {
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "conntrack")) {
 			char *type = (char *) xmlGetProp(cur, (const xmlChar*) "type");
 			if (!type) {
-				pom_log(POM_LOG_WARN "No type specified in the conntrack tab\r\n");
+				pom_log(POM_LOG_WARN "No type specified in the conntrack tab");
 				cur = cur->next;
 				continue;
 			}
@@ -583,14 +583,14 @@ int config_parse(struct conf *c, char * filename) {
 			ct_type = match_register(type);
 			match_unlock();
 			if (ct_type == POM_ERR) {
-				pom_log(POM_LOG_WARN "Unable to register match %s\r\n", type);
+				pom_log(POM_LOG_WARN "Unable to register match %s", type);
 				cur = cur->next;
 				xmlFree(type);
 				continue;
 			}
 			ct_type = conntrack_register(type);
 			if (ct_type == POM_ERR) {
-				pom_log(POM_LOG_WARN "Unable to register conntrack %s\r\n", type);
+				pom_log(POM_LOG_WARN "Unable to register conntrack %s", type);
 				cur = cur->next;
 				xmlFree(type);
 				continue;
@@ -602,22 +602,22 @@ int config_parse(struct conf *c, char * filename) {
 				if (!xmlStrcmp(sub->name, (const xmlChar *) "param")) {
 					char *name = (char *) xmlGetProp(sub, (const xmlChar*) "name");
 					if (!name) {
-						pom_log(POM_LOG_WARN "No name given for the param tag\r\n");
+						pom_log(POM_LOG_WARN "No name given for the param tag");
 						sub = sub->next;
 						continue;
 					}
 					struct conntrack_param *param = conntrack_get_param(ct_type, name);
 					if (!param) {
-						pom_log(POM_LOG_WARN "No parameter %s for conntrack %s\r\n", type, name);
+						pom_log(POM_LOG_WARN "No parameter %s for conntrack %s", type, name);
 						sub = sub->next;
 						continue;
 					}
 					char *value = (char *) xmlNodeListGetString(doc, sub->xmlChildrenNode, 1);
 					if (value) {
 						if (ptype_unserialize(param->value, value) == POM_ERR)
-							pom_log(POM_LOG_WARN "Unable to parse value '%s' for parameter %s of conntrack %s\r\n", value, name, type);
+							pom_log(POM_LOG_WARN "Unable to parse value '%s' for parameter %s of conntrack %s", value, name, type);
 					} else {
-						pom_log(POM_LOG_WARN "No value given for param %s of conntrack %s\r\n", name, type);
+						pom_log(POM_LOG_WARN "No value given for param %s of conntrack %s", name, type);
 					}
 
 
@@ -756,7 +756,7 @@ err:
 	close(fd);
 	char errbuff[256];
 	strerror_r(errno, errbuff, sizeof(errbuff));
-	pom_log(POM_LOG_ERR "Error while writing the config file : %s\r\n", errbuff);
+	pom_log(POM_LOG_ERR "Error while writing the config file : %s", errbuff);
 	return POM_ERR;
 }
 
@@ -771,7 +771,7 @@ int config_write(struct conf *c, char *filename) {
 	if (fd == -1) {
 		char buffer[256];
 		strerror_r(errno, buffer, sizeof(buffer) - 1);
-		pom_log(POM_LOG_ERR "Error while opening config file for writing : %s\r\n", buffer);
+		pom_log(POM_LOG_ERR "Error while opening config file for writing : %s", buffer);
 		return POM_ERR;
 	}
 
@@ -881,7 +881,7 @@ int config_write(struct conf *c, char *filename) {
 
 
 	if (pthread_rwlock_rdlock(&c->rules_lock)) {
-		pom_log(POM_LOG_ERR "Unable to aquire the lock on the rules\r\n");
+		pom_log(POM_LOG_ERR "Unable to aquire the lock on the rules");
 		return POM_ERR;
 	}
 
@@ -964,7 +964,7 @@ int config_write(struct conf *c, char *filename) {
 	}
 
 	if (pthread_rwlock_unlock(&c->rules_lock)) {
-		pom_log(POM_LOG_ERR "Unable to unlock the rules lock\r\n");
+		pom_log(POM_LOG_ERR "Unable to unlock the rules lock");
 		return POM_ERR;
 	}
 
@@ -987,7 +987,7 @@ err:
 	close(fd);
 	char errbuff[256];
 	strerror_r(errno, errbuff, sizeof(errbuff));
-	pom_log(POM_LOG_ERR "Error while writing the config file : %s\r\n", errbuff);
+	pom_log(POM_LOG_ERR "Error while writing the config file : %s", errbuff);
 	return POM_ERR;
 
 }

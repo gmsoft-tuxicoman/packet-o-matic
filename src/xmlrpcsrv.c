@@ -92,7 +92,7 @@ int xmlrpcsrv_init(const char *port) {
 
 	if (getaddrinfo(NULL, port, &hints, &res) < 0) {
 		strerror_r(errno, errbuff, 256);
-		pom_log(POM_LOG_ERR "Error while finding an address to listen on : %s\r\n", errbuff);
+		pom_log(POM_LOG_ERR "Error while finding an address to listen on : %s", errbuff);
 		return POM_ERR;
 	}
 
@@ -122,7 +122,7 @@ int xmlrpcsrv_init(const char *port) {
 		sockfd = socket(tmpres->ai_family, tmpres->ai_socktype, tmpres->ai_protocol);
 		if (sockfd < 0) {
 			strerror_r(errno, errbuff, 256);
-			pom_log(POM_LOG_ERR "Error while creating socket : %s\r\n", errbuff);
+			pom_log(POM_LOG_ERR "Error while creating socket : %s", errbuff);
 			tmpres = tmpres->ai_next;
 			continue;
 		}
@@ -130,7 +130,7 @@ int xmlrpcsrv_init(const char *port) {
 		const int yes = 1;
 		if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int)) == -1) {
 			strerror_r(errno, errbuff, 256);
-			pom_log(POM_LOG_WARN "Error while setting REUSEADDR option on socket : %s\r\n", errbuff);
+			pom_log(POM_LOG_WARN "Error while setting REUSEADDR option on socket : %s", errbuff);
 			close(sockfd);
 			tmpres = tmpres->ai_next;
 			continue;
@@ -140,7 +140,7 @@ int xmlrpcsrv_init(const char *port) {
 			int my_errno = errno;
 			if (! (my_errno == EADDRINUSE && sockets_head)) { // Do not show an error in case we did bind already
 				strerror_r(my_errno, errbuff, 256);
-				pom_log(POM_LOG_ERR "Error while binding socket on address %s : %s\r\n", host, errbuff);
+				pom_log(POM_LOG_ERR "Error while binding socket on address %s : %s", host, errbuff);
 			}
 			close(sockfd);
 			tmpres = tmpres->ai_next;
@@ -149,13 +149,13 @@ int xmlrpcsrv_init(const char *port) {
 
 		if (listen(sockfd, WAIT_CONNS)) {
 			strerror_r(errno, errbuff, 256);
-			pom_log(POM_LOG_ERR "Error while switching socket to listen state : %s\r\n", errbuff);
+			pom_log(POM_LOG_ERR "Error while switching socket to listen state : %s", errbuff);
 			close(sockfd);
 			tmpres = tmpres->ai_next;
 			continue;
 		}
 
-		pom_log("XML-RPC server listening on %s:%s\r\n", host, port);
+		pom_log("XML-RPC server listening on %s:%s", host, port);
 
 		struct xmlrpc_connection *tmp = malloc(sizeof(struct xmlrpc_connection));
 		memset(tmp, 0, sizeof(struct xmlrpc_connection));
@@ -170,7 +170,7 @@ int xmlrpcsrv_init(const char *port) {
 	freeaddrinfo(res);
 
 	if (!sockets_head) {
-		pom_log(POM_LOG_ERR "Could not open a single socket\r\n");
+		pom_log(POM_LOG_ERR "Could not open a single socket");
 		return POM_ERR;
 	}
 
@@ -256,7 +256,7 @@ int xmlrpcsrv_process_connection(struct xmlrpc_connection *c) {
 	sockfd = accept(c->fd, (struct sockaddr *) &remote_addr, &remote_addr_len);
 
 	if (sockfd < 0) {
-		pom_log(POM_LOG_ERR "Error while accepting new connection\r\n");
+		pom_log(POM_LOG_ERR "Error while accepting new connection");
 		return POM_ERR;
 	}
 
@@ -267,7 +267,7 @@ int xmlrpcsrv_process_connection(struct xmlrpc_connection *c) {
 
 	getnameinfo((struct sockaddr*)&remote_addr, remote_addr_len, host, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST);
 
-	pom_log(POM_LOG_DEBUG "Accepted XML-RPC connection from %s on socket %u\r\n", host, sockfd);
+	pom_log(POM_LOG_DEBUG "Accepted XML-RPC connection from %s on socket %u", host, sockfd);
 
 	TSocket * socketP;
 	char * error;
@@ -280,7 +280,7 @@ int xmlrpcsrv_process_connection(struct xmlrpc_connection *c) {
 #endif
 	ServerRunConn2(&abyssServer, socketP, (const char **) &error);
 	if (error) {
-		pom_log(POM_LOG_ERR "Couldn't run the XML-RPC server : %s\r\n", error);
+		pom_log(POM_LOG_ERR "Couldn't run the XML-RPC server : %s", error);
 		free(error);
 		res = POM_ERR;
 	}

@@ -112,18 +112,18 @@ static int target_open_pcap(struct target *t) {
 		priv->last_layer_type = match_register("docsis");
 #endif
 	} else {
-		pom_log(POM_LOG_ERR "Pcap : error: no supported header found.\r\n");
+		pom_log(POM_LOG_ERR "Pcap : error: no supported header found.");
 		return POM_ERR;
 	}
 
 	if (!priv->p) {
-		pom_log(POM_LOG_ERR "Unable to open pcap !\r\n");
+		pom_log(POM_LOG_ERR "Unable to open pcap !");
 		return POM_ERR;
 	}
 
 	priv->pdump = pcap_dump_open(priv->p, PTYPE_STRING_GETVAL(priv->filename));
 	if (!priv->pdump) {
-		pom_log(POM_LOG_ERR "Unable to open pcap dumper !\r\n");
+		pom_log(POM_LOG_ERR "Unable to open pcap dumper !");
 		return POM_ERR;
 	}
 
@@ -137,7 +137,7 @@ static int target_process_pcap(struct target *t, struct frame *f) {
 	struct target_priv_pcap *priv = t->target_priv;
 	
 	if (!priv->pdump) {
-		pom_log(POM_LOG_ERR "Error, pcap target not opened !\r\n");
+		pom_log(POM_LOG_ERR "Error, pcap target not opened !");
 		return POM_ERR;
 	}
 	
@@ -145,7 +145,7 @@ static int target_process_pcap(struct target *t, struct frame *f) {
 
 	if (start == POM_ERR) {
 
-		pom_log(POM_LOG_WARN "target_pcap: Unable to find the start of the packet. You probably need to set the parameter \"layer\" to \"%s\"\r\n", match_get_name(f->l->type));
+		pom_log(POM_LOG_WARN "target_pcap: Unable to find the start of the packet. You probably need to set the parameter \"layer\" to \"%s\"", match_get_name(f->l->type));
 		return POM_ERR;
 
 	}
@@ -171,7 +171,7 @@ static int target_process_pcap(struct target *t, struct frame *f) {
 
 	priv->size += len;
 
-	pom_log(POM_LOG_TSHOOT "0x%lx; Packet saved (%u bytes (+%u bytes))!\r\n", (unsigned long) priv, priv->size, len);
+	pom_log(POM_LOG_TSHOOT "0x%lx; Packet saved (%u bytes (+%u bytes))!", (unsigned long) priv, priv->size, len);
 
 	return POM_OK;
 };
@@ -183,7 +183,7 @@ static int target_close_pcap(struct target *t) {
 	if (!t->target_priv)
 		return POM_ERR;
 
-	pom_log("0x%lx; PCAP : saved %u bytes\r\n", (unsigned long) priv, priv->size);
+	pom_log("0x%lx; PCAP : saved %u bytes", (unsigned long) priv, priv->size);
 
 	pcap_dump_close(priv->pdump);
 	priv->pdump = NULL;

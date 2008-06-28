@@ -263,7 +263,7 @@ static int target_process_http(struct target *t, struct frame *f) {
 	}
 
 	if (lastl->payload_size == 0) {
-		pom_log(POM_LOG_TSHOOT "Payload size == 0\r\n");	
+		pom_log(POM_LOG_TSHOOT "Payload size == 0");	
 		return POM_OK;
 	}
 
@@ -279,7 +279,7 @@ static int target_process_http(struct target *t, struct frame *f) {
 		for (i = 0; i < lastl->payload_size; i++) {
 
 			if (!pload[i] || (unsigned)pload[i] > 128) { // Non ascii char
-				pom_log(POM_LOG_TSHOOT "NULL or non ASCII char in header packet\r\n");
+				pom_log(POM_LOG_TSHOOT "NULL or non ASCII char in header packet");
 				return POM_OK;
 			}
 
@@ -313,7 +313,7 @@ static int target_process_http(struct target *t, struct frame *f) {
 						char type[256];
 						memcpy(type, pload + lstart, j);
 						type[j] = 0;
-						pom_log(POM_LOG_TSHOOT "Mime type = %s\r\n", type);
+						pom_log(POM_LOG_TSHOOT "Mime type = %s", type);
 						cp->state |= HTTP_HAVE_CTYPE;
 
 						unsigned char hash = 0;
@@ -324,13 +324,13 @@ static int target_process_http(struct target *t, struct frame *f) {
 						for (k = 0; k < MIME_TYPES_COUNT; k++) {
 							if (mime_types_hash[k] == hash && !strcasecmp(type, mime_types[k][0])) {
 								cp->content_type = k;
-								pom_log(POM_LOG_TSHOOT "Found content type %u (%s, %s)\r\n", k, type, mime_types[k][0]);
+								pom_log(POM_LOG_TSHOOT "Found content type %u (%s, %s)", k, type, mime_types[k][0]);
 								break;
 							}
 						}
 
 						if (k >= MIME_TYPES_COUNT) {
-							pom_log(POM_LOG_TSHOOT "Warning, unknown content type %s\r\n", type);
+							pom_log(POM_LOG_TSHOOT "Warning, unknown content type %s", type);
 							cp->content_type = 0;
 						}
 
@@ -360,7 +360,7 @@ static int target_process_http(struct target *t, struct frame *f) {
 							continue;
 						}
 
-						pom_log(POM_LOG_TSHOOT "Content length = %u\r\n", cp->content_len);
+						pom_log(POM_LOG_TSHOOT "Content length = %u", cp->content_len);
 						cp->state |= HTTP_HAVE_CLEN;
 
 					} else {
@@ -374,7 +374,7 @@ static int target_process_http(struct target *t, struct frame *f) {
 				} else if (i - lstart == 1 && pload[lstart] == '\r') {
 					pstart = i + 1 + lastl->payload_start;
 					psize = (lastl->payload_size + lastl->payload_start) - pstart;
-					pom_log(POM_LOG_TSHOOT "End of headers. %u bytes of payload\r\n", psize);
+					pom_log(POM_LOG_TSHOOT "End of headers. %u bytes of payload", psize);
 					break;
 
 				}
@@ -427,19 +427,19 @@ static int target_process_http(struct target *t, struct frame *f) {
 			if (cp->fd == -1) {
 				char errbuff[256];
 				strerror_r(errno, errbuff, sizeof(errbuff));
-				pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s\r\n", filename, errbuff);
+				pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s", filename, errbuff);
 				cp->state = HTTP_NO_MATCH;
 				return POM_ERR;
 			}
 
-			pom_log(POM_LOG_TSHOOT "%s opened\r\n", filename);
+			pom_log(POM_LOG_TSHOOT "%s opened", filename);
 
 		}
 
 
 		cp->pos += psize;
 		write(cp->fd, f->buff + pstart, psize);
-		pom_log(POM_LOG_TSHOOT "Saved %u of payload\r\n", psize);
+		pom_log(POM_LOG_TSHOOT "Saved %u of payload", psize);
 		
 
 	} 
@@ -461,7 +461,7 @@ static int target_process_http(struct target *t, struct frame *f) {
 
 static int target_close_connection_http(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
-	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
+	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx", (unsigned long) conntrack_priv);
 
 	struct target_conntrack_priv_http *cp;
 	cp = conntrack_priv;

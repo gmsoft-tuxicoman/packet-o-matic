@@ -42,7 +42,7 @@ int helper_init() {
 
 	helpers_serial = 0;
 
-	pom_log(POM_LOG_DEBUG "Helper initialized\r\n");
+	pom_log(POM_LOG_DEBUG "Helper initialized");
 
 	return POM_OK;
 
@@ -59,7 +59,7 @@ int helper_register(const char *helper_name) {
 	int id;
 	id = match_get_type(helper_name);
 	if (id == -1) {
-		pom_log(POM_LOG_WARN "Unable to register helper %s. Corresponding match not found\r\n", helper_name);
+		pom_log(POM_LOG_WARN "Unable to register helper %s. Corresponding match not found", helper_name);
 		return POM_ERR;
 	}
 
@@ -84,14 +84,14 @@ int helper_register(const char *helper_name) {
 	helpers[id]->dl_handle = handle;
 
 	if ((*register_my_helper) (my_helper) != POM_OK) {
-		pom_log(POM_LOG_ERR "Error while loading helper %s. Could not register helper !\r\n", helper_name);
+		pom_log(POM_LOG_ERR "Error while loading helper %s. Could not register helper !", helper_name);
 		helpers[id] = NULL;
 		free(my_helper);
 		return POM_ERR;
 	}
 
 
-	pom_log(POM_LOG_DEBUG "Helper %s registered\r\n", helper_name);
+	pom_log(POM_LOG_DEBUG "Helper %s registered", helper_name);
 
 
 	return id;
@@ -203,9 +203,9 @@ int helper_unregister(int helper_type) {
 		free(helpers[helper_type]);
 		helpers[helper_type] = NULL;
 		if (dlclose(handle))
-			pom_log(POM_LOG_WARN "Error while closing library of target %s\r\n", match_get_name(helper_type));
+			pom_log(POM_LOG_WARN "Error while closing library of target %s", match_get_name(helper_type));
 
-		pom_log(POM_LOG_DEBUG "Helper %s unregistered\r\n", match_get_name(helper_type));
+		pom_log(POM_LOG_DEBUG "Helper %s unregistered", match_get_name(helper_type));
 	} 
 
 	return POM_OK;
@@ -304,7 +304,7 @@ int helper_lock(int write) {
 	}
 
 	if (result) {
-		pom_log(POM_LOG_ERR "Error while locking the helper lock\r\n");
+		pom_log(POM_LOG_ERR "Error while locking the helper lock");
 		abort();
 		return POM_ERR;
 	}
@@ -320,7 +320,7 @@ int helper_lock(int write) {
 int helper_unlock() {
 
 	if (pthread_rwlock_unlock(&helper_global_lock)) {
-		pom_log(POM_LOG_ERR "Error while unlocking the helper lock\r\n");
+		pom_log(POM_LOG_ERR "Error while unlocking the helper lock");
 		abort();
 		return POM_ERR;
 	}

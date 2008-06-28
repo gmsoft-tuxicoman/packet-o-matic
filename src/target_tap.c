@@ -105,7 +105,7 @@ static int target_open_tap(struct target *t) {
 
 	priv->fd = open("/dev/net/tun", O_RDWR | O_SYNC);
 	if (priv->fd < 0) {
-		pom_log(POM_LOG_ERR "Failed to open tap device\r\n");
+		pom_log(POM_LOG_ERR "Failed to open tap device");
 		return POM_ERR;
 	}
 
@@ -115,13 +115,13 @@ static int target_open_tap(struct target *t) {
 	strncpy(ifr.ifr_name, PTYPE_STRING_GETVAL(priv->ifname), IFNAMSIZ);
 	
 	if (ioctl(priv->fd, TUNSETIFF, (void *) &ifr) < 0) {
-		pom_log(POM_LOG_ERR "Unable to setup tap device %s\r\n", PTYPE_STRING_GETVAL(priv->ifname));
+		pom_log(POM_LOG_ERR "Unable to setup tap device %s", PTYPE_STRING_GETVAL(priv->ifname));
 		close(priv->fd);
 		return POM_ERR;
 	}
 
 	if (ioctl(priv->fd, TUNSETPERSIST, PTYPE_BOOL_GETVAL(priv->persistent)) < 0) {
-		pom_log(POM_LOG_WARN "Unable to set persistent mode to tap device %s\r\n", PTYPE_STRING_GETVAL(priv->ifname));
+		pom_log(POM_LOG_WARN "Unable to set persistent mode to tap device %s", PTYPE_STRING_GETVAL(priv->ifname));
 	}
 
 
@@ -134,14 +134,14 @@ static int target_process_tap(struct target *t, struct frame *f) {
 	struct target_priv_tap *priv = t->target_priv;
 
 	if (priv->fd < 1) {
-		pom_log(POM_LOG_ERR "Error, tap target not opened !\r\n");
+		pom_log(POM_LOG_ERR "Error, tap target not opened !");
 		return POM_ERR;
 	}
 	
 	int start = layer_find_start(f->l, match_ethernet_id);
 
 	if (start == POM_ERR) {
-		pom_log(POM_LOG_ERR "Unable to find the start of the packet\r\n");
+		pom_log(POM_LOG_ERR "Unable to find the start of the packet");
 		return POM_OK;
 
 	}

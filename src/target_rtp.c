@@ -117,7 +117,7 @@ static int target_process_rtp(struct target *t, struct frame *f) {
 	}
 
 	if (!rtpl) {
-		pom_log(POM_LOG_INFO "No RTP header found in this packet\r\n");
+		pom_log(POM_LOG_INFO "No RTP header found in this packet");
 		return POM_OK;
 	}
 
@@ -137,7 +137,7 @@ static int target_process_rtp(struct target *t, struct frame *f) {
 		case RTP_CODEC_G722:
 			break;
 		default:
-			pom_log(POM_LOG_DEBUG "RTP: Payload type %u not supported\r\n", rtphdr->payload_type);
+			pom_log(POM_LOG_DEBUG "RTP: Payload type %u not supported", rtphdr->payload_type);
 			return POM_OK;
 
 	}
@@ -194,7 +194,7 @@ static int target_process_rtp(struct target *t, struct frame *f) {
 
 	if (rtphdr->payload_type != cp->payload_type) {
 		// payload type different for each direction is not supported
-		pom_log(POM_LOG_DEBUG "RTP: Payload type %u does not mach initial payload type : %u\r\n", rtphdr->payload_type, cp->payload_type);
+		pom_log(POM_LOG_DEBUG "RTP: Payload type %u does not mach initial payload type : %u", rtphdr->payload_type, cp->payload_type);
 		return POM_OK;
 	}
 
@@ -307,9 +307,9 @@ static int open_file(struct target_priv_rtp *priv, struct target_conntrack_priv_
 	if (cp->fd == -1) {
 		char errbuff[256];
 		strerror_r(errno, errbuff, 256);
-		pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s\r\n", cp->filename, errbuff);
+		pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s", cp->filename, errbuff);
 	} else
-		pom_log(POM_LOG_TSHOOT "%s opened\r\n", cp->filename);
+		pom_log(POM_LOG_TSHOOT "%s opened", cp->filename);
 	
 	struct au_hdr auhdr;
 	memset(&auhdr, 0, sizeof(struct au_hdr));
@@ -330,7 +330,7 @@ static int open_file(struct target_priv_rtp *priv, struct target_conntrack_priv_
 			auhdr.encoding = htonl(AU_CODEC_ADPCM_G722);
 			break;
 		default:
-			pom_log(POM_LOG_DEBUG "RTP: Payload type %u not supported\r\n", cp->payload_type);
+			pom_log(POM_LOG_DEBUG "RTP: Payload type %u not supported", cp->payload_type);
 			return POM_OK;
 
 	}
@@ -343,7 +343,7 @@ static int open_file(struct target_priv_rtp *priv, struct target_conntrack_priv_
 		cp->channels++;
 
 	if (cp->channels == 0) {
-		pom_log(POM_LOG_ERR "Internal error in target_rtp. No channel found when writing file\r\n");
+		pom_log(POM_LOG_ERR "Internal error in target_rtp. No channel found when writing file");
 		return POM_ERR;
 	}
 
@@ -359,7 +359,7 @@ static int open_file(struct target_priv_rtp *priv, struct target_conntrack_priv_
 
 static int target_close_connection_rtp(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
-	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
+	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx", (unsigned long) conntrack_priv);
 
 	struct target_conntrack_priv_rtp *cp;
 	cp = conntrack_priv;

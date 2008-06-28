@@ -33,7 +33,7 @@ int mgmtvty_init(struct mgmt_connection *c) {
 
 
 	if (c->state != MGMT_STATE_INIT) {
-		pom_log(POM_LOG_ERR "Error, connection in wrong state\r\n");
+		pom_log(POM_LOG_ERR "Error, connection in wrong state");
 		return POM_ERR;
 	}
 
@@ -93,7 +93,7 @@ int mgmtvty_process(struct mgmt_connection *c, unsigned char *buffer, unsigned i
 									msg_type = 0;
 									break;
 								} else {
-									pom_log(POM_LOG_WARN "Warning, unexpected value while reading telnet suboption : %hhu\r\n", buffer[i]);
+									pom_log(POM_LOG_WARN "Warning, unexpected value while reading telnet suboption : %hhu", buffer[i]);
 									continue;
 								}
 							}
@@ -116,7 +116,7 @@ int mgmtvty_process(struct mgmt_connection *c, unsigned char *buffer, unsigned i
 
 			case 2: // Handle escape sequence
 				if (i + 1 > len || (buffer[i] != '[' && buffer[i] != 'O')) {
-					pom_log(POM_LOG_WARN "Invalid escape sequence\r\n");
+					pom_log(POM_LOG_WARN "Invalid escape sequence");
 					msg_type = 0;
 					break;
 				}
@@ -231,7 +231,7 @@ int mgmtvty_process(struct mgmt_connection *c, unsigned char *buffer, unsigned i
 						i++; // ignore following ~
 						break;
 					default: // not handled
-						pom_log(POM_LOG_TSHOOT "Unknown escape sequence pressed : %c\r\n", buffer[i]);
+						pom_log(POM_LOG_TSHOOT "Unknown escape sequence pressed : %c", buffer[i]);
 						
 					msg_type = 0;
 				}
@@ -264,10 +264,10 @@ int mgmtvty_process_telnet_option(struct mgmt_connection *c, unsigned char *opt,
 #ifdef DEBUG
 
 	if (opt[0] == SB) {
-		pom_log(POM_LOG_TSHOOT "Got telnet suboption %s\r\n", TELOPT(opt[1]));
+		pom_log(POM_LOG_TSHOOT "Got telnet suboption %s", TELOPT(opt[1]));
 	} else {
 
-		pom_log(POM_LOG_TSHOOT "Got telnet option %s %s\r\n", TELCMD(opt[0]), TELOPT(opt[1]));
+		pom_log(POM_LOG_TSHOOT "Got telnet option %s %s", TELCMD(opt[0]), TELOPT(opt[1]));
 	}
 
 #endif
@@ -303,7 +303,7 @@ int mgmtvty_process_telnet_option(struct mgmt_connection *c, unsigned char *opt,
 					c->win_x += opt[3];
 					c->win_y = opt[4] * 0x100;
 					c->win_y += opt[5];
-					pom_log(POM_LOG_TSHOOT "New remote window size for connection %u is %ux%u\r\n", c->fd, c->win_x, c->win_y);
+					pom_log(POM_LOG_TSHOOT "New remote window size for connection %u is %ux%u", c->fd, c->win_x, c->win_y);
 			}
 			break;
 		case TELOPT_SGA:

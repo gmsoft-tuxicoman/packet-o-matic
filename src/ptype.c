@@ -71,7 +71,7 @@ int ptype_register(const char *ptype_name) {
 
 			
 			if ((*register_my_ptype) (my_ptype) != POM_OK) {
-				pom_log(POM_LOG_ERR "Error while loading ptype %s. could not register ptype !\r\n", ptype_name);
+				pom_log(POM_LOG_ERR "Error while loading ptype %s. could not register ptype !", ptype_name);
 				return POM_ERR;
 			}
 
@@ -81,7 +81,7 @@ int ptype_register(const char *ptype_name) {
 			strcpy(ptypes[i]->name, ptype_name);
 			ptypes[i]->dl_handle = handle;
 
-			pom_log(POM_LOG_DEBUG "Ptype %s registered\r\n", ptype_name);
+			pom_log(POM_LOG_DEBUG "Ptype %s registered", ptype_name);
 			
 			return i;
 		}
@@ -105,7 +105,7 @@ struct ptype* ptype_alloc(const char* type, char* unit) {
 
 	if (idx == POM_ERR) {
 		ptype_unlock();
-		pom_log(POM_LOG_ERR "Error, could not allocate ptype of type %s\r\n", type);
+		pom_log(POM_LOG_ERR "Error, could not allocate ptype of type %s", type);
 		return NULL;
 	}
 	
@@ -204,7 +204,7 @@ int ptype_get_op(struct ptype *pt, char *op) {
 	if (ptypes[pt->type]->ops & o)
 		return o;
 
-	pom_log(POM_LOG_ERR "Invalid operation %s for ptype %s\r\n", op, ptypes[pt->type]->name);
+	pom_log(POM_LOG_ERR "Invalid operation %s for ptype %s", op, ptypes[pt->type]->name);
 	return POM_ERR;
 }
 
@@ -266,12 +266,12 @@ char *ptype_get_op_name(int op) {
 int ptype_compare_val(int op, struct ptype *a, struct ptype *b) {
 	
 	if (a->type != b->type) {
-		pom_log(POM_LOG_ERR "Cannot compare ptypes, type differs. What about you try not to compare pears with apples ...\r\n");
+		pom_log(POM_LOG_ERR "Cannot compare ptypes, type differs. What about you try not to compare pears with apples ...");
 		return 0; // false
 	}
 
 	if (!(ptypes[a->type]->ops & op))
-		pom_log(POM_LOG_ERR "Invalid operation %s for ptype %s\r\n", ptype_get_op_sign(op), ptypes[a->type]->name);
+		pom_log(POM_LOG_ERR "Invalid operation %s for ptype %s", ptype_get_op_sign(op), ptypes[a->type]->name);
 
 	if (op == PTYPE_OP_NEQ)
 		return !(*ptypes[a->type]->compare_val) (PTYPE_OP_EQ, a->value, b->value);
@@ -312,7 +312,7 @@ int ptype_unserialize(struct ptype *pt, char *val) {
 int ptype_copy(struct ptype *dst, struct ptype *src) {
 
 	if (dst->type != src->type) {
-		pom_log(POM_LOG_ERR "Error, trying to copy pytes of different type\r\n");
+		pom_log(POM_LOG_ERR "Error, trying to copy pytes of different type");
 		return POM_ERR;
 	}
 
@@ -379,7 +379,7 @@ int ptype_unregister(int ptype_type) {
 
 	if (ptypes[ptype_type]) {
 		if (ptypes[ptype_type]->refcount) {
-			pom_log(POM_LOG_WARN "Warning, reference count not 0 for ptype %s\r\n", ptypes[ptype_type]->name);
+			pom_log(POM_LOG_WARN "Warning, reference count not 0 for ptype %s", ptypes[ptype_type]->name);
 			return POM_ERR;
 		}
 		dlclose(ptypes[ptype_type]->dl_handle);
@@ -424,7 +424,7 @@ int ptype_lock(int write) {
 	}
 
 	if (result) {
-		pom_log(POM_LOG_ERR "Error while locking the ptype lock\r\n");
+		pom_log(POM_LOG_ERR "Error while locking the ptype lock");
 		abort();
 		return POM_ERR;
 	}
@@ -440,7 +440,7 @@ int ptype_lock(int write) {
 int ptype_unlock() {
 
 	if (pthread_rwlock_unlock(&ptype_global_lock)) {
-		pom_log(POM_LOG_ERR "Error while unlocking the ptype lock\r\n");
+		pom_log(POM_LOG_ERR "Error while unlocking the ptype lock");
 		abort();
 		return POM_ERR;
 	}

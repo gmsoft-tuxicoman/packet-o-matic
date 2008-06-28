@@ -42,17 +42,18 @@ int rules_init() {
 int dump_invalid_packet(struct frame *f) {
 
 	struct layer *l = f->l;
-
-	pom_log(POM_LOG_DEBUG "Invalid packet : frame len %u, bufflen %u > ", f->len, f->bufflen);
+	char buff[2048];
+	memset(buff, 0, sizeof(buff));
+	snprintf(buff, sizeof(buff), "Invalid packet : frame len %u, bufflen %u > ", f->len, f->bufflen);
 
 	while (l) {
-		pom_log(POM_LOG_DEBUG "%s pstart %u, psize %u", match_get_name(l->type), l->payload_start, l->payload_size);
+		snprintf(buff + strlen(buff), sizeof(buff) - strlen(buff) - 1, "%s pstart %u, psize %u", match_get_name(l->type), l->payload_start, l->payload_size);
 		l = l->next;
 		if (l)
-			pom_log(POM_LOG_DEBUG " > ");
+			snprintf(buff + strlen(buff), sizeof(buff) - strlen(buff) - 1, " > ");
 
 	}
-	pom_log(POM_LOG_DEBUG "\r\n");
+	pom_log(POM_LOG_DEBUG "%s", buff);
 
 	return POM_OK;
 }
@@ -87,13 +88,13 @@ int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct ru
 			// The current layer is not identified. Let's see if we can match with the current match type
 			if ((*l)->type == match_undefined_id) {
 				if (!(*l)->prev) {
-					pom_log(POM_LOG_ERR "Error, first layer is undefined !\r\n");
+					pom_log(POM_LOG_ERR "Error, first layer is undefined !");
 					return 0;
 				}
 				unsigned int next_layer;
 				(*l)->type = n->layer;
 				if (layer_field_pool_get(*l) != POM_OK) {
-					pom_log(POM_LOG_WARN "Could not get a field pool for this packet. Ignoring\r\n");
+					pom_log(POM_LOG_WARN "Could not get a field pool for this packet. Ignoring");
 					return 0;
 				}
 				next_layer = match_identify(f, *l, (*l)->prev->payload_start, (*l)->prev->payload_size);
@@ -194,7 +195,7 @@ int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct ru
 				}
 
 			} else {
-				pom_log(POM_LOG_ERR "Error unexpected operation for rule node\r\n");
+				pom_log(POM_LOG_ERR "Error unexpected operation for rule node");
 				return 0;
 			}
 
@@ -218,7 +219,7 @@ int do_rules(struct frame *f, struct rule_list *rules, pthread_rwlock_t *rule_lo
 	l = layer_pool_get();
 	l->type = f->first_layer;
 	if (layer_field_pool_get(l) != POM_OK) {
-		pom_log(POM_LOG_WARN "Could not get a field pool for this packet. Ignoring\r\n");
+		pom_log(POM_LOG_WARN "Could not get a field pool for this packet. Ignoring");
 		return POM_OK;
 	}
 
@@ -248,7 +249,7 @@ int do_rules(struct frame *f, struct rule_list *rules, pthread_rwlock_t *rule_lo
 			// Next layer is new. Need to discard current conntrack entry
 			f->ce = NULL;
 			if (layer_field_pool_get(l->next) != POM_OK) {
-				pom_log(POM_LOG_WARN "Could not get a field pool for this packet. Ignoring\r\n");
+				pom_log(POM_LOG_WARN "Could not get a field pool for this packet. Ignoring");
 				return POM_OK;
 			}
 		}
@@ -277,7 +278,7 @@ int do_rules(struct frame *f, struct rule_list *rules, pthread_rwlock_t *rule_lo
 
 
 	if (rule_lock && pthread_rwlock_rdlock(rule_lock)) {
-		pom_log(POM_LOG_ERR "Unable to lock the given rules\r\n");
+		pom_log(POM_LOG_ERR "Unable to lock the given rules");
 		return POM_ERR;
 	}
 
@@ -295,7 +296,7 @@ int do_rules(struct frame *f, struct rule_list *rules, pthread_rwlock_t *rule_lo
 			struct layer *start_l = f->l;
 			r->result = node_match(f, &start_l, r->node, NULL); // Get the result to fully populate layers
 			if (r->result) {
-			//	pom_log(POM_LOG_TSHOOT "Rule matched\r\n");
+			//	pom_log(POM_LOG_TSHOOT "Rule matched");
 				PTYPE_UINT64_INC(r->pkt_cnt, 1);
 				PTYPE_UINT64_INC(r->byte_cnt, f->len);
 			}
@@ -357,7 +358,7 @@ int do_rules(struct frame *f, struct rule_list *rules, pthread_rwlock_t *rule_lo
 	}
 
 	if (rule_lock && pthread_rwlock_unlock(rule_lock)) {
-		pom_log(POM_LOG_ERR "Unable to unlock the given rule_lock\r\n");
+		pom_log(POM_LOG_ERR "Unable to unlock the given rule_lock");
 		return POM_ERR;
 	}
 

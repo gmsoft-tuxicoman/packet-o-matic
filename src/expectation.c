@@ -71,7 +71,7 @@ struct expectation_list *expectation_alloc(struct frame *f, struct target *t, st
 			int field_id = match_get_expectation(l->type, i, direction);
 			if (field_id != POM_ERR) {
 				if (!l->fields[field_id]) {
-					pom_log(POM_LOG_WARN "Warning, match_create_expectation returned an id hat doesn't correspond to a valid field_id\r\n");
+					pom_log(POM_LOG_WARN "Warning, match_create_expectation returned an id hat doesn't correspond to a valid field_id");
 					l = l->next;
 					continue;
 				}
@@ -106,7 +106,7 @@ struct expectation_list *expectation_alloc(struct frame *f, struct target *t, st
 int expectation_set_target_priv(struct expectation_list *l, void *target_priv, int (*cleanup_handler) (struct target *t, struct conntrack_entry *ce, void *priv)) {
 
 	if (l->target_priv) {
-		pom_log(POM_LOG_WARN "Warning, target priv already set for this expectation\r\n");
+		pom_log(POM_LOG_WARN "Warning, target priv already set for this expectation");
 		return POM_ERR;
 	}
 	l->target_priv = target_priv;
@@ -119,7 +119,7 @@ int expectation_set_target_priv(struct expectation_list *l, void *target_priv, i
 int expectation_add(struct expectation_list *l, unsigned int expiry) {
 
 	if (l->next || l->prev || l == expt_head) {
-		pom_log(POM_LOG_WARN "Warning, expectation already added\r\n");
+		pom_log(POM_LOG_WARN "Warning, expectation already added");
 		return POM_ERR;
 	}
 	

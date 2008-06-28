@@ -71,7 +71,7 @@ static int match_identify_rtp(struct frame *f, struct layer* l, unsigned int sta
 	hdr_len += hdr->csrc_count * 4;
 
 	if (len - hdr_len <= 0) {
-		pom_log(POM_LOG_TSHOOT "Invalid size for RTP packet\r\n");
+		pom_log(POM_LOG_TSHOOT "Invalid size for RTP packet");
 		return POM_ERR;
 	}
 
@@ -85,7 +85,7 @@ static int match_identify_rtp(struct frame *f, struct layer* l, unsigned int sta
 		ext = f->buff + start + hdr_len;
 		hdr_len += ntohs(ext->length);
 		if (len < (hdr_len + start)) {
-			pom_log(POM_LOG_TSHOOT "Invalid size for RTP packet\r\n");
+			pom_log(POM_LOG_TSHOOT "Invalid size for RTP packet");
 			return POM_ERR;
 		}
 	}

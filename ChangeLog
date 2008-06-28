@@ -1,3 +1,10 @@
+* 2008/06/27 Guy Martin <gmsoft@tuxicoman.be>
+Added a buffer for debug output.
+Debug level is not independant for every CLI session.
+Get rid of enable/disable debug functions for CLI.
+Full line of debug must be provided to pom_log instead of multiple calls.
+Added "set console debug" CLI function.
+
 * 2008/06/23 Guy Martin <gmsoft@tuxicoman.be>
 Fix memory leak when rule fail to parse in XML-RPC interface.
 Return targets refcount with target.listLoaded.

@@ -71,7 +71,7 @@ int input_register(const char *input_name) {
 			match_lock(1); // Allow safe registration of the matches
 			if ((*register_my_input) (my_input) != POM_OK) {
 				match_unlock();
-				pom_log(POM_LOG_ERR "Error while loading input %s. Could not register input !\r\n", input_name);
+				pom_log(POM_LOG_ERR "Error while loading input %s. Could not register input !", input_name);
 				inputs[i] = NULL;
 				free(my_input);
 				return POM_ERR;
@@ -83,7 +83,7 @@ int input_register(const char *input_name) {
 			strcpy(inputs[i]->name, input_name);
 			inputs[i]->dl_handle = handle;
 
-			pom_log(POM_LOG_DEBUG "Input %s registered\r\n", input_name);
+			pom_log(POM_LOG_DEBUG "Input %s registered", input_name);
 
 
 			return i;
@@ -230,7 +230,7 @@ int input_get_type(char* input_name) {
 struct input *input_alloc(int input_type) {
 
 	if (!inputs[input_type]) {
-		pom_log(POM_LOG_ERR "Input type %u is not registered\r\n", input_type);
+		pom_log(POM_LOG_ERR "Input type %u is not registered", input_type);
 		return NULL;
 	}
 
@@ -360,7 +360,7 @@ int input_unregister(int input_type) {
 		return POM_ERR;
 
 	if (inputs[input_type]->refcount) {
-		pom_log(POM_LOG_ERR "Cannot unload input %s. Reference count > 0\r\n", inputs[input_type]->name);
+		pom_log(POM_LOG_ERR "Cannot unload input %s. Reference count > 0", inputs[input_type]->name);
 		return POM_ERR;
 	}
 
@@ -385,8 +385,8 @@ int input_unregister(int input_type) {
 		inputs[input_type]->modes = m;
 	}
 	if (dlclose(inputs[input_type]->dl_handle))
-		pom_log(POM_LOG_WARN "Error while closing library of input %s\r\n", inputs[input_type]->name);
-	pom_log(POM_LOG_DEBUG "Input %s unregistered\r\n", inputs[input_type]->name);
+		pom_log(POM_LOG_WARN "Error while closing library of input %s", inputs[input_type]->name);
+	pom_log(POM_LOG_DEBUG "Input %s unregistered", inputs[input_type]->name);
 	free(inputs[input_type]->name);
 	free(inputs[input_type]);
 	inputs[input_type] = NULL;
@@ -501,7 +501,7 @@ int input_lock(int write) {
 	}
 
 	if (result) {
-		pom_log(POM_LOG_ERR "Error while locking the input lock\r\n");
+		pom_log(POM_LOG_ERR "Error while locking the input lock");
 		abort();
 		return POM_ERR;
 	}
@@ -517,7 +517,7 @@ int input_lock(int write) {
 int input_unlock() {
 
 	if (pthread_rwlock_unlock(&input_global_lock)) {
-		pom_log(POM_LOG_ERR "Error while unlocking the input lock\r\n");
+		pom_log(POM_LOG_ERR "Error while unlocking the input lock");
 		abort();
 		return POM_ERR;
 	}

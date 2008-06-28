@@ -22,6 +22,8 @@
 #ifndef __MGMTSRV_H__
 #define __MGMTSRV_H__
 
+#include "common.h"
+
 #include <sys/socket.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -46,7 +48,7 @@ struct mgmt_command *cmds;
 #define MGMT_CMD_PWD_PROMPT "Password : "
 
 #define MGMT_FLAG_LISTENING	0x1	// this is a listening socket
-#define MGMT_FLAG_MONITOR	0x2	// this connections wants debug output
+#define MGMT_FLAG_PROCESSING	0x2	// one function is being processed
 
 #define MGMT_PRINT_BUFF_SIZE 2048
 
@@ -70,6 +72,7 @@ struct mgmt_connection {
 	struct mgmt_connection *prev;
 	struct mgmt_connection *next;
 	uint16_t win_x, win_y; // size of the remote window
+	int debug_level;
 
 };
 
@@ -109,7 +112,7 @@ int mgmtsrv_send(struct mgmt_connection *c, char* format, ...);
 int mgmtsrv_set_password(const char *password);
 const char *mgmtsrv_get_password();
 
-int mgmtsrv_send_debug(const char *format, va_list ap);
+int mgmtsrv_send_debug(struct log_entry* entry);
 
 #endif
 

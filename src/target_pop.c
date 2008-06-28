@@ -368,7 +368,7 @@ static int pop_process_line(struct target_conntrack_priv_pop *cp, char *line, in
 
 static int target_close_connection_pop(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
-	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
+	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx", (unsigned long) conntrack_priv);
 
 	struct target_conntrack_priv_pop *cp;
 	cp = conntrack_priv;
@@ -427,13 +427,13 @@ static int pop_file_open(struct target_conntrack_priv_pop *cp, struct timeval *r
 		if (cp->fd == -1) {
 			char errbuff[256];
 			strerror_r(errno, errbuff, sizeof(errbuff));
-			pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s\r\n", filename, errbuff);
+			pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s", filename, errbuff);
 			return POM_ERR;
 		}
 
 		total_delivery++;
 
-		pom_log(POM_LOG_TSHOOT "%s opened\r\n", filename);
+		pom_log(POM_LOG_TSHOOT "%s opened", filename);
 
 	return POM_OK;
 }
@@ -470,16 +470,16 @@ static int pop_file_close(struct target_conntrack_priv_pop *cp) {
 	cp->filename = NULL;
 
 	if (link(old_name, new_name) == -1) {
-		pom_log(POM_LOG_ERR "Unable to hard link %s with %s\r\n", new_name, old_name);
+		pom_log(POM_LOG_ERR "Unable to hard link %s with %s", new_name, old_name);
 		return POM_ERR;
 	}
 
 	if (unlink(old_name) == -1) {
-		pom_log(POM_LOG_ERR "Unable to unlink %s\r\n", old_name);
+		pom_log(POM_LOG_ERR "Unable to unlink %s", old_name);
 		return POM_ERR;
 	}
 
-	pom_log(POM_LOG_TSHOOT "%s closed and moved to directory new\r\n", old_name);
+	pom_log(POM_LOG_TSHOOT "%s closed and moved to directory new", old_name);
 	return POM_OK;
 
 }
@@ -503,7 +503,7 @@ static int pop_write_login_info(struct target_conntrack_priv_pop *cp, struct fra
 
 
 	if (layer_field_parse(f->l, strformat, line, sizeof(line)) == POM_ERR) {
-		pom_log(POM_LOG_WARN "Internal error while parsing string for target_pop logins\r\n");
+		pom_log(POM_LOG_WARN "Internal error while parsing string for target_pop logins");
 		return POM_ERR;
 	}
 	

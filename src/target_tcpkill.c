@@ -148,7 +148,7 @@ static int target_open_tcpkill(struct target *t) {
 	struct target_priv_tcpkill *p = t->target_priv;
 	
 	if (!p) {
-		pom_log(POM_LOG_ERR "Error, tcpkill target not initialized !\r\n");
+		pom_log(POM_LOG_ERR "Error, tcpkill target not initialized !");
 		return POM_ERR;
 	}
 
@@ -163,11 +163,11 @@ static int target_open_tcpkill(struct target *t) {
 		p->socket = socket(PF_INET, SOCK_RAW, IPPROTO_TCP);
 
 		if (p->socket < 0) {
-			pom_log(POM_LOG_ERR "Unable to open IPv4 socket to send TCP RST\r\n");
+			pom_log(POM_LOG_ERR "Unable to open IPv4 socket to send TCP RST");
 			return POM_ERR;
 		}
 		if (setsockopt (p->socket, IPPROTO_IP, IP_HDRINCL, &one, sizeof (one)) < 0) {
-			pom_log(POM_LOG_ERR "Unable to set IP_HDRINCL on IPv4 socket !\r\n");
+			pom_log(POM_LOG_ERR "Unable to set IP_HDRINCL on IPv4 socket !");
 			return POM_ERR;
 		}
 	} else {
@@ -177,10 +177,10 @@ static int target_open_tcpkill(struct target *t) {
 
 		p->lc = libnet_init (LIBNET_LINK_ADV, PTYPE_STRING_GETVAL(p->interface), errbuf);
 	        if (!p->lc) {
-			pom_log(POM_LOG_ERR "Error, cannot open libnet context: %s\r\n", errbuf);
+			pom_log(POM_LOG_ERR "Error, cannot open libnet context: %s", errbuf);
 			return POM_ERR;
 		}
-      		pom_log(POM_LOG_ERR "Libnet context initialized for interface %s\r\n", p->lc->device);
+      		pom_log(POM_LOG_ERR "Libnet context initialized for interface %s", p->lc->device);
 #ifdef HAVE_LINUX_IP_SOCKET
 	}
 #endif
@@ -198,7 +198,7 @@ static int target_process_tcpkill(struct target *t, struct frame *f) {
 
 	tcpstart = layer_find_start(f->l, match_tcp_id);
 	if (tcpstart == POM_ERR) {
-		pom_log(POM_LOG_WARN "No TCP header found in this packet\r\n");
+		pom_log(POM_LOG_WARN "No TCP header found in this packet");
 		return POM_OK;
 	}
 
@@ -228,21 +228,21 @@ static int target_process_tcpkill(struct target *t, struct frame *f) {
 
 	// In routed mode, we can only send ipv4 packets. linux API doesn't allow random souce addr for ipv6
 	if (t->mode == mode_routed && ipv4start == -1) {
-		pom_log(POM_LOG_WARN "No IPv4 header found in this packet\r\n");
+		pom_log(POM_LOG_WARN "No IPv4 header found in this packet");
 		return POM_OK;
 	}
 #endif
 
 	// In normal mode we need at least an ipv6 or ipv4 header
 	if (t->mode != mode_routed && ipv4start == -1 && ipv6start == -1) {
-		pom_log(POM_LOG_WARN "No IPv4 or IPv6 header found in this packet\r\n");
+		pom_log(POM_LOG_WARN "No IPv4 or IPv6 header found in this packet");
 		return POM_OK;
 	}
 
 #ifdef HAVE_LINUX_IP_SOCKET
 	// Check if the socket is opened
 	if (t->mode == mode_routed && priv->socket <= 0) {
-		pom_log(POM_LOG_ERR "Error, socket not opened. Cannot send TCP RST\r\n");
+		pom_log(POM_LOG_ERR "Error, socket not opened. Cannot send TCP RST");
 		return POM_ERR;
 	}
 #endif
@@ -252,7 +252,7 @@ static int target_process_tcpkill(struct target *t, struct frame *f) {
 		int ethernetstart;
 		ethernetstart = layer_find_start(f->l, match_ethernet_id);
 		if (ethernetstart == POM_ERR) {
-			pom_log(POM_LOG_WARN "No ethernet header found in this packet\r\n");
+			pom_log(POM_LOG_WARN "No ethernet header found in this packet");
 			return POM_OK;
 		}
 
@@ -262,7 +262,7 @@ static int target_process_tcpkill(struct target *t, struct frame *f) {
 		ipv6start = layer_find_start(f->l, match_ipv6_id);
 
 		if (ipv4start == POM_ERR && ipv6start == POM_ERR) {
-			pom_log(POM_LOG_WARN "Neither IPv4 or IPv6 header found in this packet\r\n");
+			pom_log(POM_LOG_WARN "Neither IPv4 or IPv6 header found in this packet");
 			return POM_OK;
 		}
 
@@ -365,7 +365,7 @@ static int target_process_tcpkill(struct target *t, struct frame *f) {
 		if (t->mode != mode_routed) {
 			if (libnet_write_link (priv->lc, buffer, blen) == -1) {
 				strerror_r(errno, errbuff, 256);
-				pom_log(POM_LOG_ERR "Error while inject TCP RST : %s\r\n", errbuff);
+				pom_log(POM_LOG_ERR "Error while inject TCP RST : %s", errbuff);
 				return POM_ERR;
 			}
 		}
@@ -374,7 +374,7 @@ static int target_process_tcpkill(struct target *t, struct frame *f) {
 			// Inject the packets
 			if(sendto(priv->socket, (u_int8_t *)buffer, blen, 0, (struct sockaddr *) &addr, addrlen) <= 0) {
 				strerror_r(errno, errbuff, 256);
-				pom_log(POM_LOG_ERR "Error while inject TCP RST : %s\r\n", errbuff);
+				pom_log(POM_LOG_ERR "Error while inject TCP RST : %s", errbuff);
 				return POM_ERR;
 			}
 		}
@@ -384,7 +384,7 @@ static int target_process_tcpkill(struct target *t, struct frame *f) {
 
 	}
 
-	pom_log(POM_LOG_DEBUG "0x%lx; TCP killed !\r\n", (unsigned long) priv);
+	pom_log(POM_LOG_DEBUG "0x%lx; TCP killed !", (unsigned long) priv);
 
 	return POM_OK;
 	

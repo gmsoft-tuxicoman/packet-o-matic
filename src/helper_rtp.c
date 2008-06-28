@@ -192,7 +192,7 @@ static int helper_process_timer_rtp(void *priv) {
 
 	struct helper_timer_priv_rtp *p = priv;
 	if (!p->priv->pkts[p->dir]) {
-		pom_log(POM_LOG_WARN "helper_rtp.c: wtf, timer poped up and there is no packet to dequeue\r\n");
+		pom_log(POM_LOG_WARN "helper_rtp.c: wtf, timer poped up and there is no packet to dequeue");
 		timer_dequeue(p->priv->t[p->dir]);
 		return POM_OK;
 	}
@@ -256,7 +256,7 @@ static int helper_cleanup_connection_rtp(struct conntrack_entry *ce, void *connt
 	struct helper_priv_rtp *cp = conntrack_priv;
 
 	if (cp->pkts[0] || cp->pkts[1]) {
-		pom_log(POM_LOG_DEBUG "helper_rtp : There should not be any remaining packet at this point !!!!\r\n");
+		pom_log(POM_LOG_DEBUG "helper_rtp : There should not be any remaining packet at this point !!!!");
 		int i;
 		for (i = 0; i < 2; i++)
 			while (cp->pkts[i]) {

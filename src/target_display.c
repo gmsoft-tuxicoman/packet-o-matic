@@ -215,9 +215,9 @@ static int target_process_display(struct target *t, struct frame *f) {
 
 	l = start_layer;
 
-	char *format_str = " %s\r\n";
-	char format[strlen(format_str) + 1];
-	strcpy(format, format_str);
+	char *format_str = "%s";
+	char format[strlen(format_str) + 2];
+	strcpy(format + 1, format_str);
 	format[0] = debug_level;
 	pom_log(format, line);
 
@@ -297,9 +297,9 @@ static int target_display_print_hex(void *frame, unsigned int start, unsigned in
 
 		pos = max;
 
-		char *format_str = " %s\r\n";
-		char format[strlen(format_str) + 1];
-		strcpy(format, format_str);
+		char *format_str = "%s";
+		char format[strlen(format_str) + 2];
+		strcpy(format + 1, format_str);
 		format[0] = PTYPE_UINT8_GETVAL(p->debug_level);
 		pom_log(format, line);
 	}

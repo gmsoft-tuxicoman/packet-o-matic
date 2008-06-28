@@ -28,7 +28,12 @@
 
 static unsigned int random_seed;
 
-void pom_log(const char *format, ...) {
+static struct log_entry *log_head = NULL, *log_tail = NULL;
+static unsigned int log_buffer_size = 0;
+static pthread_rwlock_t log_buffer_lock = PTHREAD_RWLOCK_INITIALIZER;
+static uint32_t log_buffer_entry_id = 0;
+
+void pom_log_internal(char *file, const char *format, ...) {
 
 	int level = *POM_LOG_INFO;
 
@@ -37,24 +42,100 @@ void pom_log(const char *format, ...) {
 		format++;
 	}
 
+
 	va_list arg_list;
 
-	if (level > debug_level)
-		return;
-
-	if (console_output) {
-		va_start(arg_list, format);
-		vprintf(format, arg_list);
-		va_end(arg_list);
-	}
-
+	char buff[2048];
 	va_start(arg_list, format);
-	mgmtsrv_send_debug(format, arg_list);
+	vsnprintf(buff, sizeof(buff) - 1, format, arg_list);
 	va_end(arg_list);
 
 
+	struct log_entry *entry = malloc(sizeof(struct log_entry));
+
+
+	memset(entry, 0, sizeof(struct log_entry));
+
+	char *dot = strchr(file, '.');
+	unsigned int len = strlen(file);
+	if (dot) {
+		unsigned int new_len = dot - file;
+		if (new_len < len)
+			len = new_len;
+	}
+
+	entry->file = malloc(len + 1);
+	memset(entry->file, 0, len + 1);
+	strncat(entry->file, file, len);
+	
+	entry->data = malloc(strlen(buff) + 1);
+	strcpy(entry->data, buff);
+	
+	entry->log_level = level;
+	entry->id = log_buffer_entry_id;
+
+	log_buffer_entry_id++;
+
+
+	int result = pthread_rwlock_wrlock(&log_buffer_lock);
+
+	if (result) {
+		printf("Error while locking the log lock. Aborting.\r");
+		abort();
+		return; // never reached
+	}
+
+	if (!log_tail) {
+		log_head = entry;
+		log_tail = entry;
+	} else {
+		entry->prev = log_tail;
+		log_tail->next = entry;
+		log_tail = entry;
+	}
+	log_buffer_size++;
+
+	while (log_buffer_size > POM_LOG_BUFFER_SIZE) {
+		struct log_entry *tmp = log_head;
+		log_head = log_head->next;
+		log_head->prev = NULL;
+
+		free(tmp->file);
+		free(tmp->data);
+		free(tmp);
+		
+		log_buffer_size--;
+	}
+
+
+	if (pthread_rwlock_unlock(&log_buffer_lock)) {
+		printf("Error while unlocking the log lock. Aborting.\r");
+		abort();
+		return; // never reached
+	}
+
+	mgmtsrv_send_debug(entry);
+
+	if (console_output && console_debug_level >= level)
+		printf("%s: %s\n", entry->file, entry->data);
+
 }
 
+int pom_log_cleanup() {
+
+	while (log_head) {
+		struct log_entry *tmp = log_head;
+		log_head = log_head->next;
+		free(tmp->file);
+		free(tmp->data);
+		free(tmp);
+
+	}
+	
+	log_tail = NULL;
+
+	return POM_OK;
+}
 
 void *lib_get_register_func(const char *type, const char *name, void **handle) {
 
@@ -74,7 +155,7 @@ void *lib_get_register_func(const char *type, const char *name, void **handle) {
 	// Fallback on hardcoded LIBDIR
 	if (!*handle) {
 		
-		pom_log(POM_LOG_TSHOOT "Unable to load %s : %s\r\n", libname, dlerror());
+		pom_log(POM_LOG_TSHOOT "Unable to load %s : %s", libname, dlerror());
 
 		memset(buff, 0, NAME_MAX);
 		strcat(buff, LIBDIR);
@@ -84,7 +165,7 @@ void *lib_get_register_func(const char *type, const char *name, void **handle) {
 	}
 
 	if (!*handle) {
-		pom_log(POM_LOG_TSHOOT "Unable to load %s : %s\r\n", buff, dlerror());
+		pom_log(POM_LOG_TSHOOT "Unable to load %s : %s", buff, dlerror());
 		return NULL;
 	}
 	dlerror();
@@ -103,7 +184,7 @@ void *lib_get_register_func(const char *type, const char *name, void **handle) {
 int frame_alloc_aligned_buff(struct frame *f, int length) {
 	struct input_caps ic;
 	if (input_getcaps(f->input, &ic) == POM_ERR) {	
-		pom_log(POM_LOG_ERR "Error while trying to get input caps\r\n");
+		pom_log(POM_LOG_ERR "Error while trying to get input caps");
 		return POM_ERR;
 	}
 

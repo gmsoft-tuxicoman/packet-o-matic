@@ -247,7 +247,7 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 			conn->last_block++;
 
 			while (conn->last_block < block_id) {
-				pom_log(POM_LOG_DEBUG "TFTP data block %u missed. Padding with 512 bytes\r\n", conn->last_block);
+				pom_log(POM_LOG_DEBUG "TFTP data block %u missed. Padding with 512 bytes", conn->last_block);
 				char missed[512];
 				memset(missed, 0, sizeof(missed));
 				write(conn->fd, missed, sizeof(missed));
@@ -294,7 +294,7 @@ static int target_close_connection_tftp(struct target *t, struct conntrack_entry
 	if (cp->parsed_path)
 		free(cp->parsed_path);
 
-	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
+	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx", (unsigned long) conntrack_priv);
 	struct target_priv_tftp *priv = t->target_priv;
 
 	if (cp->prev)
@@ -325,11 +325,11 @@ static int tftp_file_open(struct target_conntrack_priv_tftp *cp, struct timeval 
 	if (conn->fd == -1) {
 		char errbuff[256];
 		strerror_r(errno, errbuff, sizeof(errbuff));
-		pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s\r\n", final_name, errbuff);
+		pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s", final_name, errbuff);
 		return POM_ERR;
 	}
 
-	pom_log(POM_LOG_TSHOOT "TFTP : %s opened\r\n", final_name);
+	pom_log(POM_LOG_TSHOOT "TFTP : %s opened", final_name);
 
 	return POM_OK;
 }
@@ -342,7 +342,7 @@ static int tftp_file_close(struct target_conntrack_priv_tftp *cp) {
 		return POM_ERR;
 	close(conn->fd);
 	conn->fd = -1;
-	pom_log(POM_LOG_TSHOOT "TFTP : %s closed\r\n", conn->filename);
+	pom_log(POM_LOG_TSHOOT "TFTP : %s closed", conn->filename);
 	*conn->filename = 0;
 
 	return POM_OK;

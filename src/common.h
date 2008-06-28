@@ -85,20 +85,40 @@
 
 void *lib_get_register_func(const char *type, const char *name, void **handle);
 
-// Prepend value to log string to indicate log level
+/// Prepend value to log string to indicate log level
 #define POM_LOG_ERR	"\1"
 #define POM_LOG_WARN	"\2"
 #define POM_LOG_INFO	"\3"
 #define POM_LOG_DEBUG	"\4"
 #define POM_LOG_TSHOOT	"\5"
 
-/// Global debug level
-unsigned int debug_level;
+/// Size of the log buffer
+#define POM_LOG_BUFFER_SIZE	100
+
+/// Console debug level
+unsigned int console_debug_level;
 
 /// Should we output to console
 int console_output;
 
-void pom_log(const char *format, ...);
+/// Log entry
+
+struct log_entry {
+
+	uint32_t id;
+	char *file;
+	char *data;
+	char log_level;
+
+	struct log_entry *prev;
+	struct log_entry *next;
+
+};
+
+#define pom_log(args ...) pom_log_internal(__FILE__, args)
+
+void pom_log_internal(char *file, const char *format, ...);
+int pom_log_cleanup();
 
 int frame_alloc_aligned_buff(struct frame *f, int length);
 

@@ -42,7 +42,7 @@ int timers_process() {
 
 	while (tq) {
 		while (tq->head && timercmp(&tq->head->expires, &now, <)) {
-				pom_log(POM_LOG_TSHOOT "Timer 0x%lx reached. Starting handler ...\r\n", (unsigned long) tq->head);
+				pom_log(POM_LOG_TSHOOT "Timer 0x%lx reached. Starting handler ...", (unsigned long) tq->head);
 				(*tq->head->handler) (tq->head->priv);
 		}
 		tq = tq->next;
@@ -121,7 +121,7 @@ int timer_queue(struct timer *t, unsigned int expiry) {
 	tq = timer_queues;
 
 	if (t->prev || t->next) {
-		pom_log(POM_LOG_WARN "Error, timer not dequeued correctly\r\n");
+		pom_log(POM_LOG_WARN "Error, timer not dequeued correctly");
 		return -1;
 	}
 
@@ -226,7 +226,7 @@ int timer_dequeue(struct timer *t) {
 			
 				/* WE SHOULD NOT TRY TO REMOVE QUEUES FROM THE QUEUE LIST
 				if (!tq->head) { // If it is, remove that queue from the queue list
-					pom_log(POM_LOG_TSHOOT "Removing queue 0x%lx from the queue list\r\n", (unsigned long) tq);
+					pom_log(POM_LOG_TSHOOT "Removing queue 0x%lx from the queue list", (unsigned long) tq);
 					if (tq->prev)
 						tq->prev->next = tq->next;
 					else
@@ -244,7 +244,7 @@ int timer_dequeue(struct timer *t) {
 			tq = tq->next;
 		}
 		if (!tq)
-			pom_log(POM_LOG_WARN "Warning, timer 0x%lx not found in timers queues heads\r\n", (unsigned long) t);
+			pom_log(POM_LOG_WARN "Warning, timer 0x%lx not found in timers queues heads", (unsigned long) t);
 	}
 
 	if (t->next) {
@@ -260,7 +260,7 @@ int timer_dequeue(struct timer *t) {
 			tq = tq->next;
 		}
 		if (!tq) 
-			pom_log(POM_LOG_WARN "Warning, timer 0x%lx not found in timers queues tails\r\n", (unsigned long) t);
+			pom_log(POM_LOG_WARN "Warning, timer 0x%lx not found in timers queues tails", (unsigned long) t);
 	}
 
 

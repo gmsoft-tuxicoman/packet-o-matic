@@ -30,11 +30,10 @@ int mgmtcmd_print_help(struct mgmt_connection *c, struct mgmt_command *start, st
 int mgmtcmd_show_license(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_password(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_unset_password(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_enable_debug(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_disable_debug(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_debug_level(struct mgmt_connection *c, int argc, char *argv[]);
 struct mgmt_command_arg *mgmtcmd_set_debug_level_completion(int argc, char *argv[]);
 int mgmtcmd_show_debug_level(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_set_console_debug(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_write_config(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_halt(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_show_core_parameters(struct mgmt_connection *c, int argc, char *argv[]);

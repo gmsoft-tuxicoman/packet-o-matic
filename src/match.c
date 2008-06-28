@@ -69,7 +69,7 @@ int match_register(const char *match_name) {
 			my_match->type = i; // Allow the match to know it's number at registration time
 
 			if ((*register_my_match) (my_match) != POM_OK) {
-				pom_log(POM_LOG_ERR "Error while loading match %s. Could not register match !\r\n", match_name);
+				pom_log(POM_LOG_ERR "Error while loading match %s. Could not register match !", match_name);
 				free(my_match->name);
 				free(my_match);
 				matches[i] = NULL;
@@ -78,7 +78,7 @@ int match_register(const char *match_name) {
 
 			matches[i]->dl_handle = handle;
 
-			pom_log(POM_LOG_DEBUG "Match %s registered\r\n", match_name);
+			pom_log(POM_LOG_DEBUG "Match %s registered", match_name);
 
 			// Automatically load the conntrack
 			conntrack_register(match_name);
@@ -225,7 +225,7 @@ struct match_field *match_alloc_field(int match_type, char *field_type) {
 int match_cleanup_field(struct match_field *p) {
 
 	if (!matches[p->type])
-		pom_log(POM_LOG_ERR "Error, invalid match type %u for field\r\n", p->type);
+		pom_log(POM_LOG_ERR "Error, invalid match type %u for field", p->type);
 	else
 		matches[p->type]->refcount--;
 
@@ -370,7 +370,7 @@ int match_refcount_dec(int match_type) {
 		return POM_ERR;
 	
 	if (matches[match_type]->refcount == 0) {
-		pom_log(POM_LOG_WARN "Warning, trying to decrease match %s reference count below 0\r\n", matches[match_type]->name);
+		pom_log(POM_LOG_WARN "Warning, trying to decrease match %s reference count below 0", matches[match_type]->name);
 		return POM_ERR;
 	}
 
@@ -405,19 +405,19 @@ int match_unregister(unsigned int match_type) {
 		return POM_ERR;
 
 	if (conntrack_unregister(match_type) == POM_ERR) {
-		pom_log(POM_LOG_WARN "Warning, cannot unregister match %s since conntack is still registered\r\n", r->name);
+		pom_log(POM_LOG_WARN "Warning, cannot unregister match %s since conntack is still registered", r->name);
 		return POM_ERR;
 	}
 
 	helper_lock(1);
 	if (helper_unregister(match_type) == POM_ERR) {
-		pom_log(POM_LOG_WARN "Warning, cannot unregister match %s since helper is still registered\r\n", r->name);
+		pom_log(POM_LOG_WARN "Warning, cannot unregister match %s since helper is still registered", r->name);
 		return POM_ERR;
 	}
 	helper_unlock();
 
 	if (r->refcount) {
-		pom_log(POM_LOG_WARN "Warning, reference count not 0 for match %s\r\n", r->name);
+		pom_log(POM_LOG_WARN "Warning, reference count not 0 for match %s", r->name);
 		return POM_ERR;
 	}
 
@@ -448,9 +448,9 @@ int match_unregister(unsigned int match_type) {
 		(*r->unregister) (r);
 	
 	if (dlclose(r->dl_handle))
-		pom_log(POM_LOG_WARN "Error while closing library of match %s\r\n", r->name);
+		pom_log(POM_LOG_WARN "Error while closing library of match %s", r->name);
 
-	pom_log(POM_LOG_DEBUG "Match %s unregistered\r\n", r->name);
+	pom_log(POM_LOG_DEBUG "Match %s unregistered", r->name);
 
 	for (i = 0; i < MAX_MATCH; i++) {
 		if (r->match_deps[i].name) {
@@ -523,7 +523,7 @@ int match_lock(int write) {
 	}
 
 	if (result) {
-		pom_log(POM_LOG_ERR "Error while locking the match lock\r\n");
+		pom_log(POM_LOG_ERR "Error while locking the match lock");
 		abort();
 		return POM_ERR;
 	}
@@ -539,7 +539,7 @@ int match_lock(int write) {
 int match_unlock() {
 
 	if (pthread_rwlock_unlock(&match_global_lock)) {
-		pom_log(POM_LOG_ERR "Error while unlocking the match lock\r\n");
+		pom_log(POM_LOG_ERR "Error while unlocking the match lock");
 		abort();
 		return POM_ERR;
 	}

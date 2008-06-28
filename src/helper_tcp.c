@@ -101,7 +101,7 @@ static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned in
 	if (cp->flags[dir] & HELPER_TCP_SEQ_KNOWN) {
 	
 		if (new_seq + payload_size < cp->seq_expected[dir]) {
-			//pom_log(POM_LOG_TSHOOT "helper_tcp.c: %u.%u 0x%x-%u, expected seq %u < got seq %u, bufflen is %d. discarding packet\r\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, cp->seq_expected[dir], new_seq, cp->buff_len[dir]);
+			//pom_log(POM_LOG_TSHOOT "helper_tcp.c: %u.%u 0x%x-%u, expected seq %u < got seq %u, bufflen is %d. discarding packet", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, cp->seq_expected[dir], new_seq, cp->buff_len[dir]);
 			return H_NEED_HELP;
 		} else if (new_seq > cp->seq_expected[dir]) {
 		
@@ -144,10 +144,10 @@ static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned in
 								// looks like we already got a packet with some payload
 								if (tmp_pkt->data_len >= payload_size) {
 									// same payload size -> we can safely discard it
-									//pom_log(POM_LOG_TSHOOT "helper_tcp.c: %u.%u 0x%x-%u, got seq %u, bufflen is %d. discarding duplicate already in the queue\r\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, new_seq, cp->buff_len[dir]);
+									//pom_log(POM_LOG_TSHOOT "helper_tcp.c: %u.%u 0x%x-%u, got seq %u, bufflen is %d. discarding duplicate already in the queue", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, new_seq, cp->buff_len[dir]);
 									return H_NEED_HELP;
 								} else {
-									//pom_log(POM_LOG_TSHOOT "helper_tcp.c: %u.%u 0x%x-%u, got seq %u, bufflen is %d. replacing duplicate already in the queue\r\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, new_seq, cp->buff_len[dir]);
+									//pom_log(POM_LOG_TSHOOT "helper_tcp.c: %u.%u 0x%x-%u, got seq %u, bufflen is %d. replacing duplicate already in the queue", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, new_seq, cp->buff_len[dir]);
 									cp->buff_len[dir] += payload_size - tmp_pkt->data_len;
 
 									free(tmp_pkt->f->buff_base);
@@ -171,7 +171,7 @@ static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned in
 			}
 
 			// At this point we need to queue the packet before tmp_pkt or at the end of the list if empty
-			//pom_log(POM_LOG_TSHOOT "helper_tcp.c: %u.%u 0x%x-%u, expected seq %u > got seq %u, bufflen is %d. queuing packet\r\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, cp->seq_expected[dir], new_seq, cp->buff_len[dir]);
+			//pom_log(POM_LOG_TSHOOT "helper_tcp.c: %u.%u 0x%x-%u, expected seq %u > got seq %u, bufflen is %d. queuing packet", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, cp->seq_expected[dir], new_seq, cp->buff_len[dir]);
 
 			struct helper_priv_tcp_packet *pkt = malloc(sizeof(struct helper_priv_tcp_packet));
 			memset(pkt, 0, sizeof(struct helper_priv_tcp_packet));
@@ -217,7 +217,7 @@ static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned in
 
 			// Maybe we suffer from packet loss. Default maximum buffer is 256 KBytes 
 			if (cp->buff_len[dir] > PTYPE_UINT32_GETVAL(conn_buff) * 1024) {
-				//pom_log(POM_LOG_TSHOOT "helper_tcp.c: 0x%x-%u, warning, buffer is too large : %u. we probably lost a packet. processing anyway. lost %u bytes cp = 0x%x, seq %u, expected %u\r\n", (unsigned) f->ce, dir, cp->buff_len[dir], cp->seq_expected[dir] - cp->last_seq[dir], (unsigned) cp, cp->last_seq[dir], cp->seq_expected[dir]);
+				//pom_log(POM_LOG_TSHOOT "helper_tcp.c: 0x%x-%u, warning, buffer is too large : %u. we probably lost a packet. processing anyway. lost %u bytes cp = 0x%x, seq %u, expected %u", (unsigned) f->ce, dir, cp->buff_len[dir], cp->seq_expected[dir] - cp->last_seq[dir], (unsigned) cp, cp->last_seq[dir], cp->seq_expected[dir]);
 				helper_process_next_tcp(cp, dir);
 			}
 
@@ -240,11 +240,11 @@ static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned in
 	if (hdr->th_flags & TH_SYN || hdr->th_flags & TH_FIN)
 		cp->seq_expected[dir]++;
 
-	//pom_log(POM_LOG_TSHOOT "helper_tcp.c: %u.%u 0x%x-%u, got seq %u, new expected seq %u, bufflen is %d. processing packet\r\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, new_seq, cp->seq_expected[dir], cp->buff_len[dir]);
+	//pom_log(POM_LOG_TSHOOT "helper_tcp.c: %u.%u 0x%x-%u, got seq %u, new expected seq %u, bufflen is %d. processing packet", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, new_seq, cp->seq_expected[dir], cp->buff_len[dir]);
 
 	// Discard any packet that we are sure not to need anymore
 	while (cp->pkts[dir] && ((cp->pkts[dir]->seq + cp->pkts[dir]->data_len) < cp->seq_expected[dir])) {
-		//pom_log(POM_LOG_TSHOOT "helper_tcp.c: 0x%x-%u, discarding packet with seq %u from queue\r\n", (unsigned) f->ce, dir, cp->pkts[dir]->seq);
+		//pom_log(POM_LOG_TSHOOT "helper_tcp.c: 0x%x-%u, discarding packet with seq %u from queue", (unsigned) f->ce, dir, cp->pkts[dir]->seq);
 		struct helper_priv_tcp_packet *pkt = cp->pkts[dir];
 		cp->pkts[dir] = cp->pkts[dir]->next;
 		if (cp->pkts[dir]) {
@@ -262,7 +262,7 @@ static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned in
 
 	// Let's see if we can dequeue the next packets now
 	if (cp->pkts[dir]) {
-		//pom_log(POM_LOG_TSHOOT"helper_tcp.c: %u.%u 0x%x-%u, expected seq %u, first packet in queue seq %u\r\n", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, cp->seq_expected[dir], cp->pkts[dir]->seq);
+		//pom_log(POM_LOG_TSHOOT"helper_tcp.c: %u.%u 0x%x-%u, expected seq %u, first packet in queue seq %u", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, cp->seq_expected[dir], cp->pkts[dir]->seq);
 		if (cp->pkts[dir]->seq == cp->seq_expected[dir]) {
 			// It's easy, the sequence number match !
 			helper_process_next_tcp(cp, dir);
@@ -271,7 +271,7 @@ static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned in
 				(!cp->pkts[dir]->next || cp->pkts[dir]->seq + cp->pkts[dir]->data_len < cp->pkts[dir]->next->seq + cp->pkts[dir]->next->data_len)) {
 			// Looks like we need already have data from this packet in the buffer
 			unsigned int dup_data_len = cp->seq_expected[dir] - cp->pkts[dir]->seq;
-			//pom_log(POM_LOG_TSHOOT "helper_tcp.c: 0x%x-%u, need to drop %u of data over %u from current packet\r\n", (unsigned) f->ce, dir, dup_data_len, payload_size);
+			//pom_log(POM_LOG_TSHOOT "helper_tcp.c: 0x%x-%u, need to drop %u of data over %u from current packet", (unsigned) f->ce, dir, dup_data_len, payload_size);
 			l->payload_size -= dup_data_len;
 			helper_process_next_tcp(cp, dir);
 		}
@@ -290,12 +290,12 @@ static int helper_process_timer_tcp(void *priv) {
 
 	struct helper_timer_priv_tcp *p = priv;
 	if (!p->priv->pkts[p->dir]) {
-		pom_log(POM_LOG_WARN "helper_tcp.c: wtf, timer poped up and there is no packet to dequeue\r\n");
+		pom_log(POM_LOG_WARN "helper_tcp.c: wtf, timer poped up and there is no packet to dequeue");
 		timer_dequeue(p->priv->t[p->dir]);
 		return POM_OK;
 	}
 
-	//pom_log(POM_LOG_TSHOOT "helper_tcp.c: 0x%x-%u, warning, timer expired for missing segment. processing anyway. lost %u bytes cp = 0x%x, seq %u, expected %u\r\n", (unsigned) p->priv->pkts[p->dir]->f->ce, p->dir, p->priv->seq_expected[p->dir] - p->priv->last_seq[p->dir], (unsigned) p->priv, p->priv->last_seq[p->dir], p->priv->seq_expected[p->dir]);
+	//pom_log(POM_LOG_TSHOOT "helper_tcp.c: 0x%x-%u, warning, timer expired for missing segment. processing anyway. lost %u bytes cp = 0x%x, seq %u, expected %u", (unsigned) p->priv->pkts[p->dir]->f->ce, p->dir, p->priv->seq_expected[p->dir] - p->priv->last_seq[p->dir], (unsigned) p->priv, p->priv->last_seq[p->dir], p->priv->seq_expected[p->dir]);
 	return helper_process_next_tcp(p->priv, p->dir);
 
 }
@@ -325,7 +325,7 @@ static int helper_process_next_tcp(struct helper_priv_tcp *p, int dir) {
 			timer_queue(p->t[dir], PTYPE_UINT32_GETVAL(pkt_timeout));
 		}
 	}
-	//pom_log(POM_LOG_TSHOOT "helper_tcp.c: %u.%u 0x%x-%u, dequeuing packet with seq %u, bufflen is %d\r\n", (unsigned)pkt->f->tv.tv_sec, (unsigned)pkt->f->tv.tv_usec, (unsigned) pkt->f->ce, dir, pkt->seq, p->buff_len[dir]);
+	//pom_log(POM_LOG_TSHOOT "helper_tcp.c: %u.%u 0x%x-%u, dequeuing packet with seq %u, bufflen is %d", (unsigned)pkt->f->tv.tv_sec, (unsigned)pkt->f->tv.tv_usec, (unsigned) pkt->f->ce, dir, pkt->seq, p->buff_len[dir]);
 	helper_queue_frame(pkt->f);
 
 	free(pkt);
@@ -356,7 +356,7 @@ static int helper_cleanup_connection_tcp(struct conntrack_entry *ce, void *connt
 	struct helper_priv_tcp *cp = conntrack_priv;
 
 	if (cp->pkts[0] || cp->pkts[1]) {
-		pom_log(POM_LOG_DEBUG "helper_tcp : There should not be any remaining packet at this point !!!!\r\n");
+		pom_log(POM_LOG_DEBUG "helper_tcp : There should not be any remaining packet at this point !!!!");
 		int i;
 		for (i = 0; i < 2; i++)
 			while (cp->pkts[i]) {

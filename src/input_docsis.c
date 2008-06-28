@@ -119,7 +119,7 @@ static int input_init_docsis(struct input *i) {
 	struct input_priv_docsis *p = i->input_priv;
 	p->temp_buff = malloc(TEMP_BUFF_LEN);
 	memset(p->temp_buff, 0xff, TEMP_BUFF_LEN);
-	//pom_log(POM_LOG_TSHOOT "Temp buff is 0x%X-0x%X\r\n", (unsigned) p->temp_buff, (unsigned) p->temp_buff + TEMP_BUFF_LEN);
+	//pom_log(POM_LOG_TSHOOT "Temp buff is 0x%X-0x%X", (unsigned) p->temp_buff, (unsigned) p->temp_buff + TEMP_BUFF_LEN);
 
 	return POM_OK;
 
@@ -169,7 +169,7 @@ static int input_open_docsis(struct input *i) {
 	} else if (!strcmp(PTYPE_STRING_GETVAL(p_outlayer), "docsis")) {
 		p->output_layer = match_docsis_id;
 	} else {
-		pom_log(POM_LOG_ERR "Invalid output layer :%s\r\n", PTYPE_STRING_GETVAL(p_outlayer));
+		pom_log(POM_LOG_ERR "Invalid output layer :%s", PTYPE_STRING_GETVAL(p_outlayer));
 		goto err;
 	}
 
@@ -191,7 +191,7 @@ static int input_open_docsis(struct input *i) {
 	else if (!strcmp(PTYPE_STRING_GETVAL(p_modulation), "QAM256"))
 		modulation = QAM_256;
 	else {
-		pom_log(POM_LOG_ERR "Invalid modulation. Valid modulation are QAM64 or QAM256\r\n");
+		pom_log(POM_LOG_ERR "Invalid modulation. Valid modulation are QAM64 or QAM256");
 		goto err;
 	}	
 	
@@ -210,7 +210,7 @@ static int input_open_docsis(struct input *i) {
 
 	p->frontend_fd = open(frontend, O_RDWR);
 	if (p->frontend_fd == -1) {
-		pom_log(POM_LOG_ERR "Unable to open frontend %s\r\n", frontend);
+		pom_log(POM_LOG_ERR "Unable to open frontend %s", frontend);
 		goto err;
 	}
 
@@ -218,12 +218,12 @@ static int input_open_docsis(struct input *i) {
 	
 	struct dvb_frontend_info info;
 	if (ioctl(p->frontend_fd, FE_GET_INFO, &info) != 0) {
-		pom_log(POM_LOG_ERR "Unable to get frontend type\r\n");
+		pom_log(POM_LOG_ERR "Unable to get frontend type");
 		goto err;
 	}
 
 	if (info.type != FE_QAM && info.type != FE_ATSC) {
-		pom_log(POM_LOG_ERR "Error, device %s is not a DVB-C or an ATSC device\r\n", frontend);
+		pom_log(POM_LOG_ERR "Error, device %s is not a DVB-C or an ATSC device", frontend);
 		goto err;
 	}
 	p->frontend_type = info.type;
@@ -235,7 +235,7 @@ static int input_open_docsis(struct input *i) {
 
 	p->demux_fd = open(demux, O_RDWR);
 	if (p->demux_fd == -1) {
-		pom_log("Unable to open demux\r\n");
+		pom_log("Unable to open demux");
 		goto err;
 	}
 
@@ -243,7 +243,7 @@ static int input_open_docsis(struct input *i) {
 	if (ioctl(p->demux_fd, DMX_SET_BUFFER_SIZE, (unsigned long) DEMUX_BUFFER_SIZE) != 0) {
 		char errbuff[256];
 		strerror_r(errno, errbuff, 256);
-		pom_log(POM_LOG_WARN "Unable to set the buffer size on the demux : %s\r\n", errbuff);
+		pom_log(POM_LOG_WARN "Unable to set the buffer size on the demux : %s", errbuff);
 	}
 
 	// Let's filter on the DOCSIS PID
@@ -255,7 +255,7 @@ static int input_open_docsis(struct input *i) {
 	filter.flags = DMX_IMMEDIATE_START;
 
 	if (ioctl(p->demux_fd, DMX_SET_PES_FILTER, &filter) != 0) {
-		pom_log(POM_LOG_ERR "Unable to set demuxer\r\n");
+		pom_log(POM_LOG_ERR "Unable to set demuxer");
 		goto err;
 	}
 
@@ -267,7 +267,7 @@ static int input_open_docsis(struct input *i) {
 
 	p->dvr_fd = open(dvr, O_RDONLY);
 	if (p->dvr_fd == -1) {
-		pom_log(POM_LOG_ERR "Unable to open dvr interface\r\n");
+		pom_log(POM_LOG_ERR "Unable to open dvr interface");
 		goto err;
 	}
 
@@ -293,11 +293,11 @@ static int input_open_docsis(struct input *i) {
 		}
 		
 		if (tuned != 1) {
-			pom_log(POM_LOG_ERR "Error while tuning to the right freq\r\n");
+			pom_log(POM_LOG_ERR "Error while tuning to the right freq");
 			goto err;
 		}
 		if (input_docsis_check_downstream(i) == POM_ERR) {
-			pom_log("Error, no DOCSIS SYNC message received within timeout\r\n");
+			pom_log("Error, no DOCSIS SYNC message received within timeout");
 			goto err;
 		}
 
@@ -334,19 +334,19 @@ static int input_open_docsis(struct input *i) {
 
 
 
-		pom_log("Starting a scan from %uMhz to %uMhz\r\n", start / 1000000, end / 1000000);
+		pom_log("Starting a scan from %uMhz to %uMhz", start / 1000000, end / 1000000);
 		return POM_OK;
 	} else {
-		pom_log(POM_LOG_ERR "Invalid input mode\r\n");
+		pom_log(POM_LOG_ERR "Invalid input mode");
 		goto err;
 	}
 
 	if (!tuned) {
-		pom_log(POM_LOG_ERR "Failed to open docsis input\r\n");
+		pom_log(POM_LOG_ERR "Failed to open docsis input");
 		goto err;
 	}
 
-	pom_log("Docsis stream opened successfullly\r\n");
+	pom_log("Docsis stream opened successfullly");
 	
 	return POM_OK;
 
@@ -391,10 +391,10 @@ static int input_docsis_check_downstream(struct input *i) {
 		if (res == -1) {
 			char errbuff[256];
 			strerror_r(errno, errbuff, 256);
-			pom_log(POM_LOG_ERR "Error select() : %s\r\n", errbuff);
+			pom_log(POM_LOG_ERR "Error select() : %s", errbuff);
 			break;
 		} else if (res == 0) {
-			pom_log(POM_LOG_ERR "Timeout while waiting for data\r\n");
+			pom_log(POM_LOG_ERR "Timeout while waiting for data");
 			break;
 		}
 
@@ -402,7 +402,7 @@ static int input_docsis_check_downstream(struct input *i) {
 
 		switch (res) {
 			case -2:
-				pom_log(POM_LOG_ERR "Error while reading MPEG stream\r\n");
+				pom_log(POM_LOG_ERR "Error while reading MPEG stream");
 				return POM_ERR;
 			
 			case -1:
@@ -456,7 +456,7 @@ static int input_docsis_check_downstream(struct input *i) {
 		
 	} 
 
-	pom_log(POM_LOG_ERR "Did not receive SYNC message within timeout\r\n");
+	pom_log(POM_LOG_ERR "Did not receive SYNC message within timeout");
 	return POM_ERR;
 }
 
@@ -491,7 +491,7 @@ static int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symbo
 	// Let's do some tuning
 
 	if (ioctl(p->frontend_fd, FE_SET_FRONTEND, &frp) < 0){
-		pom_log(POM_LOG_ERR "Error while setting tuning parameters\r\n");
+		pom_log(POM_LOG_ERR "Error while setting tuning parameters");
 		return -1;
 	}
 
@@ -507,41 +507,42 @@ static int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symbo
 		if (poll(pfd, 1, 1000)){
 			if (pfd[0].revents & POLLIN) {
 				if (ioctl(p->frontend_fd, FE_GET_EVENT, &event)) {
-					pom_log(POM_LOG_WARN "IOCTL failed while getting event of DOCSIS input\r\n");
+					pom_log(POM_LOG_WARN "IOCTL failed while getting event of DOCSIS input");
 					continue;
 				}
 				if (ioctl(p->frontend_fd, FE_READ_STATUS, &status)) {
-					pom_log(POM_LOG_WARN "IOCTL failed while getting status of DOCSIS input\r\n");
+					pom_log(POM_LOG_WARN "IOCTL failed while getting status of DOCSIS input");
 					return -1;
 				}
 				
 				if (status & FE_TIMEDOUT) {
-					pom_log(POM_LOG_WARN "Timeout while tuning\r\n");
+					pom_log(POM_LOG_WARN "Timeout while tuning");
 					return 0;
 				}
 				if (status & FE_REINIT) {
-					pom_log(POM_LOG_WARN "Frontend was reinit\r\n");
+					pom_log(POM_LOG_WARN "Frontend was reinit");
 					return 0;
 				}
 				
+				char status_str[2048];
+				memset(status_str, 0, sizeof(status_str));
 				if (status)
-					pom_log(POM_LOG_DEBUG "Status : " );
+					strcat(status_str, "Status : " );
 
 				if (status & FE_HAS_SIGNAL)
-					pom_log(POM_LOG_DEBUG "SIGNAL ");
+					strcat(status_str, "SIGNAL ");
 				if (status & FE_HAS_CARRIER)
-					pom_log(POM_LOG_DEBUG "CARRIER ");
+					strcat(status_str, "CARRIER ");
 				if (status & FE_HAS_VITERBI)
-					pom_log(POM_LOG_DEBUG "VITERBI ");
+					strcat(status_str, "VITERBI ");
 				if (status & FE_HAS_SYNC)
-					pom_log(POM_LOG_DEBUG "VSYNC ");
+					strcat(status_str, "VSYNC ");
 				if (status & FE_HAS_LOCK) {
-					pom_log(POM_LOG_DEBUG "LOCK ");
-					pom_log(POM_LOG_DEBUG "\r\n");
+					strcat(status_str, "LOCK ");
 					return 1;
 				}
 				if (status)
-					pom_log(POM_LOG_DEBUG "\r\n");
+					pom_log(POM_LOG_DEBUG "%s", status_str);
 
 
 			} 
@@ -549,7 +550,7 @@ static int input_docsis_tune(struct input *i, uint32_t frequency, uint32_t symbo
 		gettimeofday(&now, NULL);
 	}
 
-	pom_log("Lock not aquired\r\n");
+	pom_log("Lock not aquired");
 
 	return 0;
 
@@ -569,7 +570,7 @@ static int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_d
 		do {
 			r = read(p->dvr_fd, buff + len, MPEG_TS_LEN - len);
 			if (r <= 0 ) {
-				pom_log(POM_LOG_ERR "Error while reading dvr\r\n");
+				pom_log(POM_LOG_ERR "Error while reading dvr");
 				return -2;
 			}
 			len += r;
@@ -580,7 +581,7 @@ static int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_d
 		
 		// Check sync byte
 		if (buff[0] != 0x47) {
-			pom_log(POM_LOG_ERR "Error, stream out of sync ! Abording !\r\n");
+			pom_log(POM_LOG_ERR "Error, stream out of sync ! Abording !");
 			return -2;
 		}
 		
@@ -642,7 +643,7 @@ static int input_scan_docsis(struct input *i) {
 
 	unsigned int need_reinit = PTYPE_BOOL_GETVAL(p_frontend_reinit);
 
-	pom_log("Tuning to %u Mhz ...\r\n", j / 1000000);
+	pom_log("Tuning to %u Mhz ...", j / 1000000);
 
 	int res = input_docsis_tune(i, j, p->scan_srate, p->scan_modulation);
 	if (res == POM_ERR)
@@ -650,37 +651,38 @@ static int input_scan_docsis(struct input *i) {
 	else if (res == 0) {
 		if (need_reinit) {
 			// Let's close and reopen the frontend to reinit it
-			pom_log("Reinitializing frontend ...\r\n");
+			pom_log("Reinitializing frontend ...");
 			close(p->frontend_fd);
 			sleep(10); // Yes, stupid frontends need to be closed to lock again or result is arbitrary
 			p->frontend_fd = open(p->frontend_name, O_RDWR);
 			if (p->frontend_fd == -1) {
-				pom_log(POM_LOG_ERR "Error while reopening frontend\r\n");
+				pom_log(POM_LOG_ERR "Error while reopening frontend");
 				return POM_ERR;
 			}
 		}
 		return POM_OK;
 	}
 
-	pom_log("Frequency tunned. Looking up for SYNC messages ...\r\n");
+	pom_log("Frequency tunned. Looking up for SYNC messages ...");
 
 	if (input_docsis_check_downstream(i) == POM_ERR)
 		return POM_OK;
 
-	pom_log("Downstream acquired !\r\n");
-	pom_log("Frequency : %f Mhz, Symbol rate : %u Sym/s, QAM : ", (double) j / 1000000.0, p->scan_srate);
+	pom_log("Downstream acquired !");
+
+	char *qam = "unknown";
 	if (p->scan_modulation == QAM_64)
-		pom_log("QAM64");
+		qam = "QAM64";
 	else if(p->scan_modulation == QAM_256)
-		pom_log("QAM256");
-	pom_log("\r\n");
+		qam = "QAM256";
+	pom_log("Frequency : %f Mhz, Symbol rate : %u Sym/s, QAM : %s", (double) j / 1000000.0, p->scan_srate, qam);
 
 	PTYPE_UINT32_SETVAL(p_frequency, j);
 
 	i->mode = mode_normal;
 
 	if (p->scan_curfreq > p->scan_endfreq) {
-		pom_log(POM_LOG_WARN "No DOCSIS stream found\r\n");
+		pom_log(POM_LOG_WARN "No DOCSIS stream found");
 		return POM_ERR;
 	}
 	return POM_OK;
@@ -714,7 +716,7 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 		while (pos < p->temp_buff_len && p->temp_buff[pos] == 0xff)
 			pos++;
 
-		//pom_log(POM_LOG_TSHOOT "Copying1 %u bytes into 0x%X-0x%X\r\n", p->temp_buff_len - pos, (unsigned) f->buff,  (unsigned) f->buff + p->temp_buff_len - pos);
+		//pom_log(POM_LOG_TSHOOT "Copying1 %u bytes into 0x%X-0x%X", p->temp_buff_len - pos, (unsigned) f->buff,  (unsigned) f->buff + p->temp_buff_len - pos);
 		memcpy(f->buff, p->temp_buff + pos, p->temp_buff_len - pos);
 		packet_pos = p->temp_buff_len - pos;
 
@@ -736,7 +738,7 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 			
 			if (dlen < sizeof(struct docsis_hdr) || dlen > f->bufflen) {
 				// Invalid packet, let's discard the whole thing
-				//pom_log(POM_LOG_TSHOOT "Invalid packet. discarding.\r\n");
+				//pom_log(POM_LOG_TSHOOT "Invalid packet. discarding.");
 				packet_pos = 0;
 				dlen = 0;
 				continue;
@@ -750,7 +752,7 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 
 		//  buffer overflow. Let's discard the whole thing
 		if (packet_pos + MPEG_TS_LEN - 4 >= f->bufflen) {
-			//pom_log(POM_LOG_TSHOOT "buffer overflow2i\r\n");
+			//pom_log(POM_LOG_TSHOOT "buffer overflow2i");
 			packet_pos = 0;
 			dlen = 0;
 		}
@@ -767,13 +769,13 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 			p->last_seq = (p->last_seq + 1) & 0xF;
 			p->missed_packets++;
 			p->total_packets++;
-			//pom_log(POM_LOG_TSHOOT "Filling1 %u bytes with 0xff at 0x%X-0x%X\r\n", MPEG_TS_LEN - 4,(unsigned) (f->buff + packet_pos), (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 4);
+			//pom_log(POM_LOG_TSHOOT "Filling1 %u bytes with 0xff at 0x%X-0x%X", MPEG_TS_LEN - 4,(unsigned) (f->buff + packet_pos), (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 4);
 			memset(f->buff + packet_pos, 0xff, MPEG_TS_LEN - 4); // Fill buffer with stuff byte
 			packet_pos += MPEG_TS_LEN - 4;
 
 			if (packet_pos + MPEG_TS_LEN - 4 >= f->bufflen) {
 				//  buffer overflow. Let's discard the whole thing
-				//pom_log(POM_LOG_TSHOOT "Buffer overflow\r\n");
+				//pom_log(POM_LOG_TSHOOT "Buffer overflow");
 				packet_pos = 0;
 				dlen = 0;
 
@@ -796,13 +798,13 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 
 		switch (res) {
 			case -1: // Invalid MPEG packet
-				//pom_log(POM_LOG_TSHOOT "Filling2 %u bytes with 0xff at 0x%X-0x%X\r\n", MPEG_TS_LEN - 4,(unsigned) (f->buff + packet_pos), (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 4);
+				//pom_log(POM_LOG_TSHOOT "Filling2 %u bytes with 0xff at 0x%X-0x%X", MPEG_TS_LEN - 4,(unsigned) (f->buff + packet_pos), (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 4);
 				memset(f->buff + packet_pos, 0xff, MPEG_TS_LEN - 4); // Fill buffer with stuff byte
 				packet_pos += MPEG_TS_LEN - 4;
 				continue;
 
 			case 0: // Packet is valid and does not contain the start of a PDU
-				//pom_log(POM_LOG_TSHOOT "Copying2 %u bytes into 0x%X-0x%X\r\n", MPEG_TS_LEN - 4, (unsigned) f->buff + packet_pos, (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 4);
+				//pom_log(POM_LOG_TSHOOT "Copying2 %u bytes into 0x%X-0x%X", MPEG_TS_LEN - 4, (unsigned) f->buff + packet_pos, (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 4);
 				memcpy(f->buff + packet_pos, mpeg_buff + 4, MPEG_TS_LEN - 4);
 				packet_pos += MPEG_TS_LEN - 4;
 				continue;
@@ -818,14 +820,14 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 					// let's discard the previous frame then
 					if (packet_pos > 0) {
 						// We got some cruft left. Discard the current buffer
-						//pom_log(POM_LOG_TSHOOT "cruft left\r\n");
+						//pom_log(POM_LOG_TSHOOT "cruft left");
 						packet_pos = 0;
 					}
 
 					// Skip possible stuff byte
 					for (new_start = mpeg_buff[4] + 5; new_start < MPEG_TS_LEN && mpeg_buff[new_start + 5] == 0xff; new_start++);
 
-					//pom_log(POM_LOG_TSHOOT "Copying3 %u bytes into 0x%X-0x%X\r\n", MPEG_TS_LEN - new_start, (unsigned) f->buff + packet_pos, (unsigned) f->buff + packet_pos + MPEG_TS_LEN - new_start);
+					//pom_log(POM_LOG_TSHOOT "Copying3 %u bytes into 0x%X-0x%X", MPEG_TS_LEN - new_start, (unsigned) f->buff + packet_pos, (unsigned) f->buff + packet_pos + MPEG_TS_LEN - new_start);
 					memcpy(f->buff + packet_pos, mpeg_buff + new_start, MPEG_TS_LEN - new_start);
 					packet_pos = MPEG_TS_LEN - new_start;
 
@@ -837,7 +839,7 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 				// Let's copy everything, we'll later what is part of new PDU
 				
 				// last packet
-				//pom_log(POM_LOG_TSHOOT "Copying5 %u bytes into 0x%X-0x%X\r\n", MPEG_TS_LEN - 5, (unsigned) f->buff + packet_pos, (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 5);
+				//pom_log(POM_LOG_TSHOOT "Copying5 %u bytes into 0x%X-0x%X", MPEG_TS_LEN - 5, (unsigned) f->buff + packet_pos, (unsigned) f->buff + packet_pos + MPEG_TS_LEN - 5);
 				memcpy(f->buff + packet_pos, mpeg_buff + 5, MPEG_TS_LEN - 5);
 				packet_pos += MPEG_TS_LEN - 5;
 
@@ -854,7 +856,7 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 	// We have a full packet !
 
 	if (dlen < packet_pos) { // Copy leftover if any
-		//pom_log(POM_LOG_TSHOOT "Copying7 %u bytes into 0x%X-0x%X\r\n", packet_pos - dlen, (unsigned) p->temp_buff + p->temp_buff_len, (unsigned) p->temp_buff + p->temp_buff_len + packet_pos - dlen);
+		//pom_log(POM_LOG_TSHOOT "Copying7 %u bytes into 0x%X-0x%X", packet_pos - dlen, (unsigned) p->temp_buff + p->temp_buff_len, (unsigned) p->temp_buff + p->temp_buff_len + packet_pos - dlen);
 		memcpy(p->temp_buff, f->buff + dlen, packet_pos - dlen);
 		p->temp_buff_len = packet_pos - dlen;
 	} 
@@ -864,7 +866,7 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 
 		if (p->output_layer == match_ethernet_id) {
 			if (dhdr->fc_type != FC_TYPE_PKT_MAC) {
-				//pom_log(POM_LOG_TSHOT "output type is ethernet and fc_type doesn't match. ignoring\r\n");
+				//pom_log(POM_LOG_TSHOT "output type is ethernet and fc_type doesn't match. ignoring");
 				f->len = 0;
 				return POM_OK;
 			}
@@ -879,7 +881,7 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 
 		if (p->output_layer == match_atm_id) {
 			if (dhdr->fc_type != FC_TYPE_ATM) {
-				//pom_log(POM_LOG_TSHOOT "output type is atm and fc_type doesn't match. ignoring\r\n");	
+				//pom_log(POM_LOG_TSHOOT "output type is atm and fc_type doesn't match. ignoring");	
 				f->len = 0;
 				return POM_OK;
 			}
@@ -898,7 +900,7 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 		
 		}
 
-		//pom_log(POM_LOG_TSHOOT "calculated dlen is %u\r\n", dlen);
+		//pom_log(POM_LOG_TSHOOT "calculated dlen is %u", dlen);
 
 		memmove(f->buff, f->buff + new_start, dlen);
 
@@ -908,8 +910,8 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 	}
 
 
-	//pom_log(POM_LOG_TSHOOT "outlayer : %u\r\n", p->output_layer);
-	//pom_log(POM_LOG_TSHOOT "RETURNING packet of %u\r\n", dlen);
+	//pom_log(POM_LOG_TSHOOT "outlayer : %u", p->output_layer);
+	//pom_log(POM_LOG_TSHOOT "RETURNING packet of %u", dlen);
 
 	f->len = dlen;
 	return POM_OK;
@@ -936,7 +938,7 @@ static int input_close_docsis(struct input *i) {
 	close(p->demux_fd);
 	close(p->dvr_fd);
 
-	pom_log("0x%02lx; DOCSIS : Total MPEG packet read %lu, missed %lu (%.1f%%), erroneous %lu (%.1f%%), invalid %lu (%.1f%%), total errors %lu (%.1f%%)\r\n", \
+	pom_log("0x%02lx; DOCSIS : Total MPEG packet read %lu, missed %lu (%.1f%%), erroneous %lu (%.1f%%), invalid %lu (%.1f%%), total errors %lu (%.1f%%)", \
 		(unsigned long) i->input_priv, \
 		p->total_packets - p->missed_packets, \
 		p->missed_packets, \

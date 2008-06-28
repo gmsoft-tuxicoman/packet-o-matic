@@ -153,11 +153,11 @@ static int target_process_dump_payload(struct target *t, struct frame *f) {
 			free(cp);
 			char errbuff[256];
 			strerror_r(errno, errbuff, 256);
-			pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s\r\n", filename, errbuff);
+			pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s", filename, errbuff);
 			return POM_ERR;
 		}
 
-		pom_log(POM_LOG_TSHOOT "%s opened\r\n", filename);
+		pom_log(POM_LOG_TSHOOT "%s opened", filename);
 
 		conntrack_add_target_priv(cp, t, f->ce, target_close_connection_dump_payload);
 
@@ -178,14 +178,14 @@ static int target_process_dump_payload(struct target *t, struct frame *f) {
 
 	write(cp->fd, f->buff + lastl->payload_start, lastl->payload_size);
 
-	pom_log(POM_LOG_TSHOOT "Saved %u bytes of payload\r\n", lastl->payload_size);
+	pom_log(POM_LOG_TSHOOT "Saved %u bytes of payload", lastl->payload_size);
 
 	return POM_OK;
 }
 
 static int target_close_connection_dump_payload(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
-	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx\r\n", (unsigned long) conntrack_priv);
+	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx", (unsigned long) conntrack_priv);
 
 	struct target_conntrack_priv_dump_payload *cp;
 	cp = conntrack_priv;

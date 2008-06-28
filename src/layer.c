@@ -44,7 +44,7 @@ int layer_init() {
 	char *exp = "\\${[a-zA-Z0-9]*\\.[a-zA-Z0-9]*}";
 
 	if (regcomp(&parse_regex, exp, REG_ICASE)) {
-		pom_log(POM_LOG_ERR "Unable to compile regex for layer parsing\r\n");
+		pom_log(POM_LOG_ERR "Unable to compile regex for layer parsing");
 		return POM_ERR;
 	}
 
@@ -217,7 +217,7 @@ int layer_field_parse(struct layer *l, char *expr, char *buff, size_t size) {
 						char vbuff[1024];
 						memset(vbuff, 0, sizeof(vbuff));
 						ptype_print_val(tmpl->fields[i], vbuff, sizeof(vbuff) - 1);
-						pom_log(POM_LOG_TSHOOT "Matched %s.%s -> %s\r\n", match, expr_sep, vbuff);
+						pom_log(POM_LOG_TSHOOT "Matched %s.%s -> %s", match, expr_sep, vbuff);
 						found = 1;
 						if (size < strlen(buff) + strlen(vbuff))
 							break;

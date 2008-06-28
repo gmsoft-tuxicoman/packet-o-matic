@@ -34,7 +34,7 @@
 
 #include "ptype_uint64.h"
 
-#define MGMT_COMMANDS_NUM 17
+#define MGMT_COMMANDS_NUM 16
 
 static struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
@@ -70,22 +70,10 @@ static struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 	},
 
 	{
-		.words = { "enable", "debug",  NULL },
-		.help = "Enable debug messages for this connection",
-		.callback_func = mgmtcmd_enable_debug,
-	},
-
-	{
-		.words = { "disable", "debug", NULL },
-		.help = "Disable debug messages for this connection",
-		.callback_func = mgmtcmd_disable_debug,
-	},
-
-	{
 		.words = { "set", "debug", "level", NULL },
-		.help = "Change the current debug level",
+		.help = "Change the debug level of the CLI",
 		.callback_func = mgmtcmd_set_debug_level,
-		.usage = "set debug level <0-5>",
+		.usage = "set debug level <off,0-5>",
 		.completion = mgmtcmd_set_debug_level_completion,
 	},
 
@@ -93,6 +81,14 @@ static struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.words = { "show", "debug", "level", NULL },
 		.help = "Display the current debug level",
 		.callback_func = mgmtcmd_show_debug_level,
+	},
+
+	{
+		.words = { "set", "console", "debug", NULL },
+		.help = "Change the debug level of the main console",
+		.callback_func = mgmtcmd_set_console_debug,
+		.usage = "set console debug <off,0-5>",
+		.completion = mgmtcmd_set_debug_level_completion,
 	},
 
 	{
@@ -287,31 +283,15 @@ int mgmtcmd_unset_password(struct mgmt_connection *c, int argc, char *argv[]) {
 	return POM_OK;
 }
 
-int mgmtcmd_enable_debug(struct mgmt_connection *c, int argc, char *argv[]) {
-
-	if (c->flags & MGMT_FLAG_MONITOR) {
-		mgmtsrv_send(c, "Debug already enabled\r\n");
-		return POM_OK;
-	}
-
-	c->flags |= MGMT_FLAG_MONITOR;
-	return POM_OK;
-}
-
-int mgmtcmd_disable_debug(struct mgmt_connection *c, int argc, char *argv[]) {
-
-	if (!(c->flags & MGMT_FLAG_MONITOR)) {
-		mgmtsrv_send(c, "Debug already disabled\r\n");
-		return POM_OK;
-	}
-	c->flags &= ~MGMT_FLAG_MONITOR;
-	return POM_OK;
-}
-
 int mgmtcmd_set_debug_level(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (argc != 1)
 		return MGMT_USAGE;
+
+	if (!strcasecmp(argv[0], "off")) {
+		c->debug_level = 0;
+		return POM_OK;
+	}
 
 	unsigned int new_level;
 	if (sscanf(argv[0], "%u", &new_level ) < 1)
@@ -319,7 +299,28 @@ int mgmtcmd_set_debug_level(struct mgmt_connection *c, int argc, char *argv[]) {
 	if (new_level > 5)
 		return MGMT_USAGE;
 
-	debug_level = new_level;
+	c->debug_level = new_level;
+
+	return POM_OK;
+}
+
+int mgmtcmd_set_console_debug(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	if (argc != 1)
+		return MGMT_USAGE;
+
+	if (!strcasecmp(argv[0], "off")) {
+		console_debug_level = 0;
+		return POM_OK;
+	}
+
+	unsigned int new_level;
+	if (sscanf(argv[0], "%u", &new_level ) < 1)
+		return MGMT_USAGE;
+	if (new_level > 5)
+		return MGMT_USAGE;
+
+	console_debug_level = new_level;
 
 	return POM_OK;
 }
@@ -340,24 +341,24 @@ int mgmtcmd_show_debug_level(struct mgmt_connection *c, int argc, char *argv[]) 
 
 	mgmtsrv_send(c, "Debug level is ");
 
-	switch (debug_level) {
+	switch (c->debug_level) {
 		case 0:
-			mgmtsrv_send(c, "0 : No output at all\r\n");
+			mgmtsrv_send(c, "off\r\n");
 			break;
 		case 1:
-			mgmtsrv_send(c, "1 : Errors only\r\n");
+			mgmtsrv_send(c, "1 (Errors only)\r\n");
 			break;
 		case 2:
-			mgmtsrv_send(c, "2 : Warnings and errors\r\n");
+			mgmtsrv_send(c, "2 (Warnings and errors)\r\n");
 			break;
 		case 3:
-			mgmtsrv_send(c, "3 : Warnings, errors and general information messages\r\n");
+			mgmtsrv_send(c, "3 (Warnings, errors and general information messages)\r\n");
 			break;
 		case 4:
-			mgmtsrv_send(c, "4 : Warnings, errors, info and debug messages\r\n");
+			mgmtsrv_send(c, "4 (Warnings, errors, info and debug messages)\r\n");
 			break;
 		case 5:
-			mgmtsrv_send(c, "5 : Troubleshooting debug level\r\n");
+			mgmtsrv_send(c, "5 (Troubleshooting debug level)\r\n");
 			break;
 		default:
 			mgmtsrv_send(c, "invalid\r\n");

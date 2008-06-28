@@ -112,7 +112,7 @@ static int input_open_pcap(struct input *i) {
 		char *filename = PTYPE_STRING_GETVAL(p_filename);
 		p->p = pcap_open_offline(filename, errbuf);
 		if (!p->p) {
-			pom_log(POM_LOG_ERR "Error opening file %s for reading\r\n", filename);
+			pom_log(POM_LOG_ERR "Error opening file %s for reading", filename);
 			return POM_ERR;
 		}
 	} else if (i->mode == mode_interface) {
@@ -121,52 +121,52 @@ static int input_open_pcap(struct input *i) {
 		int promisc = PTYPE_BOOL_GETVAL(p_promisc);
 		if (snaplen < 64)
 			snaplen = 64;
-		pom_log("Opening interface %s with a snaplen of %u\r\n", interface, snaplen);
+		pom_log("Opening interface %s with a snaplen of %u", interface, snaplen);
 		p->p = pcap_open_live(interface, snaplen, promisc, 0, errbuf);
 		if (!p->p) {
-			pom_log(POM_LOG_ERR "Error when opening interface %s : %s\r\n", interface, errbuf);
+			pom_log(POM_LOG_ERR "Error when opening interface %s : %s", interface, errbuf);
 			return POM_ERR;
 		}
 	} else {
-		pom_log(POM_LOG_ERR "Invalid input mode\r\n");
+		pom_log(POM_LOG_ERR "Invalid input mode");
 		return POM_ERR;
 	}
 
 	switch (pcap_datalink(p->p)) {
 		case DLT_EN10MB:
-			pom_log("PCAP output type is ethernet\r\n");
+			pom_log("PCAP output type is ethernet");
 			p->output_layer = match_register("ethernet");
 			break;
 #ifdef DLT_DOCSIS // this doesn't exits in all libpcap version
 		case DLT_DOCSIS:
-			pom_log("PCAP output type is docsis\r\n");
+			pom_log("PCAP output type is docsis");
 			p->output_layer = match_register("docsis");
 			break;
 #endif
 		case DLT_LINUX_SLL:
-			pom_log("PCAP output type is linux_cooked\r\n");
+			pom_log("PCAP output type is linux_cooked");
 			p->output_layer = match_register("linux_cooked");
 			break;
 
 		case DLT_RAW:
-			pom_log("PCAP output type is ipv4\r\n");
+			pom_log("PCAP output type is ipv4");
 			p->output_layer = match_register("ipv4");
 			break;
 
 		default:
-			pom_log("PCAP output type is undefined\r\n");
+			pom_log("PCAP output type is undefined");
 			p->output_layer = match_register("undefined");
 
 	}
 
 	if (strlen(errbuf) > 0)
-		pom_log(POM_LOG_WARN "PCAP warning : %s\r\n", errbuf);
+		pom_log(POM_LOG_WARN "PCAP warning : %s", errbuf);
 	
 
 	if (p->p)	
-		pom_log("Pcap opened successfullly\r\n");
+		pom_log("Pcap opened successfullly");
 	else {
-		pom_log(POM_LOG_ERR "Error while opening pcap input\r\n");
+		pom_log(POM_LOG_ERR "Error while opening pcap input");
 		return POM_ERR;
 	}
 
@@ -174,14 +174,14 @@ static int input_open_pcap(struct input *i) {
 	
 		if (pcap_compile(p->p, &p->fp, PTYPE_STRING_GETVAL(p_filter), 1, 0) == -1) {
 
-			pom_log(POM_LOG_ERR "Unable to compile BFP filter \"%s\"\r\n", PTYPE_STRING_GETVAL(p_filter));
+			pom_log(POM_LOG_ERR "Unable to compile BFP filter \"%s\"", PTYPE_STRING_GETVAL(p_filter));
 			pcap_close(p->p);
 			return POM_ERR;
 		
 		}
 
 		if (pcap_setfilter(p->p, &p->fp) == -1) {
-			pom_log(POM_LOG_ERR "Unable to set the BFP filter \"%s\"\r\n", PTYPE_STRING_GETVAL(p_filter));
+			pom_log(POM_LOG_ERR "Unable to set the BFP filter \"%s\"", PTYPE_STRING_GETVAL(p_filter));
 			pcap_freecode(&p->fp);
 			pcap_close(p->p);
 			return POM_ERR;
@@ -203,7 +203,7 @@ static int input_read_pcap(struct input *i, struct frame *f) {
 	result = pcap_next_ex(p->p, &phdr, &next_pkt);
 
 	if (result < 0) {
-		pom_log(POM_LOG_ERR "Error while reading packet.\r\n");
+		pom_log(POM_LOG_ERR "Error while reading packet.");
 		return POM_ERR;
 	}
 
@@ -213,7 +213,7 @@ static int input_read_pcap(struct input *i, struct frame *f) {
 	}
 
 	if (f->bufflen < phdr->caplen) {
-		pom_log(POM_LOG_WARN "Please increase your read buffer. Provided %u, needed %u\r\n", f->bufflen, phdr->caplen);
+		pom_log(POM_LOG_WARN "Please increase your read buffer. Provided %u, needed %u", f->bufflen, phdr->caplen);
 		phdr->caplen = f->bufflen;
 		
 	}
@@ -239,7 +239,7 @@ static int input_close_pcap(struct input *i) {
 
 	struct pcap_stat ps;
 	if (!pcap_stats(p->p, &ps)) 
-		pom_log("0x%02lx; PCAP : Total packet read %u, dropped %u (%.1f%%)\r\n", (unsigned long) i->input_priv, ps.ps_recv, ps.ps_drop, 100.0 / (ps.ps_recv + ps.ps_drop)  * (float)ps.ps_drop);
+		pom_log("0x%02lx; PCAP : Total packet read %u, dropped %u (%.1f%%)", (unsigned long) i->input_priv, ps.ps_recv, ps.ps_drop, 100.0 / (ps.ps_recv + ps.ps_drop)  * (float)ps.ps_drop);
 
 	pcap_close(p->p);
 
