@@ -33,7 +33,7 @@
 #include "xmlrpccmd_match.h"
 #include "xmlrpccmd_target.h"
 
-#define XMLRPC_COMMANDS_NUM 5
+#define XMLRPC_COMMANDS_NUM 6
 
 static struct xmlrpc_command xmlrpc_commands[XMLRPC_COMMANDS_NUM] = { 
 
@@ -71,6 +71,13 @@ static struct xmlrpc_command xmlrpc_commands[XMLRPC_COMMANDS_NUM] = {
 		.signature = "i:,i:s",
 		.help = "Set or reset the password for the XML-RPC interface",
 	},
+
+	{
+		.name = "main.getLogs",
+		.callback_func = xmlrpccmd_get_logs,
+		.signature = "A:i",
+		.help = "Get all the logs after a certain id",
+	}
 
 };
 
@@ -153,7 +160,8 @@ xmlrpc_value *xmlrpccmd_main_get_serial(xmlrpc_env * const envP, xmlrpc_value * 
 				"rules", main_config->rules_serial,
 				"input", main_config->input_serial,
 				"core", core_params_serial,
-				"helper", helpers_serial);
+				"helper", helpers_serial,
+				"logs", pom_log_get_serial);
 
 }
 
@@ -182,6 +190,42 @@ xmlrpc_value *xmlrpccmd_main_set_password(xmlrpc_env * const envP, xmlrpc_value 
 		free(password);
 
 	return xmlrpc_int_new(envP, 0);
+}
+
+xmlrpc_value *xmlrpccmd_get_logs(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
+
+	uint32_t last_id;
+
+	xmlrpc_decompose_value(envP, paramArrayP, "(i)", &last_id);
+
+	xmlrpc_value *result = xmlrpc_array_new(envP);
+
+	if (envP->fault_occurred)
+		return NULL;
+
+	pom_log_rlock();
+
+	struct log_entry *log = pom_log_get_tail();	
+
+	while (log && log->id >= last_id){
+
+		xmlrpc_value *entry = xmlrpc_build_value(envP, "{s:i,s:i,s:s,s:s}",
+					"id", log->id,
+					"level", log->level,
+					"file", log->file,
+					"data", log->data);
+		xmlrpc_array_append_item(envP, result, entry);
+		xmlrpc_DECREF(entry);
+
+		log = log->prev;
+
+	}
+
+	pom_log_unlock();
+
+	return result;
+
+
 }
 
 xmlrpc_value *xmlrpccmd_list_avail_modules(xmlrpc_env * const envP, char *type) {

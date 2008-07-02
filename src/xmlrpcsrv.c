@@ -267,7 +267,7 @@ int xmlrpcsrv_process_connection(struct xmlrpc_connection *c) {
 
 	getnameinfo((struct sockaddr*)&remote_addr, remote_addr_len, host, NI_MAXHOST, port, NI_MAXSERV, NI_NUMERICHOST);
 
-	pom_log(POM_LOG_DEBUG "Accepted XML-RPC connection from %s on socket %u", host, sockfd);
+	pom_log(POM_LOG_TSHOOT "Accepted XML-RPC connection from %s on socket %u", host, sockfd);
 
 	TSocket * socketP;
 	char * error;

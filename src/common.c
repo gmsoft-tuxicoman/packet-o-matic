@@ -25,6 +25,7 @@
 #include "input.h"
 
 #include <dirent.h>
+#include <pthread.h>
 
 static unsigned int random_seed;
 
@@ -71,10 +72,22 @@ void pom_log_internal(char *file, const char *format, ...) {
 	entry->data = malloc(strlen(buff) + 1);
 	strcpy(entry->data, buff);
 	
-	entry->log_level = level;
+	entry->level = level;
 	entry->id = log_buffer_entry_id;
 
 	log_buffer_entry_id++;
+
+	mgmtsrv_send_debug(entry);
+
+	if (console_output && console_debug_level >= level)
+		printf("%s: %s\n", entry->file, entry->data);
+
+	if (level >= *POM_LOG_TSHOOT) { // We don't want to save troubleshooting output
+		free(entry->file);
+		free(entry->data);
+		free(entry);
+		return;
+	}
 
 
 	int result = pthread_rwlock_wrlock(&log_buffer_lock);
@@ -114,11 +127,38 @@ void pom_log_internal(char *file, const char *format, ...) {
 		return; // never reached
 	}
 
-	mgmtsrv_send_debug(entry);
+}
 
-	if (console_output && console_debug_level >= level)
-		printf("%s: %s\n", entry->file, entry->data);
+struct log_entry *pom_log_get_tail() {
 
+	return log_tail;
+}
+
+uint32_t pom_log_get_serial() {
+
+	return log_buffer_entry_id;
+}
+
+int pom_log_rlock() {
+
+	if (pthread_rwlock_rdlock(&log_buffer_lock)) {
+		pom_log(POM_LOG_ERR "Error while locking the log lock. Aborting");
+		abort();
+		return POM_ERR;
+	}
+	return POM_OK;
+}
+
+int pom_log_unlock() {
+
+	
+	if (pthread_rwlock_unlock(&log_buffer_lock)) {
+		pom_log(POM_LOG_ERR "Error while unlocking the log lock. Aborting");
+		abort();
+		return POM_ERR;
+	}
+
+	return POM_OK;
 }
 
 int pom_log_cleanup() {

@@ -286,7 +286,7 @@ xmlrpc_value *xmlrpccmd_remove_rule(xmlrpc_env * const envP, xmlrpc_value * cons
 
 	main_config_rules_unlock();
 
-	return xmlrpc_int_new(envP, 0);
+	return xmlrpc_int_new(envP, rule_id);
 
 }
 

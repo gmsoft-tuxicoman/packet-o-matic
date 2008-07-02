@@ -1,3 +1,9 @@
+* 2008/07/01 Guy Margin <gmsoft@tuxicoman.be>
+Function rules.remove now returns the removed uid.
+Don't save troubleshooting level logs in the log buffer.
+Function main.getSerial now returns log buffer serial.
+Added function main.getLogs.
+
 * 2008/06/27 Guy Martin <gmsoft@tuxicoman.be>
 Added a buffer for debug output.
 Debug level is not independant for every CLI session.

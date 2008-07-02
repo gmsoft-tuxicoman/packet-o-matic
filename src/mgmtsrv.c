@@ -570,7 +570,7 @@ int mgmtsrv_send_debug(struct log_entry *entry) {
 	int i;
 
 	while (c) {
-		if (c->debug_level >= entry->log_level && c->state == MGMT_STATE_AUTHED) {
+		if (c->debug_level >= entry->level && c->state == MGMT_STATE_AUTHED) {
 			if (! (c->flags & MGMT_FLAG_PROCESSING)) {
 				int cmdlen = strlen(c->curcmd) + strlen(MGMT_CMD_PROMPT);
 				int loglen = strlen(entry->data);
