@@ -461,8 +461,7 @@ int mgmtsrv_match_command(char *words[MGMT_MAX_CMD_WORDS_ARGS], struct mgmt_comm
 		}
 
 		if (words[w][l] && !cur->words[w][l]) { // Our word is longer
-			cur = cur->next;
-			continue;
+			return POM_ERR;
 		}
 
 		if (!words[w][l]) { // End of our word, let's see next word

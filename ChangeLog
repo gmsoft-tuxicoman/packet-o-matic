@@ -1,4 +1,7 @@
-* 2008/07/01 Guy Margin <gmsoft@tuxicoman.be>
+* 2008/07/03 Guy Martin <gmsoft@tuxicoman.be>
+Fix command matching when word is longer than expected.
+
+* 2008/07/01 Guy Martin <gmsoft@tuxicoman.be>
 Function rules.remove now returns the removed uid.
 Don't save troubleshooting level logs in the log buffer.
 Function main.getSerial now returns log buffer serial.
