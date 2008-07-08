@@ -226,6 +226,12 @@ static int input_open_docsis(struct input *i) {
 		pom_log(POM_LOG_ERR "Error, device %s is not a DVB-C or an ATSC device", frontend);
 		goto err;
 	}
+
+	if (info.type == FE_ATSC && eurodocsis) {
+		pom_log(POM_LOG_ERR "Error, EuroDOCSIS is not supported with ATSC cards");
+		goto err;
+	}
+
 	p->frontend_type = info.type;
 
 	// Open the demux

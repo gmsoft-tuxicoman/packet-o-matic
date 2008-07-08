@@ -1,3 +1,7 @@
+* 2008/07/08 Guy Martin <gmsoft@tuxicoman.be>
+Fix command matching the proper way.
+Throw an error when trying to tune to a EuroDOCSIS stream with an ATSC card.
+
 * 2008/07/03 Guy Martin <gmsoft@tuxicoman.be>
 Fix command matching when word is longer than expected.
 
