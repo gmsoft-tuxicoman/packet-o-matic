@@ -365,13 +365,11 @@ int target_open(struct target *t) {
 		return POM_ERR;
 
 	if (t->started) {
-		target_unlock_instance(t);
 		return POM_ERR;
 	}
 
 	if (targets[t->type] && targets[t->type]->open)
 		if ((*targets[t->type]->open) (t) != POM_OK) {
-			target_unlock_instance(t);
 			return POM_ERR;
 		}
 
@@ -419,7 +417,6 @@ int target_close(struct target *t) {
 		return POM_ERR;
 
 	if (!t->started) {
-		target_unlock_instance(t);
 		return POM_ERR;
 	}
 
@@ -458,12 +455,12 @@ int target_cleanup_module(struct target *t) {
 		targets[t->type]->refcount--;
 	}
 
-	pthread_rwlock_destroy(&t->lock);
 
 	ptype_cleanup(t->pkt_cnt);
 	ptype_cleanup(t->byte_cnt);
 
 	target_unlock_instance(t);
+	pthread_rwlock_destroy(&t->lock);
 
 	free (t);
 
