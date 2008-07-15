@@ -1,6 +1,8 @@
 * 2008/07/15 Guy Martin <gmsoft@tuxicoman.be>
 Added support for OSX.
 Moved global variable decl in corresponding .c and made extisting ones extern.
+Fix input_docsis when reaching end of frequency range while scanning.
+Fix target instance lock initialization.
 
 * 2008/07/08 Guy Martin <gmsoft@tuxicoman.be>
 Fix command matching the proper way.

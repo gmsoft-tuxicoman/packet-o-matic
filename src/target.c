@@ -233,6 +233,12 @@ struct target *target_alloc(int target_type) {
 
 	t->type = target_type;
 	
+	if (pthread_rwlock_init(&t->lock, NULL)) {
+		free(t);
+		return NULL;
+	}
+
+
 	if (targets[target_type]->init)
 		if ((*targets[target_type]->init) (t) != POM_OK) {
 			free(t);
@@ -240,6 +246,7 @@ struct target *target_alloc(int target_type) {
 		}
 
 	t->uid = get_uid();
+
 
 	t->pkt_cnt = ptype_alloc("uint64", "pkts");
 	t->pkt_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
@@ -450,6 +457,9 @@ int target_cleanup_module(struct target *t) {
 		}
 		targets[t->type]->refcount--;
 	}
+
+	pthread_rwlock_destroy(&t->lock);
+
 	ptype_cleanup(t->pkt_cnt);
 	ptype_cleanup(t->byte_cnt);
 

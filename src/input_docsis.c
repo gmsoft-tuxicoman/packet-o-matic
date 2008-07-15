@@ -647,12 +647,17 @@ static int input_scan_docsis(struct input *i) {
 	int j = p->scan_curfreq;
 	p->scan_curfreq += p->scan_step;
 
+	if (p->scan_curfreq > p->scan_endfreq) {
+		pom_log(POM_LOG_WARN "No DOCSIS stream found");
+		return POM_ERR;
+	}
+
 	unsigned int need_reinit = PTYPE_BOOL_GETVAL(p_frontend_reinit);
 
 	pom_log("Tuning to %u Mhz ...", j / 1000000);
 
 	int res = input_docsis_tune(i, j, p->scan_srate, p->scan_modulation);
-	if (res == POM_ERR)
+	if (res == -1)
 		return POM_ERR;
 	else if (res == 0) {
 		if (need_reinit) {
@@ -687,10 +692,6 @@ static int input_scan_docsis(struct input *i) {
 
 	i->mode = mode_normal;
 
-	if (p->scan_curfreq > p->scan_endfreq) {
-		pom_log(POM_LOG_WARN "No DOCSIS stream found");
-		return POM_ERR;
-	}
 	return POM_OK;
 }
 /**
