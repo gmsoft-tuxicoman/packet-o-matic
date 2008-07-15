@@ -28,6 +28,8 @@
 
 #include "ptype_uint64.h"
 
+struct target_reg *targets[MAX_TARGET];
+
 static pthread_rwlock_t target_global_lock = PTHREAD_RWLOCK_INITIALIZER;
 
 /**

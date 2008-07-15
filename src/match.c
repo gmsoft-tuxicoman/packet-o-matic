@@ -28,6 +28,8 @@
 
 #include <pthread.h>
 
+struct match_reg *matches[MAX_MATCH];
+
 static int match_undefined_id;
 
 static struct ptype *param_autoload_helper;

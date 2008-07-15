@@ -147,7 +147,7 @@ struct target {
 #define MAX_TARGET 16
 
 /// Contains all the registered targets
-struct target_reg *targets[MAX_TARGET];
+extern struct target_reg *targets[MAX_TARGET];
 
 /*@}*/
 

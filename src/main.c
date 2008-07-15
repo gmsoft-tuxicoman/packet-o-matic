@@ -55,6 +55,13 @@
 
 #define INPUTSIG SIGUSR1
 
+struct conf *main_config;
+
+struct core_param *core_params;
+uint32_t core_params_serial;
+
+struct ringbuffer *rbuf;
+
 static pthread_mutex_t reader_mutex = PTHREAD_MUTEX_INITIALIZER; ///< Mutex used to lock the reader thread if changes are made or modules are loaded/unloaded
 static pthread_t input_thread;
 

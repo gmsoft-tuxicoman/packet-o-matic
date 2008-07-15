@@ -56,7 +56,7 @@ struct match_dep {
 #define MAX_MATCH 16
 
 /// Variable that hold info about all the registered matches
-struct match_reg *matches[MAX_MATCH];
+extern struct match_reg *matches[MAX_MATCH];
 
 /*@}*/
 /** @defgroup match_api **/

@@ -42,13 +42,11 @@
 #include <sys/time.h>
 #endif
 
-
 #ifdef HAVE_SYS_ENDIAN_H
 #include <sys/endian.h>
 #elif HAVE_ENDIAN_H
 #include <endian.h>
 #endif
-
 
 #ifndef __LITTLE_ENDIAN
 #define __LITTLE_ENDIAN LITTLE_ENDIAN
@@ -68,8 +66,12 @@
 #define NAME_MAX 255
 #endif
 
-#if ! defined HOST_NAME_MAX && defined MAXHOSTNAMELEN
+#ifndef HOST_NAME_MAX
+#ifdef MAXHOSTNAMELEN
 #define HOST_NAME_MAX MAXHOSTNAMELEN
+#else
+#define HOST_NAME_MAX 255
+#endif
 #endif
 
 // Default return values
@@ -96,10 +98,10 @@ void *lib_get_register_func(const char *type, const char *name, void **handle);
 #define POM_LOG_BUFFER_SIZE	100
 
 /// Console debug level
-unsigned int console_debug_level;
+extern unsigned int console_debug_level;
 
 /// Should we output to console
-int console_output;
+extern int console_output;
 
 /// Log entry
 

@@ -30,6 +30,8 @@
 #include "ptype.h"
 #include "ptype_uint64.h"
 
+struct input_reg *inputs[MAX_INPUT];
+
 static pthread_rwlock_t input_global_lock = PTHREAD_RWLOCK_INITIALIZER;
 
 /**

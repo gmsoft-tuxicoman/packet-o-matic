@@ -165,7 +165,7 @@ struct conntrack_helper_priv {
 #define MAX_CONNTRACK MAX_MATCH
 
 /// Variable that holds info about all the registered conntracks
-struct conntrack_reg *conntracks[MAX_CONNTRACK];
+extern struct conntrack_reg *conntracks[MAX_CONNTRACK];
 
 /// Init the conntrack subsystem
 int conntrack_init();

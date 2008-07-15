@@ -1,4 +1,4 @@
-CFLAGS += -Wall -I$(srcdir)/include -D_XOPEN_SOURCE=600 --std=gnu99 -D__EXTENSIONS__=1
+CFLAGS += -Wall -I$(srcdir)/include -D_XOPEN_SOURCE=600 --std=gnu99 -D__EXTENSIONS__=1 -D_DARWIN_C_SOURCE
 
 MGMT_SRC = mgmtsrv.c mgmtsrv.h mgmtvty.c mgmtvty.h mgmtcmd.c mgmtcmd.h mgmtcmd_helper.c mgmtcmd_helper.h mgmtcmd_conntrack.c mgmtcmd_conntrack.h mgmtcmd_input.c mgmtcmd_input.h mgmtcmd_rule.c mgmtcmd_rule.h mgmtcmd_target.c mgmtcmd_target.h
 

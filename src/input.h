@@ -164,7 +164,7 @@ struct input_reg {
 };
 
 /// Global variable which contains all the input registered in a table.
-struct input_reg *inputs[MAX_INPUT]; 
+extern struct input_reg *inputs[MAX_INPUT]; 
 
 /// Registers a new input by it's name.
 int input_register(const char *input_name);

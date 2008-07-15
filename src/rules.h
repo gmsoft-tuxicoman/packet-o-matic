@@ -61,6 +61,7 @@ struct rule_list {
 };
 
 #include "target.h"
+#include <pthread.h>
 
 int rules_init();
 

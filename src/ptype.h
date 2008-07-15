@@ -164,7 +164,7 @@ struct ptype_reg {
 
 /// Contains all the registered ptypes
 /** @ingroup ptype_core **/
-struct ptype_reg *ptypes[MAX_PTYPE];
+extern struct ptype_reg *ptypes[MAX_PTYPE];
 
 /// Init the ptype subsystem.
 int ptype_init(void);

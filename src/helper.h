@@ -90,10 +90,10 @@ struct helper_reg {
 #define MAX_HELPER MAX_MATCH
 
 /// This variable saves info about all the registered helpers
-struct helper_reg *helpers[MAX_HELPER];
+extern struct helper_reg *helpers[MAX_HELPER];
 
 /// This variable keeps track of the changes that occured to the helpers
-uint32_t helpers_serial;
+extern uint32_t helpers_serial;
 
 /*@}*/
 

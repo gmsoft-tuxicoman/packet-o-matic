@@ -28,6 +28,8 @@
 
 #define INITVAL 0xdf92b6eb
 
+struct conntrack_reg *conntracks[MAX_CONNTRACK];
+
 static struct conntrack_list *ct_table[CONNTRACK_SIZE];
 static struct conntrack_list *ct_table_rev[CONNTRACK_SIZE];
 

@@ -27,10 +27,10 @@
 
 #include <pthread.h>
 
-struct conf *main_config;
+extern struct conf *main_config;
 
-struct core_param *core_params;
-uint32_t core_params_serial;
+extern struct core_param *core_params;
+extern uint32_t core_params_serial;
 
 enum ringbuffer_state {
 	rb_state_closed,
@@ -73,7 +73,7 @@ struct core_param {
 	struct core_param *next;
 };
 
-struct ringbuffer *rbuf; ///< The ring buffer
+extern struct ringbuffer *rbuf; ///< The ring buffer
 
 int ringbuffer_init(struct ringbuffer *r);
 int ringbuffer_deinit(struct ringbuffer *r);

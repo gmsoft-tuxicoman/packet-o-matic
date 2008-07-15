@@ -27,6 +27,9 @@
 
 #include <pthread.h>
 
+struct helper_reg *helpers[MAX_HELPER];
+uint32_t helpers_serial;
+
 static struct helper_frame *frame_head, *frame_tail;
 
 static pthread_rwlock_t helper_global_lock = PTHREAD_RWLOCK_INITIALIZER;

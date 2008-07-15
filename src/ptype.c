@@ -23,6 +23,8 @@
 
 #include <pthread.h>
 
+struct ptype_reg *ptypes[MAX_PTYPE];
+
 static pthread_rwlock_t ptype_global_lock = PTHREAD_RWLOCK_INITIALIZER;
 
 

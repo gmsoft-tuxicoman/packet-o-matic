@@ -27,6 +27,8 @@
 #include <dirent.h>
 #include <pthread.h>
 
+int console_output;
+unsigned int console_debug_level;
 static unsigned int random_seed;
 
 static struct log_entry *log_head = NULL, *log_tail = NULL;
