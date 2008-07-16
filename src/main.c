@@ -612,14 +612,6 @@ int main(int argc, char *argv[]) {
 	pthread_sigmask(SIG_BLOCK, &sigmask, NULL);
 
 	main_config = config_alloc();
-	if (empty_config) {
-		strncpy(main_config->filename, cfgfile, NAME_MAX);
-	} else {
-		if (config_parse(main_config, cfgfile) == POM_ERR) {
-			pom_log(POM_LOG_ERR "Error while parsing config");
-			goto err;
-		}
-	}
 
 	pthread_t mgmtsrv_thread;
 	if (!disable_mgmtsrv) {
@@ -647,9 +639,13 @@ int main(int argc, char *argv[]) {
 	}
 #endif
 
-	if (main_config->input && start_input(rbuf) == POM_ERR) {
-		pom_log(POM_LOG_ERR "Error when starting the input. Abording");
-		goto err;
+	if (empty_config) {
+		strncpy(main_config->filename, cfgfile, NAME_MAX);
+	} else {
+		if (config_parse(main_config, cfgfile) == POM_ERR) {
+			pom_log(POM_LOG_ERR "Error while parsing config");
+			goto err;
+		}
 	}
 
 	if (pthread_mutex_lock(&rbuf->mutex)) {

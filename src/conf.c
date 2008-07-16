@@ -115,6 +115,13 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 		}
 	}
 
+	char *input_start;
+	input_start = (char *) xmlGetProp(cur, (const xmlChar*) "start");
+	if (!input_start)
+		ip->running = 1; // If start is not specified, start it
+	else if (!strcmp(input_start, "yes"))
+		ip->running = 1;
+
 	xmlNodePtr pcur = cur->xmlChildrenNode;
 	while (pcur) {
 		if (!xmlStrcmp(pcur->name, (const xmlChar*) "param")) {
@@ -638,6 +645,12 @@ int config_parse(struct conf *c, char * filename) {
 
 	strncpy(c->filename, filename, NAME_MAX);
 
+	if (c->input && c->input->running) {
+		c->input->running = 0;
+		start_input(rbuf);
+
+	}
+
 	return POM_OK;
 }
 
@@ -852,6 +865,11 @@ int config_write(struct conf *c, char *filename) {
 		strcat(buffer, input_get_name(c->input->type));
 		strcat(buffer, "\" mode=\"");
 		strcat(buffer, c->input->mode->name);
+		strcat(buffer, "\" start=\"");
+		if (c->input->running)
+			strcat(buffer, "yes");
+		else
+			strcat(buffer, "no");
 		strcat(buffer, "\">\n");
 
 		struct input_param *p = c->input->mode->params;
