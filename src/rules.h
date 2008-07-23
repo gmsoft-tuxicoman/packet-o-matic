@@ -52,6 +52,7 @@ struct rule_list {
 	uint32_t uid; ///< unique id of the rule which changes each time it's modified
 	uint32_t serial; ///< Number of changes for this rule
 	uint32_t target_serial; ///< Number of changes of the associated targets
+	char * description; ///< Description of the rule
 
 	struct ptype* pkt_cnt; ///< matched packet count
 	struct ptype* byte_cnt; ///< matched byte count

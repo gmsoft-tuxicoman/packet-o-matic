@@ -27,7 +27,7 @@
 
 #include "ptype_uint64.h"
 
-#define XMLRPC_RULES_COMMANDS_NUM 6
+#define XMLRPC_RULES_COMMANDS_NUM 7
 
 static struct xmlrpc_command xmlrpc_rules_commands[XMLRPC_RULES_COMMANDS_NUM] = { 
 
@@ -49,7 +49,14 @@ static struct xmlrpc_command xmlrpc_rules_commands[XMLRPC_RULES_COMMANDS_NUM] = 
 		.name = "rules.set",
 		.callback_func = xmlrpccmd_set_rule,
 		.signature = "i:is",
-		.help = "Set a rule and get it's new UID",
+		.help = "Set a rule and get its UID",
+	},
+
+	{
+		.name = "rules.setDescription",
+		.callback_func = xmlrpccmd_set_rule_description,
+		.signature = "i:is",
+		.help = "Set a rule description given its UID",
 	},
 
 	{
@@ -112,12 +119,17 @@ xmlrpc_value *xmlrpccmd_get_rules(xmlrpc_env * const envP, xmlrpc_value * const 
 			xmlrpc_faultf(envP, "Error while computing string representation of the rule");
 			return NULL;
 		}
-		xmlrpc_value *rule = xmlrpc_build_value(envP, "{s:s,s:b,s:i,s:i,s:i}",
+
+		char *desc = "";
+		if (rl->description)
+			desc = rl->description;
+		xmlrpc_value *rule = xmlrpc_build_value(envP, "{s:s,s:b,s:i,s:i,s:i,s:s}",
 					"rule", buff,
 					"enabled", rl->enabled,
 					"uid", rl->uid,
 					"serial", rl->serial,
-					"target_serial", rl->target_serial);
+					"target_serial", rl->target_serial,
+					"description", desc);
 		xmlrpc_array_append_item(envP, rules, rule);
 		xmlrpc_DECREF(rule);
 		rl = rl->next;
@@ -229,6 +241,45 @@ xmlrpc_value *xmlrpccmd_set_rule(xmlrpc_env * const envP, xmlrpc_value * const p
 
 	node_destroy(rl->node, 0);
 	rl->node = start;
+	main_config->rules_serial++;
+	rl->serial++;
+	main_config_rules_unlock();
+
+	return xmlrpc_int_new(envP, rl->uid);
+
+}
+
+xmlrpc_value *xmlrpccmd_set_rule_description(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
+
+	uint32_t rule_id;
+	char *descr;
+	xmlrpc_decompose_value(envP, paramArrayP, "(is)", &rule_id, &descr);
+
+	if (envP->fault_occurred)
+		return NULL;
+
+	main_config_rules_lock(1);
+
+	struct rule_list *rl = main_config->rules;
+	while (rl && rl->uid != rule_id)
+		rl = rl->next;
+
+	if (!rl) {
+		main_config_rules_unlock();
+		xmlrpc_faultf(envP, "Rule not found");
+		return NULL;
+	}
+
+	if (rl->description)
+		free(rl->description);
+
+	if (strlen(descr) > 0)
+		rl->description = descr;
+	else
+		rl->description = NULL;
+
+	rl->enabled = 1;
+
 	main_config->rules_serial++;
 	rl->serial++;
 	main_config_rules_unlock();

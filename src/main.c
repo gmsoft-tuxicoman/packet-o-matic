@@ -332,7 +332,7 @@ void *input_thread_func(void *params) {
 	pthread_sigmask(SIG_UNBLOCK, &sigmask, NULL);
 	siginterrupt(INPUTSIG, 1);
 
-	// set SIGIGN for the INPUTSIG
+	// set handler input_signal_handler() for the INPUTSIG
 	struct sigaction mysigaction;
 	sigemptyset(&mysigaction.sa_mask);
 	mysigaction.sa_flags = 0;
@@ -412,6 +412,11 @@ void *input_thread_func(void *params) {
 	}
 
 	input_close(r->i);
+
+	// If we are stopping, we'll set running = 1 to the input
+	// this way autosave config will know it was started
+	if (finish)
+		r->i->running = 1;
 
 	while (r->usage) {
 		pthread_cond_signal(&r->underrun_cond);
@@ -761,6 +766,13 @@ int main(int argc, char *argv[]) {
 
 finish:
 	finish = 1;
+
+	// Save the config before changing anything
+	if (PTYPE_BOOL_GETVAL(param_autosave_on_exit)) {
+		pom_log("Autosaving configuration to %s", main_config->filename);
+		config_write(main_config, main_config->filename);
+	}
+
 	if (rbuf->i)
 		stop_input(rbuf);
 
@@ -778,11 +790,6 @@ finish:
 	conntrack_close_connections(main_config->rules, &main_config->rules_lock);
 
 	expectation_cleanup_all();
-
-	if (PTYPE_BOOL_GETVAL(param_autosave_on_exit)) {
-		pom_log("Autosaving configuration to %s", main_config->filename);
-		config_write(main_config, main_config->filename);
-	}
 
 err:
 

@@ -23,7 +23,7 @@
 
 #include "ptype_uint64.h"
 
-#define MGMT_RULE_COMMANDS_NUM 6
+#define MGMT_RULE_COMMANDS_NUM 8
 
 static struct mgmt_command mgmt_rule_commands[MGMT_RULE_COMMANDS_NUM] = {
 
@@ -39,7 +39,7 @@ static struct mgmt_command mgmt_rule_commands[MGMT_RULE_COMMANDS_NUM] = {
 		.words = { "set", "rule", NULL },
 		.help = "Change a rule",
 		.callback_func = mgmtcmd_set_rule,
-		.completion = mgmtcmd_rule_id_completion,
+		.completion = mgmtcmd_rule_id2_completion,
 		.usage = "set rule <rule_id> <rule>",
 	},
 
@@ -47,7 +47,7 @@ static struct mgmt_command mgmt_rule_commands[MGMT_RULE_COMMANDS_NUM] = {
 		.words = { "disable", "rule", NULL },
 		.help = "Disable a rule",
 		.callback_func = mgmtcmd_disable_rule,
-		.completion = mgmtcmd_rule_id_completion,
+		.completion = mgmtcmd_rule_id2_completion,
 		.usage = "disable rule <rule_id>",
 	},
 
@@ -55,7 +55,7 @@ static struct mgmt_command mgmt_rule_commands[MGMT_RULE_COMMANDS_NUM] = {
 		.words = { "enable", "rule", NULL },
 		.help = "Enable a rule",
 		.callback_func = mgmtcmd_enable_rule,
-		.completion = mgmtcmd_rule_id_completion,
+		.completion = mgmtcmd_rule_id2_completion,
 		.usage = "enable rule <rule_id>",
 	},
 
@@ -70,17 +70,44 @@ static struct mgmt_command mgmt_rule_commands[MGMT_RULE_COMMANDS_NUM] = {
 		.words = { "remove", "rule", NULL },
 		.help = "remove a rule",
 		.callback_func = mgmtcmd_remove_rule,
-		.completion = mgmtcmd_rule_id_completion,
+		.completion = mgmtcmd_rule_id2_completion,
 		.usage = "remove rule <rule_id>",
 	},
 
+	{
+		.words = { "set", "description", "rule", NULL },
+		.help = "set a description on a rule",
+		.callback_func = mgmtcmd_set_descr_rule,
+		.completion = mgmtcmd_rule_id3_completion,
+		.usage = "set description rule <rule_id> <descr>",
+	},
+
+	{
+		.words = { "unset", "description", "rule", NULL },
+		.help = "unset the description on a rule",
+		.callback_func = mgmtcmd_unset_descr_rule,
+		.completion = mgmtcmd_rule_id3_completion,
+		.usage = "unset description rule <rule_id>",
+	},
 };
 
-struct mgmt_command_arg* mgmtcmd_rule_id_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_rule_id2_completion(int argc, char *argv[]) {
 
 	if (argc != 2)
 		return NULL;
 	
+	return mgmtcmd_rule_id_completion();
+}
+	
+struct mgmt_command_arg* mgmtcmd_rule_id3_completion(int argc, char *argv[]) {
+
+	if (argc != 3)
+		return NULL;
+	
+	return mgmtcmd_rule_id_completion();
+}
+
+struct mgmt_command_arg* mgmtcmd_rule_id_completion() {
 	main_config_rules_lock(0);
 	struct rule_list *rl;
 	int count = 0;
@@ -200,6 +227,8 @@ int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]) {
 		if (!rl->enabled)
 			mgmtsrv_send(c, " (disabled)");
 		mgmtsrv_send(c, " : \r\n");
+		if (rl->description)
+			mgmtsrv_send(c, "  // %s\r\n", rl->description);
 
 		struct rule_node *last, *rn = rl->node;
 		while (rn){
@@ -501,3 +530,67 @@ int mgmtcmd_remove_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	return POM_OK;
 
 }
+
+int mgmtcmd_set_descr_rule(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	if (argc < 2)
+		return MGMT_USAGE;
+
+	main_config_rules_lock(1);
+	struct rule_list *rl = mgmtcmd_get_rule(argv[0]);
+
+	if (!rl) {
+		main_config_rules_unlock();
+		mgmtsrv_send(c, "Rule not found\r\n");
+		return POM_OK;
+	}
+
+	if (rl->description)
+		free(rl->description);
+
+	// first, let's reconstruct the whole description
+	int rule_descr_len = 0, i;
+	for (i = 1; i < argc; i++) {
+		rule_descr_len += strlen(argv[i]) + 1;
+	}
+	char *rule_descr = malloc(rule_descr_len + 1);
+	memset(rule_descr, 0, rule_descr_len + 1);
+	for (i = 1; i < argc; i++) {
+		strcat(rule_descr, argv[i]);
+		strcat(rule_descr, " ");
+	}
+	rule_descr[strlen(rule_descr) - 1] = 0;
+	rl->description = rule_descr;
+
+	main_config_rules_unlock();
+
+	return POM_OK;
+}
+
+
+int mgmtcmd_unset_descr_rule(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	if (argc < 1)
+		return MGMT_USAGE;
+
+	main_config_rules_lock(1);
+	struct rule_list *rl = mgmtcmd_get_rule(argv[0]);
+
+	if (!rl) {
+		main_config_rules_unlock();
+		mgmtsrv_send(c, "Rule not found\r\n");
+		return POM_OK;
+	}
+
+	if (rl->description) {
+		free(rl->description);
+		rl->description = NULL;
+	} else {
+		mgmtsrv_send(c, "Rule %u has no description\r\n");
+		return POM_OK;
+	}
+	main_config_rules_unlock();
+
+	return POM_OK;
+}
+

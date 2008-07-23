@@ -28,7 +28,9 @@
 
 #include "rules.h"
 
-struct mgmt_command_arg* mgmtcmd_rule_id_completion(int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_rule_id_completion();
+struct mgmt_command_arg* mgmtcmd_rule_id2_completion(int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_rule_id3_completion(int argc, char *argv[]);
 int mgmtcmd_rule_register_all();
 int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]);
 struct mgmt_command_arg* mgmt_show_rules_completion(int argc, char *argv[]);
@@ -37,6 +39,8 @@ int mgmtcmd_disable_rule(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_enable_rule(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_add_rule(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_remove_rule(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_set_descr_rule(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_unset_descr_rule(struct mgmt_connection *c, int argc, char *argv[]);
 
 struct rule_list *mgmtcmd_get_rule(char *rule);
 struct target *mgmtcmd_get_target(struct rule_list *rl, char *target);

@@ -20,6 +20,7 @@
 
 #include <libxml/xmlmemory.h>
 #include <libxml/parser.h>
+#include <libxml/xmlwriter.h>
 
 #include <fcntl.h>
 #include <errno.h>
@@ -479,6 +480,11 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 				pom_log(POM_LOG_WARN "Only one instance of matches supported. Skipping extra instances");
 			else
 				r->node = parse_match(doc, cur->xmlChildrenNode);
+		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "description")) {
+			char *value = (char *) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+			r->description = malloc(strlen(value) + 1);
+			memset(r->description, 0, sizeof(r->description));
+			strcpy(r->description, value);
 		}
 
 		cur = cur->next;
@@ -654,46 +660,38 @@ int config_parse(struct conf *c, char * filename) {
 	return POM_OK;
 }
 
-int config_write_rule(int fd, struct rule_node *n, struct rule_node *last, int tabs) {
+int config_write_rule(xmlTextWriterPtr writer, struct rule_node *n, struct rule_node *last, int tabs_count) {
 
 	if (n == last)
 		return 0;
 
-	char buffer[2048];
-	memset(buffer, 0, sizeof(buffer));
+	char *tabs = malloc((sizeof(char) * tabs_count) + 2);
+	tabs[0] = '\n';
+	memset(tabs + 1, '\t', tabs_count);
+	tabs[tabs_count + 1] = 0;
 
-	int i;
 
 	while (n != last) {
 
 		if (!n->b) {
 			if (n->op != RULE_OP_TAIL) {
-				for (i = 0; i < tabs; i++)
-					strcat(buffer, "\t");
-			
-				strcat(buffer, "<match layer=\"");
-				strcat(buffer, match_get_name(n->layer));
-				strcat(buffer, "\"");
+				xmlTextWriterWriteString(writer, BAD_CAST tabs);	
+				xmlTextWriterStartElement(writer, BAD_CAST "match");
+				xmlTextWriterWriteAttribute(writer, BAD_CAST "layer", BAD_CAST match_get_name(n->layer));
 				if (n->op & RULE_OP_NOT)
-					strcat(buffer, " inv=\"yes\"");
+					xmlTextWriterWriteAttribute(writer, BAD_CAST "inv", BAD_CAST "yes");
 				if (n->match) {
 					char value[256];
 					ptype_serialize(n->match->value, value, sizeof(value));
-					strcat(buffer, " field=\"");
 					struct match_field_reg *field = match_get_field(n->layer, n->match->id);
-					strcat(buffer, field->name);
-					strcat(buffer, "\"");
+					xmlTextWriterWriteAttribute(writer, BAD_CAST "field", BAD_CAST field->name);
 					if (n->match->op != PTYPE_OP_EQ) {
-						strcat(buffer, " op=\"");
-						strcat(buffer, ptype_get_op_name(n->match->op));
-						strcat(buffer, "\"");
+						xmlTextWriterWriteAttribute(writer, BAD_CAST "op", BAD_CAST ptype_get_op_name(n->match->op));
 					}
-					strcat(buffer, ">");
-					strcat(buffer, value);
-					strcat(buffer, "</match>\n");
+					xmlTextWriterWriteString(writer, BAD_CAST value);
 
-				} else
-					strcat(buffer, "/>\n");
+				} 
+				xmlTextWriterEndElement(writer);
 			}
 			n = n->a;
 
@@ -714,63 +712,37 @@ int config_write_rule(int fd, struct rule_node *n, struct rule_node *last, int t
 				rn = rn->a;
 			}
 
-			for (i = 0; i < tabs; i++)
-				strcat(buffer, "\t");
-			strcat(buffer, "<node op=\"");
-			if (n->op & RULE_OP_OR)
-				strcat(buffer, "or");
-			else if (n->op & RULE_OP_AND)
-				strcat(buffer, "and");
-			strcat(buffer, "\"");
-			if (n->op & RULE_OP_NOT)
-				strcat(buffer, " inv=\"yes\"");
-			strcat(buffer, ">\n");
-
-			for (i = 0; i < tabs; i++)
-				strcat(buffer, "\t");
-
-			strcat(buffer, "<a>\n");
-			if (write(fd, buffer, strlen(buffer)) == -1)
-				goto err;
-			memset(buffer, 0, sizeof(buffer));
+			xmlTextWriterWriteString(writer, BAD_CAST tabs);	
 			
-			config_write_rule(fd, n->a, new_last, tabs + 1);
+			xmlTextWriterStartElement(writer, BAD_CAST "node");
+			char *orand = "or";
+			if (n->op & RULE_OP_AND)
+				orand = "and";
+			xmlTextWriterWriteAttribute(writer, BAD_CAST "op", BAD_CAST orand);
+			if (n->op & RULE_OP_NOT)
+				xmlTextWriterWriteAttribute(writer, BAD_CAST "inv", BAD_CAST "yes");
 
-			for (i = 0; i < tabs; i++)
-				strcat(buffer, "\t");
-			strcat(buffer, "</a>\n");
-			for (i = 0; i < tabs; i++)
-				strcat(buffer, "\t");
-			strcat(buffer, "<b>\n");
-			if (write(fd, buffer, strlen(buffer)) == -1)
-				goto err;
-			memset(buffer, 0, sizeof(buffer));
+			xmlTextWriterWriteString(writer, BAD_CAST tabs);	
+			xmlTextWriterStartElement(writer, BAD_CAST "a");
+			config_write_rule(writer, n->a, new_last, tabs_count + 1);
+			xmlTextWriterWriteString(writer, BAD_CAST tabs);	
+			xmlTextWriterEndElement(writer);
 
-			config_write_rule(fd, n->b, new_last, tabs + 1);
+			xmlTextWriterWriteString(writer, BAD_CAST tabs);	
+			xmlTextWriterStartElement(writer, BAD_CAST "b");
+			config_write_rule(writer, n->b, new_last, tabs_count + 1);
+			xmlTextWriterWriteString(writer, BAD_CAST tabs);	
+			xmlTextWriterEndElement(writer);
 
-			for (i = 0; i < tabs; i++)
-				strcat(buffer, "\t");
-			strcat(buffer, "</b>\n");
+			xmlTextWriterWriteString(writer, BAD_CAST tabs);	
 
-			for (i = 0; i < tabs; i++)
-				strcat(buffer, "\t");
-
-			strcat(buffer, "</node>\n");
+			// </node>
+			xmlTextWriterEndElement(writer);
 			n = new_last;
 		}
 	}
 
-	if (write(fd, buffer, strlen(buffer)) == -1)
-		goto err;
-
 	return POM_OK;
-
-err:
-	close(fd);
-	char errbuff[256];
-	strerror_r(errno, errbuff, sizeof(errbuff));
-	pom_log(POM_LOG_ERR "Error while writing the config file : %s", errbuff);
-	return POM_ERR;
 }
 
 int config_write(struct conf *c, char *filename) {
@@ -778,52 +750,60 @@ int config_write(struct conf *c, char *filename) {
 	if (!filename)
 		filename = c->filename;
 
-	int fd;
-	fd = open(filename, O_WRONLY | O_CREAT | O_TRUNC, S_IRUSR | S_IWUSR);
+	xmlTextWriterPtr writer;
 
-	if (fd == -1) {
-		char buffer[256];
-		strerror_r(errno, buffer, sizeof(buffer) - 1);
-		pom_log(POM_LOG_ERR "Error while opening config file for writing : %s", buffer);
+	writer = xmlNewTextWriterFilename(filename, 0);
+	if (!writer) {
+		pom_log(POM_LOG_ERR "Error while opening config file for writing : %s");
 		return POM_ERR;
 	}
 
+	int res;
 	// write the header and first <config> tag
+	res = xmlTextWriterStartDocument(writer, NULL, "ISO-8859-1", NULL);
+	if (res < 0) {
+		return POM_ERR;	
+	}
 
-	char buffer[4096]; // each element will not be 2048 bytes long
-	memset(buffer, 0, sizeof(buffer));
-	strcat(buffer, "<?xml version=\"1.0\"?>\n<config>\n\n");
+	xmlTextWriterWriteComment(writer, BAD_CAST "Packet-o-matic configuration");
+
+	// write the <config> element
+	xmlTextWriterStartElement(writer, BAD_CAST "config");
+	xmlTextWriterWriteFormatString(writer, "\n\n\t");
 
 	// write the password if present
 	const char *passwd = mgmtsrv_get_password();
 	if (passwd) {
-		strcat(buffer, "<password>");
-		strcat(buffer, passwd);
-		strcat(buffer, "</password>\n\n");
+		xmlTextWriterWriteComment(writer, BAD_CAST "Management console password");
+		xmlTextWriterWriteElement(writer, BAD_CAST "password", BAD_CAST passwd);
 	}
 
 	// write the core parameters
+	int first_param = 1;
 	struct core_param *p = core_params;
 	while (p) {
 		char value[1024];
 		ptype_serialize(p->value, value, sizeof(value) - 1);
 		if (strcmp(value, p->defval)) {
-			strcat(buffer, "<param name=\"");
-			strcat(buffer, p->name);
-			strcat(buffer, "\">");
-			strcat(buffer, value);
-			strcat(buffer, "</param>\n");
+			if (first_param) {
+				first_param = 0;
+				xmlTextWriterWriteFormatString(writer, "\n\t");
+				xmlTextWriterWriteComment(writer, BAD_CAST "Core parameters");
+			}
+			xmlTextWriterWriteFormatString(writer, "\n\t");
+			xmlTextWriterStartElement(writer, BAD_CAST "param");
+			xmlTextWriterWriteAttribute(writer, BAD_CAST "name", BAD_CAST p->name);
+			xmlTextWriterWriteString(writer, BAD_CAST value);
+			xmlTextWriterEndElement(writer);
 		}
 		p = p->next;
 	}
-	strcat(buffer, "\n\n");
+	if (!first_param)
+		xmlTextWriterWriteFormatString(writer, "\n");
 
-	if (write(fd, buffer, strlen(buffer)) == -1)
-		goto err;
-	memset(buffer, 0, sizeof(buffer));
 
 	// write the conntrack parameters if needed
-	int i;
+	int i, some_conntrack = 0;
 	for (i = 0; i < MAX_CONNTRACK; i++) {
 		if (conntracks[i]) {
 			int some_param = 0;
@@ -834,64 +814,68 @@ int config_write(struct conf *c, char *filename) {
 				ptype_serialize(p->value, value, sizeof(value));
 				if (strcmp(value, p->defval)) {
 					if (!some_param) {
-						strcat(buffer, "<conntrack type=\"");
-						strcat(buffer, match_get_name(i));
-						strcat(buffer, "\">\n");
+						if (!some_conntrack) {
+							xmlTextWriterWriteFormatString(writer, "\n\n\t");
+							xmlTextWriterWriteComment(writer, BAD_CAST "Conntrack parameters");
+							some_conntrack = 1;
+						}
+						xmlTextWriterWriteFormatString(writer, "\n\t");
+						xmlTextWriterStartElement(writer, BAD_CAST "conntrack");
+						xmlTextWriterWriteAttribute(writer, BAD_CAST "type", BAD_CAST match_get_name(i));
 						some_param = 1;
 					}
-					strcat(buffer, "\t<param name=\"");
-					strcat(buffer, p->name);
-					strcat(buffer, "\">");
-					strcat(buffer, value);
-					strcat(buffer, "</param>\n");
-
+					xmlTextWriterWriteFormatString(writer, "\n\t\t");
+					xmlTextWriterStartElement(writer, BAD_CAST "param");
+					xmlTextWriterWriteAttribute(writer, BAD_CAST "name", BAD_CAST p->name);
+					xmlTextWriterWriteString(writer, BAD_CAST value);
+					xmlTextWriterEndElement(writer);
 
 				}
 				p = p->next;
 			}
 			if (some_param) {
-				strcat(buffer, "</conntrack>\n\n");
-				if (write(fd, buffer, strlen(buffer)) == -1)
-					goto err;
-				memset(buffer, 0, sizeof(buffer));
+				xmlTextWriterWriteFormatString(writer, "\n\t");
+				xmlTextWriterEndElement(writer);
 			}
 		}
 
 	}
+	if (some_conntrack)
+		xmlTextWriterWriteFormatString(writer, "\n");
 
 	// write the input config
 	if (c->input) {
-		strcat(buffer, "<input type=\"");
-		strcat(buffer, input_get_name(c->input->type));
-		strcat(buffer, "\" mode=\"");
-		strcat(buffer, c->input->mode->name);
-		strcat(buffer, "\" start=\"");
+		xmlTextWriterWriteFormatString(writer, "\n\t");
+		xmlTextWriterWriteComment(writer, BAD_CAST "Input configuration");
+		xmlTextWriterWriteFormatString(writer, "\n\t");
+		xmlTextWriterStartElement(writer, BAD_CAST "input");
+		xmlTextWriterWriteAttribute(writer, BAD_CAST "type", BAD_CAST input_get_name(c->input->type));
+		xmlTextWriterWriteAttribute(writer, BAD_CAST "mode", BAD_CAST c->input->mode->name);
+		char *yesno = "no";
 		if (c->input->running)
-			strcat(buffer, "yes");
-		else
-			strcat(buffer, "no");
-		strcat(buffer, "\">\n");
+			yesno = "yes";
+		xmlTextWriterWriteAttribute(writer, BAD_CAST "start", BAD_CAST yesno);
+
+		xmlTextWriterWriteFormatString(writer, "\n\t");
 
 		struct input_param *p = c->input->mode->params;
 		while (p) {
 			char value[1024];
 			ptype_serialize(p->value, value, sizeof(value) - 1);
 			if (strcmp(value, p->defval)) { // parameter doesn't have default value
-				strcat(buffer, "\t<param name=\"");
-				strcat(buffer, p->name);
-				strcat(buffer, "\">");
-				strcat(buffer, value);
-				strcat(buffer, "</param>\n");
+				xmlTextWriterWriteFormatString(writer, "\t");
+				xmlTextWriterStartElement(writer, BAD_CAST "param");
+				xmlTextWriterWriteAttribute(writer, BAD_CAST "name", BAD_CAST p->name);
+				xmlTextWriterWriteString(writer, BAD_CAST value);
+				xmlTextWriterEndElement(writer);
+				xmlTextWriterWriteFormatString(writer, "\n\t");
 			}
 			p = p->next;
 		}
 
-		strcat(buffer, "</input>\n\n");
+		xmlTextWriterEndElement(writer);
+		xmlTextWriterWriteFormatString(writer, "\n");
 	}
-
-	if (write(fd, buffer, strlen(buffer)) == -1)
-		goto err;
-	memset(buffer, 0, sizeof(buffer));
 
 	// write the rules
 	
@@ -903,28 +887,34 @@ int config_write(struct conf *c, char *filename) {
 		return POM_ERR;
 	}
 
+	if (rl) {
+		xmlTextWriterWriteFormatString(writer, "\n\t");
+		xmlTextWriterWriteComment(writer, BAD_CAST "Rules definition");
+	}
 	while (rl) {
 		
-		strcat(buffer, "<rule");
+		xmlTextWriterWriteFormatString(writer, "\n\t");
+		xmlTextWriterStartElement(writer, BAD_CAST "rule");
 		if (!rl->enabled)
-			strcat(buffer, " disabled=\"yes\"");
-		strcat(buffer, ">\n");
+			xmlTextWriterWriteAttribute(writer, BAD_CAST "disabled", BAD_CAST "yes");
+
+		if (rl->description) {
+			xmlTextWriterWriteFormatString(writer, "\n\t\t");
+			xmlTextWriterWriteElement(writer, BAD_CAST "description", BAD_CAST rl->description);
+		}
 
 		struct target *t = rl->target;
 		while (t) {
-			strcat(buffer, "\t<target type=\"");
-			strcat(buffer, target_get_name(t->type));
-			strcat(buffer, "\" start=\"");
+			xmlTextWriterWriteFormatString(writer, "\n\t\t");
+			xmlTextWriterStartElement(writer, BAD_CAST "target");
+			xmlTextWriterWriteAttribute(writer, BAD_CAST "type", BAD_CAST target_get_name(t->type));
+			char *yesno = "no";
 			if (t->started)
-				strcat(buffer, "yes");
-			else
-				strcat(buffer, "no");
-			strcat(buffer, "\"");
+				yesno = "yes";
+			xmlTextWriterWriteAttribute(writer, BAD_CAST "start", BAD_CAST yesno);
 
 			if (t->mode) {
-				strcat(buffer, " mode=\"");
-				strcat(buffer, t->mode->name);
-				strcat(buffer, "\">\n");
+				xmlTextWriterWriteAttribute(writer, BAD_CAST "mode", BAD_CAST t->mode->name);
 				struct target_param_reg *tpr = t->mode->params;
 				while (tpr) {
 					
@@ -941,45 +931,39 @@ int config_write(struct conf *c, char *filename) {
 					char value[1024];
 					ptype_serialize(tp->value, value, sizeof(value) - 1);
 					if (strcmp(value, tp->type->defval)) {
-						strcat(buffer, "\t\t<param name=\"");
-						strcat(buffer, tp->type->name);
-						strcat(buffer, "\">");
-						strcat(buffer, value);
-						strcat(buffer, "</param>\n");
+						xmlTextWriterWriteFormatString(writer, "\n\t\t\t");
+						xmlTextWriterStartElement(writer, BAD_CAST "param");
+						xmlTextWriterWriteAttribute(writer, BAD_CAST "name", BAD_CAST tp->type->name);
+						xmlTextWriterWriteString(writer, BAD_CAST value);
+						xmlTextWriterEndElement(writer);
 					}
 		
 					tpr = tpr->next;
 				}
 
-				strcat(buffer, "\t</target>\n\n");
-			} else
-				strcat(buffer, "/>\n");
+			} 
+			xmlTextWriterEndElement(writer);
 
 			t = t->next;
 
-			if (write(fd, buffer, strlen(buffer)) == -1) {
-				pthread_rwlock_unlock(&c->rules_lock);
-				goto err;
-			}
-			memset(buffer, 0, sizeof(buffer));
 		}
 
-		strcat(buffer, "\t<matches>\n");
+		xmlTextWriterWriteFormatString(writer, "\n\t\t");
+		xmlTextWriterStartElement(writer, BAD_CAST "matches");
 
-		if (write(fd, buffer, strlen(buffer)) == -1) {
-			pthread_rwlock_unlock(&c->rules_lock);
-			goto err;
-		}
-		memset(buffer, 0, sizeof(buffer));
+		config_write_rule(writer, rl->node, NULL, 3);
 
-		config_write_rule(fd, rl->node, NULL, 2);
+		// </matches>
+		xmlTextWriterWriteFormatString(writer, "\n\t\t");
+		xmlTextWriterEndElement(writer);
 
-		strcat(buffer, "\t</matches>\n");
-
-		strcat(buffer, "</rule>\n\n");
+		// </rules>
+		xmlTextWriterWriteFormatString(writer, "\n\t");
+		xmlTextWriterEndElement(writer);
 		
 		rl = rl->next;
 	}
+	xmlTextWriterWriteFormatString(writer, "\n\n");
 
 	if (pthread_rwlock_unlock(&c->rules_lock)) {
 		pom_log(POM_LOG_ERR "Unable to unlock the rules lock");
@@ -988,24 +972,17 @@ int config_write(struct conf *c, char *filename) {
 
 	// finish the config
 
-	strcat(buffer, "</config>\n");
-
-	if (write(fd, buffer, strlen(buffer)) == -1)
-		goto err;
-
-	close(fd);
+	xmlTextWriterEndElement(writer);
+	xmlTextWriterWriteFormatString(writer, "\n\n");
+	xmlTextWriterEndDocument(writer);
+	xmlFreeTextWriter(writer);
+	xmlCleanupCharEncodingHandlers();
+	xmlCleanupParser();
 
 	if (c->filename != filename)
 		strncpy(c->filename, filename, NAME_MAX);
 
 	return POM_OK;
 
-
-err:
-	close(fd);
-	char errbuff[256];
-	strerror_r(errno, errbuff, sizeof(errbuff));
-	pom_log(POM_LOG_ERR "Error while writing the config file : %s", errbuff);
-	return POM_ERR;
 
 }

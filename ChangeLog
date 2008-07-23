@@ -1,3 +1,8 @@
+* 2008/07/23 Guy Martin <gmsoft@tuxicoman.be>
+Added descriptions to rules.
+Rewrite config_write() to use libxml2 API.
+Save correct input state at autosave time.
+
 * 2008/07/16 Guy Martin <gmsoft@tuxicoman.be>
 Save if input should be started in the config file.
 
