@@ -33,6 +33,8 @@ struct conntrack_reg *conntracks[MAX_CONNTRACK];
 static struct conntrack_list *ct_table[CONNTRACK_SIZE];
 static struct conntrack_list *ct_table_rev[CONNTRACK_SIZE];
 
+static pthread_rwlock_t conntrack_global_lock = PTHREAD_RWLOCK_INITIALIZER;
+
 /**
  * @ingroup conntrack_core
  * @return POM_OK on success, POM_ERR on failure.
@@ -886,5 +888,46 @@ int conntrack_do_timer(void * ce) {
 struct timer *conntrack_timer_alloc(struct conntrack_entry *ce, struct input *i) {
 
 	return timer_alloc(ce, i, conntrack_do_timer);
+}
+
+
+/**
+ * @ingroup conntrack_core
+ * @param write Set to 1 if conntracks will be modified, 0 if not
+ * @return POM_OK on success, POM_ERR on failure.
+ */
+int conntrack_lock(int write) {
+
+	int result = 0;
+	if (write) {
+		result = pthread_rwlock_wrlock(&conntrack_global_lock);
+	} else {
+		result = pthread_rwlock_rdlock(&conntrack_global_lock);
+	}
+
+	if (result) {
+		pom_log(POM_LOG_ERR "Error while locking the conntrack lock");
+		abort();
+		return POM_ERR;
+	}
+
+	return POM_OK;
+
+}
+
+/**
+ * @ingroup conntrack_core
+ * @return POM_OK on success, POM_ERR on failure.
+ */
+int conntrack_unlock() {
+
+	if (pthread_rwlock_unlock(&conntrack_global_lock)) {
+		pom_log(POM_LOG_ERR "Error while unlocking the conntrack lock");
+		abort();
+		return POM_ERR;
+	}
+
+	return POM_OK;
+
 }
 

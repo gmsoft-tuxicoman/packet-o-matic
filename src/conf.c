@@ -587,7 +587,7 @@ int config_parse(struct conf *c, char * filename) {
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "conntrack")) {
 			char *type = (char *) xmlGetProp(cur, (const xmlChar*) "type");
 			if (!type) {
-				pom_log(POM_LOG_WARN "No type specified in the conntrack tab");
+				pom_log(POM_LOG_WARN "No type specified in the conntrack tag");
 				cur = cur->next;
 				continue;
 			}
@@ -601,8 +601,10 @@ int config_parse(struct conf *c, char * filename) {
 				xmlFree(type);
 				continue;
 			}
+			conntrack_lock(1);
 			ct_type = conntrack_register(type);
 			if (ct_type == POM_ERR) {
+				conntrack_unlock();
 				pom_log(POM_LOG_WARN "Unable to register conntrack %s", type);
 				cur = cur->next;
 				xmlFree(type);
@@ -637,6 +639,64 @@ int config_parse(struct conf *c, char * filename) {
 				}
 				sub = sub->next;
 			}
+			conntrack_unlock();
+			xmlFree(type);
+		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "helper")) {
+			char *type = (char *) xmlGetProp(cur, (const xmlChar*) "type");
+			if (!type) {
+				pom_log(POM_LOG_WARN "No type specified in the helper tag");
+				cur = cur->next;
+				continue;
+			}
+			int ct_type;
+			match_lock(1);
+			ct_type = match_register(type);
+			match_unlock();
+			if (ct_type == POM_ERR) {
+				pom_log(POM_LOG_WARN "Unable to register match %s", type);
+				cur = cur->next;
+				xmlFree(type);
+				continue;
+			}
+			helper_lock(1);
+			ct_type = helper_register(type);
+			if (ct_type == POM_ERR) {
+				helper_unlock();
+				pom_log(POM_LOG_WARN "Unable to register helper %s", type);
+				cur = cur->next;
+				xmlFree(type);
+				continue;
+
+			}
+
+			xmlNodePtr sub = cur->xmlChildrenNode;
+			while (sub) {
+				if (!xmlStrcmp(sub->name, (const xmlChar *) "param")) {
+					char *name = (char *) xmlGetProp(sub, (const xmlChar*) "name");
+					if (!name) {
+						pom_log(POM_LOG_WARN "No name given for the param tag");
+						sub = sub->next;
+						continue;
+					}
+					struct helper_param *param = helper_get_param(ct_type, name);
+					if (!param) {
+						pom_log(POM_LOG_WARN "No parameter %s for helper %s", type, name);
+						sub = sub->next;
+						continue;
+					}
+					char *value = (char *) xmlNodeListGetString(doc, sub->xmlChildrenNode, 1);
+					if (value) {
+						if (ptype_unserialize(param->value, value) == POM_ERR)
+							pom_log(POM_LOG_WARN "Unable to parse value '%s' for parameter %s of helper %s", value, name, type);
+					} else {
+						pom_log(POM_LOG_WARN "No value given for param %s of helper %s", name, type);
+					}
+
+
+				}
+				sub = sub->next;
+			}
+			helper_unlock();
 			xmlFree(type);
 		}
 
@@ -759,22 +819,26 @@ int config_write(struct conf *c, char *filename) {
 	}
 
 	int res;
-	// write the header and first <config> tag
+	// write the header
 	res = xmlTextWriterStartDocument(writer, NULL, "ISO-8859-1", NULL);
 	if (res < 0) {
 		return POM_ERR;	
 	}
 
 	xmlTextWriterWriteComment(writer, BAD_CAST "Packet-o-matic configuration");
+	xmlTextWriterWriteFormatString(writer, "\n");
 
 	// write the <config> element
+	xmlTextWriterWriteFormatString(writer, "\n");
 	xmlTextWriterStartElement(writer, BAD_CAST "config");
-	xmlTextWriterWriteFormatString(writer, "\n\n\t");
+	xmlTextWriterWriteFormatString(writer, "\n");
 
 	// write the password if present
 	const char *passwd = mgmtsrv_get_password();
 	if (passwd) {
+		xmlTextWriterWriteFormatString(writer, "\n\t");
 		xmlTextWriterWriteComment(writer, BAD_CAST "Management console password");
+		xmlTextWriterWriteFormatString(writer, "\n\t");
 		xmlTextWriterWriteElement(writer, BAD_CAST "password", BAD_CAST passwd);
 	}
 
@@ -801,9 +865,52 @@ int config_write(struct conf *c, char *filename) {
 	if (!first_param)
 		xmlTextWriterWriteFormatString(writer, "\n");
 
+	// write the helper parameters if needed
+	int i, some_helper = 0;
+	helper_lock(0);
+	for (i = 0; i < MAX_HELPER; i++) {
+		if (helpers[i]) {
+			int some_param = 0;
+			struct helper_param *p = helpers[i]->params;
+			while (p) {
+				char value[512];
+				memset(value, 0, 512);
+				ptype_serialize(p->value, value, sizeof(value));
+				if (strcmp(value, p->defval)) {
+					if (!some_param) {
+						if (!some_helper) {
+							xmlTextWriterWriteFormatString(writer, "\n\n\t");
+							xmlTextWriterWriteComment(writer, BAD_CAST "Helper parameters");
+							some_helper = 1;
+						}
+						xmlTextWriterWriteFormatString(writer, "\n\t");
+						xmlTextWriterStartElement(writer, BAD_CAST "helper");
+						xmlTextWriterWriteAttribute(writer, BAD_CAST "type", BAD_CAST match_get_name(i));
+						some_param = 1;
+					}
+					xmlTextWriterWriteFormatString(writer, "\n\t\t");
+					xmlTextWriterStartElement(writer, BAD_CAST "param");
+					xmlTextWriterWriteAttribute(writer, BAD_CAST "name", BAD_CAST p->name);
+					xmlTextWriterWriteString(writer, BAD_CAST value);
+					xmlTextWriterEndElement(writer);
+
+				}
+				p = p->next;
+			}
+			if (some_param) {
+				xmlTextWriterWriteFormatString(writer, "\n\t");
+				xmlTextWriterEndElement(writer);
+			}
+		}
+
+	}
+	if (some_helper)
+		xmlTextWriterWriteFormatString(writer, "\n");
+	helper_unlock();
 
 	// write the conntrack parameters if needed
-	int i, some_conntrack = 0;
+	int some_conntrack = 0;
+	conntrack_lock(0);
 	for (i = 0; i < MAX_CONNTRACK; i++) {
 		if (conntracks[i]) {
 			int some_param = 0;
@@ -842,6 +949,7 @@ int config_write(struct conf *c, char *filename) {
 	}
 	if (some_conntrack)
 		xmlTextWriterWriteFormatString(writer, "\n");
+	conntrack_unlock();
 
 	// write the input config
 	if (c->input) {

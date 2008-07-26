@@ -230,5 +230,11 @@ int conntrack_unregister(int conntrack_type);
 /// Unregister all the conntracks
 int conntrack_unregister_all();
 
+/// Get a read or write lock on the conntracks
+int conntrack_lock(int write);
+
+/// Release a read or write lock on the conntracks
+int conntrack_unlock();
+
 
 #endif
