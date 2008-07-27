@@ -278,8 +278,6 @@ xmlrpc_value *xmlrpccmd_set_rule_description(xmlrpc_env * const envP, xmlrpc_val
 	else
 		rl->description = NULL;
 
-	rl->enabled = 1;
-
 	main_config->rules_serial++;
 	rl->serial++;
 	main_config_rules_unlock();
@@ -335,6 +333,7 @@ xmlrpc_value *xmlrpccmd_remove_rule(xmlrpc_env * const envP, xmlrpc_value * cons
 	ptype_cleanup(rl->byte_cnt);
 	free(rl);
 
+	main_config->rules_serial++;
 	main_config_rules_unlock();
 
 	return xmlrpc_int_new(envP, rule_id);

@@ -156,8 +156,9 @@ xmlrpc_value *xmlrpccmd_set_core_parmeter(xmlrpc_env * const envP, xmlrpc_value 
 xmlrpc_value *xmlrpccmd_main_get_serial(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
 	
 
-	return xmlrpc_build_value(envP, "{s:i,s:i,s:i,s:i}",
+	return xmlrpc_build_value(envP, "{s:i,s:i,s:i,s:i,s:i}",
 				"rules", main_config->rules_serial,
+				"targets", main_config->target_serial,
 				"input", main_config->input_serial,
 				"core", core_params_serial,
 				"helper", helpers_serial,

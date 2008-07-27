@@ -25,6 +25,7 @@
 #include "target.h"
 #include "conntrack.h"
 #include "ptype.h"
+#include "main.h"
 
 #include "ptype_uint64.h"
 
@@ -374,6 +375,11 @@ int target_open(struct target *t) {
 		}
 
 	t->started = 1;
+	t->serial++;
+	if (t->parent_serial) {
+		(*t->parent_serial)++;
+		main_config->target_serial++;
+	}
 
 	return POM_OK;
 
@@ -427,7 +433,13 @@ int target_close(struct target *t) {
 	if (targets[t->type] && targets[t->type]->close)
 		result = (*targets[t->type]->close) (t);
 
-	return POM_OK;
+	t->serial++;
+	if (t->parent_serial) {
+		(*t->parent_serial)++;
+		main_config->target_serial++;
+	}
+
+	return result;
 
 }
 

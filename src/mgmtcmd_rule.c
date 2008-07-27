@@ -523,6 +523,7 @@ int mgmtcmd_remove_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	ptype_cleanup(rl->byte_cnt);
 	free(rl);
 
+	main_config->rules_serial++;
 	main_config_rules_unlock();
 
 	mgmtsrv_send(c, "Rule removed\r\n");
@@ -562,6 +563,8 @@ int mgmtcmd_set_descr_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	rule_descr[strlen(rule_descr) - 1] = 0;
 	rl->description = rule_descr;
 
+	main_config->rules_serial++;
+	rl->serial++;
 	main_config_rules_unlock();
 
 	return POM_OK;
@@ -585,6 +588,8 @@ int mgmtcmd_unset_descr_rule(struct mgmt_connection *c, int argc, char *argv[]) 
 	if (rl->description) {
 		free(rl->description);
 		rl->description = NULL;
+		main_config->rules_serial++;
+		rl->serial++;
 	} else {
 		mgmtsrv_send(c, "Rule %u has no description\r\n");
 		return POM_OK;

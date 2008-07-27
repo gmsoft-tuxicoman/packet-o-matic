@@ -240,14 +240,10 @@ int mgmtcmd_start_target(struct mgmt_connection *c, int argc, char *argv[]) {
 		mgmtsrv_send(c, "Target already started\r\n");
 		return POM_OK;
 	}
-	
-	if (target_open(t) != POM_OK) {
-		mgmtsrv_send(c, "Error while starting the target\r\n");
-	} else {
-		rl->target_serial++;
-		t->serial++;
-	}
 
+	if (target_open(t) != POM_OK) 
+		mgmtsrv_send(c, "Error while starting the target\r\n");
+	
 	target_unlock_instance(t);
 
 	return POM_OK;
@@ -285,12 +281,9 @@ int mgmtcmd_stop_target(struct mgmt_connection *c, int argc, char *argv[]) {
 		return POM_OK;
 	}
 
-	if (target_close(t) != POM_OK) {
+	if (target_close(t) != POM_OK)
 		mgmtsrv_send(c, "Error while stopping the target\r\n");
-	} else {
-		rl->target_serial++;
-		t->serial++;
-	}
+	
 	target_unlock_instance(t);
 
 	return POM_OK;
@@ -347,6 +340,7 @@ int mgmtcmd_add_target(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	t->parent_serial = &rl->target_serial;
 	rl->target_serial++;
+	main_config->target_serial++;
 
 	main_config_rules_unlock();
 
@@ -407,7 +401,12 @@ int mgmtcmd_remove_target(struct mgmt_connection *c, int argc, char *argv[]) {
 	}
 	target_lock_instance(t, 1);
 
-	target_close(t);
+	if (t->started) {
+		target_close(t);
+	} else {
+		rl->target_serial++;
+		main_config->target_serial++;
+	}
 
 	if (t->prev)
 		t->prev->next = t->next;
@@ -419,7 +418,6 @@ int mgmtcmd_remove_target(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	target_cleanup_module(t);
 
-	rl->target_serial++;
 	main_config_rules_unlock();
 
 	mgmtsrv_send(c, "Target removed\r\n");
@@ -476,6 +474,8 @@ int mgmtcmd_set_target_parameter(struct mgmt_connection *c, int argc, char *argv
 		mgmtsrv_send(c, "Unable to parse \"%s\" for parameter %s\r\n", argv[3], argv[2]);
 		return POM_OK;
 	}
+
+	main_config->target_serial++;
 	rl->target_serial++;
 	t->serial++;
 	target_unlock_instance(t);
@@ -578,6 +578,7 @@ int mgmtcmd_set_target_mode(struct mgmt_connection *c, int argc, char *argv[]) {
 	if (target_set_mode(t, argv[2]) == POM_ERR) {
 		mgmtsrv_send(c, "No mode \"%s\" for target %s\r\n", argv[3], target_get_name(t->type));
 	} else {
+		main_config->target_serial++;
 		rl->target_serial++;
 		t->serial++;
 	}

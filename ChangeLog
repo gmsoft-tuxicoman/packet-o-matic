@@ -1,3 +1,10 @@
+* 2008/07/27 Guy Martin <gmsoft@tuxicoman.be>
+Add global target_serial on the main config.
+Fix rules.setDescription which was enabling the rule.
+Functions target_open and target_close now update the serials.
+Fix duplicate entries returned by list_modules.
+Function main.getSerial returns the global target_serial.
+
 * 2008/07/26 Guy Martin <gmsoft@tuxicoman.be>
 Added helpers parameters in the configuration file.
 Add locks on conntracks.

@@ -320,6 +320,7 @@ xmlrpc_value *xmlrpccmd_add_target(xmlrpc_env * const envP, xmlrpc_value * const
 
 	t->parent_serial = &rl->target_serial;
 	rl->target_serial++;
+	main_config->target_serial++;
 
 	main_config_rules_unlock();
 
@@ -360,7 +361,12 @@ xmlrpc_value *xmlrpccmd_remove_target(xmlrpc_env * const envP, xmlrpc_value * co
 
 	target_lock_instance(t, 1);
 
-	target_close(t);
+	if (t->started) {
+		target_close(t);
+	} else {
+		rl->target_serial++;
+		main_config->target_serial++;
+	}
 
 	if (t->prev)
 		t->prev->next = t->next;
@@ -371,7 +377,6 @@ xmlrpc_value *xmlrpccmd_remove_target(xmlrpc_env * const envP, xmlrpc_value * co
 		t->next->prev = t->prev;
 
 	target_cleanup_module(t);
-	rl->target_serial++;
 
 	main_config_rules_unlock();
 
@@ -425,9 +430,6 @@ xmlrpc_value *xmlrpccmd_start_target(xmlrpc_env * const envP, xmlrpc_value * con
 		return NULL;
 	}
 
-	rl->target_serial++;
-	t->serial++;
-
 	target_unlock_instance(t);
 	return xmlrpc_int_new(envP, t->uid);
 
@@ -478,9 +480,6 @@ xmlrpc_value *xmlrpccmd_stop_target(xmlrpc_env * const envP, xmlrpc_value * cons
 		xmlrpc_faultf(envP, "Error while stopping the target");
 		return NULL;
 	}
-
-	rl->target_serial++;
-	t->serial++;
 
 	target_unlock_instance(t);
 	return xmlrpc_int_new(envP, t->uid);
@@ -537,6 +536,7 @@ xmlrpc_value *xmlrpccmd_set_target_mode(xmlrpc_env * const envP, xmlrpc_value * 
 		return NULL;
 	}
 
+	main_config->target_serial++;
 	rl->target_serial++;
 	t->serial++;
 
@@ -601,6 +601,7 @@ xmlrpc_value *xmlrpccmd_set_target_parameter(xmlrpc_env * const envP, xmlrpc_val
 		return NULL;
 	}
 
+	main_config->target_serial++;
 	rl->target_serial++;
 	t->serial++;
 

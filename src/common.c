@@ -287,51 +287,44 @@ char ** list_modules(char *type) {
 	int size = 0;
 
 	char *path = getenv("LD_LIBRARY_PATH");
+	if (!path) 
+		path = LIBDIR;
 
-	if (!path) {
-		res = list_modules_browse(LIBDIR, type);
-	} else {
-		char *my_path = malloc(strlen(path) + 1);
-		strcpy(my_path, path);
+	char *str, *token, *saveptr = NULL;
+	for (str = path; ; str = NULL) {
+		token = strtok_r(str, ":", &saveptr);
+		if (!token)
+			break;
 
-		char *str, *token, *saveptr = NULL;
-		for (str = my_path; ; str = NULL) {
-			token = strtok_r(str, ":", &saveptr);
-			if (!token)
-				break;
-
-			int i, dupe = 0;
-			char **list;
-			list = list_modules_browse(token, type);
-			for (i = 0; list[i]; i++) {
-				int j;
-				for (j = 0; res[j]; j++) {
-					if (!strcmp(res[j], list[i])) {
-						dupe = 1;
-						break;
-					}
+		int i, dupe = 0;
+		char **list;
+		list = list_modules_browse(token, type);
+		for (i = 0; list[i]; i++) {
+			int j;
+			for (j = 0; res[j]; j++) {
+				if (!strcmp(res[j], list[i])) {
+					dupe = 1;
+					break;
 				}
-				if (!dupe) {
-					size++;
-					res = realloc(res, sizeof(char *) * (size + 1));
-					res[size] = NULL;
-					res[size - 1] = malloc(strlen(list[i]) + 1);
-					strcpy(res[size - 1],list[i]);
-				}
-
-				dupe = 0;
-
+			}
+			if (!dupe) {
+				size++;
+				res = realloc(res, sizeof(char *) * (size + 1));
+				res[size] = NULL;
+				res[size - 1] = malloc(strlen(list[i]) + 1);
+				strcpy(res[size - 1],list[i]);
 			}
 
-			for (i = 0; list[i]; i++)
-				free(list[i]);
-			free(list);
+			dupe = 0;
+
 		}
 
-
-		free(my_path);
+		for (i = 0; list[i]; i++)
+			free(list[i]);
+		free(list);
 	}
-	
+
+
 
 	return res;
 }
