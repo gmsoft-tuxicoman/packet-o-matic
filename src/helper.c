@@ -93,6 +93,7 @@ int helper_register(const char *helper_name) {
 		return POM_ERR;
 	}
 
+	helpers_serial++;
 
 	pom_log(POM_LOG_DEBUG "Helper %s registered", helper_name);
 
@@ -208,6 +209,7 @@ int helper_unregister(int helper_type) {
 		if (dlclose(handle))
 			pom_log(POM_LOG_WARN "Error while closing library of target %s", match_get_name(helper_type));
 
+		helpers_serial++;
 		pom_log(POM_LOG_DEBUG "Helper %s unregistered", match_get_name(helper_type));
 	} 
 

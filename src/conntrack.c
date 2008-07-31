@@ -29,6 +29,7 @@
 #define INITVAL 0xdf92b6eb
 
 struct conntrack_reg *conntracks[MAX_CONNTRACK];
+uint32_t conntracks_serial;
 
 static struct conntrack_list *ct_table[CONNTRACK_SIZE];
 static struct conntrack_list *ct_table_rev[CONNTRACK_SIZE];
@@ -47,6 +48,8 @@ int conntrack_init() {
 		ct_table[i] = NULL;
 		ct_table_rev[i] = NULL;
 	}
+
+	conntracks_serial = 0;
 
 	pom_log(POM_LOG_DEBUG "Conntrack initialized");
 	
@@ -94,6 +97,7 @@ int conntrack_register(const char *conntrack_name) {
 		return POM_ERR;
 	}
 
+	conntracks_serial++;
 
 	pom_log(POM_LOG_DEBUG "Conntrack %s registered", conntrack_name);
 
@@ -809,6 +813,7 @@ int conntrack_cleanup() {
 		}
 	}
 
+	conntracks_serial++;
 
 	return POM_OK;
 

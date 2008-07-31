@@ -160,6 +160,9 @@ struct conntrack_helper_priv {
 
 };
 
+/// This variable keeps track of the changes that occured to the helpers
+extern uint32_t conntracks_serial;
+
 /*@}*/
 
 #define MAX_CONNTRACK MAX_MATCH

@@ -22,59 +22,59 @@
 #include "common.h"
 #include "xmlrpcsrv.h"
 #include "xmlrpccmd.h"
-#include "xmlrpccmd_helper.h"
+#include "xmlrpccmd_conntrack.h"
 #include "ptype.h"
 
-#include "helper.h"
+#include "conntrack.h"
 
 #include "main.h"
 
-#define XMLRPC_HELPER_COMMANDS_NUM 5
+#define XMLRPC_CONNTRACK_COMMANDS_NUM 5
 
-static struct xmlrpc_command xmlrpc_helper_commands[XMLRPC_HELPER_COMMANDS_NUM] = { 
+static struct xmlrpc_command xmlrpc_conntrack_commands[XMLRPC_CONNTRACK_COMMANDS_NUM] = { 
 
 	{
-		.name = "helper.listLoaded",
-		.callback_func = xmlrpccmd_list_loaded_helper,
+		.name = "conntrack.listLoaded",
+		.callback_func = xmlrpccmd_list_loaded_conntrack,
 		.signature = "A:",
-		.help = "List currently loaded helpers and their parameters",
+		.help = "List currently loaded conntracks and their parameters",
 	},
 
 	{
-		.name = "helper.listAvail",
-		.callback_func = xmlrpccmd_list_avail_helper,
+		.name = "conntrack.listAvail",
+		.callback_func = xmlrpccmd_list_avail_conntrack,
 		.signature = "A:",
-		.help = "List available helpers",
+		.help = "List available conntracks",
 	},
 
 	{
-		.name = "helper.setParameter",
-		.callback_func = xmlrpccmd_set_helper_parameter,
+		.name = "conntrack.setParameter",
+		.callback_func = xmlrpccmd_set_conntrack_parameter,
 		.signature = "i:sss",
-		.help = "Set an helper given its name and value",
+		.help = "Set an conntrack given its name and value",
 	},
 
 	{
-		.name = "helper.load",
-		.callback_func = xmlrpccmd_load_helper,
+		.name = "conntrack.load",
+		.callback_func = xmlrpccmd_load_conntrack,
 		.signature = "i:",
-		.help = "List a helper given its name",
+		.help = "List a conntrack given its name",
 	},
 
 	{
-		.name = "helper.unload",
-		.callback_func = xmlrpccmd_unload_helper,
+		.name = "conntrack.unload",
+		.callback_func = xmlrpccmd_unload_conntrack,
 		.signature = "i:",
-		.help = "Unload a helper given its name",
+		.help = "Unload a conntrack given its name",
 	},
 };
 
-int xmlrpccmd_helper_register_all() {
+int xmlrpccmd_conntrack_register_all() {
 
 	int i;
 
-	for (i = 0; i < XMLRPC_HELPER_COMMANDS_NUM; i++) {
-		if (xmlrpcsrv_register_command(&xmlrpc_helper_commands[i]) == POM_ERR)
+	for (i = 0; i < XMLRPC_CONNTRACK_COMMANDS_NUM; i++) {
+		if (xmlrpcsrv_register_command(&xmlrpc_conntrack_commands[i]) == POM_ERR)
 			return POM_ERR;
 
 	}
@@ -82,22 +82,22 @@ int xmlrpccmd_helper_register_all() {
 	return POM_OK;
 }
 
-xmlrpc_value *xmlrpccmd_list_loaded_helper(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
+xmlrpc_value *xmlrpccmd_list_loaded_conntrack(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
 
 	xmlrpc_value *result = xmlrpc_array_new(envP);
 
 	if (envP->fault_occurred)
 		return NULL;
 
-	helper_lock(0);
+	conntrack_lock(0);
 
 	int i;
 	for (i = 0; i < MAX_HELPER; i++) {
 		
-		if (!helpers[i])
+		if (!conntracks[i])
 			continue;
 
-		struct helper_param *p = helpers[i]->params;
+		struct conntrack_param *p = conntracks[i]->params;
 		xmlrpc_value *params = xmlrpc_array_new(envP);
 
 		while (p) {
@@ -117,20 +117,20 @@ xmlrpc_value *xmlrpccmd_list_loaded_helper(xmlrpc_env * const envP, xmlrpc_value
 			p = p->next;
 		}
 
-		xmlrpc_value *helper = xmlrpc_build_value(envP, "{s:s,s:A}",
-						"name", match_get_name(helpers[i]->type),
+		xmlrpc_value *conntrack = xmlrpc_build_value(envP, "{s:s,s:A}",
+						"name", match_get_name(conntracks[i]->type),
 						"params", params);
 
-		xmlrpc_array_append_item(envP, result, helper);
-		xmlrpc_DECREF(helper);
+		xmlrpc_array_append_item(envP, result, conntrack);
+		xmlrpc_DECREF(conntrack);
 	}
 
-	helper_unlock();
+	conntrack_unlock();
 
 	return result;
 }
 
-xmlrpc_value *xmlrpccmd_set_helper_parameter(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
+xmlrpc_value *xmlrpccmd_set_conntrack_parameter(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
 
 	char *name, *param_name, *value;
 	xmlrpc_decompose_value(envP, paramArrayP, "(sss)", &name, &param_name, &value);
@@ -140,19 +140,19 @@ xmlrpc_value *xmlrpccmd_set_helper_parameter(xmlrpc_env * const envP, xmlrpc_val
 
 	int id = match_get_type(name);
 
-	helper_lock(1);
-	if (id == POM_ERR || !helpers[id]) {
-		helper_unlock();
-		xmlrpc_faultf(envP, "Helper %s does not exists", name);
+	conntrack_lock(1);
+	if (id == POM_ERR || !conntracks[id]) {
+		conntrack_unlock();
+		xmlrpc_faultf(envP, "Conntrack %s does not exists", name);
 		free(name);
 		free(param_name);
 		free(value);
 		return NULL;
 	}
 
-	struct helper_param *p = helper_get_param(id, param_name);
+	struct conntrack_param *p = conntrack_get_param(id, param_name);
 	if (!p) {
-		helper_unlock();
+		conntrack_unlock();
 		xmlrpc_faultf(envP, "Parameter %s doesn't exists", name);
 		free(name);
 		free(param_name);
@@ -164,20 +164,19 @@ xmlrpc_value *xmlrpccmd_set_helper_parameter(xmlrpc_env * const envP, xmlrpc_val
 	free(name);
 
 	if (ptype_parse_val(p->value, value) != POM_OK) {
-		helper_unlock();
+		conntrack_unlock();
 		xmlrpc_faultf(envP, "Could not parse \"%s\"", value);
 		free(value);
 		return NULL;
 	}
-	helpers_serial++;
-	helper_unlock();
+	conntrack_unlock();
 
 	free(value);
 
 	return xmlrpc_int_new(envP, 0);
 }
 
-xmlrpc_value *xmlrpccmd_load_helper(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
+xmlrpc_value *xmlrpccmd_load_conntrack(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
 
 	
 	char *name;
@@ -190,34 +189,35 @@ xmlrpc_value *xmlrpccmd_load_helper(xmlrpc_env * const envP, xmlrpc_value * cons
 	int id = match_get_type(name);
 
 	if (id == POM_ERR) {
-		xmlrpc_faultf(envP, "Cannot load helper %s : corresponding match not loaded yet", name);
+		xmlrpc_faultf(envP, "Cannot load conntrack %s : corresponding match not loaded yet", name);
 		free(name);
 		return NULL;
 	}
 	
-	helper_lock(1);
+	conntrack_lock(1);
 
-	if (helpers[id]) {
-		helper_unlock();
-		xmlrpc_faultf(envP, "Helper %s is already registered", name);
+	if (conntracks[id]) {
+		conntrack_unlock();
+		xmlrpc_faultf(envP, "Conntrack %s is already registered", name);
 		free(name);
 		return NULL;
 	}
 
-	if (helper_register(name) == POM_ERR) {
-		helper_unlock();
-		xmlrpc_faultf(envP, "Error while loading helper %s", name);
+	if (conntrack_register(name) == POM_ERR) {
+		conntrack_unlock();
+		xmlrpc_faultf(envP, "Error while loading conntrack %s", name);
 		free(name);
 		return NULL;
 	}
 
-	helper_unlock();
+	conntracks_serial++;
+	conntrack_unlock();
 
 	free(name);
 	return xmlrpc_int_new(envP, 0);
 }
 
-xmlrpc_value *xmlrpccmd_unload_helper(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
+xmlrpc_value *xmlrpccmd_unload_conntrack(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
 
 	char *name;
 
@@ -228,31 +228,31 @@ xmlrpc_value *xmlrpccmd_unload_helper(xmlrpc_env * const envP, xmlrpc_value * co
 
 	int id = match_get_type(name);
 
-	helper_lock(1);
+	conntrack_lock(1);
 
-	if (id == POM_ERR || !helpers[id]) {
-		helper_unlock();
-		xmlrpc_faultf(envP, "Helper %s is not loaded", name);
+	if (id == POM_ERR || !conntracks[id]) {
+		conntrack_unlock();
+		xmlrpc_faultf(envP, "Conntrack %s is not loaded", name);
 		free(name);
 		return NULL;
 	}
 
-	if (helper_unregister(id) == POM_ERR) {
-		helper_unlock();
-		xmlrpc_faultf(envP, "Error while unloading helper %s", name);
+	if (conntrack_unregister(id) == POM_ERR) {
+		conntrack_unlock();
+		xmlrpc_faultf(envP, "Error while unloading conntrack %s", name);
 		free(name);
 		return NULL;
 	}
 
-	helper_unlock();
+	conntrack_unlock();
 
 	free(name);
 
 	return xmlrpc_int_new(envP, 0);
 }
 
-xmlrpc_value *xmlrpccmd_list_avail_helper(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
+xmlrpc_value *xmlrpccmd_list_avail_conntrack(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
 
-	return xmlrpccmd_list_avail_modules(envP, "helper");
+	return xmlrpccmd_list_avail_modules(envP, "conntrack");
 
 }

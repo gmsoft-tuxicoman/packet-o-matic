@@ -87,8 +87,7 @@ int match_register(const char *match_name) {
 
 			if (PTYPE_BOOL_GETVAL(param_autoload_helper)) {
 				helper_lock(1);
-				if (helper_register(match_name) != POM_ERR)
-					helpers_serial++;
+				helper_register(match_name);
 				helper_unlock();
 			}
 

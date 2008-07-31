@@ -122,7 +122,6 @@ int mgmtcmd_load_helper(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (helper_register(argv[0]) != POM_ERR) {
 		mgmtsrv_send(c, "Helper %s registered successfully\r\n", argv[0]);
-		helpers_serial++;
 	} else {
 		mgmtsrv_send(c, "Error while loading helper %s\r\n", argv[0]);
 	}
@@ -240,7 +239,6 @@ int mgmtcmd_unload_helper(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (helper_unregister(id) != POM_ERR) {
 		mgmtsrv_send(c, "Helper unloaded successfully\r\n");
-		helpers_serial++;
 	} else {
 		mgmtsrv_send(c, "Error while unloading helper\r\n");
 	}

@@ -34,7 +34,7 @@ static struct xmlrpc_command xmlrpc_input_commands[XMLRPC_INPUT_COMMANDS_NUM] = 
 	{
 		.name = "input.get",
 		.callback_func = xmlrpccmd_get_input,
-		.signature = "A:",
+		.signature = "S:",
 		.help = "Get all the information related to the current input an empty arrayif no input is configured",
 	},
 	{
@@ -122,7 +122,7 @@ xmlrpc_value *xmlrpccmd_get_input(xmlrpc_env * const envP, xmlrpc_value * const 
 	struct input* i = main_config->input;
 
 	if (!i)
-		return xmlrpc_array_new(envP);
+		return xmlrpc_build_value(envP, "{}");
 
 	xmlrpc_value *params = xmlrpc_array_new(envP);
 	if (envP->fault_occurred)
