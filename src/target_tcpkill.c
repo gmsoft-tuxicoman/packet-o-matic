@@ -196,11 +196,19 @@ static int target_process_tcpkill(struct target *t, struct frame *f) {
 
 	int ipv4start, ipv6start, tcpstart, i;
 
-	tcpstart = layer_find_start(f->l, match_tcp_id);
-	if (tcpstart == POM_ERR) {
+	struct layer* tcplayer = f->l;
+	while (tcplayer && tcplayer->type != match_tcp_id)
+		tcplayer = tcplayer->next;
+
+	if (!tcplayer) {
 		pom_log(POM_LOG_WARN "No TCP header found in this packet");
 		return POM_OK;
 	}
+
+	if (tcplayer->prev)
+		tcpstart = tcplayer->prev->payload_start;
+	else
+		tcpstart = 0;
 
 	struct tcphdr *shdr = (struct tcphdr*) (f->buff + tcpstart);
 
@@ -342,7 +350,9 @@ static int target_process_tcpkill(struct target *t, struct frame *f) {
 	dhdr->th_dport = shdr->th_sport;
 	dhdr->th_seq = shdr->th_ack;
 	dhdr->th_flags = TH_RST | TH_ACK;
-	dhdr->th_ack = htonl(ntohl(shdr->th_seq) + 1);
+	dhdr->th_ack = htonl(ntohl(shdr->th_seq) + tcplayer->payload_size);
+	if (shdr->th_flags & TH_SYN)
+		dhdr->th_ack = htonl(ntohl(dhdr->th_ack) + 1);
 	dhdr->th_win = shdr->th_win;
 	dhdr->th_off = sizeof(struct tcphdr) / 4;
 
@@ -379,7 +389,7 @@ static int target_process_tcpkill(struct target *t, struct frame *f) {
 			}
 		}
 #endif
-		dhdr->th_seq += htonl(ntohl(dhdr->th_seq) + ntohs(shdr->th_win));
+		dhdr->th_seq = htonl(ntohl(dhdr->th_seq) + ntohs(shdr->th_win));
 
 
 	}

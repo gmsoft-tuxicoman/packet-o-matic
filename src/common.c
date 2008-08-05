@@ -290,8 +290,11 @@ char ** list_modules(char *type) {
 	if (!path) 
 		path = LIBDIR;
 
+	char *mypath = malloc(strlen(path) + 1);
+	strcpy(mypath, path);
+
 	char *str, *token, *saveptr = NULL;
-	for (str = path; ; str = NULL) {
+	for (str = mypath; ; str = NULL) {
 		token = strtok_r(str, ":", &saveptr);
 		if (!token)
 			break;
@@ -324,7 +327,7 @@ char ** list_modules(char *type) {
 		free(list);
 	}
 
-
+	free(mypath);
 
 	return res;
 }

@@ -653,6 +653,8 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	rbuf->i = main_config->input;
+
 	if (pthread_mutex_lock(&rbuf->mutex)) {
 		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording");
 		goto finish;

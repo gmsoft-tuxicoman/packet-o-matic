@@ -1,3 +1,8 @@
+* 2008/08/05 Guy Martin <gmsoft@tuxicoman.be>
+Fix seq and ack calculation in target_tcpkill.c.
+Fix crash in list_modules when LD_LIBRARY_PATH is not set.
+Make sure rbuf->i is set when config is loaded.
+
 * 2008/07/31 Guy Martin <gmsoft@tuxicoman.be>
 Fix input.get signature and return value in case input is not yet configured.
 Move helpers_serial in helper_(un)register() functions.
