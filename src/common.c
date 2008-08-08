@@ -75,9 +75,10 @@ void pom_log_internal(char *file, const char *format, ...) {
 	strcpy(entry->data, buff);
 	
 	entry->level = level;
-	entry->id = log_buffer_entry_id;
-
-	log_buffer_entry_id++;
+	if (level < *POM_LOG_TSHOOT) {
+		entry->id = log_buffer_entry_id;
+		log_buffer_entry_id++;
+	}
 
 	mgmtsrv_send_debug(entry);
 
@@ -129,6 +130,11 @@ void pom_log_internal(char *file, const char *format, ...) {
 		return; // never reached
 	}
 
+}
+
+struct log_entry *pom_log_get_head() {
+
+	return log_head;
 }
 
 struct log_entry *pom_log_get_tail() {

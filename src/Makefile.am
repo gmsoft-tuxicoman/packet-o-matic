@@ -3,13 +3,13 @@ CFLAGS += -Wall -I$(srcdir)/include -D_XOPEN_SOURCE=600 --std=gnu99 -D__EXTENSIO
 MGMT_SRC = mgmtsrv.c mgmtsrv.h mgmtvty.c mgmtvty.h mgmtcmd.c mgmtcmd.h mgmtcmd_helper.c mgmtcmd_helper.h mgmtcmd_conntrack.c mgmtcmd_conntrack.h mgmtcmd_input.c mgmtcmd_input.h mgmtcmd_rule.c mgmtcmd_rule.h mgmtcmd_target.c mgmtcmd_target.h
 
 if USE_XMLRPC
+wwwdir = $(pkgdatadir)/web-ui
 XMLRPC_SRC = xmlrpcsrv.c xmlrpcsrv.h xmlrpccmd.c xmlrpccmd.h xmlrpccmd_input.c xmlrpccmd_input.h xmlrpccmd_helper.c xmlrpccmd_helper.h xmlrpccmd_conntrack.c xmlrpccmd_conntrack.h xmlrpccmd_rules.c xmlrpccmd_rules.h xmlrpccmd_match.c xmlrpccmd_match.h xmlrpccmd_target.c xmlrpccmd_target.h
 endif
 
-
 bin_PROGRAMS = packet-o-matic
 packet_o_matic_SOURCES = main.c main.h rules.c rules.h conf.c conf.h layer.c layer.h $(MGMT_SRC) $(XMLRPC_SRC)
-packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"' @xmlrpc_CFLAGS@
+packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"' @xmlrpc_CFLAGS@ -DWWWROOT='"$(wwwdir)"'
 packet_o_matic_LDFLAGS = @LIBS@ @libxml2_LIBS@
 packet_o_matic_LDADD = libpom.la @xmlrpc_LIBS@
 

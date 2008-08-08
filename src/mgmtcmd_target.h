@@ -28,7 +28,8 @@
 
 int mgmtcmd_target_register_all();
 struct mgmt_command_arg *mgmctcmd_target_id_completion(int argc, char *argv[], int pos);
-struct mgmt_command_arg *mgmtcmd_completion_id2(int argc, char *argv[]);
+struct mgmt_command_arg *mgmtcmd_target_completion_id2(int argc, char *argv[]);
+struct mgmt_command_arg *mgmtcmd_target_completion_id3(int argc, char *argv[]);
 int mgmtcmd_show_targets(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_start_target(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_stop_target(struct mgmt_connection *c, int argc, char *argv[]);
@@ -37,6 +38,8 @@ struct mgmt_command_arg* mgmtcmd_target_name_completion(int argc, char *argv[]);
 int mgmtcmd_remove_target(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_target_parameter(struct mgmt_connection *c, int argc, char *argv[]);
 struct mgmt_command_arg *mgmtcmd_set_target_parameter_completion(int argc, char *argv[]);
+int mgmtcmd_set_target_descr(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_unset_target_descr(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_target_mode(struct mgmt_connection *c, int argc, char *argv[]);
 struct mgmt_command_arg *mgmtcmd_set_target_mode_completion(int argc, char *argv[]);
 int mgmtcmd_load_target(struct mgmt_connection *c, int argc, char *argv[]);

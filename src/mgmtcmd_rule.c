@@ -75,19 +75,19 @@ static struct mgmt_command mgmt_rule_commands[MGMT_RULE_COMMANDS_NUM] = {
 	},
 
 	{
-		.words = { "set", "description", "rule", NULL },
+		.words = { "set", "rule", "description", NULL },
 		.help = "set a description on a rule",
-		.callback_func = mgmtcmd_set_descr_rule,
+		.callback_func = mgmtcmd_set_rule_descr,
 		.completion = mgmtcmd_rule_id3_completion,
-		.usage = "set description rule <rule_id> <descr>",
+		.usage = "set rule description <rule_id> <descr>",
 	},
 
 	{
-		.words = { "unset", "description", "rule", NULL },
+		.words = { "unset", "rule", "description", NULL },
 		.help = "unset the description on a rule",
-		.callback_func = mgmtcmd_unset_descr_rule,
+		.callback_func = mgmtcmd_unset_rule_descr,
 		.completion = mgmtcmd_rule_id3_completion,
-		.usage = "unset description rule <rule_id>",
+		.usage = "unset rule description <rule_id>",
 	},
 };
 
@@ -532,7 +532,7 @@ int mgmtcmd_remove_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-int mgmtcmd_set_descr_rule(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_set_rule_descr(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (argc < 2)
 		return MGMT_USAGE;
@@ -571,7 +571,7 @@ int mgmtcmd_set_descr_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 }
 
 
-int mgmtcmd_unset_descr_rule(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_unset_rule_descr(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (argc < 1)
 		return MGMT_USAGE;
@@ -591,8 +591,7 @@ int mgmtcmd_unset_descr_rule(struct mgmt_connection *c, int argc, char *argv[]) 
 		main_config->rules_serial++;
 		rl->serial++;
 	} else {
-		mgmtsrv_send(c, "Rule %u has no description\r\n");
-		return POM_OK;
+		mgmtsrv_send(c, "Rule %s has no description\r\n", argv[0]);
 	}
 	main_config_rules_unlock();
 

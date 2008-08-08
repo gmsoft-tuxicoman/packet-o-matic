@@ -1,0 +1,76 @@
+﻿* {
+	padding: 0px;
+	margin: 0px;
+}
+.pasdom_tab TD
+{
+	padding: 0px;
+	margin: 0px;
+	LINE-HEIGHT: 11px;
+	font-size: 11px;
+	vertical-align: middle;
+}
+.dialog_div
+{
+	z-index: 9998;
+	position: absolute;
+	left: 0px;
+	top: 0px;
+	background-image: url(dialog_bg.png);
+	text-align: center;
+	vertical-align: middle;
+}
+.img_button
+{
+	cursor: pointer;
+	margin-left: 2px;
+}
+.dialog_content
+{
+	background-color: #FFFFFF;
+	border: 2px;
+	border-style: ridge;
+	display: inline;
+	position: absolute;
+}
+.dialog_holder
+{
+	text-align: left;
+	margin: 10px;
+}
+fieldset
+{
+	display: inline;
+	padding: 10px;
+}
+
+.pom_tab legend
+{
+	font-weight: bolder;
+}
+#rule_list
+{
+	list-style: none;
+}
+
+.rule_name
+{
+	font-weight: bolder;
+}
+.odd 
+{
+	background: #F5F5F5;
+}
+.even
+{
+	background: #DFDFDF;
+}
+.button_set
+{
+	padding-top: 5px;
+	padding-bottom: 10px;
+}
+.button_set LI.nav
+{
+	font-size: 12px;
+}

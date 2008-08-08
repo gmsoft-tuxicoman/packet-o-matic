@@ -25,7 +25,7 @@
 #include "target.h"
 
 
-#define MGMT_TARGET_COMMANDS_NUM 9
+#define MGMT_TARGET_COMMANDS_NUM 11
 
 static struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 
@@ -40,7 +40,7 @@ static struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 		.help = "Start a target",
 		.callback_func = mgmtcmd_start_target,
 		.usage = "start target <rule_id> <target_id>",
-		.completion = mgmtcmd_completion_id2,
+		.completion = mgmtcmd_target_completion_id2,
 	},
 
 	{
@@ -48,7 +48,7 @@ static struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 		.help = "Stop a target",
 		.callback_func = mgmtcmd_stop_target,
 		.usage = "stop target <rule_id> <target_id>",
-		.completion = mgmtcmd_completion_id2,
+		.completion = mgmtcmd_target_completion_id2,
 	},
 
 	{
@@ -64,7 +64,7 @@ static struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 		.help = "Remove a target from a rule",
 		.callback_func = mgmtcmd_remove_target,
 		.usage = "remove target <rule_id> <target_id>",
-		.completion = mgmtcmd_completion_id2,
+		.completion = mgmtcmd_target_completion_id2,
 	},
 
 	{
@@ -73,6 +73,22 @@ static struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 		.callback_func = mgmtcmd_set_target_parameter,
 		.usage = "set target parameter <rule_id> <target_id> <parameter> <value>",
 		.completion = mgmtcmd_set_target_parameter_completion,
+	},
+
+	{
+		.words = { "set", "target", "description",  NULL },
+		.help = "set a description on a target",
+		.callback_func = mgmtcmd_set_target_descr,
+		.completion = mgmtcmd_target_completion_id3,
+		.usage = "set target description <rule_id> <target_id> <descr>",
+	},
+
+	{
+		.words = { "unset", "target", "description", NULL },
+		.help = "unset the description of a target",
+		.callback_func = mgmtcmd_unset_target_descr,
+		.completion = mgmtcmd_target_completion_id3,
+		.usage = "unset target description <rule_id> <target_id>",
 	},
 
 	{
@@ -145,12 +161,17 @@ struct mgmt_command_arg *mgmctcmd_target_id_completion(int argc, char *argv[], i
 	return res;
 }
 
-struct mgmt_command_arg *mgmtcmd_completion_id2(int argc, char *argv[]) {
+struct mgmt_command_arg *mgmtcmd_target_completion_id2(int argc, char *argv[]) {
 
 	return mgmctcmd_target_id_completion(argc, argv, argc - 2);
 
 }
 
+struct mgmt_command_arg *mgmtcmd_target_completion_id3(int argc, char *argv[]) {
+
+	return mgmctcmd_target_id_completion(argc, argv, argc - 3);
+
+}
 int mgmtcmd_show_targets(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	main_config_rules_lock(0);
@@ -182,6 +203,8 @@ int mgmtcmd_show_targets(struct mgmt_connection *c, int argc, char *argv[]) {
 				if (!t->started)
 					mgmtsrv_send(c, " (stopped)");
 				mgmtsrv_send(c, "\r\n");
+				if (t->description)
+					mgmtsrv_send(c, "        // %s\r\n", t->description);
 				struct target_param_reg *pr = t->mode->params;
 				while (pr) {
 					char buff[256];
@@ -513,12 +536,12 @@ struct mgmt_command_arg *mgmtcmd_set_target_parameter_completion(int argc, char 
 		for (t = rl->target, i = 0; t && i < target_id; t = t->next)
 			i++;
 		
-		if (!t || !targets[t->type] || !targets[t->type]->modes) {
+		if (!t || !t->mode) {
 			main_config_rules_unlock();
 			return NULL;
 		}
 
-		struct target_mode *m = targets[t->type]->modes;
+		struct target_mode *m = t->mode;
 
 		struct target_param_reg *p = m->params;
 
@@ -540,6 +563,105 @@ struct mgmt_command_arg *mgmtcmd_set_target_parameter_completion(int argc, char 
 	return res;
 }
 
+int mgmtcmd_set_target_descr(struct mgmt_connection *c, int argc, char *argv[]) {
+	
+	if (argc < 3)
+		return MGMT_USAGE;
+
+	main_config_rules_lock(0);
+
+	struct rule_list *rl = mgmtcmd_get_rule(argv[0]);
+
+	if (!rl) {
+		main_config_rules_unlock();
+		mgmtsrv_send(c, "Rule not found\r\n");
+		return POM_OK;
+	}
+
+	target_lock(0);
+	struct target *t = mgmtcmd_get_target(rl, argv[1]);
+
+	main_config_rules_unlock();
+
+	if (!t) {
+		target_unlock();
+		mgmtsrv_send(c, "Target not found\r\n");
+		return POM_OK;
+	}
+
+	target_lock_instance(t, 1);
+	target_unlock();
+
+	if (t->description)
+		free(t->description);
+
+	// first, let's reconstruct the whole description
+	int target_descr_len = 0, i;
+	for (i = 2; i < argc; i++) {
+		target_descr_len += strlen(argv[i]) + 1;
+	}
+	char *target_descr = malloc(target_descr_len + 1);
+	memset(target_descr, 0, target_descr_len + 1);
+	for (i = 1; i < argc; i++) {
+		strcat(target_descr, argv[i]);
+		strcat(target_descr, " ");
+	}
+	target_descr[strlen(target_descr) - 1] = 0;
+	t->description = target_descr;
+
+	main_config->target_serial++;
+	rl->target_serial++;
+	t->serial++;
+	target_unlock_instance(t);
+
+	return POM_OK;
+
+}
+
+int mgmtcmd_unset_target_descr(struct mgmt_connection *c, int argc, char *argv[]) {
+	
+	if (argc < 2)
+		return MGMT_USAGE;
+
+	main_config_rules_lock(0);
+
+	struct rule_list *rl = mgmtcmd_get_rule(argv[0]);
+
+	if (!rl) {
+		main_config_rules_unlock();
+		mgmtsrv_send(c, "Rule not found\r\n");
+		return POM_OK;
+	}
+
+	target_lock(0);
+	struct target *t = mgmtcmd_get_target(rl, argv[1]);
+
+	main_config_rules_unlock();
+
+	if (!t) {
+		target_unlock();
+		mgmtsrv_send(c, "Target not found\r\n");
+		return POM_OK;
+	}
+
+	target_lock_instance(t, 1);
+	target_unlock();
+
+	if (t->description) {
+		free(t->description);
+		t->description = NULL;
+		main_config->target_serial++;
+		rl->target_serial++;
+		t->serial++;
+	} else {
+		mgmtsrv_send(c, "Target %s %s has no description\r\n", argv[0], argv[1]);
+	}
+
+	target_unlock_instance(t);
+
+	return POM_OK;
+
+}
 int mgmtcmd_set_target_mode(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc < 3)

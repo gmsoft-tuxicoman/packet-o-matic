@@ -1,0 +1,119 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+	<!-- Design By: David Weitz - http://darkfate.info/ -->
+	<title>packet-o-matic : the real time packet processor client</title>
+	<style type="text/css">
+		@import "main.css";
+		@import "style.css";
+	</style>
+</head>
+<body>
+	<script src='minilib.js' type='text/javascript' language="javascript"></script>
+	<script src='xmlrpc.js' type='text/javascript' language="javascript"></script>
+	<script src='xml.js' type='text/javascript' language="javascript"></script>
+	<script src='tools.js' type='text/javascript' language="javascript"></script>
+	<script src='input.js' type='text/javascript' language="javascript"></script>
+	<script src='rules.js' type='text/javascript' language="javascript"></script>
+	<script src='targets.js' type='text/javascript' language="javascript"></script>
+	<script src='dialog.js' type='text/javascript' language="javascript"></script>
+	<script src='core_params.js' type='text/javascript' language="javascript"></script>
+	<script src='pom.js' type='text/javascript' language="javascript"></script>
+
+	<div class="white">
+		<div class="header">
+			<h1 class="title">
+				packet-o-matic</h1>
+			<h5 class="title">
+				the real time packet processor client</h5>
+		</div>
+		<div class="content">
+			<fieldset id="tab_actions" class="pom_tab" style="display:block">
+				<legend>Actions</legend>Set RPC Password:
+				<input id="rpc_password" type="password" />
+				<input type="button" value="Set" onclick="pom.tools.set_password($F('rpc_password'))" />
+				<div class="button_set">
+					  <li class="nav"><a id="input_control" href="javascript:pom.input.toggle();">Start Input</a></li>
+						<li class="nav"><a href="javascript:pom.input.gui_config();">Configure Input</a></li>
+						<li class="nav"><a href="javascript:pom.core_params.show();">Core Params</a></li>
+						<li class="nav"><a href="javascript:load_all_modules();">Load All Modules</a></li>
+						<li class="nav"><a href="javascript:pom.tools.halt();">Halt Packet-o-Matic</a></li>
+				</div>
+			 
+			</fieldset>
+			<div id="core_dialog">
+				<fieldset id="tab_core" class="pom_tab">
+					<legend>Core Parameters</legend>
+					<div class="button_set">
+						<li class="nav"><a href="javascript:pom.core_params.load()">Reload Params</a></li>
+					</div>
+					<div id="core_params_list">
+					</div>
+				</fieldset><br />
+				<div style="text-align: center">
+					<div class="button_set" style="text-align: center;">
+						<li class="nav"><a href="javascript:pom.core_params.save()">Save Changes</a></li>
+						<li class="nav"><a href="javascript:pom.core_params.cancel()">Cancel</a></li>
+					</div>
+				</div>
+			</div>			
+			<div id="input_dialog">
+				<fieldset id="tab_input" class="pom_tab">
+					<legend>Input</legend>
+					<div class="button_set">
+						<li class="nav"><a href="javascript:pom.input.load_current_config()">Reload Config</a></li>
+					</div>
+					<div id="content">
+					</div>
+				</fieldset><br />
+				<div style="text-align: center">
+					<div class="button_set" style="text-align: center;">
+						<li class="nav"><a href="javascript:pom.input._gui_config_save()">Save Changes</a></li>
+						<li class="nav"><a href="javascript:pom.input._gui_config_no_save()">Cancel</a></li>
+					</div>
+				</div>
+			</div>
+			<br />
+			<br />
+			<fieldset id="tab_rules" class="pom_tab" style="display:block">
+				<legend>Rules</legend>
+				<div class="button_set">
+					<li class="nav"><a href="javascript:pom.rules.prompt_add();">Add Rule</a></li>
+					<li class="nav"><a href="javascript:pom.rules.load();">Reload Rules</a></li>
+				</div>
+				<table id="rule_list" cellpadding="0" cellspacing="0">
+				<thead style="text-align:center;font-weight:bolder;"><tr><td>Actions</td><td>&nbsp;&nbsp;&nbsp;&nbsp;Item&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</td><td>Description</td></tr></thead>
+				<tbody id="rule_list_body"></tbody>
+				</table>
+			</fieldset>
+			<br />
+			<br />			
+			<div id="target_dialog">
+				<fieldset id="tab_targets" class="pom_tab">
+					<legend>Targets</legend>
+					<div id="target_gui_active">
+					</div>
+					<div id="target_gui_new">
+						Type: <select id="target_type"></select><br />
+						Mode: <select id="target_mode"></select>
+					</div>
+					<ul id="target_params"></ul>
+					Descr: <input id="target_descr" />
+				</fieldset><br />
+					<div class="button_set" style="text-align: center;">
+						<li class="nav"><a href="javascript:pom.targets.gui_save()">Save Changes</a></li>
+						<li class="nav"><a href="javascript:pom.targets.gui_cancel()">Cancel</a></li>
+					</div>
+			</div>
+			
+			<fieldset style="display:block">
+				<legend>Console Log</legend>
+				<div style="height:300px;overflow:auto;" id="console_log"></div>
+			</fieldset>
+		</div>
+	</div>
+	<div class="footer">
+		&copy; 2008 Guy Martin
+	</div>
+</body>
+</html>

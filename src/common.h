@@ -107,7 +107,7 @@ extern int console_output;
 
 struct log_entry {
 
-	uint32_t id;
+	uint32_t id; // Only valid if level < POM_LOG_TSHOOT
 	char *file;
 	char *data;
 	char level;
@@ -120,6 +120,7 @@ struct log_entry {
 #define pom_log(args ...) pom_log_internal(__FILE__, args)
 
 void pom_log_internal(char *file, const char *format, ...);
+struct log_entry *pom_log_get_head();
 struct log_entry *pom_log_get_tail();
 uint32_t pom_log_get_serial();
 int pom_log_rlock();

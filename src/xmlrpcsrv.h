@@ -39,6 +39,7 @@
 
 #define XMLRPC_URI "/RPC2"
 #define XMLRPC_REALM "Packet-o-matic XML-RPC interface"
+#define XMLRPC_READ_BLOCK_SIZE 2048
 
 
 /*

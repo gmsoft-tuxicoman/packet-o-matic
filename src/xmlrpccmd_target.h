@@ -35,6 +35,7 @@ xmlrpc_value *xmlrpccmd_add_target(xmlrpc_env * const envP, xmlrpc_value * const
 xmlrpc_value *xmlrpccmd_remove_target(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);
 xmlrpc_value *xmlrpccmd_set_target_mode(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);
 xmlrpc_value *xmlrpccmd_set_target_parameter(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);
+xmlrpc_value *xmlrpccmd_set_target_description(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);
 xmlrpc_value *xmlrpccmd_load_target(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);
 xmlrpc_value *xmlrpccmd_unload_target(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);
 xmlrpc_value *xmlrpccmd_list_avail_target(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData);

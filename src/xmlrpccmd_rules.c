@@ -273,10 +273,12 @@ xmlrpc_value *xmlrpccmd_set_rule_description(xmlrpc_env * const envP, xmlrpc_val
 	if (rl->description)
 		free(rl->description);
 
-	if (strlen(descr) > 0)
+	if (strlen(descr)) {
 		rl->description = descr;
-	else
+	} else {
 		rl->description = NULL;
+		free(descr);
+	}
 
 	main_config->rules_serial++;
 	rl->serial++;

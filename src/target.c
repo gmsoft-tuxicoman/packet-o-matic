@@ -474,6 +474,9 @@ int target_cleanup_module(struct target *t) {
 	target_unlock_instance(t);
 	pthread_rwlock_destroy(&t->lock);
 
+	if (t->description)
+		free(t->description);
+
 	free (t);
 
 	return POM_OK;

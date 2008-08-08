@@ -1,3 +1,12 @@
+* 2008/08/08 Guy Martin <gmsoft@tuxicoman.be>
+Added descriptions on targets.
+Fix small memory leak when saving rules.
+Fix small memory leak when unseting rule description via XML-RPC.
+Make abyss webserver from xmlrpc-c serv the web interface.
+Renamed command "set description rule" to"set rule description".
+Added web interface thanks to Mitch Capper.
+Fix function main.getSerial to provide logs serial.
+
 * 2008/08/05 Guy Martin <gmsoft@tuxicoman.be>
 Fix seq and ack calculation in target_tcpkill.c.
 Fix crash in list_modules when LD_LIBRARY_PATH is not set.

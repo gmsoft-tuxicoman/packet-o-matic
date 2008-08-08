@@ -421,12 +421,84 @@ void xmlrpcsrv_authentication_handler2(struct URIHandler2 *handler, TSession *se
 }
 
 
+int xmlrpcsrv_error_msg(TSession * const sessionP, int status, char * err_str) {
+
+	char *response;
+	ResponseStatus(sessionP, status);
+	ResponseWriteStart(sessionP);
+	response = "<html><head><title>Packet-o-matic</title></head><body>An error occured : ";
+	ResponseWriteBody(sessionP, response, strlen(response));
+	ResponseWriteBody(sessionP, err_str, strlen(err_str));
+	response = "</body></html>";
+	ResponseWriteBody(sessionP, response, strlen(response));
+
+	return 0;
+}
+
 abyss_bool xmlrpcsrv_default_handler(TSession * const sessionP) {
 
-	char *response = "<html><head><title>Packet-o-matic XML-RPC interface</title></head><body>See <a href=\"http://www.packet-o-matic.org\">http://www.packet-o-matic.org</a> for more info.</body></html>";
 
+	const TRequestInfo *requestInfoP;
+	SessionGetRequestInfo(sessionP, &requestInfoP);
+
+
+	if (strstr(requestInfoP->uri, "..")) {
+		xmlrpcsrv_error_msg(sessionP, 404, "File not found.");
+		return TRUE;
+	}
+
+	char *filename = NULL;
+	char *www_root = WWWROOT;
+	filename = malloc(strlen(www_root) + 1);
+	strcpy(filename, www_root);
+	if (strlen(requestInfoP->uri) <= 1) {
+		char *default_page = "/client.html";
+		filename = realloc(filename, strlen(filename) +	strlen(default_page) + 1);
+		strcat (filename, default_page);
+	} else {
+		filename = realloc(filename, strlen(filename) +	strlen(requestInfoP->uri) + 1);
+		strcat(filename, requestInfoP->uri);
+	}
+
+
+	int fd = open(filename, O_RDONLY);
+	free(filename);
+
+	if (fd == -1) {
+		xmlrpcsrv_error_msg(sessionP, 404, "File not found.");
+		return TRUE;
+	}
+
+	char buff[XMLRPC_READ_BLOCK_SIZE];
+	char *response = NULL;
+	size_t size = 0;
+	do {
+		size_t read_size = read(fd, buff, XMLRPC_READ_BLOCK_SIZE);
+		if (read_size == -1) {
+			if (response)
+				free(response);
+			xmlrpcsrv_error_msg(sessionP, 500, "Unable to read the file.");
+			return TRUE;
+		} else if (!read_size) {
+			break;
+		}
+		response = realloc(response, size + read_size);
+		if (!response)  {
+			xmlrpcsrv_error_msg(sessionP, 500, "Not enough memory to complete this request");
+			return TRUE;
+		}
+		memcpy(response + size, buff, read_size);
+		size += read_size;
+	} while(1);
+
+	close(fd);
+
+	ResponseStatus(sessionP, 200);
 	ResponseWriteStart(sessionP);
-	ResponseWriteBody(sessionP, response, strlen(response));
+	ResponseWriteBody(sessionP, response, size);
+
+	free(response);
+
 	return TRUE;
 }
 

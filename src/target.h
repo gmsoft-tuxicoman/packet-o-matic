@@ -128,6 +128,7 @@ struct target {
 	uint32_t uid; ///< Unique ID of the target
 	uint32_t serial; ///< Serial of the target
 	uint32_t *parent_serial; ///< Serial stored at the rule level if any
+	char * description; ///< Description of the target
 	pthread_rwlock_t lock; ///< Lock used to make each target operation atomic
 
 	struct ptype* pkt_cnt; ///< Number of packets processed by this target

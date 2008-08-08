@@ -317,9 +317,10 @@ int mgmtsrv_register_command(struct mgmt_command *cmd) {
 		}
 
 		if (!tmp->words[w][l]) { // our command is longer. next one please
-			w++;
-			l = 0;
-			continue;
+		//	w++;
+		//	l = 0;
+		//	continue;
+			break;
 		}
 
 		if (!tmp->words[w][l] && !cmd->words[w][l]) { // both words are the same
@@ -436,24 +437,26 @@ int mgmtsrv_match_command(char *words[MGMT_MAX_CMD_WORDS_ARGS], struct mgmt_comm
 
 	struct mgmt_command *cur = cmds;
 
-	int w = 0, l = 0;
+	int w = 0, l = 0, max_matched_words = 0;
 	*start = NULL;
 	*end = NULL;
 
 	while (cur) {
 
-		if (!words[w] && !cur->words[w]) { // No more word no each part
+		if ((!words[w] && !cur->words[w])  // No more word no each part
+			|| (!words[w] || !cur->words[w])) { // No more word to match for this one
 			if (!*start)
 				*start = cur;
-			cur = cur->next;
-			w = 0;
-			l = 0;
-			continue;
-		}
 
-		if (!words[w] || !cur->words[w]) { // No more word to match for this one
-			if (!*start)
-				*start = cur;
+	
+			if (w > max_matched_words) {
+				max_matched_words = w;
+			} else if (w < max_matched_words) {
+				if (*start)
+					*end = cur->prev;
+				break;
+			}
+
 			w = 0;
 			l = 0;
 			cur = cur->next;

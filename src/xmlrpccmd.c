@@ -158,14 +158,14 @@ xmlrpc_value *xmlrpccmd_set_core_parmeter(xmlrpc_env * const envP, xmlrpc_value 
 xmlrpc_value *xmlrpccmd_main_get_serial(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
 	
 
-	return xmlrpc_build_value(envP, "{s:i,s:i,s:i,s:i,s:i,s:i}",
+	return xmlrpc_build_value(envP, "{s:i,s:i,s:i,s:i,s:i,s:i,s:i}",
 				"rules", main_config->rules_serial,
 				"targets", main_config->target_serial,
 				"input", main_config->input_serial,
 				"core", core_params_serial,
 				"helper", helpers_serial,
 				"conntrack", conntracks_serial,
-				"logs", pom_log_get_serial);
+				"logs", pom_log_get_serial());
 
 }
 
@@ -211,8 +211,13 @@ xmlrpc_value *xmlrpccmd_get_logs(xmlrpc_env * const envP, xmlrpc_value * const p
 
 	struct log_entry *log = pom_log_get_tail();	
 
-	while (log && log->id >= last_id){
+	while (log && log->id >= last_id)
+		log = log->prev;
 
+	if (!log)
+		log = pom_log_get_head();
+
+	while (log) {
 		xmlrpc_value *entry = xmlrpc_build_value(envP, "{s:i,s:i,s:s,s:s}",
 					"id", log->id,
 					"level", log->level,
@@ -220,9 +225,7 @@ xmlrpc_value *xmlrpccmd_get_logs(xmlrpc_env * const envP, xmlrpc_value * const p
 					"data", log->data);
 		xmlrpc_array_append_item(envP, result, entry);
 		xmlrpc_DECREF(entry);
-
-		log = log->prev;
-
+		log = log->next;
 	}
 
 	pom_log_unlock();

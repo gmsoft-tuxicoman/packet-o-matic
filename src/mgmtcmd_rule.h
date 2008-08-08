@@ -39,8 +39,8 @@ int mgmtcmd_disable_rule(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_enable_rule(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_add_rule(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_remove_rule(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_set_descr_rule(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_unset_descr_rule(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_set_rule_descr(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_unset_rule_descr(struct mgmt_connection *c, int argc, char *argv[]);
 
 struct rule_list *mgmtcmd_get_rule(char *rule);
 struct target *mgmtcmd_get_target(struct rule_list *rl, char *target);

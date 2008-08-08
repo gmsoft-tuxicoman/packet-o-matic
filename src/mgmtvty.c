@@ -363,7 +363,7 @@ int mgmtvty_completion(struct mgmt_connection *c, unsigned char key) {
 
 	for (str = tmpcmdstr; ;str = NULL) {
 		if (words_count >= MGMT_MAX_CMD_WORDS_ARGS) {
-			mgmtsrv_send(c, "\r\nToo many arguments\r\n");
+			mgmtsrv_send(c, "\r\nToo many arguments\r\n" MGMT_CMD_PROMPT "%s", c->curcmd);
 			free(tmpcmdstr);
 			return POM_OK;
 		}

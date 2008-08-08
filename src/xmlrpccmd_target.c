@@ -29,7 +29,7 @@
 
 #include "main.h"
 
-#define XMLRPC_TARGET_COMMANDS_NUM 11
+#define XMLRPC_TARGET_COMMANDS_NUM 12
 
 static struct xmlrpc_command xmlrpc_target_commands[XMLRPC_TARGET_COMMANDS_NUM] = { 
 
@@ -93,7 +93,14 @@ static struct xmlrpc_command xmlrpc_target_commands[XMLRPC_TARGET_COMMANDS_NUM] 
 		.name = "target.setParameter",
 		.callback_func = xmlrpccmd_set_target_parameter,
 		.signature = "i:iiss",
-		.help = "Set an target parameter given its name and value",
+		.help = "Set a target parameter given its name and value",
+	},
+
+	{
+		.name = "target.setDescription",
+		.callback_func = xmlrpccmd_set_target_description,
+		.signature = "i:iis",
+		.help = "Set a target description",
 	},
 
 	{
@@ -236,12 +243,17 @@ xmlrpc_value *xmlrpccmd_get_target(xmlrpc_env * const envP, xmlrpc_value * const
 		if (t->mode)
 			mode_name = t->mode->name;
 
-		xmlrpc_value *target = xmlrpc_build_value(envP, "{s:s,s:b,s:s,s:i,s:i,s:A}",
+		char *description = "";
+		if (t->description)
+			description = t->description;
+
+		xmlrpc_value *target = xmlrpc_build_value(envP, "{s:s,s:b,s:s,s:i,s:i,s:s,s:A}",
 				"name", target_get_name(t->type),
 				"started", t->started,
 				"mode", mode_name,
 				"uid", t->uid,
 				"serial", t->serial,
+				"description", description,
 				"params", params);
 		xmlrpc_DECREF(params);
 
@@ -610,6 +622,61 @@ xmlrpc_value *xmlrpccmd_set_target_parameter(xmlrpc_env * const envP, xmlrpc_val
 	free(value);
 
 	return xmlrpc_int_new(envP, t->uid);
+}
+
+xmlrpc_value *xmlrpccmd_set_target_description(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
+
+	char *descr;
+	uint32_t rule_id, target_id;
+	xmlrpc_decompose_value(envP, paramArrayP, "(iis)", &rule_id, &target_id, &descr);
+
+	if (envP->fault_occurred)
+		return NULL;
+
+
+	main_config_rules_lock(0);
+
+	struct rule_list *rl = main_config->rules;
+	while (rl && rl->uid != rule_id)
+		rl = rl->next;
+
+	if (!rl) {
+		main_config_rules_unlock();
+		xmlrpc_faultf(envP, "Rule not found");
+		free(descr);
+		return NULL;
+	}
+
+	struct target *t = rl->target;
+	while (t && t->uid != target_id)
+		t = t->next;
+
+	if (!t) {
+		xmlrpc_faultf( envP, "Target not found");
+		free(descr);
+		return NULL;
+	}
+
+	target_lock_instance(t, 1);
+	main_config_rules_unlock();
+
+	if (t->description)
+		free(t->description);
+
+	if (strlen(descr)) {
+		t->description = descr;
+	} else {
+		free(descr);
+		t->description = NULL;
+	}
+
+	main_config->target_serial++;
+	rl->target_serial++;
+	t->serial++;
+
+	target_unlock_instance(t);
+	return xmlrpc_int_new(envP, t->uid);
+
 }
 
 xmlrpc_value *xmlrpccmd_load_target(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {

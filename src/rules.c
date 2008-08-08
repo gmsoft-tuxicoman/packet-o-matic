@@ -444,6 +444,10 @@ int list_destroy(struct rule_list *list) {
 		}
 		ptype_cleanup(tmp->pkt_cnt);
 		ptype_cleanup(tmp->byte_cnt);
+
+		if (tmp->description)
+			free(tmp->description);
+
 		free(tmp);
 
 	} while (list);

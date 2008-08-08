@@ -227,6 +227,12 @@ struct target *parse_target(xmlDocPtr doc, xmlNodePtr cur) {
 			xmlFree(param_type);
 			xmlFree(param_value);
 
+		} else if (!xmlStrcmp(pcur->name, (const xmlChar *) "description") && !tp->description) {
+			char *value = (char *) xmlNodeListGetString(doc, pcur->xmlChildrenNode, 1);
+			tp->description = malloc(strlen(value) + 1);
+			memset(tp->description, 0, sizeof(tp->description));
+			strcpy(tp->description, value);
+			xmlFree(value);
 		}
 		pcur = pcur->next;
 	}
@@ -485,6 +491,7 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 			r->description = malloc(strlen(value) + 1);
 			memset(r->description, 0, sizeof(r->description));
 			strcpy(r->description, value);
+			xmlFree(value);
 		}
 
 		cur = cur->next;
@@ -802,6 +809,8 @@ int config_write_rule(xmlTextWriterPtr writer, struct rule_node *n, struct rule_
 		}
 	}
 
+	free(tabs);
+
 	return POM_OK;
 }
 
@@ -1050,6 +1059,13 @@ int config_write(struct conf *c, char *filename) {
 				}
 
 			} 
+
+			if (t->description) {
+				xmlTextWriterWriteFormatString(writer, "\n\t\t\t");
+				xmlTextWriterWriteElement(writer, BAD_CAST "description", BAD_CAST t->description);
+			}
+
+			xmlTextWriterWriteFormatString(writer, "\n\t\t");
 			xmlTextWriterEndElement(writer);
 
 			t = t->next;
