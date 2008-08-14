@@ -456,7 +456,7 @@ int mgmtcmd_add_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	rl->pkt_cnt = ptype_alloc("uint64", "pkts");
 	rl->pkt_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
 	rl->byte_cnt = ptype_alloc("uint64", "bytes");
-	rl->byte_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
+	rl->byte_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN_1024;
 
 	main_config_rules_unlock();
 	

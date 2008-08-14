@@ -35,11 +35,15 @@ struct target_priv_pcap {
 	pcap_dumper_t *pdump;
 	pcap_t *p;
 	int last_layer_type;
-	unsigned int size;
+	unsigned long size, packets_num;
 	struct ptype *snaplen;
 	struct ptype *filename;
 	struct ptype *layer;
 	struct ptype *unbuffered;
+
+	struct ptype *split_size;
+	struct ptype *split_packets;
+	unsigned long split_index;
 
 };
 

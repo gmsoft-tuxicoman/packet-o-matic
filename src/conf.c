@@ -500,7 +500,7 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 	r->pkt_cnt = ptype_alloc("uint64", "pkts");
 	r->pkt_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
 	r->byte_cnt = ptype_alloc("uint64", "bytes");
-	r->byte_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
+	r->byte_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN_1024;
 
 	return r;
 

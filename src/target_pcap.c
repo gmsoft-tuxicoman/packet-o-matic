@@ -21,9 +21,10 @@
 #include "target_pcap.h"
 #include "ptype_string.h"
 #include "ptype_uint16.h"
+#include "ptype_uint64.h"
 #include "ptype_bool.h"
 
-static struct target_mode *mode_default;
+static struct target_mode *mode_default, *mode_split;
 
 int target_register_pcap(struct target_reg *r) {
 
@@ -34,6 +35,7 @@ int target_register_pcap(struct target_reg *r) {
 	r->cleanup = target_cleanup_pcap;
 
 	mode_default = target_register_mode(r->type, "default", "Dump all the packets into a PCAP file");
+	mode_split = target_register_mode(r->type, "split", "Dump all packets into multiple PCAP files");
 
 	if (!mode_default)
 		return POM_ERR;
@@ -43,6 +45,12 @@ int target_register_pcap(struct target_reg *r) {
 	target_register_param(mode_default, "layer", "ethernet", "Type of layer to capture. Either ethernet, linux_cooked, docsis or ipv4");
 	target_register_param(mode_default, "unbuffered", "no", "Write each packet to the output file directly without using a buffer");
 
+	target_register_param(mode_split, "prefix", "dump", "Prefix of output files to save packets to");
+	target_register_param(mode_split, "snaplen", "1522", "Maximum size of saved packets");
+	target_register_param(mode_split, "layer", "ethernet", "Type of layer to capture. Either ethernet, linux_cooked, docsis or ipv4");
+	target_register_param(mode_split, "split_size", "0", "Split when reaching this size");
+	target_register_param(mode_split, "split_packets", "0", "Split when reaching this number of packets");
+	target_register_param(mode_split, "unbuffered", "no", "Write each packet to the output file directly without using a buffer");
 
 	return POM_OK;
 
@@ -55,11 +63,16 @@ static int target_init_pcap(struct target *t) {
 	t->target_priv = priv;
 
 	priv->filename = ptype_alloc("string", NULL);
-	priv->snaplen = ptype_alloc("uint16", NULL);
+	priv->snaplen = ptype_alloc("uint16", "bytes");
 	priv->layer = ptype_alloc("string", NULL);
 	priv->unbuffered = ptype_alloc("bool", NULL);
 
-	if (!priv->filename || !priv->snaplen || !priv->layer || !priv->unbuffered) {
+	priv->split_size = ptype_alloc("uint64", "bytes");
+	priv->split_size->print_mode = PTYPE_UINT64_PRINT_HUMAN_1024;
+	priv->split_packets = ptype_alloc("uint64", "packets");
+	priv->split_packets->print_mode = PTYPE_UINT64_PRINT_HUMAN;
+
+	if (!priv->filename || !priv->snaplen || !priv->layer || !priv->unbuffered || !priv->split_size || !priv->split_packets) {
 		target_cleanup_pcap(t);
 		return POM_ERR;
 	}
@@ -69,6 +82,12 @@ static int target_init_pcap(struct target *t) {
 	target_register_param_value(t, mode_default, "layer", priv->layer);
 	target_register_param_value(t, mode_default, "unbuffered", priv->unbuffered);
 	
+	target_register_param_value(t, mode_split, "prefix", priv->filename);
+	target_register_param_value(t, mode_split, "snaplen", priv->snaplen);
+	target_register_param_value(t, mode_split, "layer", priv->layer);
+	target_register_param_value(t, mode_split, "unbuffered", priv->unbuffered);
+	target_register_param_value(t, mode_split, "split_size", priv->split_size);
+	target_register_param_value(t, mode_split, "split_packets", priv->split_packets);
 
 	return POM_OK;
 }
@@ -82,6 +101,10 @@ static int target_cleanup_pcap(struct target *t) {
 		ptype_cleanup(priv->snaplen);
 		ptype_cleanup(priv->layer);
 		ptype_cleanup(priv->unbuffered);
+
+		ptype_cleanup(priv->split_size);
+		ptype_cleanup(priv->split_packets);
+
 		free(priv);
 	}
 
@@ -92,7 +115,6 @@ static int target_cleanup_pcap(struct target *t) {
 static int target_open_pcap(struct target *t) {
 
 	struct target_priv_pcap *priv = t->target_priv;
-
 
 	priv->last_layer_type = -1;
 	int snaplen = PTYPE_UINT16_GETVAL(priv->snaplen);
@@ -121,14 +143,26 @@ static int target_open_pcap(struct target *t) {
 		return POM_ERR;
 	}
 
-	priv->pdump = pcap_dump_open(priv->p, PTYPE_STRING_GETVAL(priv->filename));
+	char *filename = NULL;
+
+	if (t->mode == mode_split) {
+		char my_name[NAME_MAX];
+		snprintf(my_name, NAME_MAX - 1, "%s_%05lu.cap", PTYPE_STRING_GETVAL(priv->filename), priv->split_index);
+		filename = my_name;
+	} else {
+		filename = PTYPE_STRING_GETVAL(priv->filename);
+	}
+
+	priv->pdump = pcap_dump_open(priv->p, filename);
 	if (!priv->pdump) {
-		pom_log(POM_LOG_ERR "Unable to open pcap dumper !");
+		pom_log(POM_LOG_ERR "Unable to open pcap file %s for writing !", filename);
+		pcap_close(priv->p);
 		return POM_ERR;
 	}
 
-	return POM_OK;	
+	return POM_OK;
 
+	
 }
 
 
@@ -163,6 +197,35 @@ static int target_process_pcap(struct target *t, struct frame *f) {
 		phdr.caplen = len;
 	else
 		phdr.caplen = SNAPLEN;
+
+
+	if (t->mode == mode_split) {
+		// Let's see if we have to open the next file
+		int next = 0;
+		if (PTYPE_UINT64_GETVAL(priv->split_size) > 0 && pcap_dump_ftell(priv->pdump) + sizeof(struct pcap_pkthdr) + phdr.caplen > PTYPE_UINT64_GETVAL(priv->split_size))
+			next = 1;
+		else if (PTYPE_UINT64_GETVAL(priv->split_packets) > 0 && priv->packets_num > PTYPE_UINT64_GETVAL(priv->split_packets))
+			next = 1;
+
+
+		if (next) {
+			char filename[NAME_MAX];
+
+			pcap_dump_close(priv->pdump);
+			priv->split_index++;
+
+			snprintf(filename, NAME_MAX - 1, "%s_%05lu.cap", PTYPE_STRING_GETVAL(priv->filename), priv->split_index);
+			priv->pdump = pcap_dump_open(priv->p, filename);
+			if (!priv->pdump) {
+				pom_log(POM_LOG_ERR "Unable to open pcap file %s for writing !", filename);
+				pcap_close(priv->p);
+				priv->p = NULL;
+				return POM_ERR;
+			}
+
+		}
+		
+	}
 	
 	pcap_dump((u_char*)priv->pdump, &phdr, f->buff + start);
 
@@ -170,8 +233,9 @@ static int target_process_pcap(struct target *t, struct frame *f) {
 		pcap_dump_flush(priv->pdump);
 
 	priv->size += len;
+	priv->packets_num++;
 
-	pom_log(POM_LOG_TSHOOT "0x%lx; Packet saved (%u bytes (+%u bytes))!", (unsigned long) priv, priv->size, len);
+	pom_log(POM_LOG_TSHOOT "Packet saved (%lu bytes (+%u bytes))!", priv->size, priv->size, len);
 
 	return POM_OK;
 };
@@ -183,12 +247,20 @@ static int target_close_pcap(struct target *t) {
 	if (!t->target_priv)
 		return POM_ERR;
 
-	pom_log("0x%lx; PCAP : saved %u bytes", (unsigned long) priv, priv->size);
+	if (t->mode == mode_split)
+		pom_log("Saved %lu packets and %lu bytes in %lu files", priv->packets_num, priv->size, priv->split_index + 1);
+	else
+		pom_log("Saved %lu packets and %lu bytes", priv->packets_num, priv->size);
 
-	pcap_dump_close(priv->pdump);
-	priv->pdump = NULL;
-	pcap_close(priv->p);
-	priv->p = NULL;
+	if (priv->pdump) {
+		pcap_dump_close(priv->pdump);
+		priv->pdump = NULL;
+	}
+
+	if (priv->p) {
+		pcap_close(priv->p);
+		priv->p = NULL;
+	}
 	return POM_OK;
 };
 

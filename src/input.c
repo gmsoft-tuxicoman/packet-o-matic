@@ -252,7 +252,7 @@ struct input *input_alloc(int input_type) {
 	i->pkt_cnt = ptype_alloc("uint64", "packets");
 	i->pkt_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
 	i->byte_cnt = ptype_alloc("uint64", "bytes");
-	i->byte_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
+	i->byte_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN_1024;
 
 	// assign default mode
 	i->mode = inputs[input_type]->modes;

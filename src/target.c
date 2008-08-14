@@ -252,7 +252,7 @@ struct target *target_alloc(int target_type) {
 	t->pkt_cnt = ptype_alloc("uint64", "pkts");
 	t->pkt_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
 	t->byte_cnt = ptype_alloc("uint64", "bytes");
-	t->byte_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
+	t->byte_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN_1024;
 
 	// Default mode is the first one
 	t->mode = targets[target_type]->modes;

@@ -63,15 +63,50 @@ int ptype_cleanup_uint64(struct ptype *p) {
 int ptype_parse_uint64(struct ptype *p, char *val) {
 
 	unsigned long long value;
-	if (sscanf(val, "0x%llx", &value) == 1)
-		return POM_OK;
-	if (sscanf(val, "%llu", &value) == 1)
-		return POM_OK;
+	int parsed = 0;
+	if (sscanf(val, "0x%llx", &value) == 1) {
+		parsed = 1;
+	} else if (sscanf(val, "%llu", &value) == 1) {
+		parsed = 1;
+		char suffix = val[strlen(val) - 1];
+		switch (suffix) {
+			case 'k':
+				value *= 1000ll;
+				break;
+			case 'K':
+				value <<= 10;
+				break;
+			case 'm':
+				value *= 1000000ll;
+				break;
+			case 'M':
+				value <<= 20;
+				break;
+			case 'g':
+				value *= 1000000000ll;
+				break;
+			case 'G':
+				value <<= 30;
+				break;
+			case 't':
+				value *= 1000000000000ll;
+				break;
+			case 'T':
+				value <<= 40;
+				break;
+			default:
+				if (suffix < '0' || suffix > '9')
+					return POM_ERR;
+		}
+	}
+
+	if (!parsed)
+		return POM_ERR;
 
 	uint64_t *v = p->value;
 	*v = (uint64_t)value;
 
-	return POM_ERR;
+	return POM_OK;
 
 };
 
@@ -92,6 +127,25 @@ int ptype_print_uint64(struct ptype *p, char *val, size_t size) {
 						value = (value + 500) / 1000;
 						if (value > 9999) {
 							value = (value + 500) / 1000;
+							snprintf(val, size, "%llut", value);
+						} else
+							snprintf(val, size, "%llug", value);
+					} else
+						snprintf(val, size, "%llum", value);
+				} else
+					snprintf(val, size, "%lluk", value);
+			} else
+				snprintf(val, size, "%llu", value);
+			break;
+		case PTYPE_UINT64_PRINT_HUMAN_1024:
+			if (value > 99999) {
+				value = (value + 512) / 1024;
+				if (value > 9999) {
+					value = (value + 512) / 1024;
+					if (value > 9999) {
+						value = (value + 512) / 1024;
+						if (value > 9999) {
+							value = (value + 512) / 1024;
 							snprintf(val, size, "%lluT", value);
 						} else
 							snprintf(val, size, "%lluG", value);

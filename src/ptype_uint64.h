@@ -27,6 +27,7 @@
 #define PTYPE_UINT64_PRINT_DECIMAL	0
 #define PTYPE_UINT64_PRINT_HEX		1
 #define PTYPE_UINT64_PRINT_HUMAN	2
+#define PTYPE_UINT64_PRINT_HUMAN_1024	4
 
 /// x the struct ptype
 #define PTYPE_UINT64_GETVAL(x) 			\

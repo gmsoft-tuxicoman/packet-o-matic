@@ -64,10 +64,31 @@ int ptype_parse_uint32(struct ptype *p, char *val) {
 
 
 	uint32_t *v = p->value;
-	if (sscanf(val, "0x%x", v) == 1)
+	if (sscanf(val, "0x%x", v) == 1) {
 		return POM_OK;
-	if (sscanf(val, "%u", v) == 1)
+	} else if (sscanf(val, "%uk", v) == 1) {
+		*v *= 1000;
+		char suffix = val[strlen(val) - 1];
+		switch (suffix) {
+			case 'k':
+				*v *= 1000;
+				break;
+			case 'K':
+				*v <<= 10;
+				break;
+			case 'm':
+				*v *= 1000000ll;
+				break;
+			case 'M':
+				*v <<= 20;
+				break;
+			default:
+				if (suffix < '0' || suffix > '9')
+					return POM_ERR;
+		}
+
 		return POM_OK;
+	}
 
 	return POM_ERR;
 
@@ -86,6 +107,19 @@ int ptype_print_uint32(struct ptype *p, char *val, size_t size) {
 				value = (value + 500) / 1000;
 				if (value > 9999) {
 					value = (value + 500) / 1000;
+					return snprintf(val, size, "%um", value);
+				} else
+					return snprintf(val, size, "%uk", value);
+			} else
+				return snprintf(val, size, "%u", value);
+			break;
+		}
+		case PTYPE_UINT32_PRINT_HUMAN_1024: {
+			uint32_t value = *v;
+			if (value > 99999) {
+				value = (value + 512) / 1024;
+				if (value > 9999) {
+					value = (value + 512) / 1024;
 					return snprintf(val, size, "%uM", value);
 				} else
 					return snprintf(val, size, "%uK", value);

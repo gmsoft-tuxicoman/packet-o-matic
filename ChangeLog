@@ -1,3 +1,8 @@
+* 2008/08/12 Guy Martin <gmsoft@tuxicoman.be>
+Fix parsing of ptype_uint64.
+Add support for power of 1024 to ptype uint32 and uint64.
+Added mode split to target_pcap.
+
 * 2008/08/08 Guy Martin <gmsoft@tuxicoman.be>
 Added descriptions on targets.
 Fix small memory leak when saving rules.
