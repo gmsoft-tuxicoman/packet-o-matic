@@ -66,8 +66,7 @@ int ptype_parse_uint32(struct ptype *p, char *val) {
 	uint32_t *v = p->value;
 	if (sscanf(val, "0x%x", v) == 1) {
 		return POM_OK;
-	} else if (sscanf(val, "%uk", v) == 1) {
-		*v *= 1000;
+	} else if (sscanf(val, "%u", v) == 1) {
 		char suffix = val[strlen(val) - 1];
 		switch (suffix) {
 			case 'k':
