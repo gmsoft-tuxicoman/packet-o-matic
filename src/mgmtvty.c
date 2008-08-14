@@ -19,6 +19,7 @@
  */
 
 #include "common.h"
+#include "version.h"
 #include "mgmtsrv.h"
 #include "mgmtvty.h"
 #include "mgmtcmd.h"
@@ -37,7 +38,7 @@ int mgmtvty_init(struct mgmt_connection *c) {
 		return POM_ERR;
 	}
 
-	mgmtsrv_send(c, "\nThis is packet-o-matic. \nCopyright Guy Martin 2006-2008\n\n");
+	mgmtsrv_send(c, "\nThis is packet-o-matic " POM_VERSION "\nCopyright Guy Martin 2006-2008\n\n");
 
 	char commands[] = { IAC, WILL, TELOPT_ECHO, IAC, WILL, TELOPT_SGA, IAC, DO, TELOPT_NAWS, IAC, DONT, TELOPT_LINEMODE };
 	send(c->fd, commands, sizeof(commands), 0);

@@ -7,8 +7,10 @@ wwwdir = $(pkgdatadir)/web-ui
 XMLRPC_SRC = xmlrpcsrv.c xmlrpcsrv.h xmlrpccmd.c xmlrpccmd.h xmlrpccmd_input.c xmlrpccmd_input.h xmlrpccmd_helper.c xmlrpccmd_helper.h xmlrpccmd_conntrack.c xmlrpccmd_conntrack.h xmlrpccmd_rules.c xmlrpccmd_rules.h xmlrpccmd_match.c xmlrpccmd_match.h xmlrpccmd_target.c xmlrpccmd_target.h
 endif
 
+VERSION_SRC = version.h release.h svnversion.h
+
 bin_PROGRAMS = packet-o-matic
-packet_o_matic_SOURCES = main.c main.h rules.c rules.h conf.c conf.h layer.c layer.h $(MGMT_SRC) $(XMLRPC_SRC)
+packet_o_matic_SOURCES = main.c main.h rules.c rules.h conf.c conf.h layer.c layer.h $(VERSION_SRC) $(MGMT_SRC) $(XMLRPC_SRC)
 packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"' @xmlrpc_CFLAGS@ -DWWWROOT='"$(wwwdir)"'
 packet_o_matic_LDFLAGS = @LIBS@ @libxml2_LIBS@
 packet_o_matic_LDADD = libpom.la @xmlrpc_LIBS@
@@ -168,3 +170,21 @@ ptype_string_la_LIBADD = libpom.la
 ptype_bytes_la_SOURCES = ptype_bytes.c ptype_bytes.h modules_common.h
 ptype_bytes_la_LDFLAGS = -module -avoid-version
 ptype_bytes_la_LIBADD = libpom.la
+
+
+.PHONY: svnversion.h.tmp
+svnversion.h.tmp: 
+	if [ -d .svn ]; then \
+		ver=`svnversion -nc . | sed -e 's/.*://' -e 's/[A-Za-z]//'`; \
+		echo "#define POM_SVN_VERSION \"svn-r$$ver\"" > $@; \
+	else \
+		ver=`date +%F`; \
+		echo "#define POM_SVN_VERSION \"built-$$ver\"" > $@; \
+	fi
+svnversion.h: svnversion.h.tmp
+	diff $@ $@.tmp >/dev/null 2>&1 || cp -f $@.tmp $@; \
+	rm -f $@.tmp
+
+mostlyclean-local:
+	rm -f svnversion.h svnversion.h.tmp
+

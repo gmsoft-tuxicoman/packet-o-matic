@@ -19,6 +19,7 @@
  */
 
 #include "common.h"
+#include "version.h"
 #include "conf.h"
 #include "conntrack.h"
 #include "helper.h"
@@ -654,6 +655,8 @@ int main(int argc, char *argv[]) {
 	}
 
 	rbuf->i = main_config->input;
+
+	pom_log("packet-o-matic " POM_VERSION " started");
 
 	if (pthread_mutex_lock(&rbuf->mutex)) {
 		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording");
