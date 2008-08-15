@@ -26,11 +26,9 @@
 #include "modules_common.h"
 #include "conntrack.h"
 
-#define __USE_MISC
 #define __FAVOR_BSD // We use BSD favor of the tcp header
 #include <netinet/tcp.h>
 
-#undef __USE_MISC
 #undef __FAVOR_BSD
 
 enum

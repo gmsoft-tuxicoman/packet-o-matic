@@ -326,7 +326,6 @@ static int input_open_docsis(struct input *i) {
 				start = 91000000;
 			if (start > 858000000)
 				start = 858000000;
-			start = 91000000;
 			end = 857000000;
 			step = 1000000;
 		}

@@ -1,5 +1,8 @@
 * 2008/08/14 Guy Martin <gmsoft@tuxicoman.be>
 Added support for version information.
+Hardcode xmlrpc-c flags to workaround CentOS bug.
+Don't force startfreq when eurodocsis = no.
+Compile fix for glibc-2.8.
 
 * 2008/08/12 Guy Martin <gmsoft@tuxicoman.be>
 Fix parsing of ptype_uint64.

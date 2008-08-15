@@ -24,7 +24,6 @@
 #include "modules_common.h"
 #include "target.h"
 
-#define __USE_MISC 1
 #define __FAVOR_BSD 1 // We use BSD favor of the tcp header
 #define __USE_BSD 1 // We use BSD favor of the ip header
 #include <libnet.h>

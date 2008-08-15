@@ -22,7 +22,6 @@
 
 #include "ptype_uint32.h"
 
-#define __USE_MISC
 #define __FAVOR_BSD // We use BSD favor of the tcp header
 #include <netinet/tcp.h>
 

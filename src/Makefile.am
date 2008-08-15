@@ -1,4 +1,4 @@
-CFLAGS += -Wall -I$(srcdir)/include -D_XOPEN_SOURCE=600 --std=gnu99 -D__EXTENSIONS__=1 -D_DARWIN_C_SOURCE
+CFLAGS += -Wall -I$(srcdir)/include -D_XOPEN_SOURCE=600 --std=gnu99 -D__EXTENSIONS__ -D_DARWIN_C_SOURCE -D_GNU_SOURCE
 
 MGMT_SRC = mgmtsrv.c mgmtsrv.h mgmtvty.c mgmtvty.h mgmtcmd.c mgmtcmd.h mgmtcmd_helper.c mgmtcmd_helper.h mgmtcmd_conntrack.c mgmtcmd_conntrack.h mgmtcmd_input.c mgmtcmd_input.h mgmtcmd_rule.c mgmtcmd_rule.h mgmtcmd_target.c mgmtcmd_target.h
 
@@ -11,7 +11,7 @@ VERSION_SRC = version.h release.h svnversion.h
 
 bin_PROGRAMS = packet-o-matic
 packet_o_matic_SOURCES = main.c main.h rules.c rules.h conf.c conf.h layer.c layer.h $(VERSION_SRC) $(MGMT_SRC) $(XMLRPC_SRC)
-packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"' @xmlrpc_CFLAGS@ -DWWWROOT='"$(wwwdir)"'
+packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"' -DWWWROOT='"$(wwwdir)"'
 packet_o_matic_LDFLAGS = @LIBS@ @libxml2_LIBS@
 packet_o_matic_LDADD = libpom.la @xmlrpc_LIBS@
 

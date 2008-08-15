@@ -196,8 +196,7 @@ AM_CONDITIONAL([USE_XMLRPC], [test "x$want_xmlrpc" = "xyes"])
 
 if test "x$want_xmlrpc" = "xyes"
 then
-	xmlrpc_LIBS=`xmlrpc-c-config abyss-server --libs`
-	xmlrpc_CFLAGS=`xmlrpc-c-config abyss-server --cflags`
+	xmlrpc_LIBS="-lxmlrpc_server_abyss -lxmlrpc_server -lxmlrpc_abyss -lxmlrpc -lxmlrpc_util -lz -lm"
 	AC_DEFINE(USE_XMLRPC, , [Compile XML-RPC interface])
 fi
 LIBS="$OLD_LIBS"

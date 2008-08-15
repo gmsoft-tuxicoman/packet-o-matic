@@ -29,7 +29,6 @@
 #include <fcntl.h>
 #include <sys/ioctl.h>
 
-#define __USE_MISC 1
 #include <net/if.h>
 
 static int match_ethernet_id;
