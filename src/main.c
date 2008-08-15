@@ -372,6 +372,9 @@ void *input_thread_func(void *params) {
 			break;
 		}
 
+		if (!r->i->running) // Input was closed
+			break;
+
 		if (pthread_mutex_lock(&r->mutex)) {
 			pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording");
 			finish = 1;
@@ -412,7 +415,8 @@ void *input_thread_func(void *params) {
 
 	}
 
-	input_close(r->i);
+	if (r->i->running)
+		input_close(r->i);
 
 	// If we are stopping, we'll set running = 1 to the input
 	// this way autosave config will know it was started

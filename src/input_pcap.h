@@ -37,6 +37,8 @@ struct input_priv_pcap {
 	struct bpf_program fp; ///< Filter for pcap
 	int output_layer; ///< Layer type to use
 
+	unsigned long packets_read;
+
 };
 
 int input_register_pcap(struct input_reg *r);

@@ -164,7 +164,7 @@ static int input_open_pcap(struct input *i) {
 	
 
 	if (p->p)	
-		pom_log("Pcap opened successfullly");
+		pom_log("PCAP opened successfullly");
 	else {
 		pom_log(POM_LOG_ERR "Error while opening pcap input");
 		return POM_ERR;
@@ -189,7 +189,9 @@ static int input_open_pcap(struct input *i) {
 
 	}
 
-	return POM_OK; //Means open but no fd (*wtf*)
+	p->packets_read = 0;
+
+	return POM_OK;
 }
 
 static int input_read_pcap(struct input *i, struct frame *f) {
@@ -201,6 +203,11 @@ static int input_read_pcap(struct input *i, struct frame *f) {
 
 	int result;
 	result = pcap_next_ex(p->p, &phdr, &next_pkt);
+
+	if (result == -2) { // End of file
+		input_close(i);
+		return POM_OK;
+	}
 
 	if (result < 0) {
 		pom_log(POM_LOG_ERR "Error while reading packet.");
@@ -223,6 +230,8 @@ static int input_read_pcap(struct input *i, struct frame *f) {
 	f->len = phdr->caplen;
 	f->first_layer = p->output_layer;
 
+	p->packets_read++;
+
 	return POM_OK;
 }
 
@@ -239,7 +248,9 @@ static int input_close_pcap(struct input *i) {
 
 	struct pcap_stat ps;
 	if (!pcap_stats(p->p, &ps)) 
-		pom_log("0x%02lx; PCAP : Total packet read %u, dropped %u (%.1f%%)", (unsigned long) i->input_priv, ps.ps_recv, ps.ps_drop, 100.0 / (ps.ps_recv + ps.ps_drop)  * (float)ps.ps_drop);
+		pom_log("Total packet read %u, dropped %u (%.1f%%)", (unsigned long) i->input_priv, ps.ps_recv, ps.ps_drop, 100.0 / (ps.ps_recv + ps.ps_drop)  * (float)ps.ps_drop);
+	else
+		pom_log("Total packet read %lu", p->packets_read);
 
 	pcap_close(p->p);
 
