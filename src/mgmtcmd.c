@@ -23,6 +23,7 @@
 #include "mgmtsrv.h"
 #include "mgmtcmd.h"
 #include "match.h"
+#include "version.h"
 
 #include <dirent.h>
 
@@ -34,7 +35,7 @@
 
 #include "ptype_uint64.h"
 
-#define MGMT_COMMANDS_NUM 16
+#define MGMT_COMMANDS_NUM 17
 
 static struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
@@ -148,6 +149,12 @@ static struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.usage = "unload ptype <ptype>",
 		.callback_func = mgmtcmd_unload_ptype,
 		.completion = mgmtcmd_unload_ptype_completion,
+	},
+
+	{
+		.words = { "show", "version", NULL },
+		.help = "Show packet-o-matic version",
+		.callback_func = mgmtcmd_show_version,
 	},
 
 };
@@ -582,6 +589,16 @@ struct mgmt_command_arg* mgmtcmd_load_ptype_completion(int argc, char *argv[]) {
 	res = mgmtcmd_list_modules("ptype");
 	return res;
 
+}
+
+int mgmtcmd_show_version(struct mgmt_connection *c, int argc, char*argv[]) {
+
+	if (argc != 0)
+		return MGMT_USAGE;
+
+	mgmtsrv_send(c, "This is packet-o-matic " POM_VERSION "\r\n");
+
+	return POM_OK;
 }
 
 int mgmtcmd_unload_ptype(struct mgmt_connection *c, int argc, char *argv[]) {

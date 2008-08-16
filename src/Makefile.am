@@ -176,7 +176,7 @@ ptype_bytes_la_LIBADD = libpom.la
 .PHONY: svnversion.h.tmp
 svnversion.h.tmp: 
 	if [ -d .svn ]; then \
-		ver=`svnversion -nc . | sed -e 's/.*://' -e 's/[A-Za-z]//'`; \
+		ver=`svnversion -c . | sed -e 's/.*://' -e 's/[A-Za-z]//'`; \
 		echo "#define POM_SVN_VERSION \"svn-r$$ver\"" > $@; \
 	else \
 		ver=`date +%F`; \

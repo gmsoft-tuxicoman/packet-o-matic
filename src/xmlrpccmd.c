@@ -27,6 +27,8 @@
 #include "main.h"
 #include "helper.h"
 
+#include "version.h"
+
 #include "xmlrpccmd_conntrack.h"
 #include "xmlrpccmd_input.h"
 #include "xmlrpccmd_helper.h"
@@ -34,7 +36,7 @@
 #include "xmlrpccmd_match.h"
 #include "xmlrpccmd_target.h"
 
-#define XMLRPC_COMMANDS_NUM 6
+#define XMLRPC_COMMANDS_NUM 7
 
 static struct xmlrpc_command xmlrpc_commands[XMLRPC_COMMANDS_NUM] = { 
 
@@ -78,6 +80,13 @@ static struct xmlrpc_command xmlrpc_commands[XMLRPC_COMMANDS_NUM] = {
 		.callback_func = xmlrpccmd_get_logs,
 		.signature = "A:i",
 		.help = "Get all the logs after a certain id",
+	},
+
+	{
+		.name = "main.getVersion",
+		.callback_func = xmlrpccmd_get_version,
+		.signature = "s:",
+		.help = "Get packet-o-matic version",
 	}
 
 };
@@ -232,6 +241,12 @@ xmlrpc_value *xmlrpccmd_get_logs(xmlrpc_env * const envP, xmlrpc_value * const p
 
 	return result;
 
+
+}
+
+xmlrpc_value *xmlrpccmd_get_version(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
+	
+	return xmlrpc_string_new(envP, POM_VERSION);
 
 }
 

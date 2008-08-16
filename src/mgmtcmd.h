@@ -47,6 +47,7 @@ int mgmtcmd_load_ptype(struct mgmt_connection *c, int argc, char *argv[]);
 struct mgmt_command_arg* mgmtcmd_load_ptype_completion(int argc, char *argv[]);
 int mgmtcmd_unload_ptype(struct mgmt_connection *c, int argc, char *argv[]);
 struct mgmt_command_arg* mgmtcmd_unload_ptype_completion(int argc, char *argv[]);
+int mgmtcmd_show_version(struct mgmt_connection *c, int argc, char*argv[]);
 
 struct mgmt_command_arg* mgmtcmd_list_modules(char *type);
 struct mgmt_command_arg *mgmtcmd_completion_int_range(int start, int count);

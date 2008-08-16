@@ -2,6 +2,8 @@
 Fix compilation on OpenBSD.
 Get rid of ip_var.h include.
 Fix building of svnversion.h.
+Added "show version" and main.getVersion.
+Fix snversion.h with buggy sed on solaris.
 
 * 2008/08/15 Guy Martin <gmsoft@tuxicoman.be>
 Improved handling of pcap files with input_pcap.
