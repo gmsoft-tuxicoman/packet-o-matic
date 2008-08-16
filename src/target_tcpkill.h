@@ -26,6 +26,9 @@
 
 #define __FAVOR_BSD 1 // We use BSD favor of the tcp header
 #define __USE_BSD 1 // We use BSD favor of the ip header
+
+// Stupid libnet need some #define tweaking
+#undef _GNU_SOURCE
 #include <libnet.h>
 
 struct target_priv_tcpkill {

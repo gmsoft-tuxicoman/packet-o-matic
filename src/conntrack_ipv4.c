@@ -26,11 +26,6 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 
-#ifdef HAVE_NETINET_IP_VAR_H
-#include <netinet/ip_var.h>
-#endif
-
-
 #define INITVAL 0x5fb83a0c // Random value
 
 int conntrack_register_ipv4(struct conntrack_reg *r) {

@@ -27,6 +27,9 @@
 
 #include <unistd.h>
 #include <string.h>
+
+// Stupid libnet need some #define tweaking
+#undef _GNU_SOURCE
 #include <libnet.h>
 
 struct target_priv_inject {

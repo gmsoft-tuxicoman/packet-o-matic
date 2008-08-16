@@ -7,6 +7,7 @@ wwwdir = $(pkgdatadir)/web-ui
 XMLRPC_SRC = xmlrpcsrv.c xmlrpcsrv.h xmlrpccmd.c xmlrpccmd.h xmlrpccmd_input.c xmlrpccmd_input.h xmlrpccmd_helper.c xmlrpccmd_helper.h xmlrpccmd_conntrack.c xmlrpccmd_conntrack.h xmlrpccmd_rules.c xmlrpccmd_rules.h xmlrpccmd_match.c xmlrpccmd_match.h xmlrpccmd_target.c xmlrpccmd_target.h
 endif
 
+BUILT_SOURCES = svnversion.h
 VERSION_SRC = version.h release.h svnversion.h
 
 bin_PROGRAMS = packet-o-matic

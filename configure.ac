@@ -45,7 +45,7 @@ AC_HEADER_TIME
 AC_CHECK_HEADERS([arpa/inet.h fcntl.h stdint.h stdlib.h string.h sys/ioctl.h sys/socket.h sys/time.h unistd.h])
 
 # BSD specific header files
-AC_CHECK_HEADERS([netinet/ip_var.h sys/endian.h])
+AC_CHECK_HEADERS([sys/endian.h])
 
 # Linux specidic header files
 AC_CHECK_HEADERS([mcheck.h endian.h])
@@ -139,8 +139,8 @@ then
 fi
 
 # Check for Libnet
-AC_CHECK_HEADER([libnet.h])
-AC_CHECK_LIB([net], [libnet_init, libnet_write_link], [want_libnet=yes], [want_libnet=no])
+AC_CHECK_HEADER([libnet.h], [want_libnet=yes], [want_libnet=no])
+AC_CHECK_LIB([net], [libnet_init, libnet_write_link], [want_libnet=$want_libnet], [want_libnet=no])
 
 if test "x$want_libnet" = "xyes"
 then
@@ -197,16 +197,13 @@ AM_CONDITIONAL([USE_XMLRPC], [test "x$want_xmlrpc" = "xyes"])
 if test "x$want_xmlrpc" = "xyes"
 then
 	xmlrpc_LIBS="-lxmlrpc_server_abyss -lxmlrpc_server -lxmlrpc_abyss -lxmlrpc -lxmlrpc_util -lz -lm"
+	xmlrpc_LIBS="${xmlrpc_LIBS} `xmlrpc-c-config abyss-server --libs`"
 	AC_DEFINE(USE_XMLRPC, , [Compile XML-RPC interface])
 fi
 LIBS="$OLD_LIBS"
 
 AC_SUBST(xmlrpc_SRC)
 AC_SUBST(xmlrpc_LIBS)
-AC_SUBST(xmlrpc_CFLAGS)
-
-
-
 
 
 AC_SUBST(INPUT_OBJS)

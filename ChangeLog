@@ -1,3 +1,8 @@
+* 2008/08/16 Guy Martin <gmsoft@tuxicoman.be>
+Fix compilation on OpenBSD.
+Get rid of ip_var.h include.
+Fix building of svnversion.h.
+
 * 2008/08/15 Guy Martin <gmsoft@tuxicoman.be>
 Improved handling of pcap files with input_pcap.
 

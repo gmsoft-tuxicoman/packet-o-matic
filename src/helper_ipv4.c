@@ -27,10 +27,6 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 
-#ifdef HAVE_NETINET_IP_VAR_H
-#include <netinet/ip_var.h>
-#endif
-
 #define IP_DONT_FRAG 0x4000
 #define IP_MORE_FRAG 0x2000
 #define IP_OFFSET_MASK 0x1fff

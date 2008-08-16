@@ -23,7 +23,6 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <net/ethernet.h>
 #include <netinet/ip6.h>
 #include "ptype_uint16.h"
 #include "ptype_string.h"

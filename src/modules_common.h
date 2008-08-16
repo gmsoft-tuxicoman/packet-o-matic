@@ -44,6 +44,11 @@
 #define s6_addr32 _S6_un._S6_u32
 #endif
 
+// BSD hides it from us while it uses it sometimes
+#ifndef u_long
+typedef unsigned long   u_long;
+#endif
+
 // Those two collide // TOBE REMOVED
 #ifndef __COMMON_H__
 

@@ -20,11 +20,13 @@
 
 #define WAIT_CONNS 2
 
-#include <signal.h>
-
 #include "common.h"
 #include "xmlrpcsrv.h"
 #include "xmlrpccmd.h"
+
+#include <signal.h>
+#include <sys/select.h>
+#include <netinet/in.h>
 
 static struct xmlrpc_connection *sockets_head;
 
