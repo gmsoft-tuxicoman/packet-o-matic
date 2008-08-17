@@ -28,19 +28,42 @@
 				the real time packet processor client</h5>
 		</div>
 		<div class="content">
-			<fieldset id="tab_actions" class="pom_tab" style="display:block">
-				<legend>Actions</legend>Set RPC Password:
-				<input id="rpc_password" type="password" />
-				<input type="button" value="Set" onclick="pom.tools.set_password($F('rpc_password'))" />
-				<div class="button_set">
+			<div class="button_set">
 					  <li class="nav"><a id="input_control" href="javascript:pom.input.toggle();">Start Input</a></li>
 						<li class="nav"><a href="javascript:pom.input.gui_config();">Configure Input</a></li>
 						<li class="nav"><a href="javascript:pom.core_params.show();">Core Params</a></li>
-						<li class="nav"><a href="javascript:load_all_modules();">Load All Modules</a></li>
+						<li class="nav"><a href="javascript:pom.tools.set_password_gui();">Set Password</a></li>
 						<li class="nav"><a href="javascript:pom.tools.halt();">Halt Packet-o-Matic</a></li>
-				</div>
-			 
-			</fieldset>
+			</div>
+			<div id="network_dialog">
+				<fieldset id="tab_network" class="pom_tab">
+					<legend id="network_legend">Network Error</legend>
+					A network error has occured.
+					<BR />All network requests have been suspended, please see below for the exact error.
+					<BR />Make sure that POM is running and you are connected to the network.
+					<BR />When ready hit Retry to retry the pending network requests.
+					<br /><xmp id="network_err" style="border:2px;border-color:Red;border-style:solid;display:inline;"></xmp>
+				</fieldset>
+				<br />
+				<div style="text-align: center">
+					<div class="button_set" style="text-align: center;">
+						<li class="nav"><a href="javascript:network_retry()">Retry</a></li>
+					</div>
+				</div>				
+			</div>			
+			<div id="password_dialog">
+				<fieldset id="tab_password" class="pom_tab">
+					<legend>Set POM Password</legend>
+					<input id="rpc_password" type="password" />
+				</fieldset>
+				<br />
+				<div style="text-align: center">
+					<div class="button_set" style="text-align: center;">
+						<li class="nav"><a href="javascript:pom.tools.set_password_guisave()">Save Changes</a></li>
+						<li class="nav"><a href="javascript:pom.tools.set_password_guicancel()">Cancel</a></li>
+					</div>
+				</div>				
+			</div>
 			<div id="core_dialog">
 				<fieldset id="tab_core" class="pom_tab">
 					<legend>Core Parameters</legend>

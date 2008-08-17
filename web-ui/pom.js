@@ -6,17 +6,17 @@
 /// <reference path="dialog.js">
 /// <reference path="rules.js">
 /// <reference path="input.js">
-var first_serial_check = true;
 function doload() {
+	network_onload();
 	serial_check();
-}
-function doloadrest() {
 	pom.input.onload();
 	pom.rules.onload();
 	pom.targets.onload();
 	pom.dialog.onload();
 	pom.core_params.onload();
-	log_check(0);
+	pom.tools.onload();
+	this._last_log_id = 0;
+	log_check(0);	
 }
 function load_all_modules() {
 	pom.input.load_all();
@@ -24,6 +24,9 @@ function load_all_modules() {
 }
 function _serial_changed(name) {
 	switch (name) {
+		case "logs":
+			log_check(this._last_log_id);
+			break;
 		case "targets":
 		case "rules":
 			pom.rules.load();
@@ -37,10 +40,6 @@ function _serial_changed(name) {
 }
 function _serial_watcher_back(req) {
 	req = firefox_fix(req);
-	if (first_serial_check) {
-		first_serial_check = false;
-		doloadrest();
-	}
 	var struct = pom.struct.cast(pom.xml.make_element_from_req(req));
 	var kids = struct.get_children();
 	if (!this._serials)
@@ -73,9 +72,9 @@ function _log_check_back(last_id, req) {
 		else
 			continue;
 		if (! ignore)
-			console_log.innerHTML = file + ": " + data + " ID IS: " + id + "<BR>" + console_log.innerHTML;
+			console_log.innerHTML = file + ": " + data + "<BR>" + console_log.innerHTML;
 	}
-	setTimeout(log_check.bind(this, last_id), 1000);
+	this._last_log_id = last_id;
 }
 function log_check(last_id) {
 	pom.tools.make_request("main.getLogs", pom.tools.create_params("int", last_id), _log_check_back.bind(this, last_id));
@@ -83,11 +82,7 @@ function log_check(last_id) {
 function tester_back(req) {
 	alert(req.responseText);
 }
-function tester() {
-	pom.tools.make_request("core.getParameters", "", tester_back);
-	//pom.tools.make_request("main.getSerial", null, tester_back);
-	
-}
+
 window.onload = doload;
 function fatal(msg) {
 	alert(msg);

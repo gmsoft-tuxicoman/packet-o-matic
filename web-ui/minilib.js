@@ -266,15 +266,17 @@ function $T(text) {
 function $E(name) {
 	return document.createElement(name);
 }
-function _network_failure(req) {
-	alert("Unable to complete network request: " + req.statusText + "-" + req.status);
+function _network_failure(req,arg_save) {
+	this._network_hold=true;
+	this._pending_requests.push(arg_save);
+	_network_show_err(req.status + ": " + req.statusText);
 }
-function _network_state_change(transport, on_done) {
+function _network_state_change(transport, on_done, arg_save) {
 	if (transport.readyState == 4) {
 		if (transport.status == 0 || (transport.status >= 200 && transport.status < 300))
 			on_done(transport);
 		else
-			_network_failure(transport);
+			_network_failure(transport,arg_save);
 	}
 
 }
@@ -284,11 +286,43 @@ function get_xml_http_request() {
 	try { return new ActiveXObject('Microsoft.XMLHTTP'); } catch (ex) { }
 	return "";
 }
+function network_retry() {
+	Element.remove(this._network_dialog);
+	pom.dialog.done();
+	this._showing_dialog = false;
+	this._network_hold = false;
+	var saved_args;
+	while ( saved_args = this._pending_requests.shift() )
+	{
+		network_request.apply(this,saved_args);
+	}
+}
+function _network_show_err(msg) {
+	if (this._showing_dialog)
+		return;
+	if (!this._err_no)
+		this._err_no = 0;
+	this._err_no++;
+	this._showing_dialog = true;
+	pom.dialog.create(this._network_dialog);
+	$("network_legend").innerHTML = "Network Error #" + this._err_no;
+	$("network_err").innerHTML = msg;
+}
+function network_onload() {
+	this._network_dialog = $("network_dialog");
+	Element.remove(this._network_dialog);
+	this._pending_requests = [];
+}
 function network_request(method, url, parameters, on_done) {
+	var arg_save = [method, url, parameters, on_done];
+	if (this._network_hold) {
+		this._pending_requests.push(arg_save);
+		return;
+	}
 	var transport = get_xml_http_request();
 	if (!transport)
 		return;
-	transport.onreadystatechange = _network_state_change.bind(this, transport, on_done);
+	transport.onreadystatechange = _network_state_change.bind(this, transport, on_done, arg_save);
 	var url_str = url;
 	var params_str = parameters;
 	if (method.toUpperCase() == "GET") {

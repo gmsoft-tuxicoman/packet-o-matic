@@ -1,14 +1,35 @@
 /// <reference path="minilib.js">
 /// <reference path="xmlrpc.js">
+/// <reference path="dialog.js">
 
 pom.tools = function() { };
 Class.register_class("pom.tools", pom.tools);
+pom.tools.onload = function() {
+	this._pass_dialog = $("password_dialog");
+	Element.remove(this._pass_dialog);
+};
 pom.tools.halt = function() {
 	pom.tools.make_request("main.halt", null, this._action_done.bind(pom.tools, "halt"));
 };
+pom.tools.set_password_gui = function()
+{
+	pom.dialog.create(this._pass_dialog);
+	$("rpc_password").value = "";	
+};
+pom.tools.set_password_guisave = function()
+{
+	this.set_password($F("rpc_password"));
+	Element.remove(this._pass_dialog);
+	pom.dialog.done();
+};
+pom.tools.set_password_guicancel = function()
+{
+	Element.remove(this._pass_dialog);
+	pom.dialog.done();
+};
 pom.tools.set_password = function(pass) {
 	var args = this.create_params("string", pass);
-	make_request("main.setPassword", args, this._action_done.bind(pom.tools, "set password"));
+	pom.tools.make_request("main.setPassword", args, this._action_done.bind(pom.tools, "set password"));
 };
 pom.tools.create_icon_button = function(file_name, tip, on_click) {
 	/// <summary>Makes an image that has a tooltip and is clickable</summary>

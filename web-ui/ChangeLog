@@ -1,0 +1,7 @@
+* 2008/08/17 Mitch Capper
+WEBUI: Moved set password into its own dialog box
+WEBUI: Fixed set password so it actually works again
+WEBUI: Removed waiting for serial check to come back okay before firing other onloads
+WEBUI: Added a network retry / backlog support so on a network error it pauses gracefully
+WEBUI: Only refresh the logs when the serial changes not every second
+WEBUI: Moved all the action buttons to the top of the interface similar to the website
