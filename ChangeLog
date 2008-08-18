@@ -145,7 +145,7 @@ Added and fixed error message when starting/stopping and input.
 Fix typo in match.c.
 Report error in mgmtcmd_register_all().
 Improved error logging in mgmtsrv_init().
-Added support for ATSC cards in input_docsis thanks to Mitch Capper <mitch.capper@gmail.com>.
+Added support for ATSC cards in input_docsis thanks to Mitch Capper.
 Make input_open() only return POM_OK or POM_ERR. 
 Send a signal to interrupt the input system call when stopping it. 
 Added interrupt() function to inputs if some more work needs to be done. 
