@@ -147,6 +147,9 @@ static int target_process_tftp(struct target *t, struct frame *f) {
 	
 	}
 
+	if (cp->is_invalid)
+		return POM_OK;
+
 	if (lastl->payload_size == 0)
 		return POM_OK;
 
@@ -172,19 +175,28 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 	payload += sizeof(uint16_t);
 	size -= sizeof(uint16_t);
 
+	if (size < 7) { // 2 bytes for filename and 5 bytes for "mail"
+		cp->is_invalid = 1;
+		return POM_OK;
+	}
+
 	switch (opcode) {
 		case tftp_rrq: 
-		case tftp_wrq: {
+		case tftp_wrq: { // Read or write request
+
+			// Create a new conntrack priv entry for the data connection
 			struct target_conntrack_priv_tftp *new_cp;
 			new_cp = malloc(sizeof(struct target_conntrack_priv_tftp));
 			memset(new_cp, 0, sizeof(struct target_conntrack_priv_tftp));
 			new_cp->parsed_path = malloc(strlen(cp->parsed_path) + 1);
 			strcpy(new_cp->parsed_path, cp->parsed_path);
 
+			// Add the new ctpriv to the list of connections for this target
 			new_cp->next = priv->ct_privs;
 			priv->ct_privs->prev = new_cp;
 			priv->ct_privs = new_cp;
 
+			// Save info about the data connection (filename, fd, ...)
 			struct target_connection_priv_tftp *conn;
 			conn = malloc(sizeof(struct target_connection_priv_tftp));
 			memset(conn, 0, sizeof(struct target_connection_priv_tftp));
@@ -195,10 +207,11 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 
 			int max = NAME_MAX;
 			if (size - 2 < max)
-				max = size -2;
+				max = size - 2;
 			strncpy(conn->filename, payload, max - 2);
 			payload += strlen(conn->filename) + 1;
 
+			// Compute an expectation for the new data connection
 			struct expectation_list *expt  = expectation_alloc(f, t, ce, EXPT_DIR_REV);
 
 			// Now look for last layer
@@ -216,6 +229,7 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 				fld = fld->next;
 			}
 
+			// Associate conntrack entry to the expectation and add the expectation to the list
 			expectation_set_target_priv(expt, new_cp, target_close_connection_tftp);
 
 			if (expectation_add(expt, TFTP_CONNECTION_TIMER) == POM_ERR) {
@@ -228,17 +242,31 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 		}
 		case tftp_data: {
 	
+			cp->ce = ce;
+
+			if (!cp->conn) { // Data coming without seing master connection
+				cp->conn = malloc(sizeof(struct target_connection_priv_tftp));
+				memset(cp->conn, 0, sizeof(struct target_connection_priv_tftp));
+				cp->conn->fd = -1;
+
+
+			}
+
 			struct target_connection_priv_tftp *conn;
 			conn = cp->conn;
-			cp->ce = ce;
+
+			if (!*conn->filename) {
+				char *format = "tftp-%Y%m%d-%H%M%S.bin";
+				struct tm *tmp;
+				tmp = localtime((time_t*)&f->tv.tv_sec);
+				strftime(cp->conn->filename, sizeof(cp->conn->filename) - 1, format, tmp);
+			}
 
 			uint16_t block_id = ntohs(*((uint16_t*)(payload)));
 			payload += sizeof(uint16_t);
 			size -= sizeof(uint16_t);
-			if (!*conn->filename)
-				sprintf(conn->filename, "%u.%u", (unsigned int)f->tv.tv_sec, (unsigned int)f->tv.tv_usec);
 
-			if (conn->fd == -1 && tftp_file_open(cp, &f->tv) == POM_ERR)
+			if (conn->fd == -1 && conn->last_block == 0 && tftp_file_open(cp, &f->tv) == POM_ERR)
 						return POM_ERR;
 
 			if (block_id <= conn->last_block)
@@ -256,7 +284,7 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 
 			write(conn->fd, payload, size);
 
-			if (size < 512)
+			if (size < 512) // Last packet is shorter than 512 bytes
 				tftp_file_close(cp);
 			break;
 		}
@@ -270,6 +298,9 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 					*cp->conn->filename = 0;
 			}
 			break;
+		default:
+			cp->is_invalid = 1;
+			return POM_OK;
 
 	}
 

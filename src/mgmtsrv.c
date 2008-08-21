@@ -47,6 +47,7 @@ int mgmtsrv_init(const char *port) {
 	cmds = NULL;
 
 	char errbuff[256];
+	memset(errbuff, 0, sizeof(errbuff));
 
 	struct addrinfo hints, *res;
 	memset(&hints, 0, sizeof(struct addrinfo));

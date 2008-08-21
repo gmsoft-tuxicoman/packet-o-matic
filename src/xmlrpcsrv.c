@@ -84,6 +84,7 @@ int xmlrpcsrv_init(const char *port) {
 	// open sockets
 
 	char errbuff[256];
+	memset(errbuff, 0, sizeof(errbuff));
 	int sockfd = -1;
 
 	struct addrinfo hints, *res;

@@ -32,7 +32,7 @@ struct target_connection_priv_tftp {
 
 	int fd; ///< Must be -1 if no file is open
 
-	char filename[NAME_MAX]; ///< Filename of an actual email
+	char filename[NAME_MAX]; ///< Filename known for this data connection
 	int last_block; ///< Last recevied block
 
 	struct conntrack_entry *ce;
@@ -42,9 +42,13 @@ struct target_connection_priv_tftp {
 struct target_conntrack_priv_tftp {
 
 	struct conntrack_entry *ce;
+	// Informations about data to be saved if this is a data connection
 	struct target_connection_priv_tftp *conn;
-	char *parsed_path; ///< General path of the mailbox
+	char *parsed_path; ///< Path for the saved files
 
+	int is_invalid; ///< Mark this connection as invalid so it won't be proceesed further
+
+	// Associated data connections if this is a master connection
 	struct target_conntrack_priv_tftp *next;
 	struct target_conntrack_priv_tftp *prev;
 
@@ -54,6 +58,8 @@ struct target_conntrack_priv_tftp {
 struct target_priv_tftp {
 
 	struct ptype *path;
+
+	/// All the connections of this target
 	struct target_conntrack_priv_tftp *ct_privs;
 
 };

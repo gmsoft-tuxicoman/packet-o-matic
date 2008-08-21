@@ -1,3 +1,7 @@
+* 2008/08/21 Guy Martin <gmsoft@tuxicoman.be>
+Improved target_tftp.
+Zero out errbuff before using it in mgmsrv and xmlrpcsrv.
+
 * 2008/08/16 Guy Martin <gmsoft@tuxicoman.be>
 Fix compilation on OpenBSD.
 Get rid of ip_var.h include.
