@@ -23,6 +23,7 @@
 #include "ptype_uint16.h"
 #include "ptype_uint64.h"
 #include "ptype_bool.h"
+#include "ptype_interval.h"
 
 static struct target_mode *mode_default, *mode_split;
 
@@ -50,6 +51,7 @@ int target_register_pcap(struct target_reg *r) {
 	target_register_param(mode_split, "layer", "ethernet", "Type of layer to capture. Either ethernet, linux_cooked, docsis or ipv4");
 	target_register_param(mode_split, "split_size", "0", "Split when reaching this size");
 	target_register_param(mode_split, "split_packets", "0", "Split when reaching this number of packets");
+	target_register_param(mode_split, "split_interval", "0", "Split when reaching this number of seconds");
 	target_register_param(mode_split, "unbuffered", "no", "Write each packet to the output file directly without using a buffer");
 
 	return POM_OK;
@@ -71,6 +73,7 @@ static int target_init_pcap(struct target *t) {
 	priv->split_size->print_mode = PTYPE_UINT64_PRINT_HUMAN_1024;
 	priv->split_packets = ptype_alloc("uint64", "packets");
 	priv->split_packets->print_mode = PTYPE_UINT64_PRINT_HUMAN;
+	priv->split_interval = ptype_alloc("interval", NULL);
 
 	if (!priv->filename || !priv->snaplen || !priv->layer || !priv->unbuffered || !priv->split_size || !priv->split_packets) {
 		target_cleanup_pcap(t);
@@ -88,6 +91,7 @@ static int target_init_pcap(struct target *t) {
 	target_register_param_value(t, mode_split, "unbuffered", priv->unbuffered);
 	target_register_param_value(t, mode_split, "split_size", priv->split_size);
 	target_register_param_value(t, mode_split, "split_packets", priv->split_packets);
+	target_register_param_value(t, mode_split, "split_interval", priv->split_interval);
 
 	return POM_OK;
 }
@@ -104,6 +108,7 @@ static int target_cleanup_pcap(struct target *t) {
 
 		ptype_cleanup(priv->split_size);
 		ptype_cleanup(priv->split_packets);
+		ptype_cleanup(priv->split_interval);
 
 		free(priv);
 	}
@@ -160,6 +165,9 @@ static int target_open_pcap(struct target *t) {
 		return POM_ERR;
 	}
 
+	if (PTYPE_INTERVAL_GETVAL(priv->split_interval) > 0)
+		priv->split_time = time(NULL) + PTYPE_INTERVAL_GETVAL(priv->split_interval);
+
 	return POM_OK;
 
 	
@@ -201,11 +209,18 @@ static int target_process_pcap(struct target *t, struct frame *f) {
 
 	if (t->mode == mode_split) {
 		// Let's see if we have to open the next file
+
+		time_t now;
+		time(&now);
 		int next = 0;
 		if (PTYPE_UINT64_GETVAL(priv->split_size) > 0 && pcap_dump_ftell(priv->pdump) + sizeof(struct pcap_pkthdr) + phdr.caplen > PTYPE_UINT64_GETVAL(priv->split_size))
 			next = 1;
 		else if (PTYPE_UINT64_GETVAL(priv->split_packets) > 0 && priv->packets_num > PTYPE_UINT64_GETVAL(priv->split_packets))
 			next = 1;
+		else if (PTYPE_INTERVAL_GETVAL(priv->split_interval) > 0 && priv->split_time < now) {
+			next = 1;
+			priv->split_time = now + PTYPE_INTERVAL_GETVAL(priv->split_interval);
+		}
 
 
 		if (next) {

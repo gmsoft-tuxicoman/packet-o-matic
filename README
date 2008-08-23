@@ -1,7 +1,8 @@
 
 Packet-o-matic : the modular network packet processor.
 Author : Guy Martin <gmsoft@tuxicoman.be>
-Homepage : http://www.packet-o-matic.org 
+Homepage : http://www.packet-o-matic.org
+Additional documentation : http://wiki.packet-o-matic.org
 
 
 What it is :
@@ -36,6 +37,7 @@ Dependencies :
  - libnet  : optional to build target_tcpkill and target_inject
  - libpcap : optional to build input_pcap and target_pcap
  - libxml2 : mandatory to parse the configuration
+ - xmlrpc-c : optional to build XML-RPC interface and web interface
 
 
 How it works :
@@ -105,15 +107,16 @@ IMPORTANT : You'll have to specify the full header chain to match a packet. For 
 
 - docsis : match the docsis protocol used by cable modems
 - ethernet : match the ethernet protocol
-- linux_cooked : match linux cooked protocol used by pcap
 - ipv4 : match the IPv4 protocol commonly known as ip
 - ipv6 : match the IPv6 protocol
 - icmp : match the ICMP protocol
 - icmpv6 : match the ICMPv6 protocol
+- linux_cooked : match linux cooked protocol used by pcap
+- rtp : match the RTP protocol used to carry real time voice and video
 - tcp : match the TCP protocol
 - udp : match the UDP protocol
-- rtp : match the RTP protocol used to carry real time voice and video
 - undefined : used internaly. do not use in your config !
+- vlan : match 802.1Q aka vlan frames
 
 
 The targets :
@@ -126,9 +129,10 @@ The target modules process the packet and most of the time, saves it or resend i
 - irc : dump IRC connection into separate files with irssi-like log format
 - pcap : save the packets in a pcap file
 - pop : save emails and logins from POP connections into maildir
+- rtp : save RTP payload into .au files. Supported payload types are G.711U, G711A, G.721 and G.722
 - tap : open a tap interface and send the packets trough it
 - tcpkill : works only with tcp packets. Send a TCP RST packet to any matched tcp packet
-- rtp : save RTP payload into .au files. Supported payload types are G.711U, G711A, G.721 and G.722
+- tftp : dump files downloaded/uploaded via TFTP
 - null : does nothing, used for debugging or as a template
 
 

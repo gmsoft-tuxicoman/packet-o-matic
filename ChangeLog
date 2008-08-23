@@ -1,3 +1,7 @@
+* 2008/08/23 Guy Martin <gmsoft@tuxicoman.be>
+Added split_interval parameter to target_pcap.
+Updated README file.
+
 * 2008/08/21 Guy Martin <gmsoft@tuxicoman.be>
 Improved target_tftp.
 Zero out errbuff before using it in mgmsrv and xmlrpcsrv.

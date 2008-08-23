@@ -36,6 +36,7 @@ struct target_priv_pcap {
 	pcap_t *p;
 	int last_layer_type;
 	unsigned long size, packets_num;
+	time_t split_time;
 	struct ptype *snaplen;
 	struct ptype *filename;
 	struct ptype *layer;
@@ -43,6 +44,7 @@ struct target_priv_pcap {
 
 	struct ptype *split_size;
 	struct ptype *split_packets;
+	struct ptype *split_interval;
 	unsigned long split_index;
 
 };
