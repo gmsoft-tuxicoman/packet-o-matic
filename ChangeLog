@@ -1,6 +1,7 @@
 * 2008/08/23 Guy Martin <gmsoft@tuxicoman.be>
 Added split_interval parameter to target_pcap.
 Updated README file.
+Dropped libnet dependency. Replaced it with pcap.
 
 * 2008/08/21 Guy Martin <gmsoft@tuxicoman.be>
 Improved target_tftp.

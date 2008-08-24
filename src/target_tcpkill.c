@@ -83,8 +83,13 @@ int target_register_tcpkill(struct target_reg *r) {
 	if (!mode_interface)
 		return POM_ERR;
 
+	char err[PCAP_ERRBUF_SIZE];
+	char *dev = pcap_lookupdev(err);
+	if (!dev)
+		dev = "none";
+
 	target_register_param(mode_interface, "severity", "2", "Number of TCP RST packet to send for each received packet");
-	target_register_param(mode_interface, "interface", "eth0", "Interface where to send TCP RST");
+	target_register_param(mode_interface, "interface", dev, "Interface where to send TCP RST");
 
 #ifdef HAVE_LINUX_IP_SOCKET
 
@@ -172,14 +177,15 @@ static int target_open_tcpkill(struct target *t) {
 	} else {
 #endif
 
-		char errbuf[LIBNET_ERRBUF_SIZE];
-
-		p->lc = libnet_init (LIBNET_LINK_ADV, PTYPE_STRING_GETVAL(p->interface), errbuf);
-	        if (!p->lc) {
-			pom_log(POM_LOG_ERR "Error, cannot open libnet context: %s", errbuf);
+		char errbuf[PCAP_ERRBUF_SIZE];
+		int snaplen = 2000; // This param won't be used anyway
+		p->p = pcap_open_live(PTYPE_STRING_GETVAL(p->interface), snaplen, 0, 0, errbuf);
+	        if (!p->p) {
+			pom_log(POM_LOG_ERR "Error, cannot open interface %s with pcap : %s", PTYPE_STRING_GETVAL(p->interface), errbuf);
 			return POM_ERR;
 		}
-      		pom_log(POM_LOG_ERR "Libnet context initialized for interface %s", p->lc->device);
+      		pom_log(POM_LOG_ERR "Interface %s opened for injection", PTYPE_STRING_GETVAL(p->interface));
+
 #ifdef HAVE_LINUX_IP_SOCKET
 	}
 #endif
@@ -372,7 +378,7 @@ static int target_process_tcpkill(struct target *t, struct frame *f) {
 		char errbuff[256];
 
 		if (t->mode != mode_routed) {
-			if (libnet_write_link (priv->lc, buffer, blen) == -1) {
+			if (pcap_inject(priv->p, buffer, blen) == -1) {
 				strerror_r(errno, errbuff, 256);
 				pom_log(POM_LOG_ERR "Error while inject TCP RST : %s", errbuff);
 				return POM_ERR;
@@ -393,7 +399,7 @@ static int target_process_tcpkill(struct target *t, struct frame *f) {
 
 	}
 
-	pom_log(POM_LOG_DEBUG "0x%lx; TCP killed !", (unsigned long) priv);
+	pom_log(POM_LOG_DEBUG "Sent TCP RST (goodbye :) !");
 
 	return POM_OK;
 	
@@ -407,8 +413,8 @@ static int target_close_tcpkill(struct target *t) {
 	struct target_priv_tcpkill *priv = t->target_priv;
 	
 	if (t->mode != mode_routed) {
-		if (priv->lc)
-			libnet_destroy(priv->lc);
+		if (priv->p)
+			pcap_close(priv->p);
 	}
 #ifdef HAVE_LINUX_IP_SOCKET
 	else {

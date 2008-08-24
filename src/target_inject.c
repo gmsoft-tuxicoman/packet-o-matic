@@ -44,7 +44,12 @@ int target_register_inject(struct target_reg *r) {
 	if (!mode_default)
 		return POM_ERR;
 
-	target_register_param(mode_default, "interface", "eth0", "Where to reinject packets to");
+	char err[PCAP_ERRBUF_SIZE];
+	char *dev = pcap_lookupdev(err);
+	if (!dev)
+		dev = "none";
+
+	target_register_param(mode_default, "interface", dev, "Where to reinject packets to");
 
 	return POM_OK;
 
@@ -94,15 +99,19 @@ static int target_open_inject(struct target *t) {
 		return POM_ERR;
 	}
 
-	char errbuf[LIBNET_ERRBUF_SIZE];
+	char errbuf[PCAP_ERRBUF_SIZE];
 
-	priv->lc = libnet_init (LIBNET_LINK_ADV, PTYPE_STRING_GETVAL(priv->iface), errbuf);
-	if (!priv->lc) {
-		pom_log(POM_LOG_ERR "Error, cannot open libnet context: %s", errbuf);
+	int snaplen = 2000; // This param won't be used anyway
+	priv->p = pcap_open_live(PTYPE_STRING_GETVAL(priv->iface), snaplen, 0, 0, errbuf);
+	if (!priv->p) {
+		pom_log(POM_LOG_ERR "Error, cannot open interface %s with pcap : %s", PTYPE_STRING_GETVAL(priv->iface), errbuf);
 		return POM_ERR;
 	}
-	pom_log(POM_LOG_DEBUG "Libnet context initialized for interface %s", priv->lc->device);
+	pom_log(POM_LOG_DEBUG "Interface %s opened for injection", PTYPE_STRING_GETVAL(priv->iface));
 
+
+	priv->size = 0;
+	priv->packets = 0;
 
 	return POM_OK;
 }
@@ -111,8 +120,8 @@ static int target_process_inject(struct target *t, struct frame *f) {
 	
 	struct target_priv_inject *priv = t->target_priv;
 
-	if (!priv->lc) {
-		pom_log(POM_LOG_ERR "Error, libnet context not initialized !");
+	if (!priv->p) {
+		pom_log(POM_LOG_ERR "Error, pcap not initialized !");
 		return POM_ERR;
 	}
 	int start = layer_find_start(f->l, match_ethernet_id);
@@ -126,14 +135,15 @@ static int target_process_inject(struct target *t, struct frame *f) {
 	if (len > MAX_SEGMENT_LEN)
 		len = MAX_SEGMENT_LEN;
 	
-	if (libnet_write_link (priv->lc, f->buff + start, len - start) != -1) {
+	if (pcap_inject(priv->p, f->buff + start, len - start) != -1) {
 		
 		priv->size += len;
-		pom_log(POM_LOG_DEBUG"0x%lx; Packet injected (%u bytes (+%u bytes))!", (unsigned long) priv, priv->size, len);
+		priv->packets++;
+		pom_log(POM_LOG_DEBUG "Packet injected (%lu bytes (+%u bytes))", priv->size, len);
 		return POM_OK;
-	}
+	} 
 
-	pom_log(POM_LOG_ERR "Error while injecting packet : %s", libnet_geterror(priv->lc));
+	pom_log(POM_LOG_ERR "Error while injecting packet : %s", pcap_geterr(priv->p));
 	return POM_ERR;
 
 }
@@ -145,16 +155,10 @@ static int target_close_inject(struct target *t) {
 
 	struct target_priv_inject *priv = t->target_priv;
 
-	pom_log("0x%lx; INJECT : %u bytes injected", (unsigned long) priv, priv->size);
+	pom_log("%lu bytes injected in %lu packets", priv->size, priv->packets);
 
-	if (priv->lc) {
-
-		/* free libnet context */
-		libnet_destroy(priv->lc);
-	}
-	free(priv);
-	t->target_priv = NULL;
-
+	if (priv->p) 
+		pcap_close(priv->p);
 	
 	return POM_OK;
 }

@@ -28,14 +28,12 @@
 #include <unistd.h>
 #include <string.h>
 
-// Stupid libnet need some #define tweaking
-#undef _GNU_SOURCE
-#include <libnet.h>
+#include <pcap.h>
 
 struct target_priv_inject {
 
-	libnet_t *lc;
-	unsigned int size;
+	pcap_t *p;
+	unsigned long size, packets;
 	struct ptype *iface;
 };
 

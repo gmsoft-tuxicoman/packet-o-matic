@@ -34,8 +34,7 @@ Some modules such as input_pcap requires root privileges in order to perform the
 
 Dependencies :
 --------------
- - libnet  : optional to build target_tcpkill and target_inject
- - libpcap : optional to build input_pcap and target_pcap
+ - libpcap : optional to build input_pcap, target_pcap, target_inject and target_tcpkill
  - libxml2 : mandatory to parse the configuration
  - xmlrpc-c : optional to build XML-RPC interface and web interface
 

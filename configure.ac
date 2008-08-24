@@ -135,16 +135,7 @@ AC_CHECK_LIB([pcap], [pcap_open_offline, pcap_open_dead, pcap_close, pcap_breakl
 if test "x$pcap_headers" = "xyes" -a "x$want_pcap" = "xyes"
 then
 	INPUT_OBJS="$INPUT_OBJS input_pcap.la"
-	TARGET_OBJS="$TARGET_OBJS target_pcap.la"
-fi
-
-# Check for Libnet
-AC_CHECK_HEADER([libnet.h], [want_libnet=yes], [want_libnet=no])
-AC_CHECK_LIB([net], [libnet_init, libnet_write_link], [want_libnet=$want_libnet], [want_libnet=no])
-
-if test "x$want_libnet" = "xyes"
-then
-	TARGET_OBJS="$TARGET_OBJS target_inject.la target_tcpkill.la"
+	TARGET_OBJS="$TARGET_OBJS target_pcap.la target_inject.la target_tcpkill.la"
 fi
 
 # Check for Linux' raw socket iface
@@ -223,7 +214,6 @@ echo " Configuration result :"
 echo " ----------------------"
 echo ""
 echo " * Found libpcap     : $want_pcap"
-echo " * Found libnet      : $want_libnet"
 echo " * Found xmlrpc-c    : $want_xmlrpc"
 echo " * Linux raw socket  : $want_netpacket"
 echo " * Linux DVB headers : $want_dvb"
