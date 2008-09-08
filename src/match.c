@@ -39,7 +39,7 @@ static pthread_rwlock_t match_global_lock = PTHREAD_RWLOCK_INITIALIZER;
 /**
  * @ingroup match_core
  * @param match_name Name of the match to register
- * @return THe id of the match or POM_ERR on error.
+ * @return The id of the match or POM_ERR on error.
  */
 int match_register(const char *match_name) {
 

@@ -412,10 +412,10 @@ static int target_process_http(struct target *t, struct frame *f) {
 			memset(outstr, 0, sizeof(outstr));
 			// YYYYMMDD-HHMMSS-UUUUUU
 			char *format = "%Y%m%d-%H%M%S-";
-			struct tm *tmp;
-			tmp = localtime((time_t*)&f->tv.tv_sec);
+			struct tm tmp;
+			localtime_r((time_t*)&f->tv.tv_sec, &tmp);
 
-			strftime(outstr, sizeof(outstr), format, tmp);
+			strftime(outstr, sizeof(outstr), format, &tmp);
 
 			strcat(filename, outstr);
 			sprintf(outstr, "%u", (unsigned int)f->tv.tv_usec);

@@ -136,6 +136,7 @@ static int input_open_pcap(struct input *i) {
 		case DLT_EN10MB:
 			pom_log("PCAP output type is ethernet");
 			p->output_layer = match_register("ethernet");
+			p->align_offset = 2;
 			break;
 #ifdef DLT_DOCSIS // this doesn't exits in all libpcap version
 		case DLT_DOCSIS:
@@ -229,6 +230,7 @@ static int input_read_pcap(struct input *i, struct frame *f) {
 
 	f->len = phdr->caplen;
 	f->first_layer = p->output_layer;
+	f->align_offset = 2;
 
 	p->packets_read++;
 
@@ -253,6 +255,7 @@ static int input_close_pcap(struct input *i) {
 		pom_log("Total packet read %lu", p->packets_read);
 
 	pcap_close(p->p);
+	p->p = NULL;
 
 	return POM_OK;
 

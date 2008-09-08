@@ -1,3 +1,15 @@
+* 2008/09/08 Guy Martin <gmsoft@tuxicoman.be>
+Added target_msn.
+Move align_offset from input_caps to struct frame.
+Use localtime_r() in favor of localtime().
+Fix small memory leak in conf.c
+Added bi-directional support to expectations.
+Added base64_decode().
+Move layer_find_start() to common.c.
+Fix retransmit not being discarded by helper_tcp.
+Fix deadlock when trying to set an invalid mode for an input.
+Allow empty parameters for input via mgmt interface.
+
 * 2008/08/23 Guy Martin <gmsoft@tuxicoman.be>
 Added split_interval parameter to target_pcap.
 Updated README file.

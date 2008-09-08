@@ -24,6 +24,7 @@
 
 #include "config.h"
 
+#include "rules.h"
 // Common stuff used in modules
 #include <stdlib.h>
 #include <stdio.h>
@@ -64,27 +65,7 @@ typedef unsigned short u_short;
 typedef unsigned char u_char;
 #endif
 
-
-#include "rules.h"
-
-int layer_find_start(struct layer *l, int header_type) {
-	
-	if (!l)
-		return POM_ERR;
-
-	do {
-		if(l->type == header_type) {
-			if (l->prev)
-				return l->prev->payload_start;
-			else
-				return 0;
-		}
-		l = l->next;
-	} while(l);
-
-	return POM_ERR;
-}
-
+int layer_find_start(struct layer *l, int header_type);
 
 #endif // __COMMON_H__
 

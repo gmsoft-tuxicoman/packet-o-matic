@@ -27,17 +27,19 @@
 
 #define EXPT_OP_IGNORE PTYPE_OP_RSVD
 
-#define EXPT_DIR_FWD 0
-#define EXPT_DIR_REV 1
+#define EXPT_DIR_FWD 1
+#define EXPT_DIR_REV 2
+#define EXPT_DIR_BOTH 3
 
 
 
 struct expectation_field {
 	
 	int field_id; ///< id corresponding the the field id of the match
-	char *name; /// pointer to name in struct match_field_reg
+	char *name; ///< pointer to name in struct match_field_reg
 	struct ptype* value;
 	int op;	
+	struct expectation_field *rev; ///< point to the reverse direction field if not NULL
 	struct expectation_field *next;
 };
 

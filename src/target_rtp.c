@@ -173,10 +173,10 @@ static int target_process_rtp(struct target *t, struct frame *f) {
 		memset(outstr, 0, 20);
 		// YYYYMMDD-HHMMSS-UUUUUU
 		char *format = "-%Y%m%d-%H%M%S-";
-		struct tm *tmp;
-		tmp = localtime((time_t*)&f->tv.tv_sec);
+		struct tm tmp;
+		localtime_r((time_t*)&f->tv.tv_sec, &tmp);
 
-		strftime(outstr, 20, format, tmp);
+		strftime(outstr, 20, format, &tmp);
 
 		strcpy(filename, PTYPE_STRING_GETVAL(priv->prefix));
 		strcat(filename, outstr);

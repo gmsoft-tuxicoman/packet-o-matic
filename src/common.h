@@ -135,4 +135,6 @@ int uid_init();
 
 uint32_t get_uid();
 
+int base64_decode(char *output, char *input);
+
 #endif

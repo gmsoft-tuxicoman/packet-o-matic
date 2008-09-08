@@ -122,6 +122,7 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 		ip->running = 1; // If start is not specified, start it
 	else if (!strcmp(input_start, "yes"))
 		ip->running = 1;
+	xmlFree(input_start);
 
 	xmlNodePtr pcur = cur->xmlChildrenNode;
 	while (pcur) {

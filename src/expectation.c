@@ -29,7 +29,10 @@ static struct expectation_list *expt_head;
 
 static int match_undefined_id;
 
-
+/**
+ * @ingroup expectation_core
+ * @return POM_OK on success, POM_ERR on failure.
+ **/
 int expectation_init() {
 
 	match_undefined_id = match_register("undefined");
@@ -38,7 +41,14 @@ int expectation_init() {
 
 }
 
-
+/**
+ * @ingroup expectation_api
+ * @param f Frame to use to generate the expectation
+ * @param t Target which creates the expectation
+ * @param ce Conntrack entry associated with this expectaion
+ * @param direction Directions that needs to be matched
+ * @return An expectation_list that will match the current packet
+ **/
 struct expectation_list *expectation_alloc(struct frame *f, struct target *t, struct conntrack_entry *ce, int direction) {
 
 	struct layer *l = f->l;
@@ -52,6 +62,7 @@ struct expectation_list *expectation_alloc(struct frame *f, struct target *t, st
 
 	lst->parent_ce = ce;
 	lst->t = t;
+	lst->flags = direction;
 	lst->expiry = timer_alloc(lst, f->input, expectation_do_timer);
 
 	struct expectation_node *last_node = NULL;
@@ -68,8 +79,30 @@ struct expectation_list *expectation_alloc(struct frame *f, struct target *t, st
 
 		int i;
 		for (i = 0; l->fields[i] && i < MAX_LAYER_FIELDS; i++) {
-			int field_id = match_get_expectation(l->type, i, direction);
-			if (field_id != POM_ERR) {
+			
+			// Lets see if we processed this field already
+
+			struct expectation_field *tmp = n->fields;
+			int processed = 0;
+			while (tmp) {
+				if (tmp->field_id == i) {
+					processed = 1;
+					break;
+				}
+				tmp = tmp->next;
+			}
+			if (processed)
+				continue;
+
+			int field_id = match_get_expectation(l->type, i, EXPT_DIR_FWD);
+			int field_id_rev = match_get_expectation(l->type, i, EXPT_DIR_REV);
+			
+			if (field_id != POM_ERR) { // Add the forward direction if needed
+				if (field_id != i) {
+					pom_log(POM_LOG_WARN "Warning, match_get_expectation forward direction didn't returned itself !");
+					continue;
+				}	
+				
 				if (!l->fields[field_id]) {
 					pom_log(POM_LOG_WARN "Warning, match_create_expectation returned an id hat doesn't correspond to a valid field_id");
 					l = l->next;
@@ -82,10 +115,35 @@ struct expectation_list *expectation_alloc(struct frame *f, struct target *t, st
 			
 				struct match_field_reg *fld_reg = match_get_field(l->type, i);
 				fld->name = fld_reg->name;
-				fld->field_id = i;
+				fld->field_id = field_id;
 
 				fld->next = n->fields;
 				n->fields = fld;
+
+				if (field_id_rev != POM_ERR) { // Add reverse direction
+					if (match_get_expectation(l->type, field_id_rev, EXPT_DIR_REV) != field_id) {
+						pom_log(POM_LOG_WARN "Warning, match_create_expectation didn't returned the expected id for reverse-reverse direction");
+						continue;
+					}
+
+
+					struct expectation_field *fld_rev = malloc(sizeof(struct expectation_field));
+					memset(fld_rev, 0, sizeof(struct expectation_field));
+					fld_rev->op = PTYPE_OP_EQ;
+					fld_rev->value = ptype_alloc_from(l->fields[field_id_rev]);
+				
+					fld_reg = match_get_field(l->type, field_id_rev);
+					fld_rev->name = fld_reg->name;
+					fld_rev->field_id = field_id_rev;
+
+					fld_rev->next = n->fields;
+					n->fields = fld_rev;
+
+					fld->rev = fld_rev;
+					fld_rev->rev = fld;
+
+				}
+
 			}
 		}
 
@@ -209,43 +267,96 @@ int expectation_process(struct frame *f) {
 
 		int process = 1;
 
-		while (n) {
+		// Check if forward direction match
+		if (expt->flags & EXPT_DIR_FWD) {
+			while (n) {
 
-			if (!l || n->layer != l->type) {
-				process = 0;
-				break;
-			}
-
-			struct expectation_field *fld = n->fields;
-			while (fld) {
-				if (fld->op == EXPT_OP_IGNORE) {
-					fld = fld->next;
-					continue;
-				}
-
-				if (!ptype_compare_val(fld->op, l->fields[fld->field_id], fld->value)) {
+				if (!l || n->layer != l->type) {
 					process = 0;
 					break;
 				}
-				fld = fld->next;
 
+				struct expectation_field *fld = n->fields;
+				while (fld) {
+					if (fld->op == EXPT_OP_IGNORE) {
+						fld = fld->next;
+						continue;
+					}
+
+					if (!ptype_compare_val(fld->op, l->fields[fld->field_id], fld->value)) {
+						process = 0;
+						break;
+					}
+					fld = fld->next;
+
+				}
+				if (!process)
+					break;
+
+				l = l->next;
+				n = n->next;
 			}
-			if (!process)
-				break;
+			if (process)
+				pom_log(POM_LOG_TSHOOT "Matched expectation in forward direction");
+		}
 
-			l = l->next;
-			n = n->next;
+		// Check if reverse direction match only if forward didn't match or wasn't evaluated
+		if (expt->flags & EXPT_DIR_REV && (!(expt->flags & EXPT_DIR_FWD) || ((expt->flags & EXPT_DIR_FWD) && !process))) {
+			process = 1;
+			while (n) {
+
+				if (!l || n->layer != l->type) {
+					process = 0;
+					break;
+				}
+
+				struct expectation_field *fld = n->fields;
+				while (fld) {
+					if (!fld->rev) {
+						fld = fld->next;
+						continue;
+					}
+					if (fld->rev->op == EXPT_OP_IGNORE) {
+						fld = fld->next;
+						continue;
+					}
+
+					if (!ptype_compare_val(fld->rev->op, l->fields[fld->field_id], fld->rev->value)) {
+						process = 0;
+						break;
+					}
+					fld = fld->next;
+
+				}
+				if (!process)
+					break;
+
+				l = l->next;
+				n = n->next;
+			}
+			if (process)
+				pom_log(POM_LOG_TSHOOT "Matched expectation in reverse direction");
 		}
 
 
 		if (process) {
-			if (!f->ce)
-				conntrack_create_entry(f);
+			if (!f->ce) // Make sure no connection already exists for that expectation
+				conntrack_get_entry(f);
+			
 			if (f->ce) {
-				f->ce->parent_ce = expt->parent_ce;
-				if (expt->target_priv)
-					conntrack_add_target_priv(expt->target_priv, expt->t, f->ce, expt->target_priv_cleanup_handler);
+				// FIXME should we try to merge both ?
+				// This can only occur with TCP connection, if 'master' connection has some packet loss
+				// it will receive the packet with the new connection info too late
+				pom_log(POM_LOG_DEBUG "Expected connection already exists. Replacing with expected one.");
+				conntrack_cleanup_connection(f->ce);
+				f->ce = NULL;
 			}
+
+
+			conntrack_create_entry(f);
+			f->ce->parent_ce = expt->parent_ce;
+			if (expt->target_priv)
+				conntrack_add_target_priv(expt->target_priv, expt->t, f->ce, expt->target_priv_cleanup_handler);
 
 			target_process(expt->t, f);
 

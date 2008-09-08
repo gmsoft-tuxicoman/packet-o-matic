@@ -222,7 +222,7 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 			// Make sure we ignore the source
 			struct expectation_field *fld = n->fields;
 			while (fld) {
-				if (!strcmp(fld->name, "sport")) {
+				if (!strcmp(fld->name, "dport")) {
 					fld->op = EXPT_OP_IGNORE;
 					break;
 				}
@@ -257,9 +257,9 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 
 			if (!*conn->filename) {
 				char *format = "tftp-%Y%m%d-%H%M%S.bin";
-				struct tm *tmp;
-				tmp = localtime((time_t*)&f->tv.tv_sec);
-				strftime(cp->conn->filename, sizeof(cp->conn->filename) - 1, format, tmp);
+				struct tm tmp;
+				localtime_r((time_t*)&f->tv.tv_sec, &tmp);
+				strftime(cp->conn->filename, sizeof(cp->conn->filename) - 1, format, &tmp);
 			}
 
 			uint16_t block_id = ntohs(*((uint16_t*)(payload)));

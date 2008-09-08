@@ -71,6 +71,7 @@ struct frame {
 	struct input *input; ///< The input from where the packet comes from
 	void *buff_base; ///< non aligned buffer for the frame
 	void *buff; ///< the frame itself in an aligned buffer
+	unsigned int align_offset; ///< Alignement offset of the buffer
 	struct conntrack_entry *ce; ///< Conntrack entry associated with this packet if any
 
 };

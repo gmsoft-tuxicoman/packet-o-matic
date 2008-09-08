@@ -99,7 +99,7 @@ static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned in
 
 	if (cp->flags[dir] & HELPER_TCP_SEQ_KNOWN) {
 	
-		if (new_seq + payload_size < cp->seq_expected[dir]) {
+		if (new_seq + payload_size <= cp->seq_expected[dir]) {
 			//pom_log(POM_LOG_TSHOOT "helper_tcp.c: %u.%u 0x%x-%u, expected seq %u < got seq %u, bufflen is %d. discarding packet", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, cp->seq_expected[dir], new_seq, cp->buff_len[dir]);
 			return H_NEED_HELP;
 		} else if (new_seq > cp->seq_expected[dir]) {

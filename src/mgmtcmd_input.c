@@ -249,14 +249,18 @@ int mgmtcmd_set_input_mode(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (pthread_mutex_lock(&rbuf->mutex)) {
 		pom_log(POM_LOG_ERR "Error while locking the buffer mutex");
+		abort();
+		return POM_ERR;
 	} else 	if (!rbuf->i) {
 		mgmtsrv_send(c, "No input configured yet. Use \"set input type <type>\" to choose an input\r\n");
 	} else if (rbuf->i->running) {
 		mgmtsrv_send(c, "Input is running. You need to stop it before doing any change\r\n");
 	} else if (input_set_mode(rbuf->i, argv[0]) != POM_OK) {
-		mgmtsrv_send(c, "No mode %s for this input\r\n");
+		mgmtsrv_send(c, "No mode %s for this input\r\n", argv[0]);
 		main_config->input_serial++;
-	} else if (pthread_mutex_unlock(&rbuf->mutex)) {
+	}
+
+	if (pthread_mutex_unlock(&rbuf->mutex)) {
 		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex");
 	}
 
@@ -292,7 +296,7 @@ struct mgmt_command_arg* mgmtcmd_set_input_mode_completion(int argc, char *argv[
 
 int mgmtcmd_set_input_parameter(struct mgmt_connection *c, int argc, char *argv[]) {
 	
-	if (argc < 2)
+	if (argc < 1)
 		return MGMT_USAGE;
 
 	if (pthread_mutex_lock(&rbuf->mutex)) {
@@ -327,9 +331,9 @@ int mgmtcmd_set_input_parameter(struct mgmt_connection *c, int argc, char *argv[
 	}
 
 	int i;
-	int len = 0;
+	int len = 1;
 	for (i = 1; i < argc; i++) 
-		len += strlen(argv[i]) + 1;
+		len += strlen(argv[i]);
 	char *param = malloc(len);
 	memset(param, 0, len);
 	for (i = 1; i < argc; i++) {

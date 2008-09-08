@@ -497,9 +497,9 @@ static int pop_write_login_info(struct target_conntrack_priv_pop *cp, struct fra
 
 	char strformat[1024];
 	char *format = "%Y-%m-%d %H:%M:%S, ${ipv4.dst} ${ipv6.dst} ${tcp.dport} -> ${ipv4.src} ${ipv6.src} ${tcp.sport}";
-	struct tm *tmp;
-	tmp = localtime((time_t*)&f->tv.tv_sec);
-	strftime(strformat, sizeof(strformat), format, tmp);
+	struct tm tmp;
+	localtime_r((time_t*)&f->tv.tv_sec, &tmp);
+	strftime(strformat, sizeof(strformat), format, &tmp);
 
 
 	if (layer_field_parse(f->l, strformat, line, sizeof(line)) == POM_ERR) {

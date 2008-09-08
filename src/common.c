@@ -230,15 +230,10 @@ void *lib_get_register_func(const char *type, const char *name, void **handle) {
 // takes care of allocating f->buff_base and set correctly f->buff and f->bufflen
 
 int frame_alloc_aligned_buff(struct frame *f, int length) {
-	struct input_caps ic;
-	if (input_getcaps(f->input, &ic) == POM_ERR) {	
-		pom_log(POM_LOG_ERR "Error while trying to get input caps");
-		return POM_ERR;
-	}
 
-	int total_len = length + ic.buff_align_offset + 4;
+	int total_len = length + f->align_offset + 4;
 	f->buff_base = malloc(total_len);
-	f->buff = (void*) (((long)f->buff_base & ~3) + 4 + ic.buff_align_offset);
+	f->buff = (void*) (((long)f->buff_base & ~3) + 4 + f->align_offset);
 	f->bufflen = total_len - ((long)f->buff - (long)f->buff_base);
 
 	return POM_OK;
@@ -351,4 +346,76 @@ uint32_t get_uid() {
 
 	return (uint32_t) rand_r(&random_seed);
 }
+
+int layer_find_start(struct layer *l, int header_type) {
+	
+	if (!l)
+		return POM_ERR;
+
+	do {
+		if(l->type == header_type) {
+			if (l->prev)
+				return l->prev->payload_start;
+			else
+				return 0;
+		}
+		l = l->next;
+	} while(l);
+
+	return POM_ERR;
+}
+
+int base64_decode(char *output, char *input) {
+
+	if (strlen(input) % 4) {
+		pom_log(POM_LOG_WARN "Base64 input length not multiple of 4");
+		return POM_ERR;
+	}
+
+	char *block, value[4];
+	
+	int len = POM_ERR;
+
+	block = input;
+	while (block[0]) {
+		int i;
+		for (i = 0; i < 4; i++) {
+			if (block[i] >= 'A' && block[i] <= 'Z') {
+				value[i] = block[i] - 'A';
+			} else if (block[i] >= 'a' && block[i] <= 'z') {
+				value[i] = block[i] - 'a' + 26;
+			} else if (block[i] >= '0' && block[i] <= '9') {
+				value[i] = block[i] - '0' + 52;
+			} else if (block[i] == '+') {
+				value[i] = 62;
+			} else if (block[i] == '/') {
+				value[i] = 63;
+			} else if (block[i] == '=') {
+				value[i] = 0;
+			}
+		}
+			
+		if (block[1] == '=')
+			return len;
+		output[0] = ((value[0] << 2) | (0x3 & (value[1] >> 4)));
+		len++;
+
+		if (block[2] == '=')
+			return len;
+		output[1] = ((value[1] << 4) | (0xf & (value[2] >> 2)));
+		len++;
+
+		if (block[3] == '=')
+			return len;
+		output[2] = ((value[2] << 6) | value[3]);
+		len++;
+
+		output += 3;
+		block += 4;
+
+	}
+
+	return len;
+
+};
 

@@ -1009,12 +1009,12 @@ static char* get_time(void) {
 
 	static char out[32];
 	char *format = "%H:%M:%S";
-	struct tm *tmp;
+	struct tm tmp;
 	time_t ti;
 	out[0] = 0;
 	ti = time(NULL);
-	tmp = localtime(&ti);
-	strftime(out, 20, format, tmp);
+	localtime_r(&ti, &tmp);
+	strftime(out, 20, format, &tmp);
 
 	return &out[0];
 }
@@ -1026,12 +1026,12 @@ static char* get_timestamp(void) {
 
 	static char out[32];
 	char *format = "%Y%m%d-%H:%M:%S";
-	struct tm *tmp;
+	struct tm tmp;
 	time_t ti;
 	out[0] = 0;
 	ti = time(NULL);
-	tmp = localtime(&ti);
-	strftime(out, 20, format, tmp);
+	localtime_r(&ti, &tmp);
+	strftime(out, 20, format, &tmp);
 
 	return &out[0];
 }
