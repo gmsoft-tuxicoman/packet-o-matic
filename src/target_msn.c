@@ -2120,9 +2120,7 @@ int target_msn_add_expectation(struct target *t, struct target_conntrack_priv_ms
 			while (fld) {
 				if (!strcmp(fld->name, "src")) {
 					PTYPE_IPV4_SETADDR(fld->value, addr);
-				} else if (!strcmp(fld->name, "dst")) {
-					fld->op = EXPT_OP_IGNORE;
-				}
+				} 
 				fld = fld->next;
 			}
 		} else if (n->layer == tcp_type) {

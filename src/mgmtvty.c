@@ -154,20 +154,24 @@ int mgmtvty_process(struct mgmt_connection *c, unsigned char *buffer, unsigned i
 
 							}
 
-							int len = strlen(c->curcmd) - strlen(c->history[prev]);
-
 							int i;
-							for (i = 0; i < len; i++)
+							for (i = 0; i < c->cursor_pos; i++)
 								mgmtsrv_send(c, "\b");
-							for (i = 0; i < len; i++)
-								mgmtsrv_send(c, " ");
-							for (i = 0; i < strlen(c->curcmd); i++)
-								mgmtsrv_send(c, "\b");
+
+							mgmtsrv_send(c, c->history[prev]);
+
+							int lendiff = strlen(c->curcmd) - strlen(c->history[prev]);
+							if (lendiff > 0) {
+								for (i = 0; i < lendiff; i++)
+									mgmtsrv_send(c, " ");
+								for (i = 0; i < lendiff; i++)
+									mgmtsrv_send(c, "\b");
+							}
+
 							c->history_pos = prev;
 
 							c->curcmd = realloc(c->curcmd, strlen(c->history[c->history_pos]) + 1);
 							strcpy(c->curcmd, c->history[c->history_pos]);
-							mgmtsrv_send(c, c->curcmd);
 							c->cursor_pos = strlen(c->curcmd);
 
 							break;
@@ -180,21 +184,26 @@ int mgmtvty_process(struct mgmt_connection *c, unsigned char *buffer, unsigned i
 							if (!c->history[next])
 								break;
 
-							int len = strlen(c->curcmd) - strlen(c->history[next]);
 
 							int i;
-							for (i = 0; i < len; i++)
+							for (i = 0; i < c->cursor_pos; i++)
 								mgmtsrv_send(c, "\b");
-							for (i = 0; i < len; i++)
-								mgmtsrv_send(c, " ");
-							for (i = 0; i < strlen(c->curcmd); i++)
-								mgmtsrv_send(c, "\b");
+
+							mgmtsrv_send(c, c->history[next]);
+
+							int lendiff = strlen(c->curcmd) - strlen(c->history[next]);
+							if (lendiff > 0) {
+								for (i = 0; i < lendiff; i++)
+									mgmtsrv_send(c, " ");
+								for (i = 0; i < lendiff; i++)
+									mgmtsrv_send(c, "\b");
+							}
+
 							c->history_pos = next;
 
 							c->curcmd = realloc(c->curcmd, strlen(c->history[c->history_pos]) + 1);
 							strcpy(c->curcmd, c->history[c->history_pos]);
 
-							mgmtsrv_send(c, c->curcmd);
 							c->cursor_pos = strlen(c->curcmd);
 
 							break;

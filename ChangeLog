@@ -1,3 +1,8 @@
+* 2008/09/11 Guy Martin <gmsoft@tuxicoman.be>
+Fix mgmt command sorting at registration time.
+Fix up and down arrow displaying in mgmt console.
+Don't ignore destination addressin target_msn expectation.
+
 * 2008/09/08 Guy Martin <gmsoft@tuxicoman.be>
 Added target_msn.
 Move align_offset from input_caps to struct frame.

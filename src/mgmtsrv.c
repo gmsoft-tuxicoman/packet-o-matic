@@ -318,17 +318,17 @@ int mgmtsrv_register_command(struct mgmt_command *cmd) {
 			continue;
 		}
 
+		if (!tmp->words[w][l] && !cmd->words[w][l]) { // both words are the same
+			w++;
+			l = 0;
+			continue;
+		}
+
 		if (!tmp->words[w][l]) { // our command is longer. next one please
 		//	w++;
 		//	l = 0;
 		//	continue;
 			break;
-		}
-
-		if (!tmp->words[w][l] && !cmd->words[w][l]) { // both words are the same
-			w++;
-			l = 0;
-			continue;
 		}
 
 		if (!cmd->words[w][l]) // end of our word
