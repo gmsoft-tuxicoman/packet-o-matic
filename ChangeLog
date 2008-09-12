@@ -1,3 +1,7 @@
+* 2008/09/12 Guy Martin <gmsoft@tuxicoman.be>
+Fixed possible crash in target_msn.
+Updated README.
+
 * 2008/09/11 Guy Martin <gmsoft@tuxicoman.be>
 Fix mgmt command sorting at registration time.
 Fix up and down arrow displaying in mgmt console.

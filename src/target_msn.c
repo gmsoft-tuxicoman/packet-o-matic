@@ -272,7 +272,7 @@ int target_process_msn(struct target *t, struct frame *f) {
 						end = NULL;
 				}
 				if (!end) {
-					if (cp->buffer_len[dir] < plen) {
+					if (cp->buffer_len[dir] < plen + 1) {
 						cp->buffer[dir] = realloc(cp->buffer[dir], plen + 1);
 						cp->buffer_len[dir]  = plen + 1;
 					}
@@ -285,10 +285,10 @@ int target_process_msn(struct target *t, struct frame *f) {
 					int bufflen = len + 1;
 					if (cp->buffer[dir])
 						bufflen += strlen(cp->buffer[dir]);
-					if (cp->buffer_len[dir] < bufflen) {
-						cp->buffer[dir] = realloc(cp->buffer[dir], bufflen);
+					if (cp->buffer_len[dir] < bufflen + 1) {
+						cp->buffer[dir] = realloc(cp->buffer[dir], bufflen + 1);
 						cp->buffer[dir][0] = 0;
-						cp->buffer_len[dir] = bufflen;
+						cp->buffer_len[dir] = bufflen + 1;
 					}
 
 					strcat(cp->buffer[dir], payload);

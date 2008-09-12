@@ -132,6 +132,7 @@ The target modules process the packet and most of the time, saves it or resend i
 - tap : open a tap interface and send the packets trough it
 - tcpkill : works only with tcp packets. Send a TCP RST packet to any matched tcp packet
 - tftp : dump files downloaded/uploaded via TFTP
+- msn : dump conversations and avatar out of msn conversations
 - null : does nothing, used for debugging or as a template
 
 
