@@ -196,9 +196,16 @@ LIBS="$OLD_LIBS"
 AC_SUBST(xmlrpc_SRC)
 AC_SUBST(xmlrpc_LIBS)
 
+# Check for PostgreSQL
+AC_CHECK_HEADERS([libpq-fe.h], [want_postgres=yes], [want_postgres=no])
+if test "x$want_postgres" = "xyes"
+then
+	DATASTORE_OBJS="$DATASTORE_OBJS datastore_postgres.la"
+fi
 
 AC_SUBST(INPUT_OBJS)
 AC_SUBST(TARGET_OBJS)
+AC_SUBST(DATASTORE_OBJS)
 
 AC_OUTPUT
 
@@ -213,11 +220,12 @@ echo "=============================================================="
 echo " Configuration result :"
 echo " ----------------------"
 echo ""
-echo " * Found libpcap     : $want_pcap"
-echo " * Found xmlrpc-c    : $want_xmlrpc"
-echo " * Linux raw socket  : $want_netpacket"
-echo " * Linux DVB headers : $want_dvb"
-echo " * Linux TUN headers : $want_tun"
+echo " * Found libpcap      : $want_pcap"
+echo " * Found xmlrpc-c     : $want_xmlrpc"
+echo " * Linux raw socket   : $want_netpacket"
+echo " * Linux DVB headers  : $want_dvb"
+echo " * Linux TUN headers  : $want_tun"
+echo " * PostgreSQL headers : $want_postgres"
 echo ""
 echo "Author : Guy Martin <gmsoft@tuxicoman.be>"
 

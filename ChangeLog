@@ -1,3 +1,11 @@
+* 2008/11/10 Guy Martin <gmsoft@tuxicoman.be>
+Added datastore support.
+Fix input locking while parsing its config.
+Fix segfault in target_msn when LSG command is not complete.
+Added bswap64(), htonll() and ntohll().
+Fix rule list serial when removing a stopped target.
+Fix type mask in target_http.
+
 * 2008/09/12 Guy Martin <gmsoft@tuxicoman.be>
 Fixed possible crash in target_msn.
 Updated README.
