@@ -35,6 +35,12 @@ static struct target_mode *mode_default;
 
 static unsigned long long total_delivery = 0; ///< Used in mail filename to avoid duplicate
 
+static struct datavalue_descr dataset_fields[3] = { 
+	{ "login", "string" },
+	{ "password", "string" },
+	{ NULL, NULL },
+};
+
 enum pop_cmd {
 	pop_cmd_other = 0,
 	pop_cmd_user,
@@ -47,13 +53,17 @@ enum pop_cmd {
 int target_register_pop(struct target_reg *r) {
 
 	r->init = target_init_pop;
+	r->open = target_open_pop;
 	r->process = target_process_pop;
 	r->close = target_close_pop;
 	r->cleanup = target_cleanup_pop;
 
 	match_undefined_id = match_register("undefined");
 
+
 	mode_default = target_register_mode(r->type, "dump", "Dump emails into separate maildir folders");
+
+	target_register_dataset(mode_default, TARGET_POP_DATASET_CREDENTIAL, "Credentials found", dataset_fields);
 
 	if (!mode_default)
 		return POM_ERR;
@@ -83,6 +93,15 @@ static int target_init_pop(struct target *t) {
 	return POM_OK;
 }
 
+static int target_open_pop(struct target *t) {
+
+	struct target_priv_pop *priv = t->target_priv;
+
+	priv->dset = target_get_dataset_instance(t, TARGET_POP_DATASET_CREDENTIAL);
+
+	return POM_OK;
+
+}
 
 static int target_close_pop(struct target *t) {
 
@@ -172,7 +191,7 @@ static int target_process_pop(struct target *t, struct frame *f) {
 	while (bufpos < lastl->payload_size && linepos < sizeof(line) - 1) {
 		line[linepos] = payload[bufpos];
 		if (payload[bufpos] == '\n') {
-			if (pop_process_line(cp, line, linepos, f) == POM_ERR)
+			if (pop_process_line(t, cp, line, linepos, f) == POM_ERR)
 				return POM_ERR;
 			memset(line, 0, sizeof(line));
 			linepos = 0;
@@ -185,14 +204,14 @@ static int target_process_pop(struct target *t, struct frame *f) {
 	}
 
 	if (linepos > 0)
-		if (pop_process_line(cp, line, linepos, f) == POM_ERR)
+		if (pop_process_line(t, cp, line, linepos, f) == POM_ERR)
 			return POM_ERR;
 
 
 	return POM_OK;
 }
 
-static int pop_process_line(struct target_conntrack_priv_pop *cp, char *line, int size, struct frame *f) {
+static int pop_process_line(struct target *t, struct target_conntrack_priv_pop *cp, char *line, int size, struct frame *f) {
 
 	enum pop_reply {
 		pop_reply_unk = 0,
@@ -241,7 +260,7 @@ static int pop_process_line(struct target_conntrack_priv_pop *cp, char *line, in
 						cp->password = NULL;
 					}
 				} else if (cp->username && cp->password) {
-					if (pop_write_login_info(cp, f) == POM_ERR)
+					if (pop_write_login_info(t, cp, f) == POM_ERR)
 						return POM_ERR;
 				}
 				cp->lastcmd = pop_cmd_other;
@@ -323,7 +342,7 @@ static int pop_process_line(struct target_conntrack_priv_pop *cp, char *line, in
 						cp->lastcmd = pop_cmd_multiline;
 					} else { // most probably a message :)
 						cp->lastcmd = pop_cmd_retr_maybe;
-						pop_process_line(cp, line, size, f);
+						pop_process_line(t, cp, line, size, f);
 					}
 				
 				} else
@@ -484,7 +503,27 @@ static int pop_file_close(struct target_conntrack_priv_pop *cp) {
 
 }
 
-static int pop_write_login_info(struct target_conntrack_priv_pop *cp, struct frame *f) {
+static int pop_write_login_info(struct target *t, struct target_conntrack_priv_pop *cp, struct frame *f) {
+
+	struct target_priv_pop *priv = t->target_priv;
+
+	char *end;
+	end = strchr(cp->username, '\r');
+	*end = 0;
+	end = strchr(cp->password, '\r');
+	*end = 0;
+
+
+	if (priv->dset) {
+		struct datavalue *dv = target_get_dataset_values(priv->dset);
+		PTYPE_STRING_SETVAL(dv[0].value, cp->username);
+		PTYPE_STRING_SETVAL(dv[1].value, cp->password);
+		if (target_write_dataset(priv->dset, f) == POM_ERR) {
+			pom_log(POM_LOG_WARN "Failed to write in the dataset");
+			return POM_ERR;
+		}
+	}
+
 
 	char final_name[NAME_MAX + 1];
 	memset(final_name, 0, sizeof(final_name));
@@ -507,12 +546,6 @@ static int pop_write_login_info(struct target_conntrack_priv_pop *cp, struct fra
 		return POM_ERR;
 	}
 	
-	char *end;
-	end = strchr(cp->username, '\r');
-	*end = 0;
-	end = strchr(cp->password, '\r');
-	*end = 0;
-
 	strncat(line, " | \"", NAME_MAX - strlen(line));
 	strncat(line, cp->username, NAME_MAX - strlen(line));
 	strncat(line, "\", \"", NAME_MAX - strlen(line));

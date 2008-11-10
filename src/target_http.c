@@ -208,6 +208,8 @@ static int target_open_http(struct target *t) {
 
 	struct target_priv_http *priv = t->target_priv;
 
+	priv->match_mask = 0;
+
 	if (PTYPE_BOOL_GETVAL(priv->dump_img)) // img
 		priv->match_mask |= TYPE_IMG;
 	if (PTYPE_BOOL_GETVAL(priv->dump_vid)) // vid

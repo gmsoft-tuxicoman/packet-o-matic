@@ -32,6 +32,7 @@
 #include "mgmtcmd_helper.h"
 #include "mgmtcmd_rule.h"
 #include "mgmtcmd_target.h"
+#include "mgmtcmd_datastore.h"
 
 #include "ptype_uint64.h"
 
@@ -173,6 +174,7 @@ int mgmtcmd_register_all() {
 	mgmtcmd_helper_register_all();
 	mgmtcmd_rule_register_all();
 	mgmtcmd_target_register_all();
+	mgmtcmd_datastore_register_all();
 
 	return POM_OK;
 }

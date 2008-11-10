@@ -28,10 +28,14 @@
 #include "main.h"
 
 #include "ptype_uint64.h"
+#include "ptype_string.h"
+#include "ptype_bool.h"
 
 struct target_reg *targets[MAX_TARGET];
 
 static pthread_rwlock_t target_global_lock = PTHREAD_RWLOCK_INITIALIZER;
+
+static struct ptype *param_autostart_datastore = NULL;
 
 /**
  * @ingroup target_core
@@ -39,6 +43,11 @@ static pthread_rwlock_t target_global_lock = PTHREAD_RWLOCK_INITIALIZER;
 int target_init() {
 
 	pom_log(POM_LOG_DEBUG "Targets initialized");
+	param_autostart_datastore = ptype_alloc("bool", NULL);
+	if (!param_autostart_datastore)
+		return POM_ERR;
+	
+	core_register_param("target_autostart_datastore", "yes", param_autostart_datastore, "Automatically start a datastore being used by a target", NULL);
 
 	return POM_OK;
 
@@ -189,8 +198,10 @@ int target_register_param_value(struct target *t, struct target_mode *mode, cons
 			break;
 		p = p->next;
 	}
-	if (!p)
+	if (!p) {
+		pom_log(POM_LOG_ERR "Error while registering parameter value for param %s. This parameter isn't registered yet");
 		return POM_ERR;
+	}
 
 	if (ptype_parse_val(value, p->defval) != POM_OK)
 		return POM_ERR;
@@ -234,17 +245,44 @@ struct target *target_alloc(int target_type) {
 
 	t->type = target_type;
 	
+	// Init the log
 	if (pthread_rwlock_init(&t->lock, NULL)) {
 		free(t);
 		return NULL;
 	}
 
+	// Init the datasets parameters
 
-	if (targets[target_type]->init)
+	struct target_mode *m = targets[target_type]->modes;
+	while (m) {
+		struct target_dataset_reg *ds_reg = m->datasets;
+		while (ds_reg) {
+			struct target_dataset *ds = NULL;
+			ds = malloc(sizeof(struct target_dataset));
+			memset(ds, 0, sizeof(struct target_dataset));
+			ds->type = ds_reg;
+			ds->ds_path = ptype_alloc("string", NULL);
+			ds->next = t->datasets;
+			t->datasets = ds;
+			target_register_param_value(t, m, TARGET_DATASTORE_PARAM_NAME, ds->ds_path);
+
+			ds_reg = ds_reg->next;
+		}
+		m = m->next;
+	}
+
+
+	// Init the target internal stuff
+
+	if (targets[target_type]->init) {
 		if ((*targets[target_type]->init) (t) != POM_OK) {
 			free(t);
 			return NULL;
 		}
+	}
+
+
+
 
 	t->uid = get_uid();
 
@@ -433,6 +471,13 @@ int target_close(struct target *t) {
 	if (targets[t->type] && targets[t->type]->close)
 		result = (*targets[t->type]->close) (t);
 
+	struct target_dataset *ds = t->datasets;
+	while (ds) {
+		if (ds->dset && ds->dset->open)
+			datastore_dataset_close(ds->dset);
+		ds = ds->next;
+	}
+
 	t->serial++;
 	if (t->parent_serial) {
 		(*t->parent_serial)++;
@@ -467,6 +512,13 @@ int target_cleanup_module(struct target *t) {
 		targets[t->type]->refcount--;
 	}
 
+	while (t->datasets) {
+		struct target_dataset *ds = t->datasets;
+		t->datasets = t->datasets->next;
+		ptype_cleanup(ds->ds_path);
+		free(ds);
+
+	}
 
 	ptype_cleanup(t->pkt_cnt);
 	ptype_cleanup(t->byte_cnt);
@@ -498,6 +550,7 @@ int target_unregister(int target_type) {
 		return POM_ERR;
 	}
 
+
 	struct target_mode *mode = targets[target_type]->modes;
 
 	while (mode) {
@@ -510,6 +563,16 @@ int target_unregister(int target_type) {
 			p = p->next;
 			free(mode->params);
 			mode->params = p;
+		}
+		
+		struct target_dataset_reg *ds = NULL;
+		while (mode->datasets) {
+			ds = mode->datasets;
+			mode->datasets = ds->next;
+
+			free(ds->name);
+			free(ds->descr);
+			free(ds);
 		}
 
 		free(mode->name);
@@ -552,6 +615,8 @@ int target_unregister_all() {
  * @return POM_OK on sucess, POM_ERR on failure.
  */
 int target_cleanup() {
+
+	ptype_cleanup(param_autostart_datastore);	
 
 	return POM_OK;
 
@@ -722,3 +787,142 @@ int target_unlock() {
 
 }
 
+int target_register_dataset(struct target_mode *mode, char *name, char *descr, struct datavalue_descr *fields) {
+
+	// FIXME check that param has been registered or not
+
+	if (target_register_param(mode, TARGET_DATASTORE_PARAM_NAME, "", "Datastore to use") == POM_ERR)
+		return POM_ERR;
+	
+	struct target_dataset_reg *ds;
+	ds = malloc(sizeof(struct target_dataset));
+	memset(ds, 0, sizeof(struct target_dataset));
+	
+	ds->name = malloc(strlen(name) + 1);
+	strcpy(ds->name, name);
+
+	ds->descr = malloc(strlen(descr) + 1);
+	strcpy(ds->descr, descr);
+
+	ds->fields = fields;
+
+	ds->next = mode->datasets;
+	mode->datasets = ds;
+
+
+	return POM_OK;
+
+}
+
+struct target_dataset *target_get_dataset_instance(struct target *t, char *name) {
+
+
+	// Find the dataset registered by the given name
+	struct target_dataset_reg *ds_reg = t->mode->datasets;
+
+	while (ds_reg) {
+		if (!strcmp(ds_reg->name, name))
+			break;
+		ds_reg = ds_reg->next;
+	}
+
+	if (!ds_reg) {
+		pom_log(POM_LOG_ERR "Error, dataset %s was not previously registered", name);
+		return NULL;
+	}
+	
+	// Fin the instance of that dataset
+	struct target_dataset *res = t->datasets;
+	while (res) {
+		if (res->type == ds_reg)
+			break;
+		res = res->next;
+	}
+
+	struct ptype* ds_path = target_get_param_value(t, TARGET_DATASTORE_PARAM_NAME);
+	if (!ds_path) {
+		pom_log(POM_LOG_ERR "Internal error, value of parameter " TARGET_DATASTORE_PARAM_NAME " not found");
+		return NULL;
+	}
+
+	// Compute the name of the datastore and the dataset
+	char *ds_path_val = PTYPE_STRING_GETVAL(ds_path);
+
+	if (!strlen(ds_path_val))
+		return NULL;
+
+	char *datastore_name = malloc(strlen(ds_path_val) + 1);
+	strcpy(datastore_name, ds_path_val);
+
+	char *dataset_name = strchr(datastore_name, '/');
+
+	if (dataset_name) { // Append the name to the prefix
+		datastore_name = realloc(datastore_name, strlen(datastore_name) + strlen(name) + 2);
+		strcat(datastore_name, "_");
+		strcat(datastore_name, name);
+		// string reallocated, need the new position of '/'
+		dataset_name = strchr(datastore_name, '/');
+		*dataset_name = 0;
+		dataset_name++;
+	} else {
+		dataset_name = name;
+	}
+
+	// Open the datastore
+
+	struct datastore *dstore = main_config->datastores;
+	while (dstore) {
+		if (!strcmp(dstore->name, datastore_name)) {
+			if (!dstore->started) {
+				if (PTYPE_BOOL_GETVAL(param_autostart_datastore)) {
+					if (datastore_open(dstore) == POM_ERR) {
+						pom_log(POM_LOG_WARN "Datastore %s failed to start and won't be used", dstore->name);
+						free(datastore_name);
+						return NULL;
+					}
+				} else {
+					pom_log(POM_LOG_WARN "Datastore %s not started and target_autostart_datastore is set to no. Nothing will be saved", dstore->name);
+					free(datastore_name);
+					return NULL;
+				}
+			}
+			break;
+		}
+
+		dstore = dstore->next;
+	}
+
+	// Found the right datastore. Open the dataset now
+	
+	char *dataset_type = malloc(strlen(targets[t->type]->name) + strlen("_") + strlen(name) + 1);
+	strcpy(dataset_type, targets[t->type]->name);
+	strcat(dataset_type, "_");
+	strcat(dataset_type, name);
+
+	
+	res->dset = datastore_dataset_open(dstore, dataset_name, dataset_type, ds_reg->descr, ds_reg->fields);
+
+	free(dataset_type);
+
+	if (!res->dset) {
+		pom_log(POM_LOG_WARN "Could not open the dataset %s in datastore %s", dataset_name, dstore->name);
+		free(datastore_name);
+		return NULL;
+	}
+	free(datastore_name);
+	return res;
+
+}
+
+
+struct datavalue *target_get_dataset_values(struct target_dataset *ds) {
+
+	return ds->dset->query_data;
+}
+
+
+int target_write_dataset(struct target_dataset *ds, struct frame *f) {
+
+	return datastore_dataset_write(ds->dset);
+
+}

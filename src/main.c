@@ -26,6 +26,7 @@
 #include "input.h"
 #include "mgmtsrv.h"
 #include "ptype.h"
+#include "datastore.h"
 
 #ifdef USE_XMLRPC
 #include "xmlrpcsrv.h"
@@ -588,7 +589,6 @@ int main(int argc, char *argv[]) {
 	rules_init();
 	expectation_init();
 
-
 	struct ptype *param_autosave_on_exit = ptype_alloc("bool", NULL);
 	struct ptype *param_quit_on_input_error = ptype_alloc("bool", NULL);
 	if (!param_autosave_on_exit || !param_quit_on_input_error) {
@@ -809,6 +809,8 @@ err:
 		xmlrpcsrv_cleanup();
 #endif
 	config_cleanup(main_config);
+
+	datastore_unregister_all();
 
 	helper_unregister_all();
 	helper_cleanup();
@@ -1052,3 +1054,33 @@ int main_config_rules_unlock() {
 
 }
 
+int main_config_datastores_lock(int write) {
+
+	int result = 0;
+	if (write) {
+		result = pthread_rwlock_wrlock(&main_config->datastores_lock);
+	} else {
+		result = pthread_rwlock_rdlock(&main_config->datastores_lock);
+	}
+
+	if (result) {
+		pom_log(POM_LOG_ERR "Error while locking the datastore lock");
+		abort();
+		return POM_ERR;
+	}
+
+	return POM_OK;
+
+}
+
+int main_config_datastores_unlock() {
+
+	if (pthread_rwlock_unlock(&main_config->datastores_lock)) {
+		pom_log(POM_LOG_ERR "Error while unlocking the datastore lock");
+		abort();
+		return POM_ERR;
+	}
+
+	return POM_OK;
+
+}

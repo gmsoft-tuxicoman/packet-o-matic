@@ -361,7 +361,7 @@ int ptype_get_type(char* ptype_name) {
  * @return String representation of the type or NULL on failure.
  */
 
-char * ptype_get_name(unsigned int type) {
+char *ptype_get_name(unsigned int type) {
 
 	if (type > MAX_PTYPE)
 		return NULL;

@@ -26,6 +26,8 @@
 #include "modules_common.h"
 #include "rules.h"
 
+#define TARGET_POP_DATASET_MAIL "mails"
+#define TARGET_POP_DATASET_CREDENTIAL "credentials"
 
 struct target_conntrack_priv_pop {
 
@@ -50,21 +52,23 @@ struct target_conntrack_priv_pop {
 struct target_priv_pop {
 
 	struct ptype *path;
-	struct target_conntrack_priv_pop *ct_privs;
+	struct target_dataset *dset;
 
+	struct target_conntrack_priv_pop *ct_privs;
 };
 
 int target_register_pop(struct target_reg *r);
 
 static int target_init_pop(struct target *t);
+static int target_open_pop(struct target *t);
 static int target_process_pop(struct target *t, struct frame *f);
 static int target_close_connection_pop(struct target *t, struct conntrack_entry* ce, void *conntrack_priv);
 static int target_close_pop(struct target *t);
 static int target_cleanup_pop(struct target *t);
 
-static int pop_process_line(struct target_conntrack_priv_pop *cp, char *line, int size, struct frame *f);
+static int pop_process_line(struct target *t, struct target_conntrack_priv_pop *cp, char *line, int size, struct frame *f);
 static int pop_file_open(struct target_conntrack_priv_pop *cp, struct timeval *recvd_time);
 static int pop_file_close(struct target_conntrack_priv_pop *cp);
-static int pop_write_login_info(struct target_conntrack_priv_pop *cp, struct frame *f);
+static int pop_write_login_info(struct target *t, struct target_conntrack_priv_pop *cp, struct frame *f);
 
 #endif

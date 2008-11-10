@@ -840,6 +840,11 @@ int target_msn_handler_lsg(struct target *t, struct target_conntrack_priv_msn *c
 
 	}
 
+	if (!tk1 || !tk2) {
+		pom_log(POM_LOG_TSHOOT "LSG command imcomplete : %s", lsg);
+		return POM_OK;
+	}
+
 	if (old_syntax) {
 		// Allright, make sure that that's it
 		int id;

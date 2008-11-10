@@ -100,5 +100,7 @@ int core_param_unregister_all();
 
 int main_config_rules_lock(int write);
 int main_config_rules_unlock();
+int main_config_datastores_lock(int write);
+int main_config_datastores_unlock();
 
 #endif

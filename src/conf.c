@@ -37,6 +37,7 @@
 #include "ptype.h"
 #include "main.h"
 #include "mgmtsrv.h"
+#include "datastore.h"
 #include "ptype_bool.h"
 #include "ptype_uint64.h"
 
@@ -67,6 +68,13 @@ int config_cleanup(struct conf* c) {
 		pom_log(POM_LOG_ERR "Unable to destroy the config rules lock");
 	}
 
+	while (c->datastores) {
+		struct datastore* tmp = c->datastores;
+		c->datastores = tmp->next;
+		datastore_close(tmp);
+		datastore_cleanup(tmp);
+	}
+
 	free(c);
 	return POM_OK ;
 }
@@ -80,7 +88,7 @@ struct input* config_parse_input(xmlDocPtr doc, xmlNodePtr cur) {
 	}
 	pom_log(POM_LOG_TSHOOT "Parsing input of type %s", input_type);
 
-	input_lock(0);
+	input_lock(1);
 
 	int it = input_register(input_type);
 	if (it == POM_ERR) {
@@ -507,6 +515,104 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 
 }
 
+struct datastore* config_parse_datastore(xmlDocPtr doc, xmlNodePtr cur) {
+
+
+	char *datastore_type;
+	datastore_type = (char*) xmlGetProp(cur, (const xmlChar*) "type");
+	if (!datastore_type) {
+		pom_log(POM_LOG_ERR "No type given in the datastore tag");
+		xmlFree(datastore_type);
+		return NULL;
+	}
+	
+	pom_log(POM_LOG_TSHOOT "Parsing datastore of type %s", datastore_type);
+
+	char *datastore_name;
+	datastore_name = (char*) xmlGetProp(cur, (const xmlChar*) "name");
+	if (!datastore_name) {
+		pom_log(POM_LOG_ERR "No name given in the datastore tag");
+		xmlFree(datastore_type);
+		xmlFree(datastore_name);
+		return NULL;
+	}
+
+	datastore_lock(1);
+
+	int dt = datastore_register(datastore_type);
+	if (dt == POM_ERR) {
+		datastore_unlock();
+		pom_log(POM_LOG_ERR "Could not load datastore %s !", datastore_type);
+		xmlFree(datastore_type);
+		xmlFree(datastore_name);
+		return NULL;
+	}
+	struct datastore *d = datastore_alloc(dt);
+
+	// we got a refcount, we can safely unlock
+	datastore_unlock();
+
+	if (!d) {
+		
+		pom_log(POM_LOG_ERR "Error, unable to allocate datastore of type %s", datastore_type);
+		xmlFree(datastore_type);
+		xmlFree(datastore_name);
+		return NULL;
+	}
+
+	d->name = malloc(strlen(datastore_name) + 1);
+	strcpy(d->name, datastore_name);
+
+	char *datastore_start;
+	datastore_start = (char *) xmlGetProp(cur, (const xmlChar*) "start");
+	if (!datastore_start)
+		d->started = 1; // If start is not specified, start it
+	else if (!strcmp(datastore_start, "yes"))
+		d->started = 1;
+	xmlFree(datastore_start);
+
+	xmlNodePtr pcur = cur->xmlChildrenNode;
+	while (pcur) {
+		if (!xmlStrcmp(pcur->name, (const xmlChar*) "param")) {
+			char *param_type = (char *) xmlGetProp(pcur, (const xmlChar*) "name");
+			if (!param_type)
+				continue;
+			char *value = (char *) xmlNodeListGetString(doc, pcur->xmlChildrenNode, 1);
+			if (!value) {
+				xmlFree(param_type);
+				continue;
+			}
+			struct datastore_param *param = d->params;
+			while (param) {
+				if (!strcmp(param->type->name, param_type)) {
+					if (ptype_unserialize(param->value, value) == POM_ERR) {
+						pom_log(POM_LOG_ERR "Unable to parse \"%s\" for parameter %s of datastore %s", value, param_type, datastore_type);
+					}
+					break;
+				}
+				param = param->next;
+			}
+			if (!param) {
+				pom_log(POM_LOG_WARN "No parameter %s for datastore %s", param_type, datastore_type);
+			}
+
+			xmlFree(param_type);
+			xmlFree(value);
+
+		}
+		pcur = pcur->next;
+	}
+	xmlFree(datastore_type);
+	xmlFree(datastore_name);
+
+	if (d->started) { // Start the datastore if needed
+		d->started = 0;
+		datastore_open(d);
+	}
+
+	return d;
+}
+
 
 int config_parse(struct conf *c, char * filename) {
 
@@ -649,6 +755,17 @@ int config_parse(struct conf *c, char * filename) {
 			}
 			conntrack_unlock();
 			xmlFree(type);
+		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "datastore")) {
+			struct datastore *d = config_parse_datastore(doc, cur);
+			if (!c->datastores) {
+				c->datastores = d;
+			} else {
+				struct datastore *tmp = c->datastores;
+				while (tmp->next)
+					tmp = tmp->next;
+				tmp->next = d;
+				d->prev = tmp;
+			}
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "helper")) {
 			char *type = (char *) xmlGetProp(cur, (const xmlChar*) "type");
 			if (!type) {
@@ -724,6 +841,7 @@ int config_parse(struct conf *c, char * filename) {
 		start_input(rbuf);
 
 	}
+
 
 	return POM_OK;
 }
@@ -993,6 +1111,42 @@ int config_write(struct conf *c, char *filename) {
 
 		xmlTextWriterEndElement(writer);
 		xmlTextWriterWriteFormatString(writer, "\n");
+	}
+
+	// write the datastores
+	if (c->datastores) {
+		struct datastore *d = c->datastores;
+		xmlTextWriterWriteFormatString(writer, "\n\t");
+		xmlTextWriterWriteComment(writer, BAD_CAST "Datastores configuration");
+		xmlTextWriterWriteFormatString(writer, "\n\t");
+		while (d) {
+			xmlTextWriterStartElement(writer, BAD_CAST "datastore");
+			xmlTextWriterWriteAttribute(writer, BAD_CAST "type", BAD_CAST datastore_get_name(d->type));
+			xmlTextWriterWriteAttribute(writer, BAD_CAST "name", BAD_CAST d->name);
+			char *yesno = "no";
+			if (d->started)
+				yesno = "yes";
+			xmlTextWriterWriteAttribute(writer, BAD_CAST "start", BAD_CAST yesno);
+			xmlTextWriterWriteFormatString(writer, "\n\t");
+			struct datastore_param *p = d->params;
+			while (p) {
+				char value[1024];
+				ptype_serialize(p->value, value, sizeof(value) - 1);
+				if (strcmp(value, p->type->defval)) { // parameter doesn't have default value
+					xmlTextWriterWriteFormatString(writer, "\t");
+					xmlTextWriterStartElement(writer, BAD_CAST "param");
+					xmlTextWriterWriteAttribute(writer, BAD_CAST "name", BAD_CAST p->type->name);
+					xmlTextWriterWriteString(writer, BAD_CAST value);
+					xmlTextWriterEndElement(writer);
+					xmlTextWriterWriteFormatString(writer, "\n\t");
+				}
+				p = p->next;
+			}
+
+			xmlTextWriterEndElement(writer);
+			xmlTextWriterWriteFormatString(writer, "\n\t");
+			d = d->next;
+		}
 	}
 
 	// write the rules

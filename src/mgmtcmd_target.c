@@ -297,7 +297,7 @@ int mgmtcmd_stop_target(struct mgmt_connection *c, int argc, char *argv[]) {
 		return POM_OK;
 	}
 	
-	target_lock_instance(t, 0);
+	target_lock_instance(t, 1);
 	if (!t->started) {
 		target_unlock_instance(t);
 		mgmtsrv_send(c, "Target already stopped\r\n");
@@ -426,10 +426,10 @@ int mgmtcmd_remove_target(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (t->started) {
 		target_close(t);
-	} else {
-		rl->target_serial++;
-		main_config->target_serial++;
 	}
+
+	rl->target_serial++;
+	main_config->target_serial++;
 
 	if (t->prev)
 		t->prev->next = t->next;

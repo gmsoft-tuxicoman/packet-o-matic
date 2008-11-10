@@ -26,6 +26,7 @@
 #include "match.h"
 #include "ptype.h"
 #include "expectation.h"
+#include "datastore.h"
 
 /**
  * @defgroup target_api Target API
@@ -42,12 +43,30 @@ struct target_param_reg {
 
 };
 
-/// This structure describe a parameter for a target
+/// This structure describe a parameter instance for a target
 struct target_param {
 
 	struct target_param_reg *type; ///< Type of the parameter
 	struct ptype *value; ///< Actual value of the paramater
 	struct target_param *next; ///< Used for linking
+
+};
+
+/// This structure is used by targets to specify how they will save the data 
+struct target_dataset_reg {
+	char *name; ///< Dataset name
+	char *descr; ///< Description
+	struct datavalue_descr *fields; ///< NULL terminated array of fields
+	struct target_dataset_reg *next; ///< Used for linking
+
+};
+
+/// Instance of a dataset for a target
+struct target_dataset {
+	struct target_dataset_reg *type; ///< Common info about the datastore
+	struct ptype *ds_path; ///< Ptype for the dataset parameter value
+	struct dataset *dset; ///< Pointer to the dataset
+	struct target_dataset *next; ///<  Used for linking
 
 };
 
@@ -57,9 +76,11 @@ struct target_mode {
 	char *name; ///< Name of the mode
 	char *descr; ///< Description of the mode
 	struct target_param_reg *params; ///< Parameters associated with this mode
+	struct target_dataset_reg *datasets; ///< Datasets associated with this mode
 	struct target_mode *next; ///< Used for linking
 
 };
+
 
 /// This structure holds all the information about a registered target
 /**
@@ -130,6 +151,7 @@ struct target {
 	uint32_t *parent_serial; ///< Serial stored at the rule level if any
 	char * description; ///< Description of the target
 	pthread_rwlock_t lock; ///< Lock used to make each target operation atomic
+	struct target_dataset *datasets; ///< Datasets used by the target
 
 	struct ptype* pkt_cnt; ///< Number of packets processed by this target
 	struct ptype* byte_cnt; ///< Number of bytes processed by this target
@@ -146,6 +168,9 @@ struct target {
 
 /// Maximum number of registered targets
 #define MAX_TARGET 16
+
+/// Name of the parameter for the datastores
+#define TARGET_DATASTORE_PARAM_NAME "datastore_path"
 
 /// Contains all the registered targets
 extern struct target_reg *targets[MAX_TARGET];
@@ -220,5 +245,17 @@ int target_lock(int write);
 
 /// Release a read or write lock on the targets
 int target_unlock();
+
+/// Register a dataset for a target mode
+int target_register_dataset(struct target_mode *mode, char *name, char *descr, struct datavalue_descr *fields);
+
+/// Return the instance of a previously registered dataset
+struct target_dataset *target_get_dataset_instance(struct target *t, char *name);
+
+/// Return the struct datavalue associated with the registered parameters
+struct datavalue *target_get_dataset_values(struct target_dataset *ds);
+
+/// Write data in the datastore
+int target_write_dataset(struct target_dataset *ds, struct frame *f);
 
 #endif

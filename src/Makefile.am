@@ -1,6 +1,6 @@
 CFLAGS += -Wall -I$(srcdir)/include -D_XOPEN_SOURCE=600 --std=gnu99 -D__EXTENSIONS__ -D_DARWIN_C_SOURCE -D_GNU_SOURCE
 
-MGMT_SRC = mgmtsrv.c mgmtsrv.h mgmtvty.c mgmtvty.h mgmtcmd.c mgmtcmd.h mgmtcmd_helper.c mgmtcmd_helper.h mgmtcmd_conntrack.c mgmtcmd_conntrack.h mgmtcmd_input.c mgmtcmd_input.h mgmtcmd_rule.c mgmtcmd_rule.h mgmtcmd_target.c mgmtcmd_target.h
+MGMT_SRC = mgmtsrv.c mgmtsrv.h mgmtvty.c mgmtvty.h mgmtcmd.c mgmtcmd.h mgmtcmd_helper.c mgmtcmd_helper.h mgmtcmd_conntrack.c mgmtcmd_conntrack.h mgmtcmd_input.c mgmtcmd_input.h mgmtcmd_rule.c mgmtcmd_rule.h mgmtcmd_target.c mgmtcmd_target.h mgmtcmd_datastore.c mgmtcmd_datastore.h
 
 if USE_XMLRPC
 wwwdir = $(pkgdatadir)/web-ui
@@ -18,7 +18,7 @@ packet_o_matic_LDADD = libpom.la @xmlrpc_LIBS@
 
 noinst_HEADERS = include/jhash.h
 
-libpom_la_SOURCES = input.c input.h match.c match.h conntrack.c conntrack.h target.c target.h timers.c timers.h helper.c helper.h ptype.c ptype.h expectation.c expectation.h common.c common.h include/jhash.h
+libpom_la_SOURCES = input.c input.h match.c match.h conntrack.c conntrack.h target.c target.h timers.c timers.h helper.c helper.h ptype.c ptype.h expectation.c expectation.h common.c common.h include/jhash.h datastore.c datastore.h
 libpom_la_CFLAGS = -DLIBDIR='"@LIB_DIR@"'
 
 INPUT_OBJS = @INPUT_OBJS@
@@ -27,10 +27,11 @@ CONNTRACK_OBJS = conntrack_ipv4.la conntrack_ipv6.la conntrack_rtp.la conntrack_
 HELPER_OBJS = helper_ipv4.la helper_tcp.la helper_rtp.la
 TARGET_OBJS = target_display.la target_dump_payload.la target_irc.la target_http.la target_msn.la target_pop.la target_rtp.la target_tftp.la target_null.la @TARGET_OBJS@
 PTYPES_OBJS = ptype_bool.la ptype_uint8.la ptype_uint16.la ptype_uint32.la ptype_uint64.la ptype_mac.la ptype_ipv4.la ptype_ipv6.la ptype_string.la ptype_bytes.la ptype_interval.la
+DATASTORE_OBJS = @DATASTORE_OBJS@
 
 
-lib_LTLIBRARIES = libpom.la $(INPUT_OBJS) $(MATCH_OBJS) $(CONNTRACK_OBJS) $(HELPER_OBJS) $(TARGET_OBJS) $(PTYPES_OBJS)
-EXTRA_LTLIBRARIES = input_docsis.la input_pcap.la target_pcap.la target_tcpkill.la target_inject.la target_tap.la
+lib_LTLIBRARIES = libpom.la $(INPUT_OBJS) $(MATCH_OBJS) $(CONNTRACK_OBJS) $(HELPER_OBJS) $(TARGET_OBJS) $(PTYPES_OBJS) $(DATASTORE_OBJS)
+EXTRA_LTLIBRARIES = input_docsis.la input_pcap.la target_pcap.la target_tcpkill.la target_inject.la target_tap.la datastore_postgres.la
 
 
 input_docsis_la_SOURCES = input_docsis.c input_docsis.h modules_common.h include/docsis.h
@@ -178,6 +179,9 @@ ptype_interval_la_SOURCES = ptype_interval.c ptype_interval.h modules_common.h
 ptype_interval_la_LDFLAGS = -module -avoid-version
 ptype_interval_la_LIBADD = libpom.la
 
+datastore_postgres_la_SOURCES = datastore_postgres.c datastore_postgres.h modules_common.h
+datastore_postgres_la_LDFLAGS = -module -avoid-version -lpq -rpath '$(libdir)'
+datastore_postgres_la_LIBADD = libpom.la
 
 .PHONY: svnversion.h.tmp
 svnversion.h.tmp: 

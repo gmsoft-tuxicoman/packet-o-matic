@@ -29,11 +29,14 @@ struct conf {
 
 	struct input* input;
 	struct rule_list *rules;
+	struct datastore *datastores;
 	char filename[NAME_MAX + 1];
 	pthread_rwlock_t rules_lock;
 	uint32_t rules_serial;
 	uint32_t target_serial;
 	uint32_t input_serial;
+	pthread_rwlock_t datastores_lock;
+	uint32_t datastores_serial;
 };
 
 struct conf *config_alloc();

@@ -137,4 +137,16 @@ uint32_t get_uid();
 
 int base64_decode(char *output, char *input);
 
+uint64_t bswap64(uint64_t x);
+
+#if BYTE_ORDER == BIG_ENDIAN
+#define ntohll(x) (x)
+#define htonll(x) (x)
+#elif BYTE_ORDER == LITTLE_ENDIAN
+#define ntohll(x) bswap64(x)
+#define htonll(x) bswap64(x)
+#else
+#error "Please define byte ordering"
+#endif
+
 #endif
