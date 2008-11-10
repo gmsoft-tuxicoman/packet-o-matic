@@ -31,7 +31,7 @@ DATASTORE_OBJS = @DATASTORE_OBJS@
 
 
 lib_LTLIBRARIES = libpom.la $(INPUT_OBJS) $(MATCH_OBJS) $(CONNTRACK_OBJS) $(HELPER_OBJS) $(TARGET_OBJS) $(PTYPES_OBJS) $(DATASTORE_OBJS)
-EXTRA_LTLIBRARIES = input_docsis.la input_pcap.la target_pcap.la target_tcpkill.la target_inject.la target_tap.la datastore_postgres.la
+EXTRA_LTLIBRARIES = input_docsis.la input_pcap.la target_pcap.la target_tcpkill.la target_inject.la target_tap.la datastore_postgres.la datastore_sqlite.la
 
 
 input_docsis_la_SOURCES = input_docsis.c input_docsis.h modules_common.h include/docsis.h
@@ -180,8 +180,11 @@ ptype_interval_la_LDFLAGS = -module -avoid-version
 ptype_interval_la_LIBADD = libpom.la
 
 datastore_postgres_la_SOURCES = datastore_postgres.c datastore_postgres.h modules_common.h
-datastore_postgres_la_LDFLAGS = -module -avoid-version -lpq -rpath '$(libdir)'
+datastore_postgres_la_LDFLAGS = -module -avoid-version -rpath '$(libdir)' -lpq
 datastore_postgres_la_LIBADD = libpom.la
+datastore_sqlite_la_SOURCES = datastore_sqlite.c datastore_sqlite.h modules_common.h
+datastore_sqlite_la_LDFLAGS = -module -avoid-version -rpath '$(libdir)' -lsqlite3
+datastore_sqlite_la_LIBADD = libpom.la
 
 .PHONY: svnversion.h.tmp
 svnversion.h.tmp: 

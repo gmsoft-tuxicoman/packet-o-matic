@@ -739,7 +739,7 @@ int datastore_dataset_read(struct dataset *query) {
 	if (datastores[d->type] && datastores[d->type]->dataset_read)
 		return (*datastores[d->type]->dataset_read) (d, query);
 
-	return POM_OK;
+	return POM_ERR;
 
 }
 
@@ -750,7 +750,7 @@ int datastore_dataset_write(struct dataset *query) {
 	if (datastores[d->type] && datastores[d->type]->dataset_write)
 		return (*datastores[d->type]->dataset_write) (d, query);
 
-	return POM_OK;
+	return POM_ERR;
 
 }
 
