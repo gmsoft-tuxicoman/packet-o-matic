@@ -83,11 +83,13 @@ int ptype_print_bool(struct ptype *p, char *val, size_t size) {
 
 	int *v = p->value;
 
-	if (*v)
+	if (*v) {
 		strncpy(val, "yes", size);
-	else
-		strncpy(val, "no", size);
-	return strlen(val);
+		return strlen("yes");
+	}
+
+	strncpy(val, "no", size);
+	return strlen("no");
 
 }
 

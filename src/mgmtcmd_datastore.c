@@ -163,6 +163,7 @@ int mgmtcmd_show_datastores(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (!d) {
 		mgmtsrv_send(c, "No datastore configured\r\n");
+		main_config_datastores_unlock();
 		return POM_OK;
 	}
 

@@ -100,14 +100,10 @@ int ptype_parse_ipv4(struct ptype *p, char *val) {
 int ptype_print_ipv4(struct ptype *p, char *val, size_t size) {
 
 	struct ptype_ipv4_val *v = p->value;
-	strncpy(val, inet_ntoa(v->addr), size);
-	size -= strlen(val);
-	if (v->mask < 32 && size >= 3) {
-		strcat(val, "/");
-		sprintf(val + strlen(val), "%hhu", v->mask);
-	}
+	if (v->mask < 32)
+		return snprintf(val, size, "%s/%hhu", inet_ntoa(v->addr), v->mask);
 
-	return strlen(val);
+	return snprintf(val, size, "%s", inet_ntoa(v->addr));
 }
 
 int ptype_compare_ipv4(int op, void *val_a, void *val_b) {

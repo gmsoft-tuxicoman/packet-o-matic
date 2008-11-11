@@ -63,8 +63,7 @@ int ptype_parse_string(struct ptype *p, char *val) {
 int ptype_print_string(struct ptype *p, char *val, size_t size) {
 
 	char *str = p->value;
-	strncpy(val, str, size);
-	return strlen(val);
+	return snprintf(val, size, "%s", str);
 
 }
 

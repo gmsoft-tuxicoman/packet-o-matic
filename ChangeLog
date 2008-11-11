@@ -3,6 +3,10 @@ Added datastore_sqlite.
 Zero-out the new struct dataset when reading them from DB.
 Fix uint8 ptype handling in datastore_postgres.
 Make match more robust when identifying packets.
+Make sure ptype_print_val() always behaves like snprintf().
+Improved datastore_postgres memory usage.
+Fix deadlock when using "show datastore" without any configured.
+Use incremental default interface name for target_tap.
 
 * 2008/11/10 Guy Martin <gmsoft@tuxicoman.be>
 Added datastore support.

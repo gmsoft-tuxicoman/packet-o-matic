@@ -146,6 +146,8 @@ int ptype_parse_bytes(struct ptype *p, char *val) {
 
 int ptype_print_bytes(struct ptype *p, char *val, size_t size) {
 
+	size_t tot_len = 0;
+
 	memset(val, 0, size);
 
 	struct ptype_bytes_val *v = p->value;
@@ -153,22 +155,26 @@ int ptype_print_bytes(struct ptype *p, char *val, size_t size) {
 	if (v->length == 0)
 		return 0;
 
-	int i, pos = 0;
+	size_t i, pos = 0;
 	for (i = 0; i < v->length && pos < size; i++)
 		pos += snprintf(val + pos, size - pos, "%02hhX:", v->value[i]);
 	pos--;
 	val[pos] = 0; // remove last :
 
+	tot_len = (v->length * 3) - 1;
+
 	int printmask = 0;
-	for (i = 0; i < v->length; i++)
+	for (i = 0; i < v->length; i++) {
 		if (v->mask[i] != 0xff) {
 			printmask = 1;
 			break;
 		}
+	}
 
 	if (printmask) {
+		tot_len = (tot_len * 2) + 1;
 		if (pos >= size - 1)
-			return pos;
+			return tot_len;
 
 		val[pos] = '/';
 		pos++;
@@ -178,9 +184,10 @@ int ptype_print_bytes(struct ptype *p, char *val, size_t size) {
 			
 		pos--;
 		val[pos] = 0; // remove last :
+
 	}
 
-	return pos;
+	return tot_len;
 
 }
 

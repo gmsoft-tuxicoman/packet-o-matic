@@ -101,13 +101,12 @@ int ptype_parse_ipv6(struct ptype *p, char *val) {
 int ptype_print_ipv6(struct ptype *p, char *val, size_t size) {
 
 	struct ptype_ipv6_val *v = p->value;
-	inet_ntop(AF_INET6, &v->addr, val, size);
-	size -= strlen(val);
-	if (v->mask < 128 && size >= 4) {
-		strcat(val, "/");
-		sprintf(val + strlen(val), "%hhu", v->mask);
-	}
-	return strlen(val);
+	char buff[INET6_ADDRSTRLEN + 1];
+	inet_ntop(AF_INET6, &v->addr, val, INET6_ADDRSTRLEN);
+	if (v->mask < 128) 
+		return snprintf(val, size, "%s/%hhu", buff, v->mask);
+
+	return snprintf(val, size, "%s", buff);
 }
 
 int ptype_compare_ipv6(int op, void *val_a, void *val_b) {

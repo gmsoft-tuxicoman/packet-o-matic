@@ -35,6 +35,8 @@ static int match_ethernet_id;
 
 static struct target_mode *mode_default;
 
+static int instance_count = 0;
+
 int target_register_tap(struct target_reg *r) {
 
 	r->init = target_init_tap;
@@ -50,7 +52,7 @@ int target_register_tap(struct target_reg *r) {
 	if (!mode_default)
 		return POM_ERR;
 	
-	target_register_param(mode_default, "ifname", "pom0", "Interface to create");
+	target_register_param(mode_default, "ifname", "pom", "Interface to create");
 	target_register_param(mode_default, "persistent", "no", "Create a persistent interface");
 
 
@@ -79,7 +81,11 @@ static int target_init_tap(struct target *t) {
 
 	target_register_param_value(t, mode_default, "ifname", priv->ifname);
 	target_register_param_value(t, mode_default, "persistent", priv->persistent);
-	
+
+	char buff[32];
+	snprintf(buff, 31, "pom%u", instance_count);
+	PTYPE_STRING_SETVAL(priv->ifname, buff);
+	instance_count++;
 
 	return POM_OK;
 }

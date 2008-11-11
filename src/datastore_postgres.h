@@ -30,7 +30,7 @@
 
 #include <libpq-fe.h>
 
-#define DATASTORE_POSTGRES_TEMP_BUFFER_SIZE 1024
+#define DATASTORE_POSTGRES_TEMP_BUFFER_SIZE 256
 
 struct datastore_priv_postgres {
 
@@ -68,8 +68,8 @@ struct dataset_priv_postgres {
 	int read_query_cur;
 	PGresult *read_res;
 
-	char write_query[2048];
-	char write_query_get_id[1024];
+	char *write_query;
+	char *write_query_get_id;
 	union datastore_postgres_data *write_data_buff;
 	char **write_query_param_val;
 	int *write_query_param_len;

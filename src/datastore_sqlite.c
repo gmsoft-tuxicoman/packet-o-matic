@@ -446,8 +446,15 @@ static int datastore_dataset_write_sqlite(struct datastore *d, struct dataset *d
 				res = sqlite3_bind_text(priv->write_stmt, i + 1, PTYPE_STRING_GETVAL(dv[i].value), -1, SQLITE_STATIC);
 				break;
 			default: {
-				char *value = malloc(DATASTORE_SQLITE_TEMP_BUFFER_SIZE + 1);
-				ptype_print_val(dv[i].value, value, DATASTORE_SQLITE_TEMP_BUFFER_SIZE);
+				int size, new_size = DATASTORE_SQLITE_TEMP_BUFFER_SIZE;
+				char *value = NULL;
+				do {
+					size = new_size;
+					value = realloc(value, size + 1);
+					new_size = ptype_print_val(dv[i].value, value, size);
+					new_size = (new_size < 1) ? new_size * 2 : new_size + 1;
+				} while (new_size > size);
+
 				res = sqlite3_bind_text(priv->write_stmt, i + 1, value, -1, SQLITE_TRANSIENT);
 				break;
 			}

@@ -173,7 +173,7 @@ int ptype_parse_val(struct ptype *pt, char *val) {
  * @param pt Ptype which contains the value to print
  * @param val Preallocated buffer to store the value
  * @param size Size of the preallocated buffer
- * @return Number of bytes copied into the buffer.
+ * @return Number of bytes that were or would be copied into the buffer.
  */
 int ptype_print_val(struct ptype *pt, char *val, size_t size) {
 

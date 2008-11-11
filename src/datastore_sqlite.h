@@ -30,7 +30,7 @@
 
 #include <sqlite3.h>
 
-#define DATASTORE_SQLITE_TEMP_BUFFER_SIZE 1024
+#define DATASTORE_SQLITE_TEMP_BUFFER_SIZE 256
 
 struct dataset_priv_sqlite {
 

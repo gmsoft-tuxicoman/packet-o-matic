@@ -180,8 +180,8 @@ static int datastore_dataset_alloc_postgres(struct datastore *d, struct dataset 
 		else
 			dv[i].native_type = POSTGRES_PTYPE_OTHER;
 
-		size = strlen(priv->read_query_start) + strlen(dv[i].name) + strlen(", ") + 1;
-		priv->read_query_start = realloc(priv->read_query_start, size);
+		size = strlen(priv->read_query_start) + strlen(dv[i].name) + strlen(", ");
+		priv->read_query_start = realloc(priv->read_query_start, size + 1);
 		strcat(priv->read_query_start, dv[i].name);
 		if (dv[i + 1].name)
 			strcat(priv->read_query_start, ", ");
@@ -219,46 +219,64 @@ static int datastore_dataset_alloc_postgres(struct datastore *d, struct dataset 
 	} while (new_size > size);
 	pom_log(POM_LOG_TSHOOT "READ END QUERY : %s", priv->read_query_end);
 
-	strcat(priv->write_query, "INSERT INTO ");
-	strcat(priv->write_query, ds->name);
-	strcat(priv->write_query, " ( " POSTGRES_PKID_NAME ", ");
+	new_size = 1;
+	priv->write_query = malloc(new_size);
+	do {
+		size = new_size;
+		new_size = snprintf(priv->write_query, size, "INSERT INTO %s ( " POSTGRES_PKID_NAME ", ", ds->name);
+		new_size = ((new_size <= -1) ? size * 2 : new_size + 1);
+		priv->write_query = realloc(priv->write_query, new_size + 1);
+	} while (new_size > size);
+
 	for (i = 0; dv[i].name; i++) {
+		size = strlen(priv->write_query) + strlen(dv[i].name) + strlen(", ") + 1;
+		priv->write_query = realloc(priv->write_query, size);
 		strcat(priv->write_query, dv[i].name);
 		if (dv[i + 1].name)
 			strcat(priv->write_query, ", ");
 
 	}
 
+	size += strlen(") VALUES ( nextval('") + strlen(ds->name) + strlen("_seq'), ") + 1;
+	priv->write_query = realloc(priv->write_query, size);
 	strcat(priv->write_query, ") VALUES ( nextval('");
 	strcat(priv->write_query, ds->name);
 	strcat(priv->write_query, "_seq'), ");
 
 	for (i = 0; dv[i].name; i++) {
+		char buff[64];
 		switch (dv[i].native_type) {
 			case POSTGRES_PTYPE_BOOL:
-				sprintf(priv->write_query + strlen(priv->write_query), "$%u::boolean", i + 1);
+				sprintf(buff, "$%u::boolean", i + 1);
 				break;
 			case POSTGRES_PTYPE_UINT8:
 			case POSTGRES_PTYPE_UINT16:
-				sprintf(priv->write_query + strlen(priv->write_query), "$%u::smallint", i + 1);
+				sprintf(buff, "$%u::smallint", i + 1);
 				break;
 			case POSTGRES_PTYPE_UINT32:
-				sprintf(priv->write_query + strlen(priv->write_query), "$%u::integer", i + 1);
+				sprintf(buff, "$%u::integer", i + 1);
 				break;
 			case POSTGRES_PTYPE_UINT64:
-				sprintf(priv->write_query + strlen(priv->write_query), "$%u::bigint", i + 1);
+				sprintf(buff, "$%u::bigint", i + 1);
 				break;
 			default:
-				sprintf(priv->write_query + strlen(priv->write_query), "$%u::varchar", i + 1);
+				sprintf(buff, "$%u::varchar", i + 1);
 				break;
 		}
+		size += strlen(buff) + strlen(", ");
+		priv->write_query = realloc(priv->write_query, size + 1);
+		strcat(priv->write_query, buff);
 		if (dv[i + 1].name)
 			strcat(priv->write_query, ", ");
 
 	}
 
+	size += strlen(");") + 1;
+	priv->write_query = realloc(priv->write_query, size);
 	strcat(priv->write_query, ");");
 
+	size = strlen("SELECT currval('") + strlen(ds->name) + strlen("_seq');") + 1;
+	priv->write_query_get_id = malloc(size);
 	strcpy(priv->write_query_get_id, "SELECT currval('");
 	strcat(priv->write_query_get_id, ds->name);
 	strcat(priv->write_query_get_id, "_seq');");
@@ -601,10 +619,14 @@ static int datastore_dataset_write_postgres(struct datastore *d, struct dataset 
 				break;
 			}	
 			default: {
-				// FIXME : Ok allocate enough size and hope its good enough
-				priv->write_query_param_val[i] = malloc(DATASTORE_POSTGRES_TEMP_BUFFER_SIZE + 1);
-				ptype_print_val(dv[i].value, priv->write_query_param_val[i], DATASTORE_POSTGRES_TEMP_BUFFER_SIZE);
-				priv->write_query_param_len[i] = strlen(priv->write_query_param_val[i]);
+				int size, new_size = DATASTORE_POSTGRES_TEMP_BUFFER_SIZE;
+				do {
+					size = new_size;
+					priv->write_query_param_val[i] = realloc(priv->write_query_param_val[i], size + 1);
+					new_size = ptype_print_val(dv[i].value, priv->write_query_param_val[i], size);
+					priv->write_query_param_len[i] = strlen(priv->write_query_param_val[i]);
+					new_size = (new_size < 1) ? new_size * 2 : new_size + 1;
+				} while (new_size > size);
 
 				break;
 			}
@@ -661,6 +683,8 @@ static int datastore_dataset_cleanup_postgres(struct datastore *d, struct datase
 	free(priv->read_query);
 	free(priv->read_query_buff);
 	free(priv->read_query_end);
+	free(priv->write_query);
+	free(priv->write_query_get_id);
 	free(priv->write_data_buff);
 	free(priv->write_query_param_val);
 	free(priv->write_query_param_len);

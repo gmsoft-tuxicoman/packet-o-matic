@@ -128,14 +128,18 @@ int ptype_print_uint64(struct ptype *p, char *val, size_t size) {
 						if (value > 9999) {
 							value = (value + 500) / 1000;
 							snprintf(val, size, "%llut", value);
-						} else
-							snprintf(val, size, "%llug", value);
-					} else
-						snprintf(val, size, "%llum", value);
-				} else
-					snprintf(val, size, "%lluk", value);
-			} else
-				snprintf(val, size, "%llu", value);
+						} else {
+							return snprintf(val, size, "%llug", value);
+						}
+					} else {
+						return snprintf(val, size, "%llum", value);
+					}
+				} else {
+					return snprintf(val, size, "%lluk", value);
+				}
+			} else {
+				return snprintf(val, size, "%llu", value);
+			}
 			break;
 		case PTYPE_UINT64_PRINT_HUMAN_1024:
 			if (value > 99999) {
@@ -146,15 +150,19 @@ int ptype_print_uint64(struct ptype *p, char *val, size_t size) {
 						value = (value + 512) / 1024;
 						if (value > 9999) {
 							value = (value + 512) / 1024;
-							snprintf(val, size, "%lluT", value);
-						} else
-							snprintf(val, size, "%lluG", value);
-					} else
-						snprintf(val, size, "%lluM", value);
-				} else
-					snprintf(val, size, "%lluK", value);
-			} else
-				snprintf(val, size, "%llu", value);
+							return snprintf(val, size, "%lluT", value);
+						} else {
+							return snprintf(val, size, "%lluG", value);
+						}
+					} else {
+						return snprintf(val, size, "%lluM", value);
+					}
+				} else {
+					return snprintf(val, size, "%lluK", value);
+				}
+			} else {
+				return snprintf(val, size, "%llu", value);
+			}
 			break;
 		case PTYPE_UINT64_PRINT_DECIMAL:
 		default :
