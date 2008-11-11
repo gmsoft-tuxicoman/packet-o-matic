@@ -58,8 +58,8 @@ static int match_identify_linux_cooked(struct frame *f, struct layer* l, unsigne
 	struct sll_header *chdr = f->buff + start;
 
 	uint16_t addr_len = ntohs(chdr->sll_halen);
-	if (addr_len > SLL_ADDRLEN)
-		return -1;
+	if (len < sizeof(struct sll_header) || addr_len > SLL_ADDRLEN)
+		return POM_ERR;
 
 	l->payload_start = start + sizeof(struct sll_header);
 	l->payload_size = len - sizeof(struct sll_header);

@@ -98,7 +98,7 @@ int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct ru
 					return 0;
 				}
 				next_layer = match_identify(f, *l, (*l)->prev->payload_start, (*l)->prev->payload_size);
-				if (next_layer < 0) {
+				if (next_layer == POM_ERR) {
 					// restore the original value
 					(*l)->type = match_undefined_id;
 					return 0;
@@ -243,7 +243,7 @@ int do_rules(struct frame *f, struct rule_list *rules, pthread_rwlock_t *rule_lo
 		// identify must populate payload_start and payload_size
 		l->next->type = match_identify(f, l, new_start, new_len);
 
-		if (l->next->type == -1) {
+		if (l->next->type == POM_ERR) {
 			l->next = NULL;
 		} else if (l->next->type != match_undefined_id) {
 			// Next layer is new. Need to discard current conntrack entry

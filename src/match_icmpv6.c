@@ -53,6 +53,9 @@ static int match_identify_icmpv6(struct frame *f, struct layer* l, unsigned int 
 
 	struct icmp6_hdr *ihdr = f->buff + start;
 
+	if (sizeof(struct icmp6_hdr) > len)
+		return POM_ERR;
+
 	l->payload_start = start + sizeof(struct icmp6_hdr); 
 	l->payload_size = len - sizeof(struct icmp6_hdr);
 

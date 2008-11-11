@@ -54,6 +54,9 @@ static int match_identify_icmp(struct frame *f, struct layer* l, unsigned int st
 
 	struct icmp *ihdr = f->buff + start;
 
+	if (len < 8)
+		return POM_ERR;
+
 	l->payload_start = start + 8; 
 	l->payload_size = len - 8;
 

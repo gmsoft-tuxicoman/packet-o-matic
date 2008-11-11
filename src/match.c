@@ -302,7 +302,7 @@ int match_get_type(const char *match_name) {
  * @param l The layer to analyze
  * @param start Start of the layer in this packet
  * @param len Length of this layer in the packet
- * @return The next layer that has been identified.
+ * @return The next layer that has been identified or POM_ERR on error.
  */
 
 int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigned int len) {

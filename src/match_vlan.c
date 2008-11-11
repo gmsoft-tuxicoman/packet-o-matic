@@ -54,6 +54,9 @@ static int match_identify_vlan(struct frame *f, struct layer* l, unsigned int st
 
 	struct vlan_header *vhdr = f->buff + start;
 
+	if (len < sizeof(struct vlan_header))
+		return POM_ERR;
+
 	l->payload_start = start + sizeof(struct vlan_header);
 	l->payload_size = len - sizeof(struct vlan_header);
 

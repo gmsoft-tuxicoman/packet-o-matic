@@ -55,6 +55,10 @@ int match_register_ethernet(struct match_reg *r) {
 
 static int match_identify_ethernet(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
+
+	if (sizeof(struct ether_header) > len)
+		return POM_ERR;
+
 	struct ether_header *ehdr = f->buff + start;
 
 	l->payload_start = start + sizeof(struct ether_header);

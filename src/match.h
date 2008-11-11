@@ -78,7 +78,7 @@ struct match_reg {
 	 * @param l The current layer
 	 * @param start Offset of this layer in the buffer
 	 * @param len Length of this layer
-	 * @return POM_OK on success, POM_ERR if there is nothing more to identify or on error.
+	 * @return POM_OK on success, POM_ERR if there is nothing more on error.
 	 */
 	int (*identify) (struct frame *f, struct layer* l, unsigned int start, unsigned int len);
 

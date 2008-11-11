@@ -2,6 +2,7 @@
 Added datastore_sqlite.
 Zero-out the new struct dataset when reading them from DB.
 Fix uint8 ptype handling in datastore_postgres.
+Make match more robust when identifying packets.
 
 * 2008/11/10 Guy Martin <gmsoft@tuxicoman.be>
 Added datastore support.

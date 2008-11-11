@@ -56,6 +56,9 @@ int match_register_udp(struct match_reg *r) {
 static int match_identify_udp(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 	struct udphdr *hdr = f->buff + start;
 
+	if (len < sizeof(struct udphdr))
+		return POM_ERR; /// Invalid packet
+
 	l->payload_start = start + sizeof(struct udphdr);
 	l->payload_size = ntohs(hdr->uh_ulen) - sizeof(struct udphdr);
 

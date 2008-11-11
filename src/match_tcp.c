@@ -64,11 +64,19 @@ int match_register_tcp(struct match_reg *r) {
 
 static int match_identify_tcp(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
+	if (len < sizeof(struct tcphdr))
+		return POM_ERR;
+
 	struct tcphdr* hdr = f->buff + start;
 	
 	unsigned int hdrlen = (hdr->th_off << 2);
+
+	if (hdrlen > len)
+		return POM_ERR; // Incomplete packet
+
 	l->payload_start = start + hdrlen;
 	l->payload_size = len - hdrlen;
+
 
 	PTYPE_UINT16_SETVAL(l->fields[field_sport], ntohs(hdr->th_sport));
 	PTYPE_UINT16_SETVAL(l->fields[field_dport], ntohs(hdr->th_dport));

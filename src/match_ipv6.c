@@ -27,7 +27,7 @@
 #include "ptype_uint8.h"
 #include "ptype_ipv6.h"
 
-static struct match_dep *match_icmpv6, *match_tcp, *match_udp;
+static struct match_dep *match_undefined, *match_icmpv6, *match_tcp, *match_udp;
 
 static int field_saddr, field_daddr, field_flabel, field_hlim;
 
@@ -39,6 +39,7 @@ int match_register_ipv6(struct match_reg *r) {
 	r->get_expectation = match_get_expectation_ipv6;
 	r->unregister = match_unregister_ipv6;
 
+	match_undefined = match_add_dependency(r->type, "undefined");
 	match_icmpv6 = match_add_dependency(r->type, "icmpv6");
 	match_tcp = match_add_dependency(r->type, "tcp");
 	match_udp = match_add_dependency(r->type, "udp");
@@ -65,8 +66,15 @@ int match_register_ipv6(struct match_reg *r) {
 
 static int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
+
+	if (len < sizeof(struct ip6_hdr))
+		return POM_ERR;
+	
 	struct ip6_hdr* hdr = f->buff + start;
 	unsigned int hdrlen = sizeof(struct ip6_hdr);
+
+	if (hdrlen + ntohs(hdr->ip6_plen) > len)
+		return POM_ERR;
 
 	unsigned int nhdr = hdr->ip6_nxt;
 	l->payload_size = ntohs(hdr->ip6_plen);
@@ -87,6 +95,8 @@ static int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int st
 			case IPPROTO_DSTOPTS: // 60
 				ehdr = f->buff + l->payload_start;
 				int ehlen = (ehdr->ip6e_len + 1) * 8;
+				if (ehlen > l->payload_size)
+					return POM_ERR;
 				hdrlen += ehlen;
 				l->payload_start += ehlen;
 				l->payload_size -= ehlen;
@@ -103,7 +113,7 @@ static int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int st
 				return match_icmpv6->id;
 
 			case IPPROTO_NONE: // 59
-				return -1;
+				return match_undefined->id;
 
 			default:
 				return POM_ERR;

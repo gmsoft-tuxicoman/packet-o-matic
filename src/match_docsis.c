@@ -50,6 +50,8 @@ static int match_identify_docsis(struct frame *f, struct layer* l, unsigned int 
 
 	struct docsis_hdr *dhdr = f->buff + start;
 	
+	if (len < sizeof(struct docsis_hdr) || ntohs(dhdr->len) > len)
+		return POM_ERR;
 
 	l->payload_start = start + sizeof(struct docsis_hdr);
 	l->payload_size = ntohs(dhdr->len);

@@ -61,8 +61,10 @@ int match_register_rtp(struct match_reg *r) {
 
 static int match_identify_rtp(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
-	struct rtphdr *hdr = f->buff + start;
+	if (len < sizeof(struct rtphdr))
+		return POM_ERR;
 
+	struct rtphdr *hdr = f->buff + start;
 
 	if (hdr->version != 2)
 		return POM_ERR;
@@ -70,10 +72,8 @@ static int match_identify_rtp(struct frame *f, struct layer* l, unsigned int sta
 	int hdr_len = sizeof(struct rtphdr);
 	hdr_len += hdr->csrc_count * 4;
 
-	if (len - hdr_len <= 0) {
-		pom_log(POM_LOG_TSHOOT "Invalid size for RTP packet");
+	if (hdr_len > len)
 		return POM_ERR;
-	}
 
 	PTYPE_UINT8_SETVAL(l->fields[field_payload], hdr->payload_type);
 	PTYPE_UINT32_SETVAL(l->fields[field_ssrc], hdr->ssrc);
@@ -83,11 +83,9 @@ static int match_identify_rtp(struct frame *f, struct layer* l, unsigned int sta
 	if (hdr->extension) {
 		struct rtphdrext *ext;
 		ext = f->buff + start + hdr_len;
-		hdr_len += ntohs(ext->length);
-		if (len < (hdr_len + start)) {
-			pom_log(POM_LOG_TSHOOT "Invalid size for RTP packet");
+		if (hdr_len + ntohs(ext->length) > len)
 			return POM_ERR;
-		}
+		hdr_len += ntohs(ext->length);
 	}
 	l->payload_start = start + hdr_len;
 	l->payload_size = len - hdr_len;

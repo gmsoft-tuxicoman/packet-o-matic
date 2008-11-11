@@ -73,8 +73,12 @@ int match_identify_ipv4(struct frame *f, struct layer* l, unsigned int start, un
 
 	unsigned int hdr_len = hdr->ip_hl * 4;
 
-	if (hdr->ip_hl < 5 || ntohs(hdr->ip_len) < hdr_len)
-	        return -1;
+	if (len < sizeof(struct ip) || // lenght smaller than header
+		hdr->ip_hl < 5 || // ip header < 5 bytes
+		ntohs(hdr->ip_len) < hdr_len || // datagram size < ip header length
+		ntohs(hdr->ip_len) > len) // datagram size > given size
+	        return POM_ERR;
+
 	l->payload_start = start + hdr_len;
 	l->payload_size = ntohs(hdr->ip_len) - hdr_len;
 
