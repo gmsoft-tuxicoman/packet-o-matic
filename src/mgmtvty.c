@@ -405,151 +405,102 @@ int mgmtvty_completion(struct mgmt_connection *c, unsigned char key) {
 		mgmtsrv_send(c, MGMT_CMD_PROMPT "%s", c->curcmd);
 
 	} else if (key == '\t') {
-		// compute the ammount of possible matches
-		int possible_match = 0;
+		// compute the amount of possible matches
 		struct mgmt_command *cur = start;
+		struct mgmt_command_arg *list = NULL;
 
-		if (start == end) {
-			possible_match = 1;	
-		} else {
-			while (cur && !(cur->prev == end && end)) {
+		while (cur && cur->prev != end) {
+			
+			if (!cur->words[words_count]) {
+				struct mgmt_command_arg *items = NULL;
+				if (cur->completion)
+					items = cur->completion(words_count, words);
+				if (items) {
+					struct mgmt_command_arg *tmp;
+					for (tmp = items; tmp->next; tmp = tmp->next);
+					tmp->next = list; list = items;
+				}
 
-				struct mgmt_command *cmdtmp = cur->next;
-				while (cmdtmp && cmdtmp->words[words_count] && cur->words[words_count] && !strcmp(cur->words[words_count], cmdtmp->words[words_count]))
-					cmdtmp = cmdtmp->next;
-				cur = cmdtmp;
-				possible_match++;
+			} else {
+				struct mgmt_command_arg *item = malloc(sizeof(struct mgmt_command_arg));
+				memset(item, 0, sizeof(struct mgmt_command_arg));
+				item->word = malloc(strlen(cur->words[words_count]) + 1);
+				strcpy(item->word, cur->words[words_count]);
+				item->next = list;
+				list = item;
+	
 			}
+			cur = cur->next;
 		}
 
-		if (possible_match > 1) {
-			cur = start;
+		if (list) {
 
-			mgmtsrv_send(c, "\r\n%s ", start->words[words_count]);
-			while (start && !(start->prev == end && end)) {
-				if (cur->words[words_count] && start->words[words_count] && cur->words[words_count] && strcmp(cur->words[words_count], start->words[words_count])) {
-					cur = start;
-					mgmtsrv_send(c, "%s ", cur->words[words_count]);
-				}
-				start = start->next;
-			}
-
-			mgmtsrv_send(c, "\r\n" MGMT_CMD_PROMPT "%s", c->curcmd);
-			c->cursor_pos = strlen(c->curcmd);
-
-		} else {
-
-			if (!start->words[words_count]) { // we completed the whole command already
-
-				if (!start->completion) {
-					free(tmpcmdstr);
-					return POM_OK;
-				}
-
-				struct mgmt_command_arg* list = NULL;
-				list = start->completion(words_count, words);
-
-				if (list) {
-					int swapped = 0;
-					do {
-						struct mgmt_command_arg* item = list;
-						swapped = 0;
-						while (item->next) {
-							int j;
-							for (j = 0; item->word[j] && item->next->word[j]; j++) {
-								if (j > 0 && item->word[j - 1] != item->next->word[j - 1])
-									break;
-								if (item->word[j] > item->next->word[j]) {
-									char *temp = item->word;
-									item->word = item->next->word;
-									item->next->word = temp;
-									swapped = 1;
-									break;
-								}
-							}
-							item = item->next;
-						}
-
-					} while (swapped);
-					
-					if (words[words_count]) {
-						possible_match = 0;
-						struct mgmt_command_arg *item = list, *start = NULL;
-						while (item) {
-							if (!strncmp(item->word, words[words_count], strlen(words[words_count]))) {
-								if (!start)
-									start = item;
-								possible_match++;
-							} else if (start)
-								break;
-							item = item->next;
-						}
-						if (possible_match == 1) {
-							int pos = strlen(words[words_count]);
-							int len = strlen(start->word) - pos;
-							c->curcmd = realloc(c->curcmd, strlen(c->curcmd) + len + 2);
-							strcat(c->curcmd, start->word + pos);
-							strcat(c->curcmd, " ");
-							mgmtsrv_send(c, "%s ", start->word + pos);
-							c->cursor_pos = strlen(c->curcmd);
-
-						} else if (possible_match > 1) {
-							mgmtsrv_send(c, "\r\n");
-							for (i = 0; i < possible_match; i++) {
-								mgmtsrv_send(c, "%s ", start->word);
-								start = start->next;
-							}
-							mgmtsrv_send(c, "\r\n" MGMT_CMD_PROMPT "%s", c->curcmd);
-						}
-					} else {
-						if (list->next) {
-							mgmtsrv_send(c, "\r\n");
-							struct mgmt_command_arg* item = list;
-							while (item) {
-								mgmtsrv_send(c, "%s ", item->word);
-								item = item->next;
-							}
-							mgmtsrv_send(c, "\r\n" MGMT_CMD_PROMPT "%s", c->curcmd);
-						} else {
-
-							c->curcmd = realloc(c->curcmd, strlen(c->curcmd) + strlen(list->word) + 2);
-							strcat(c->curcmd, list->word);
-							strcat(c->curcmd, " ");
-							mgmtsrv_send(c, "%s ", list->word);
-							c->cursor_pos = strlen(c->curcmd);
+			int swapped = 0;
+			do {
+				struct mgmt_command_arg* item = list;
+				swapped = 0;
+				while (item->next) {
+					int j;
+					if (!strcmp(item->word, item->next->word)) {
+						struct mgmt_command_arg *tmp = item->next;
+						item->next = item->next->next;
+						free(tmp->word);
+						free(tmp);
+						continue;
+					}
+					for (j = 0; item->word[j] && item->next->word[j]; j++) {
+						if (j > 0 && item->word[j - 1] != item->next->word[j - 1])
+							break;
+						if (item->word[j] > item->next->word[j]) {
+							char *temp = item->word;
+							item->word = item->next->word;
+							item->next->word = temp;
+							swapped = 1;
+							break;
 						}
 					}
-	
-				}
-
-				struct mgmt_command_arg *item = list;
-				while (item) {
-					free(item->word);
-					struct mgmt_command_arg *tmp = item;
 					item = item->next;
-					free(tmp);
 				}
 
-				free(tmpcmdstr);
-				return POM_OK;
+			} while (swapped);
+		
+			if (!list->next) {
+				if (words[words_count]) {
+					int size = strlen(words[words_count]);
+					int len = strlen(list->word) - size;
+					c->curcmd = realloc(c->curcmd, strlen(c->curcmd) + len + 2);
+					strcat(c->curcmd, list->word + size);
+					strcat(c->curcmd, " ");
+					mgmtsrv_send(c, "%s ", list->word + size);
+					c->cursor_pos = strlen(c->curcmd);
+				} else {
+					c->curcmd = realloc(c->curcmd, strlen(c->curcmd) + strlen(list->word) + 2);
+					strcat(c->curcmd, list->word);
+					strcat(c->curcmd, " ");
+					mgmtsrv_send(c, "%s ", list->word);
+					c->cursor_pos = strlen(c->curcmd);
+				}
+				
+			} else {
+				mgmtsrv_send(c, "\r\n");
+				struct mgmt_command_arg *tmp = list;
+				while (tmp) {
+					mgmtsrv_send(c, "%s ", tmp->word);
+					tmp = tmp->next;
+				}
+				mgmtsrv_send(c, "\r\n" MGMT_CMD_PROMPT "%s", c->curcmd);
 			}
 
-			cur = start;
-
-			// compute len of last word we got already
-			int pos = strlen(c->curcmd) - 1;
-			int len = 0;
-			while (pos >= 0 && c->curcmd[pos] != ' ') {
-				len++;
-				pos--;
+			struct mgmt_command_arg *item = list;
+			while (item) {
+				free(item->word);
+				struct mgmt_command_arg *tmp = item;
+				item = item->next;
+				free(tmp);
 			}
-			
 
-			c->curcmd = realloc(c->curcmd, strlen(c->curcmd) + strlen(start->words[words_count] + len) + 2);
-			strcat(c->curcmd, start->words[words_count] + len);
-			strcat(c->curcmd, " ");
-			mgmtsrv_send(c, "%s ", start->words[words_count] + len);
-			c->cursor_pos = strlen(c->curcmd);
+			free(tmpcmdstr);
+			return POM_OK;
 		
 		}
 	}
@@ -650,6 +601,15 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 			for (i = c->cursor_pos; i < cmdlen; i++)
 				mgmtsrv_send(c, "\b");
 
+			break;
+		}
+
+		case 0x0C: { // Ctrl-L
+			mgmtsrv_send(c, "\033c" MGMT_CMD_PROMPT);
+			mgmtsrv_send(c, c->curcmd);
+			int pos = strlen(c->curcmd) - c->cursor_pos;
+			for (; pos > 0; pos--)
+				mgmtsrv_send(c, "\b");
 			break;
 		}
 
