@@ -203,6 +203,14 @@ then
 	DATASTORE_OBJS="$DATASTORE_OBJS datastore_postgres.la"
 fi
 
+# Check for Sqlite3
+AC_CHECK_HEADERS([sqlite3.h], [want_sqlite3=yes], [want_sqlite3=no])
+if test "x$want_sqlite3" = "xyes"
+then
+	DATASTORE_OBJS="$DATASTORE_OBJS datastore_sqlite.la"
+fi
+
+
 AC_SUBST(INPUT_OBJS)
 AC_SUBST(TARGET_OBJS)
 AC_SUBST(DATASTORE_OBJS)
@@ -226,6 +234,7 @@ echo " * Linux raw socket   : $want_netpacket"
 echo " * Linux DVB headers  : $want_dvb"
 echo " * Linux TUN headers  : $want_tun"
 echo " * PostgreSQL headers : $want_postgres"
+echo " * Sqlite3 headers    : $want_sqlite3"
 echo ""
 echo "Author : Guy Martin <gmsoft@tuxicoman.be>"
 

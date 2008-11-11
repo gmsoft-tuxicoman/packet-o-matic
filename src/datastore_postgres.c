@@ -381,6 +381,8 @@ static int datastore_dataset_read_postgres(struct datastore *d, struct dataset *
 						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query_start, dv[qrc->field_id].name, op, PTYPE_UINT8_GETVAL(qrc->value));
 						break;
 					case POSTGRES_PTYPE_UINT8:
+						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query_start, dv[qrc->field_id].name, op, PTYPE_UINT8_GETVAL(qrc->value));
+						break;
 					case POSTGRES_PTYPE_UINT16:
 						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query_start, dv[qrc->field_id].name, op, PTYPE_UINT16_GETVAL(qrc->value));
 						break;

@@ -453,14 +453,12 @@ int datastore_open(struct datastore *d) {
 
 			size++;
 			dv = realloc(dv, sizeof(struct datavalue) * (size + 1));
+			memset(&dv[size - 1], 0, 2 * sizeof(struct datavalue));
 
 			char *name = PTYPE_STRING_GETVAL(dsfields->query_data[1].value);
 			dv[size - 1].name = malloc(strlen(name) + 1);
 			strcpy(dv[size - 1].name, name);
 			dv[size - 1].value = ptype_alloc(PTYPE_STRING_GETVAL(dsfields->query_data[2].value), NULL);
-
-			dv[size].name = NULL;
-			dv[size].value = NULL;
 
 			if (!dv[size - 1].value) {
 				pom_log(POM_LOG_ERR "Couldn't allocate ptype \"%s\"", PTYPE_STRING_GETVAL(dsfields->query_data[2].value));

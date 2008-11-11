@@ -1,3 +1,8 @@
+* 2008/11/11 Guy Martin <gmsoft@tuxicoman.be>
+Added datastore_sqlite.
+Zero-out the new struct dataset when reading them from DB.
+Fix uint8 ptype handling in datastore_postgres.
+
 * 2008/11/10 Guy Martin <gmsoft@tuxicoman.be>
 Added datastore support.
 Fix input locking while parsing its config.
@@ -13,7 +18,7 @@ Updated README.
 * 2008/09/11 Guy Martin <gmsoft@tuxicoman.be>
 Fix mgmt command sorting at registration time.
 Fix up and down arrow displaying in mgmt console.
-Don't ignore destination addressin target_msn expectation.
+Don't ignore destination address in target_msn expectation.
 
 * 2008/09/08 Guy Martin <gmsoft@tuxicoman.be>
 Added target_msn.
