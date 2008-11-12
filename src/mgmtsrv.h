@@ -90,6 +90,8 @@ struct mgmt_command {
 	int (*callback_func) (struct mgmt_connection *c, int argc, char *argv[]);
 	struct mgmt_command_arg* (*completion) (int argc, char *argv[]);
 
+	int matched; // Used internally to find out if a command match the current cmd line
+
 	struct mgmt_command *next;
 	struct mgmt_command *prev;
 
@@ -104,7 +106,7 @@ int mgmtsrv_cleanup();
 int mgmtsrv_accept_connection(struct mgmt_connection *c);
 int mgmtsrv_register_command(struct mgmt_command *cmd);
 int mgmtsrv_process_command(struct mgmt_connection *c);
-int mgmtsrv_match_command(char *words[MGMT_MAX_CMD_WORDS], struct mgmt_command **start, struct mgmt_command **end);
+int mgmtsrv_match_command(char *words[MGMT_MAX_CMD_WORDS], struct mgmt_command *commands);
 int mgmtsrv_close_connection(struct mgmt_connection *c);
 
 int mgmtsrv_send(struct mgmt_connection *c, char* format, ...);

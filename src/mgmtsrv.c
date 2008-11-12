@@ -403,28 +403,38 @@ int mgmtsrv_process_command(struct mgmt_connection *c) {
 	}
 	
 
-	struct mgmt_command *start, *end;
-	mgmtsrv_match_command(words, &start, &end);
-	if (!start) {
+	int num = mgmtsrv_match_command(words, cmds);
+	if (!num) {
 		mgmtsrv_send(c, "No such command\r\n");
 		free(tmpcmdstr);
 		return POM_OK;
 	}
-	if (start != end && end) {
+	if (num > 1) {
 		mgmtsrv_send(c, "Ambiguous command\r\n");
 		free(tmpcmdstr);
 		return POM_OK;
 	}
+
+	// Find the one that was matched
+	struct mgmt_command *cmd = cmds;
+	for (cmd = cmds; cmd && !cmd->matched; cmd = cmd->next);
+
+	if (!cmd) {
+		mgmtsrv_send(c, "Internal error, couldn't find matched command");
+		free(tmpcmdstr);
+		return POM_OK;
+	}
+
 	unsigned int cmd_words_count;
-	for (cmd_words_count = 0; start->words[cmd_words_count] && cmd_words_count < MGMT_MAX_CMD_WORDS; cmd_words_count++);
+	for (cmd_words_count = 0; cmd->words[cmd_words_count] && cmd_words_count < MGMT_MAX_CMD_WORDS; cmd_words_count++);
 
 	c->flags |= MGMT_FLAG_PROCESSING;
-	int res = (*start->callback_func) (c, words_count - cmd_words_count, words + cmd_words_count);
+	int res = (*cmd->callback_func) (c, words_count - cmd_words_count, words + cmd_words_count);
 	c->flags &= ~MGMT_FLAG_PROCESSING;
 
 	free(tmpcmdstr);
 	if (res == MGMT_USAGE)
-		return mgmtvty_print_usage(c, start);
+		return mgmtvty_print_usage(c, cmd);
 	else
 		return res;
 	
@@ -434,41 +444,42 @@ int mgmtsrv_process_command(struct mgmt_connection *c) {
 
 }
 
-int mgmtsrv_match_command(char *words[MGMT_MAX_CMD_WORDS_ARGS], struct mgmt_command **start, struct mgmt_command **end) {
+int mgmtsrv_match_command(char *words[MGMT_MAX_CMD_WORDS_ARGS], struct mgmt_command *commands) {
 
 
-	struct mgmt_command *cur = cmds;
+	struct mgmt_command *cur = commands;
 
-	int w = 0, l = 0, max_matched_words = 0;
-	*start = NULL;
-	*end = NULL;
+	int w = 0, l = 0, matched_cmds = 0, max_matched_words = 0;
+
+
 
 	while (cur) {
 
 		if ((!words[w] && !cur->words[w])  // No more word no each part
 			|| (!words[w] || !cur->words[w])) { // No more word to match for this one
-			if (!*start)
-				*start = cur;
-
-	
-			if (w > max_matched_words) {
-				max_matched_words = w;
-			} else if (w < max_matched_words) {
-				if (*start)
-					*end = cur->prev;
-				break;
-			}
+			// Calculate longuest match
+			if (w > max_matched_words)
+				max_matched_words = w - 1;
 
 			w = 0;
 			l = 0;
+			cur->matched = 1;
+			matched_cmds++;
 			cur = cur->next;
+			
 			continue;
 		}
 
 		if (words[w][l] && !cur->words[w][l]) { // Our word is longer
 
+			// Calculate longuest match
+			if (w > max_matched_words)
+				max_matched_words = w - 1;
+
 			w = 0;
 			l = 0;
+			cur->matched = 1;
+			matched_cmds++;
 			cur = cur->next;
 			continue;
 		}
@@ -480,10 +491,8 @@ int mgmtsrv_match_command(char *words[MGMT_MAX_CMD_WORDS_ARGS], struct mgmt_comm
 		}
 
 		if (cur->words[w][l] != words[w][l]) {
-			if (*start) {
-				*end = cur->prev;
-				break;
-			}
+
+			cur->matched = 0;
 
 			cur = cur->next;
 			w = 0;
@@ -494,7 +503,16 @@ int mgmtsrv_match_command(char *words[MGMT_MAX_CMD_WORDS_ARGS], struct mgmt_comm
 		l++;
 	}
 
-	return POM_OK;
+	for (cur = cmds; cur; cur = cur->next) {
+		// Remove non longuest match
+		if (cur->matched && !cur->words[max_matched_words]) {
+			cur->matched = 0;
+			matched_cmds--;
+		}
+
+	}
+
+	return matched_cmds;
 
 }
 

@@ -182,15 +182,20 @@ int mgmtcmd_register_all() {
 
 int mgmtcmd_help(struct mgmt_connection *c, int argc, char *argv[]) {
 	
-	return mgmtcmd_print_help(c, cmds, NULL);
+	return mgmtcmd_print_help(c, cmds, 1);
 }
 
-int mgmtcmd_print_help(struct mgmt_connection *c, struct mgmt_command *start, struct mgmt_command *end) {
+int mgmtcmd_print_help(struct mgmt_connection *c, struct mgmt_command *commands, int show_all) {
 
 	int i, wordslen, wordslenmax = 0, helplenmax = 0;
-	struct mgmt_command *tmp = start;
+	struct mgmt_command *tmp = commands;
 	// calculate max length of first part
-	while (tmp && !(tmp->prev == end && end)) {
+	while (tmp) {
+		if (!show_all && !tmp->matched) {
+			tmp = tmp->next;
+			continue;
+		}
+
 		if (tmp->usage) {
 			wordslen = strlen(tmp->usage) + 1;
 		} else {
@@ -211,9 +216,13 @@ int mgmtcmd_print_help(struct mgmt_connection *c, struct mgmt_command *start, st
 		tmp = tmp->next;
 	}
 
-	tmp = start;
+	tmp = commands;
 
-	while (tmp && !(tmp->prev == end && end)) {
+	while (tmp) {
+		if (!show_all && !tmp->matched) {
+			tmp = tmp->next;
+			continue;
+		}
 
 		if (tmp->usage) {
 			mgmtsrv_send(c, tmp->usage);

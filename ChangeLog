@@ -1,3 +1,6 @@
+* 2008/11/12 Guy Martin <gmsoft@tuxicoman.be>
+New command matching and completion code.
+
 * 2008/11/11 Guy Martin <gmsoft@tuxicoman.be>
 Added datastore_sqlite.
 Zero-out the new struct dataset when reading them from DB.

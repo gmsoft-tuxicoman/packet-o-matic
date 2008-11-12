@@ -26,7 +26,7 @@
 int mgmtcmd_register_all();
 int mgmtcmd_exit(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_help(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_print_help(struct mgmt_connection *c, struct mgmt_command *start, struct mgmt_command *end);
+int mgmtcmd_print_help(struct mgmt_connection *c, struct mgmt_command *commands, int show_all);
 int mgmtcmd_show_license(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_set_password(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_unset_password(struct mgmt_connection *c, int argc, char *argv[]);

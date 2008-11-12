@@ -390,10 +390,9 @@ int mgmtvty_completion(struct mgmt_connection *c, unsigned char key) {
 		words_count--; // we have to deal with the currently being typed word
 
 
-	struct mgmt_command *start, *end;
-	mgmtsrv_match_command(words, &start, &end);
+	int cmd_num = mgmtsrv_match_command(words, cmds);
 
-	if (!start) {
+	if (!cmd_num) {
 		free(tmpcmdstr);
 		return POM_OK;
 	}
@@ -401,24 +400,58 @@ int mgmtvty_completion(struct mgmt_connection *c, unsigned char key) {
 
 	if (key == '?') {
 		mgmtsrv_send(c, "\r\n");
-		mgmtcmd_print_help(c, start, end);
+		mgmtcmd_print_help(c, cmds, 0);
 		mgmtsrv_send(c, MGMT_CMD_PROMPT "%s", c->curcmd);
 
 	} else if (key == '\t') {
 		// compute the amount of possible matches
-		struct mgmt_command *cur = start;
+		struct mgmt_command *cur = cmds;
 		struct mgmt_command_arg *list = NULL;
 
-		while (cur && cur->prev != end) {
+		while (cur) {
+			if (!cur->matched) {
+				cur = cur->next;
+				continue;
+			}
 			
 			if (!cur->words[words_count]) {
 				struct mgmt_command_arg *items = NULL;
 				if (cur->completion)
 					items = cur->completion(words_count, words);
 				if (items) {
-					struct mgmt_command_arg *tmp;
-					for (tmp = items; tmp->next; tmp = tmp->next);
-					tmp->next = list; list = items;
+
+					// Find the end
+					struct mgmt_command_arg *end = NULL;
+					if (list)
+						for (end = list; end->next; end = end->next);
+					if (words[words_count]) {
+						// Add matching stuff only
+						struct mgmt_command_arg *tmp = items;
+						while (tmp) {
+							if (!strncmp(words[words_count], tmp->word, strlen(words[words_count]))) {
+								if (end) {
+									end->next = tmp;
+									end = end->next;
+								} else {
+									list = tmp;
+									end = tmp;
+								}
+								tmp = tmp->next;
+								end->next = NULL;
+							} else {
+								struct mgmt_command_arg *tmp2 = tmp;
+								tmp = tmp->next;
+								free(tmp2->word);
+								free(tmp2);
+							}
+						}
+					} else {
+						if (end)
+							end->next = items;
+						else
+							list = items;
+
+					}
 				}
 
 			} else {
@@ -489,6 +522,35 @@ int mgmtvty_completion(struct mgmt_connection *c, unsigned char key) {
 					tmp = tmp->next;
 				}
 				mgmtsrv_send(c, "\r\n" MGMT_CMD_PROMPT "%s", c->curcmd);
+				// Try to complete as much as we can
+				int l;
+				if (!words[words_count])
+					l = 0;
+				else
+					l = strlen(words[words_count]);
+
+				int break_me = 0;
+				for (; !break_me; l++) {
+					char new_char = list->word[l];
+					if (!new_char)
+						break;
+					tmp = list->next;
+					while (tmp) {
+						if (new_char != tmp->word[l]) {
+							break_me = 1;
+							break;
+						}
+						tmp = tmp->next;
+					}
+					if (break_me)
+						break;
+					char buff[2] = { new_char, 0 };
+					int size = strlen(c->curcmd);
+					c->curcmd = realloc(c->curcmd, size + 2);
+					strcat(c->curcmd, buff);
+					mgmtsrv_send(c, buff);
+				}
+				c->cursor_pos = strlen(c->curcmd);
 			}
 
 			struct mgmt_command_arg *item = list;
