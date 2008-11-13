@@ -1,3 +1,10 @@
+* 2008/11/13 Guy Martin <gmsoft@tuxicoman.be>
+Fix compilation warning on 64bit arch in datatore_postgres and sqlite.
+Fix completion bug when given word is longer than expected one.
+Fix conntrack bug that corrupted the linked list of target and helper priv when closing them.
+Fix small memory leak in target_rtp.
+Some more hardening of match_rtp.
+
 * 2008/11/12 Guy Martin <gmsoft@tuxicoman.be>
 New command matching and completion code.
 

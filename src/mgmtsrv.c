@@ -472,14 +472,9 @@ int mgmtsrv_match_command(char *words[MGMT_MAX_CMD_WORDS_ARGS], struct mgmt_comm
 
 		if (words[w][l] && !cur->words[w][l]) { // Our word is longer
 
-			// Calculate longuest match
-			if (w > max_matched_words)
-				max_matched_words = w - 1;
 
 			w = 0;
 			l = 0;
-			cur->matched = 1;
-			matched_cmds++;
 			cur = cur->next;
 			continue;
 		}

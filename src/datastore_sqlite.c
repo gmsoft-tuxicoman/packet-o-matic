@@ -275,7 +275,7 @@ static int datastore_dataset_read_sqlite(struct datastore *d, struct dataset *ds
 						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query, dv[qrc->field_id].name, op, PTYPE_UINT32_GETVAL(qrc->value));
 						break;
 					case SQLITE_PTYPE_UINT64:
-						new_size = snprintf(read_query, size, "%s WHERE %s %s %llu", priv->read_query, dv[qrc->field_id].name, op, PTYPE_UINT64_GETVAL(qrc->value));
+						new_size = snprintf(read_query, size, "%s WHERE %s %s %llu", priv->read_query, dv[qrc->field_id].name, op, (unsigned long long) PTYPE_UINT64_GETVAL(qrc->value));
 						break;
 					case SQLITE_PTYPE_STRING:
 						new_size = snprintf(read_query, size, "%s WHERE %s %s '%s'", priv->read_query, dv[qrc->field_id].name, op, PTYPE_STRING_GETVAL(qrc->value));

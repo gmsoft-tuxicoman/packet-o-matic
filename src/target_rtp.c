@@ -414,6 +414,11 @@ static int target_close_connection_rtp(struct target *t, struct conntrack_entry 
 	if (cp->next)
 		cp->next->prev = cp->prev;
 
+	int i;
+	for (i = 0; i < 2; i++) {
+		if (cp->buffer[i].buff)
+			free(cp->buffer[i].buff);
+	}
 
 	free(cp);
 	

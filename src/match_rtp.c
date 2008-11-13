@@ -83,7 +83,7 @@ static int match_identify_rtp(struct frame *f, struct layer* l, unsigned int sta
 	if (hdr->extension) {
 		struct rtphdrext *ext;
 		ext = f->buff + start + hdr_len;
-		if (hdr_len + ntohs(ext->length) > len)
+		if (len < hdr_len + sizeof(struct rtphdrext) || hdr_len + ntohs(ext->length) > len)
 			return POM_ERR;
 		hdr_len += ntohs(ext->length);
 	}

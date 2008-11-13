@@ -347,15 +347,22 @@ int conntrack_remove_target_priv(void* priv, struct conntrack_entry *ce) {
 		ce->target_privs = cp->next;
 		free(cp);
 	} else {
-		struct conntrack_target_priv *prev;
+		struct conntrack_target_priv *prev = cp;
+		cp = cp->next;
+		int found = 0;
 		while (cp) {
-			prev = cp;
-			cp = cp->next;
 			if (cp->priv == priv) {
 				prev->next = cp->next;
 				free(cp);
+				found = 1;
+				break;
 			}
-			break;
+			prev = cp;
+			cp = cp->next;
+		}
+		if (!found) {
+			pom_log(POM_LOG_ERR "Internal error : Unable to find the provided target_priv %llu in the conntrack_entry %llu", priv, ce);
+			return POM_ERR;
 		}
 	}
 
@@ -456,15 +463,22 @@ int conntrack_remove_helper_priv(void* priv, struct conntrack_entry *ce) {
 		ce->helper_privs = cp->next;
 		free(cp);
 	} else {
-		struct conntrack_helper_priv *prev;
+		struct conntrack_helper_priv *prev = cp;
+		cp = cp->next;
+		int found = 0;
 		while (cp) {
-			prev = cp;
-			cp = cp->next;
 			if (cp->priv == priv) {
 				prev->next = cp->next;
 				free(cp);
+				found = 1;
+				break;
 			}
-			break;
+			prev = cp;
+			cp = cp->next;
+		}
+		if (!found) {
+			pom_log(POM_LOG_ERR "Internal error : Unable to find the provided helper_priv %llu in the conntrack_entry %llu", priv, ce);
+			return POM_ERR;
 		}
 	}
 
