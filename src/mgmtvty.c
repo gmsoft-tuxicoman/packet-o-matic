@@ -380,8 +380,6 @@ int mgmtvty_completion(struct mgmt_connection *c, unsigned char key) {
 		token = strtok_r(str, " ", &saveptr);
 		if (token == NULL)
 			break;
-		if (strlen(token) == 0)
-			continue;
 		words[words_count] = token;
 		words_count++;
 	}

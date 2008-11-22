@@ -47,6 +47,11 @@ int target_msn_session_found_buddy(struct target_conntrack_priv_msn *cp, char *a
 	memset(bud, 0, sizeof(struct target_buddy_msn));
 	bud->account = malloc(strlen(account) + 1);
 	strcpy(bud->account, account);
+	char *sc = strchr(bud->account, ';');
+	if (sc) // Remove extra ;
+		*sc = 0;
+
+
 	bud->nick = malloc(strlen(nick) + 1);
 	strcpy(bud->nick, nick);
 	
@@ -117,6 +122,9 @@ int target_msn_session_found_account(struct target_conntrack_priv_msn *cp, char 
 	if (!sess->account) {
 		sess->account = malloc(strlen(account) + 1);
 		strcpy(sess->account, account);
+		char *sc = strchr(sess->account, ';');
+		if (sc)
+			*sc = 0;
 		pom_log(POM_LOG_TSHOOT "User account is %s", sess->account);
 	} else {
 		if (strcmp(sess->account, account)) {

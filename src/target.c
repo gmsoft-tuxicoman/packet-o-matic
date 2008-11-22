@@ -550,6 +550,8 @@ int target_unregister(int target_type) {
 		return POM_ERR;
 	}
 
+	if (targets[target_type]->unregister)
+		(*targets[target_type]->unregister) (targets[target_type]);
 
 	struct target_mode *mode = targets[target_type]->modes;
 

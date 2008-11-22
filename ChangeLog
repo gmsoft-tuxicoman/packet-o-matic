@@ -1,3 +1,14 @@
+* 2008/11/22 Guy Martin <gmsoft@tuxicoman.be>
+Added unregister pointer function for targets.
+Removed unnecessary strlen(token) when using strtok_r().
+Fix segfault in target_msn when a buddy talk and the account isn't known yet.
+Fix segfault with the completion of the start target command.
+Remove ;{uid} in msn account names.
+Recoded http to handle transfer type chunked and content type gzip + deflate.
+Avoid to malloc() when log level is 5 when handling a log entry.
+Fix helper_tcp when first packet after syn/ack is out of order.
+Fix helper_tcp when received packet doesn't entirely contain the needed payload.
+
 * 2008/11/13 Guy Martin <gmsoft@tuxicoman.be>
 Fix compilation warning on 64bit arch in datatore_postgres and sqlite.
 Fix completion bug when given word is longer than expected one.

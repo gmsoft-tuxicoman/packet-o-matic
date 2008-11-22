@@ -26,20 +26,70 @@
 #include "modules_common.h"
 #include "rules.h"
 
-#define HTTP_HEADER	0x01 ///< Looking for a header
-#define HTTP_NO_MATCH	0x02 ///< We got all the info but we don't care about that payload
-#define HTTP_MATCH	0x04 ///< We got all the info and it match what we care about
-#define HTTP_HAVE_CTYPE	0x10 ///< We have the content type
-#define HTTP_HAVE_CLEN	0x20 ///< We have the content length
+#ifdef HAVE_ZLIB
+#include <zlib.h>
+#endif
+
+#define HTTP_HEADER	1 ///< Looking for a header
+#define HTTP_QUERY	2 ///< This is a query
+#define HTTP_RESPONSE	3 ///< This is a response
+#define HTTP_BODY	4 ///< Handling the body
+#define HTTP_INVALID	9 ///< Invalid HTTP message, will discard the rest of the connection
+
+#define HTTP_FLAG_HAVE_CLEN	0x01
+#define HTTP_FLAG_HAVE_CTYPE	0x02
+#define HTTP_FLAG_CHUNKED	0x04
+#define HTTP_FLAG_GZIP		0x08
+#define HTTP_FLAG_DEFLATE	0x10
+
+#define HTTP_GZIP_MAGIC_0	0x1f
+#define HTTP_GZIP_MAGIC_1	0x8b
+#define HTTP_GZIP_FLAG_HCRC	0x02
+#define HTTP_GZIP_FLAG_EXTRA	0x04
+#define HTTP_GZIP_FLAG_NAME	0x08
+#define HTTP_GZIP_FLAG_COMMENT	0x10
+
+#define MIME_TYPES_HASH_SIZE	0x100
+
+#define HTTP_MAX_HEADER_LINE	4096
+
+struct http_header {
+
+	char *name;
+	char *value;
+
+};
+
+struct mime_hash_entry {
+	unsigned int id;
+	struct mime_hash_entry *next;
+};
+
+struct target_conntrack_priv_info_http {
+
+	struct http_header *headers;
+	unsigned int headers_num;
+	unsigned int err_code;
+	char *url;
+	unsigned int content_len, content_pos;
+	unsigned int chunk_len, chunk_pos;
+	unsigned int content_type; // index in the mime_type array
+	unsigned int flags;
+
+#ifdef HAVE_ZLIB
+	z_stream *zbuff;
+#endif
+
+};
 
 struct target_conntrack_priv_http {
 
 	int fd;
 	unsigned int state;
 	unsigned int direction;
-	unsigned int pos;
-	unsigned int content_len;
-	unsigned int content_type; // index in the mime_type array
+	char *buff;
+	size_t buff_size;
+	struct target_conntrack_priv_info_http info;
 
 	struct conntrack_entry *ce;
 	struct target_conntrack_priv_http *next;
@@ -52,6 +102,7 @@ struct target_priv_http {
 	int match_mask;
 
 	struct ptype *path;
+	struct ptype *decompress;
 	struct ptype *dump_img;
 	struct ptype *dump_vid;
 	struct ptype *dump_snd;
@@ -72,5 +123,15 @@ static int target_process_http(struct target *t, struct frame *f);
 static int target_close_connection_http(struct target *t, struct conntrack_entry *ce, void *conntrack_priv);
 static int target_close_http(struct target *t);
 static int target_cleanup_http(struct target *t);
+static int target_unregister_http(struct target_reg *r);
+
+static size_t target_parse_query_response_http(struct target_conntrack_priv_http *cp, char *pload, size_t psize);
+static int target_parse_response_headers_http(struct target_conntrack_priv_http *cp);
+#ifdef HAVE_ZLIB
+static size_t target_process_gzip_http(struct target_conntrack_priv_http *cp, char * pload, size_t size);
+#endif
+static int target_reset_conntrack_http(struct target_conntrack_priv_http *cp);
+static int target_buffer_payload_http(struct target_conntrack_priv_http *cp, char *pload, size_t psize);
+static int target_file_open_http(struct target *t, struct target_conntrack_priv_http *cp, struct frame *f, int is_gzip);
 
 #endif

@@ -256,6 +256,9 @@ int target_process_mime_msnmsgrp2p_msg(struct target *t, struct target_conntrack
 				if (!msg_size) // Empty message, discard it
 					return POM_OK;
 
+				if (!cp->session->account) // Account unknown, ignore
+					return POM_OK;
+
 				char filename[NAME_MAX + 1];
 				strcpy(filename, cp->parsed_path);
 				strncat(filename, cp->session->account, NAME_MAX - strlen(filename));

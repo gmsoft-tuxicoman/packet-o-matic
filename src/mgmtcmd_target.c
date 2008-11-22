@@ -149,6 +149,9 @@ struct mgmt_command_arg *mgmctcmd_target_id_completion(int argc, char *argv[], i
 		for (rl = main_config->rules; rl && i < rule_id; rl = rl->next)
 			i++;
 
+		if (!rl) // No such rule
+			return res;
+
 		struct target *t = rl->target;
 		int count = 0;
 		for (t = rl->target; t; t = t->next)

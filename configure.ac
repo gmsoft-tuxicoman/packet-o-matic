@@ -210,6 +210,15 @@ then
 	DATASTORE_OBJS="$DATASTORE_OBJS datastore_sqlite.la"
 fi
 
+# Check for Zlib
+AC_CHECK_HEADERS([zlib.h], [want_zlib=yes], [want_zlib=no])
+if test "x$want_zlib" = "xyes"
+then
+	AC_DEFINE(HAVE_ZLIB, , [Zlib])
+	zlib_LIBS="-lz"
+	AC_SUBST(zlib_LIBS)
+fi
+#
 
 AC_SUBST(INPUT_OBJS)
 AC_SUBST(TARGET_OBJS)
@@ -235,6 +244,7 @@ echo " * Linux DVB headers  : $want_dvb"
 echo " * Linux TUN headers  : $want_tun"
 echo " * PostgreSQL headers : $want_postgres"
 echo " * Sqlite3 headers    : $want_sqlite3"
+echo " * Zlib headers       : $want_zlib"
 echo ""
 echo "Author : Guy Martin <gmsoft@tuxicoman.be>"
 

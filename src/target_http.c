@@ -25,6 +25,11 @@
 #include <unistd.h>
 #include <errno.h>
 #include <ctype.h>
+#include <arpa/inet.h>
+
+#ifdef HAVE_ZLIB
+#include <zlib.h>
+#endif
 
 #include "target_http.h"
 
@@ -46,6 +51,9 @@
 #define TYPE_SND 0x08
 #define TYPE_TXT 0x10
 #define TYPE_DOC 0x20
+
+// Random value
+#define HTTP_HASH_INITVAL 0x2f67bd9a
 
 
 static const char *mime_types[MIME_TYPES_COUNT][3] = {
@@ -99,7 +107,7 @@ static const char *mime_types[MIME_TYPES_COUNT][3] = {
 
 };
 
-static unsigned char mime_types_hash[MIME_TYPES_COUNT];
+static struct mime_hash_entry *mime_types_hash[MIME_TYPES_HASH_SIZE];
 
 static unsigned int match_undefined_id;
 static struct target_mode *mode_default;
@@ -111,15 +119,9 @@ int target_register_http(struct target_reg *r) {
 	r->process = target_process_http;
 	r->close = target_close_http;
 	r->cleanup = target_cleanup_http;
+	r->unregister = target_unregister_http;
 
 	match_undefined_id = match_register("undefined");
-
-	// compute the stupidest hash ever
-	memset(mime_types_hash, 0, MIME_TYPES_COUNT);
-	int i, j;
-	for (i = 0; i < MIME_TYPES_COUNT; i++) 
-		for (j = 0; *(mime_types[i][0] + j); j++)
-			mime_types_hash[i] += (unsigned char) *(mime_types[i][0] + j);
 
 	mode_default = target_register_mode(r->type, "default", "Dump each HTTP connection's content into separate files");
 
@@ -127,12 +129,31 @@ int target_register_http(struct target_reg *r) {
 		return POM_ERR;
 
 	target_register_param(mode_default, "path", "/tmp", "Path of dumped files");
+#ifdef HAVE_ZLIB
+	target_register_param(mode_default, "decompress", "yes", "Decompress the payload or not on the fly");
+#endif
 	target_register_param(mode_default, "dump_img", "no", "Dump the images or not");
 	target_register_param(mode_default, "dump_vid", "no", "Dump the videos or not");
 	target_register_param(mode_default, "dump_snd", "no", "Dump the images or not");
 	target_register_param(mode_default, "dump_txt", "no", "Dump the text or not");
 	target_register_param(mode_default, "dump_bin", "no", "Dump the binary or not");
 	target_register_param(mode_default, "dump_doc", "no", "Dump the documents or not");
+
+	// Calculate the mime hash table
+	
+	memset(mime_types_hash, 0, sizeof(mime_types_hash));
+	
+	int i;
+	for (i = 1; i < MIME_TYPES_COUNT; i++) {
+		uint32_t hash = jhash(mime_types[i][0], strlen(mime_types[i][0]), HTTP_HASH_INITVAL);
+		hash %= MIME_TYPES_HASH_SIZE;
+		struct  mime_hash_entry *tmp = malloc(sizeof(struct mime_hash_entry));
+		memset(tmp, 0, sizeof(struct mime_hash_entry));
+		tmp->id = i;
+		tmp->next = mime_types_hash[hash];
+		mime_types_hash[hash] = tmp;
+
+	}
 
 
 	return POM_OK;
@@ -148,6 +169,9 @@ static int target_init_http(struct target *t) {
 	t->target_priv = priv;
 
 	priv->path = ptype_alloc("string", NULL);
+#ifdef HAVE_ZLIB
+	priv->decompress = ptype_alloc("bool", NULL);
+#endif
 	priv->dump_img = ptype_alloc("bool", NULL);
 	priv->dump_vid = ptype_alloc("bool", NULL);
 	priv->dump_snd = ptype_alloc("bool", NULL);
@@ -161,6 +185,9 @@ static int target_init_http(struct target *t) {
 	}
 	
 	target_register_param_value(t, mode_default, "path", priv->path);
+#ifdef HAVE_ZLIB
+	target_register_param_value(t, mode_default, "decompress", priv->decompress);
+#endif
 	target_register_param_value(t, mode_default, "dump_img", priv->dump_img);
 	target_register_param_value(t, mode_default, "dump_vid", priv->dump_vid);
 	target_register_param_value(t, mode_default, "dump_snd", priv->dump_snd);
@@ -191,6 +218,9 @@ static int target_cleanup_http(struct target *t) {
 	if (priv) {
 
 		ptype_cleanup(priv->path);
+#ifdef HAVE_ZLIB
+		ptype_cleanup(priv->decompress);
+#endif
 		ptype_cleanup(priv->dump_img);
 		ptype_cleanup(priv->dump_vid);
 		ptype_cleanup(priv->dump_snd);
@@ -200,6 +230,24 @@ static int target_cleanup_http(struct target *t) {
 		free(priv);
 	}
 
+	return POM_OK;
+}
+
+static int target_unregister_http(struct target_reg *r) {
+
+	// Free the mime hash table
+	
+	int i;
+	for (i = 0; i < MIME_TYPES_HASH_SIZE; i++) {
+		struct mime_hash_entry *tmp = mime_types_hash[i];
+		while (tmp) {
+			mime_types_hash[i] = tmp->next;
+			free(tmp);
+			tmp = mime_types_hash[i];
+		}
+
+	}
+	
 	return POM_OK;
 }
 
@@ -260,206 +308,296 @@ static int target_process_http(struct target *t, struct frame *f) {
 	
 	}
 
-	if ((cp->state == HTTP_MATCH || cp->state == HTTP_NO_MATCH) && (f->ce->direction != cp->direction)) {
+	if (cp->state == HTTP_INVALID)
 		return POM_OK;
-	}
 
 	if (lastl->payload_size == 0) {
-		pom_log(POM_LOG_TSHOOT "Payload size == 0");	
 		return POM_OK;
 	}
 
 
 
-	unsigned int pstart, psize;
+	size_t pstart, psize;
 	pstart = lastl->payload_start;
 	psize = lastl->payload_size;
 
-	if (cp->state == HTTP_HEADER) {
-		char *pload = f->buff + lastl->payload_start;
-		int i, lstart = 0;
-		for (i = 0; i < lastl->payload_size; i++) {
+	char *pload = f->buff + lastl->payload_start;
 
-			if (!pload[i] || (unsigned)pload[i] > 128) { // Non ascii char
-				pom_log(POM_LOG_TSHOOT "NULL or non ASCII char in header packet");
-				return POM_OK;
-			}
+	if (cp->buff) {
+		int size = cp->buff_size + psize;
+		cp->buff = realloc(cp->buff, size);
+		memcpy(cp->buff + cp->buff_size, pload, psize);
+		cp->buff_size = size;
+		psize = size;
+		pload = cp->buff;
+	}
 
-			if (pload[i] == '\n') {
+	while (psize > 0) {
 
+		if (cp->state == HTTP_INVALID)
+			return POM_OK;
 
-				if (i - lstart >= 17 && !strncmp(pload + lstart, "Content-", 8)) { // We got a match
-					lstart += 8;
+		if (cp->state == HTTP_HEADER || cp->state == HTTP_QUERY || cp->state == HTTP_RESPONSE) {
 
-					if (!strncmp(pload + lstart, "Type: ", 6)) {
-						lstart += 6;
-						while (pload[lstart] == ' ')
-							lstart++;
-						int j;
-						for (j = 0;
-							pload[lstart + j] != ' ' &&
-							pload[lstart + j] != '\r' &&
-							pload[lstart + j] != '\n' &&
-							pload[lstart + j] != ';' && // we only want the first part of the mime-type
-							j < i;
-							j++);
-
-						
-						if (j > 255) {
-							lstart = i + 1;
-							continue;
-						}
-
-
-
-						char type[256];
-						memcpy(type, pload + lstart, j);
-						type[j] = 0;
-						pom_log(POM_LOG_TSHOOT "Mime type = %s", type);
-						cp->state |= HTTP_HAVE_CTYPE;
-
-						unsigned char hash = 0;
-						int k;
-						for (k = 0; k < j; k++)
-							hash += (unsigned char) tolower(type[k]);
-						
-						for (k = 0; k < MIME_TYPES_COUNT; k++) {
-							if (mime_types_hash[k] == hash && !strcasecmp(type, mime_types[k][0])) {
-								cp->content_type = k;
-								pom_log(POM_LOG_TSHOOT "Found content type %u (%s, %s)", k, type, mime_types[k][0]);
-								break;
-							}
-						}
-
-						if (k >= MIME_TYPES_COUNT) {
-							pom_log(POM_LOG_TSHOOT "Warning, unknown content type %s", type);
-							cp->content_type = 0;
-						}
-
-					} else if (!strncmp(pload + lstart, "Length: ", 8)) {
-						lstart += 8;
-					
-						while (pload[lstart] == ' ')
-							lstart++;
-						int j;
-						for (j = 0;
-							pload[lstart + j] != ' ' &&
-							pload[lstart + j] != '\r' &&
-							pload[lstart + j] != '\n' &&
-							j < i;
-							j++);
-
-						
-						char length[256];
-						if (j > 255) {
-							lstart = i + 1;
-							continue;
-						}
-						memcpy(length, pload + lstart, j);
-						length[j] = 0;
-						if (sscanf(length, "%u", &cp->content_len) != 1) {
-							lstart = i + 1;
-							continue;
-						}
-
-						pom_log(POM_LOG_TSHOOT "Content length = %u", cp->content_len);
-						cp->state |= HTTP_HAVE_CLEN;
-
-					} else {
-						lstart = i + 1;
-						continue;
-					}
-					// One of the header matched
-
-					cp->direction = f->ce->direction;
-
-				} else if (i - lstart == 1 && pload[lstart] == '\r') {
-					pstart = i + 1 + lastl->payload_start;
-					psize = (lastl->payload_size + lastl->payload_start) - pstart;
-					pom_log(POM_LOG_TSHOOT "End of headers. %u bytes of payload", psize);
-					break;
-
+			if (cp->state == HTTP_HEADER) {
+				size_t len = target_parse_query_response_http(cp, pload, psize);
+				if (len == POM_ERR) {
+					target_reset_conntrack_http(cp);
+					cp->state = HTTP_INVALID;
+					return POM_OK;
+				} else if (len == 0) { // Buffer incomplete
+					target_buffer_payload_http(cp, pload, psize);
+					return POM_OK;
 				}
-		
-				lstart = i + 1;
+				pload += len;
+				psize -= len;
 			}
 
+			char *nl = memchr(pload, '\n', psize);
+			if (!nl) { // Buffer incomplete
+				if (psize > HTTP_MAX_HEADER_LINE) {
+					pom_log(POM_LOG_TSHOOT "Header too long. Discarding");
+					target_reset_conntrack_http(cp);
+					cp->state = HTTP_INVALID;
+					break;
+				} else {
+					target_buffer_payload_http(cp, pload, psize);
+					return POM_OK;
+				}
+
+			}
+			int strsize = nl - pload;
+			size_t size = strsize + 1;
+			if (nl > pload && *(nl - 1) == '\r')
+				strsize--;
+
+			if (strsize == 0) {
+				pload += size;
+				psize -= size;
+
+				if (target_parse_response_headers_http(cp) == POM_ERR) {
+					pom_log(POM_LOG_TSHOOT "Invalid HTTP header received. Ignoring connection");
+					target_reset_conntrack_http(cp);
+					cp->state = HTTP_INVALID;
+					break;
+				}
+
+				if (cp->state == HTTP_QUERY) {
+					if (cp->info.flags & HTTP_FLAG_HAVE_CLEN && cp->info.content_len != 0) {
+						cp->state = HTTP_BODY;
+						cp->info.content_type = 0; // Make sure the body isn't matched
+						continue;
+					} else {
+						cp->state = HTTP_HEADER;
+						target_reset_conntrack_http(cp);
+						return POM_OK;
+					}
+				} else if (cp->state == HTTP_RESPONSE) {
+					if ((cp->info.err_code > 100 && cp->info.err_code < 200) || cp->info.err_code == 204 || cp->info.err_code >= 304)
+						cp->state = HTTP_HEADER; // HTTP RFC specified that those reply don't have a body
+					else
+						cp->state = HTTP_BODY;
+					continue;
+				} else {
+					pom_log(POM_LOG_TSHOOT "Internal error, invalid state");
+					target_reset_conntrack_http(cp);
+					cp->state = HTTP_INVALID;
+					break;
+				}
+				continue;
+			}
+
+			char *colon = memchr(pload, ':', strsize);
+			if (!colon) {
+				if (strsize > HTTP_MAX_HEADER_LINE) { // I've never seen a so long buffer name
+					pom_log(POM_LOG_TSHOOT "Invalid header line. Discarding connection");
+					target_reset_conntrack_http(cp);
+					cp->state = HTTP_INVALID;
+					break;
+				} else {
+					target_buffer_payload_http(cp, pload, psize);
+					return POM_OK;
+				}
+
+			}
+
+			int name_size = colon - pload;
+			while (name_size > 0 && pload[name_size - 1] == ' ')
+				name_size--;
+			if (!name_size) {
+				target_reset_conntrack_http(cp);
+				pom_log(POM_LOG_TSHOOT "Header name empty");
+				cp->state = HTTP_INVALID;
+				break;
+			}
+			cp->info.headers_num++;
+			cp->info.headers = realloc(cp->info.headers, sizeof(struct http_header) * cp->info.headers_num);
+			cp->info.headers[cp->info.headers_num - 1].name = malloc(name_size + 1);
+			memcpy(cp->info.headers[cp->info.headers_num - 1].name, pload, name_size);
+			cp->info.headers[cp->info.headers_num - 1].name[name_size] = 0;
+			colon++;
+			while (*colon && *colon == ' ')
+				colon++;
+			int value_size = pload + strsize - colon;
+			cp->info.headers[cp->info.headers_num - 1].value = malloc(value_size + 1);
+			memcpy(cp->info.headers[cp->info.headers_num - 1].value, colon, value_size);
+			cp->info.headers[cp->info.headers_num - 1].value[value_size] = 0;
+
+			pload += size;
+			psize -= size;
+			
 		}
 
+		if (cp->info.flags & HTTP_FLAG_HAVE_CLEN && cp->info.content_len == 0) {
+			target_reset_conntrack_http(cp);
+			continue;
+		}
+
+		if (cp->state == HTTP_BODY) {
+			
+
+			size_t size = psize;
+			if (cp->info.flags & HTTP_FLAG_HAVE_CLEN) {
+				if (cp->info.content_len - cp->info.content_pos < size)
+					size = cp->info.content_len - cp->info.content_pos;
+			}
+
+			if (cp->info.flags & HTTP_FLAG_CHUNKED) {
+				if (cp->info.chunk_len == 0) {
+					/// RFC 2616 specifies that Content-Lenght mus be ignore if transfer encoding is used
+					if (cp->info.flags & HTTP_FLAG_HAVE_CLEN) {
+						pom_log(POM_LOG_TSHOOT "Ignoring invalid Content-Length");
+						cp->info.flags &= ~HTTP_FLAG_HAVE_CLEN;
+					}
+					char *crlf = NULL;
+					int len = 0;
+					do { // skip remaining crlf
+						pload += len;
+						size -= len;
+						psize -= len;
+						crlf = memchr(pload, '\n', size);
+						if (!crlf)
+							break;
+						len = crlf - pload + 1;
+					} while (len <= 2 && size >= len);
+
+					if (!crlf) {
+						if (size < 8) {
+							// buffer too short
+							target_buffer_payload_http(cp, pload, psize);
+							return POM_OK;
+						} else {
+							pom_log(POM_LOG_TSHOOT "Invalid chunk size : cannot find CRLF");
+							target_reset_conntrack_http(cp);
+							cp->state = HTTP_INVALID;
+							break;
+						}
+					}
+					char num[9];
+					int num_size = crlf - pload - 1;
+					if (num_size < 9) {
+						memcpy(num, pload, num_size);
+						num[num_size] = 0;
+					} else {
+						pom_log(POM_LOG_TSHOOT "Invalid chunk size : too big");
+						target_reset_conntrack_http(cp);
+						cp->state = HTTP_INVALID;
+						break;
+					}
+
+					if (sscanf(num, "%x", &cp->info.chunk_len) != 1) {
+						pom_log(POM_LOG_TSHOOT "Invalid chunk size : unparsable");
+						target_reset_conntrack_http(cp);
+						cp->state = HTTP_INVALID;
+						break;
+					}
+					pload += num_size + 2;
+					size -= num_size + 2;
+					psize -= num_size + 2;
+				}
+				if (cp->info.chunk_len == 0) {
+					target_reset_conntrack_http(cp);
+					if (size > 2) {
+						psize -= 2; // add the crlf
+						pload += 2;
+					} else {
+						break; // Ignore the rest of the payload
+					}
+					continue;
+				}
+
+				int remaining = cp->info.chunk_len - cp->info.chunk_pos;
+				if (remaining <= size) {
+					size = remaining;
+					cp->info.chunk_pos = 0;
+					cp->info.chunk_len = 0;
+				} else {
+					cp->info.chunk_pos += size;
+				}
+
+
+			}
+
+			if (size == 0) // Nothing more to process in this packet
+				break;
+			
+			if (*mime_types[cp->info.content_type][2] & priv->match_mask) { // Should we process the payload ?
+#ifdef HAVE_ZLIB
+				if ((cp->info.flags & HTTP_FLAG_GZIP || cp->info.flags & HTTP_FLAG_DEFLATE) && PTYPE_BOOL_GETVAL(priv->decompress)) { // same shit, different headers
+					if (cp->fd == -1 && target_file_open_http(t, cp, f, 0) == POM_ERR)
+						return POM_ERR;
+					size_t len = target_process_gzip_http(cp, pload, size);
+					if (len == POM_ERR)
+						return POM_ERR;
+					else if (len == 0) // Was marked as invalid
+						return POM_OK;
+					pload += len;
+					psize -= len;
+					size -= len;
+					cp->info.content_pos += len;
+				} else {
+
+#endif
+					if (cp->fd == -1 && target_file_open_http(t, cp, f, (cp->info.flags & HTTP_FLAG_GZIP || cp->info.flags & HTTP_FLAG_DEFLATE)) == POM_ERR)
+						return POM_ERR;
+					size_t wres = 0;
+					while (size > 0) {
+						wres = write(cp->fd, pload, size);
+						if (wres == -1) {
+							pom_log(POM_LOG_ERR "Unable to write into a file");
+							return POM_ERR;
+						}
+						pload += wres;
+						size -= wres;
+						psize -= wres;
+						cp->info.content_pos += wres;
+					}
+#ifdef HAVE_ZLIB
+				}
+#endif
+			} else {
+				pload += size;
+				psize -= size;
+				cp->info.content_pos += size;
+			}
+
+
+		}
+		if (cp->info.flags & HTTP_FLAG_HAVE_CLEN) {
+			if (cp->info.content_pos >= cp->info.content_len) {
+				target_reset_conntrack_http(cp);
+			}
+		}
 	}
 
-	if (cp->state == (HTTP_HAVE_CTYPE | HTTP_HAVE_CLEN | HTTP_HEADER)) {
-		// Ok, we have all the info we need. Let's see if we need to actually save that
-		if (*mime_types[cp->content_type][2] & priv->match_mask)
-			cp->state = HTTP_MATCH;
-		else
-			cp->state = HTTP_NO_MATCH;
-	} else if (cp->state == (HTTP_HAVE_CLEN | HTTP_HEADER)) {
-		cp->state = HTTP_NO_MATCH;
-	} else if (cp->state & HTTP_HEADER)
-		cp->state = HTTP_HEADER;
-
-
-	if (cp->state == HTTP_MATCH) {
-
-		if (cp->fd == -1) {
-
-			char filename[NAME_MAX];
-			strcpy(filename, PTYPE_STRING_GETVAL(priv->path));
-
-			if (*(filename + strlen(filename) - 1) != '/')
-				strcat(filename, "/");
-
-			char outstr[20];
-			memset(outstr, 0, sizeof(outstr));
-			// YYYYMMDD-HHMMSS-UUUUUU
-			char *format = "%Y%m%d-%H%M%S-";
-			struct tm tmp;
-			localtime_r((time_t*)&f->tv.tv_sec, &tmp);
-
-			strftime(outstr, sizeof(outstr), format, &tmp);
-
-			strcat(filename, outstr);
-			sprintf(outstr, "%u", (unsigned int)f->tv.tv_usec);
-			strcat(filename, outstr);
-			strcat(filename, ".");
-			strcat(filename, mime_types[cp->content_type][1]);
-			cp->fd = target_file_open(f->l, filename, O_RDWR | O_CREAT, 0666);
-
-			if (cp->fd == -1) {
-				char errbuff[256];
-				strerror_r(errno, errbuff, sizeof(errbuff));
-				pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s", filename, errbuff);
-				cp->state = HTTP_NO_MATCH;
-				return POM_ERR;
-			}
-
-			pom_log(POM_LOG_TSHOOT "%s opened", filename);
-
-		}
-
-
-		cp->pos += psize;
-		write(cp->fd, f->buff + pstart, psize);
-		pom_log(POM_LOG_TSHOOT "Saved %u of payload", psize);
-		
-
-	} 
-
-	if (cp->state == HTTP_MATCH || cp->state == HTTP_NO_MATCH) {
-		if (cp->pos >= cp->content_len) { // Everything was captured, we can close the file
-			cp->state = HTTP_HEADER;
-			cp->content_len = 0;
-			cp->content_type = 0;
-			cp->pos = 0;
-			if (cp->fd != -1) {
-				close(cp->fd);
-			}
-			cp->fd = -1;
-		}
+	if (cp->buff) {
+		free(cp->buff);
+		cp->buff = NULL;
+		cp->buff_size = 0;
 	}
+
 	return POM_OK;
-};
+}
 
 static int target_close_connection_http(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
@@ -468,9 +606,31 @@ static int target_close_connection_http(struct target *t, struct conntrack_entry
 	struct target_conntrack_priv_http *cp;
 	cp = conntrack_priv;
 
-	if (cp->fd != -1) {
+	if (cp->fd != -1)
 		close(cp->fd);
+	if (cp->buff)
+		free(cp->buff);
+	if (cp->info.url)
+		free(cp->info.url);
+
+	if (cp->info.headers) {
+		int i;
+		for (i = 0; i < cp->info.headers_num; i++) {
+			free(cp->info.headers[i].name);
+			free(cp->info.headers[i].value);
+		}
+
+		free(cp->info.headers);
+			
 	}
+
+#ifdef HAVE_ZLIB
+	if (cp->info.zbuff) {
+		inflateEnd(cp->info.zbuff);
+		free(cp->info.zbuff);
+		cp->info.zbuff = NULL;
+	}
+#endif
 
 	struct target_priv_http *priv = t->target_priv;
 
@@ -490,4 +650,315 @@ static int target_close_connection_http(struct target *t, struct conntrack_entry
 }
 
 
+static size_t target_parse_query_response_http(struct target_conntrack_priv_http *cp, char *pload, size_t psize) {
 
+	if (psize < strlen("HTTP/")) 
+		return 0; // Buffer incomplete
+
+	size_t hdr_size;
+	char *nl = memchr(pload, '\n', psize);
+	if (!nl) {
+		if (psize > HTTP_MAX_HEADER_LINE) {
+			pom_log(POM_LOG_TSHOOT "Header line too big. Ignoring connection");
+			return POM_ERR; // There should have been a line return
+		} else {
+			return 0; // Buffer incomplete
+		}
+	}
+	size_t size = nl - pload;
+	hdr_size = size + 1;
+	if (size > 1 && *(nl - 1) == '\r')
+		size -= 1;
+
+	int tok_num = 0;
+	char *token = NULL, *tok_end = pload;
+	size_t tok_size;
+	while (size > 0 && tok_end) {
+		token = tok_end;
+		tok_end = memchr(token, ' ', size);
+		if (tok_end == token) {
+			size--;
+			token++;
+			continue;
+		}
+	
+		if (!tok_end) {
+			tok_size = size;
+			size = 0;
+		} else  {
+			tok_size = tok_end - token;
+			tok_end++;
+			size -= tok_size + 1;
+		}
+		
+
+
+		switch (tok_num) {
+			case 0:
+				if (strlen("HTTP/1.1") && !strncmp(token, "HTTP/", strlen("HTTP/"))) {
+					cp->state = HTTP_RESPONSE;
+				} else if (!strncmp(token, "GET ", strlen("GET ")) || !strncmp(token, "POST ", strlen("POST "))) {
+					cp->state = HTTP_QUERY; 
+				} else {
+					return POM_ERR; // Unhandled stuff that we won't care
+				}
+				break;
+			case 1:
+				if (cp->state == HTTP_RESPONSE) {
+					if (tok_size > 4)
+						return 0;
+					char err_num[5];
+					memcpy(err_num, token, tok_size);
+					err_num[tok_size] = 0;
+					if (sscanf(err_num, "%u", &cp->info.err_code) != 1)
+						return POM_ERR;
+				} else if (cp->state == HTTP_QUERY) {
+					cp->info.url = malloc(tok_size + 1);
+					memcpy(cp->info.url, token, tok_size);
+					cp->info.url[tok_size] = 0;
+				}
+				break;
+			
+		}
+		tok_num++;
+	}
+
+	if (tok_num < 1) { // Stuff not matched
+		pom_log(POM_LOG_TSHOOT "Unable to parse the response/query");
+		return POM_ERR;
+	}
+
+	return hdr_size;
+}
+
+static int target_parse_response_headers_http(struct target_conntrack_priv_http *cp) {
+	int i;
+	for (i = 0; i < cp->info.headers_num; i++) {
+		if (!strcasecmp(cp->info.headers[i].name, "Content-Length")) {
+			if(sscanf(cp->info.headers[i].value, "%u", &cp->info.content_len) != 1)
+				return POM_ERR;
+			cp->info.flags |= HTTP_FLAG_HAVE_CLEN;
+		} else if (!strcasecmp(cp->info.headers[i].name, "Content-Encoding")) {
+			if (!strcasecmp(cp->info.headers[i].value, "gzip"))
+				cp->info.flags |= HTTP_FLAG_GZIP;
+			if (!strcasecmp(cp->info.headers[i].value, "deflate"))
+				cp->info.flags |= HTTP_FLAG_DEFLATE;
+		} else if (!strcasecmp(cp->info.headers[i].name, "Content-Type")) {
+			char *sc = strchr(cp->info.headers[i].value, ';');
+			if (sc)
+				*sc = 0;	
+			uint32_t hash = jhash(cp->info.headers[i].value, strlen(cp->info.headers[i].value), HTTP_HASH_INITVAL);
+			hash %= MIME_TYPES_HASH_SIZE;
+			if (mime_types_hash[hash]) {
+				if (mime_types_hash[hash]->next) {
+					struct mime_hash_entry *tmp = mime_types_hash[hash];
+					while (tmp) {
+						if (!strcmp(mime_types[tmp->id][0], cp->info.headers[i].value)){
+							cp->info.content_type = mime_types_hash[hash]->id;
+							break;
+						}
+						tmp = tmp->next;
+					}
+				} else {
+					cp->info.content_type = mime_types_hash[hash]->id;
+				}
+			}
+
+		} else if (!strcasecmp(cp->info.headers[i].name, "Transfer-Encoding")) {
+			if (!strcasecmp(cp->info.headers[i].value, "chunked"))
+				cp->info.flags |= HTTP_FLAG_CHUNKED;
+		}
+
+
+	}
+
+	return POM_OK;
+}
+
+#ifdef HAVE_ZLIB
+
+static size_t target_process_gzip_http(struct target_conntrack_priv_http *cp, char *pload, size_t size) {
+
+	if (!cp->info.zbuff) {
+
+		cp->info.zbuff = malloc(sizeof(z_stream));
+		memset(cp->info.zbuff, 0, sizeof(z_stream));
+
+		if (cp->info.flags & HTTP_FLAG_GZIP) {
+			if (inflateInit2(cp->info.zbuff, 15 + 32) != Z_OK) { // 15, default window bits. 32, magic value to enable header detection
+				if (cp->info.zbuff->msg)
+					pom_log(POM_LOG_ERR "Unable to init Zlib : %s", cp->info.zbuff->msg);
+				else
+					pom_log(POM_LOG_ERR "Unable to init Zlib : Unknown error");
+				free(cp->info.zbuff);
+				cp->info.zbuff = NULL;
+				cp->state = HTTP_INVALID;
+				return 0;
+			}
+		} else if (cp->info.flags & HTTP_FLAG_DEFLATE) {
+
+			if (inflateInit2(cp->info.zbuff, -15) != Z_OK) { // Raw content
+				if (cp->info.zbuff->msg)
+					pom_log(POM_LOG_ERR "Unable to init Zlib : %s", cp->info.zbuff->msg);
+				else
+					pom_log(POM_LOG_ERR "Unable to init Zlib : Unknown error");
+				free(cp->info.zbuff);
+				cp->info.zbuff = NULL;
+				cp->state = HTTP_INVALID;
+				return 0;
+			}
+			
+		}
+	}
+
+	cp->info.zbuff->next_in = (unsigned char *) pload;
+	cp->info.zbuff->avail_in = size;
+	int out_size = size * 2;
+	char *buff = malloc(out_size);
+
+	do {
+		cp->info.zbuff->next_out = (unsigned char *)buff;
+		cp->info.zbuff->avail_out = out_size;
+		int res = inflate(cp->info.zbuff, Z_SYNC_FLUSH);
+		if (res == Z_OK || res == Z_STREAM_END) {
+			size_t wpos = 0, wres = 0, wsize = out_size - cp->info.zbuff->avail_out;
+			while (wsize > 0) {
+				wres = write(cp->fd, buff + wpos, wsize);
+				if (wres == -1) {
+					pom_log(POM_LOG_ERR "Unable to write into a file");
+					free(buff);
+					return POM_ERR;
+				}
+				wpos += wres;
+				wsize -= wres;
+					
+			}
+			if (res == Z_STREAM_END) {
+				inflateEnd(cp->info.zbuff);
+				free(cp->info.zbuff);
+				cp->info.zbuff = NULL;
+				break;
+			}
+
+		} else {
+			char *msg = cp->info.zbuff->msg;
+			if (!msg)
+				msg = "Unknown error";
+			pom_log(POM_LOG_TSHOOT "Error while uncompressing the gzip content : %s", msg);
+			cp->state = HTTP_INVALID;
+			free(buff);
+			if (cp->info.zbuff) {
+				inflateEnd(cp->info.zbuff);
+				free(cp->info.zbuff);
+				cp->info.zbuff = NULL;
+			}
+			return 0;
+		}
+
+	} while (cp->info.zbuff->avail_in);
+	free(buff);
+
+	return size;
+}
+
+#endif
+
+static int target_reset_conntrack_http(struct target_conntrack_priv_http *cp) {
+	cp->info.flags = 0;
+	if (cp->info.headers) {
+		int i;
+		for (i = 0; i < cp->info.headers_num; i++) {
+			free(cp->info.headers[i].name);
+			free(cp->info.headers[i].value);
+		}
+		free(cp->info.headers);
+		cp->info.headers = NULL;
+		cp->info.headers_num = 0;
+	}
+
+	if (cp->fd != -1) {
+		close(cp->fd);
+		cp->fd = -1;
+	}
+
+#ifdef HAVE_ZLIB
+	if (cp->info.zbuff) {
+		inflateEnd(cp->info.zbuff);
+		free(cp->info.zbuff);
+		cp->info.zbuff = NULL;
+	}
+#endif
+	
+	cp->info.chunk_len = 0;
+	cp->info.chunk_pos = 0;
+
+	cp->info.content_pos = 0;
+	cp->info.content_len = 0;
+	cp->state = HTTP_HEADER;
+	return POM_OK;
+}
+
+static int target_buffer_payload_http(struct target_conntrack_priv_http *cp, char *pload, size_t psize) {
+
+	if (psize == 0) {
+		free(cp->buff);
+		cp->buff = NULL;
+		cp->buff_size = 0;
+		return POM_OK;
+	}
+
+
+	char *new_buff = malloc(psize);
+	memcpy(new_buff, pload, psize);
+	if (cp->buff)
+		free(cp->buff);
+	cp->buff = new_buff;
+	cp->buff_size = psize;
+
+	return POM_OK;
+
+}
+
+static int target_file_open_http(struct target *t, struct target_conntrack_priv_http *cp, struct frame *f, int is_gzip) {
+
+	struct target_priv_http *priv = t->target_priv;
+
+	if (cp->fd != -1)
+		return POM_ERR;
+
+	char filename[NAME_MAX];
+	strcpy(filename, PTYPE_STRING_GETVAL(priv->path));
+
+	if (*(filename + strlen(filename) - 1) != '/')
+		strcat(filename, "/");
+
+	char outstr[20];
+	memset(outstr, 0, sizeof(outstr));
+	// YYYYMMDD-HHMMSS-UUUUUU
+	char *format = "%Y%m%d-%H%M%S-";
+	struct tm tmp;
+	localtime_r((time_t*)&f->tv.tv_sec, &tmp);
+
+	strftime(outstr, sizeof(outstr), format, &tmp);
+
+	strcat(filename, outstr);
+	sprintf(outstr, "%u", (unsigned int)f->tv.tv_usec);
+	strcat(filename, outstr);
+	strcat(filename, ".");
+	strcat(filename, mime_types[cp->info.content_type][1]);
+	if (is_gzip)
+		strcat(filename, ".gz");
+	cp->fd = target_file_open(f->l, filename, O_RDWR | O_CREAT, 0666);
+
+	if (cp->fd == -1) {
+		char errbuff[256];
+		strerror_r(errno, errbuff, sizeof(errbuff));
+		pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s", filename, errbuff);
+		cp->state = HTTP_INVALID;
+		return POM_ERR;
+	}
+
+	pom_log(POM_LOG_TSHOOT "%s opened", filename);
+
+	return POM_OK;
+}

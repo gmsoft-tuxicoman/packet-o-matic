@@ -601,8 +601,6 @@ static struct rule_node *rule_parse_block(char *expr, char *errbuff, int errlen)
 		token = strtok_r(str, " ", &saveptr);
 		if (token == NULL)
 			break;
-		if (strlen(token) == 0)
-			continue;
 		
 		// there should not be more than 3 words
 		if (wordcount >= 3) {

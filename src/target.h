@@ -136,6 +136,14 @@ struct target_reg {
 	 * @return POM_OK on success, POM_ERR on failure.
 	 */
 	int (*cleanup) (struct target *t);
+
+	/// Pointer to the unregister function
+	/**
+	 * Called when unregistering the target.
+	 * @param r What target to unregister
+	 * @return POM_OK on success, POM_ERR on failure.
+	 */
+	int (*unregister) (struct target_reg *r);
 };
 
 /// This structure describe an instance of a target

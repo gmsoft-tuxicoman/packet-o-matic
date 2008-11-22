@@ -53,12 +53,6 @@ void pom_log_internal(char *file, const char *format, ...) {
 	vsnprintf(buff, sizeof(buff) - 1, format, arg_list);
 	va_end(arg_list);
 
-
-	struct log_entry *entry = malloc(sizeof(struct log_entry));
-
-
-	memset(entry, 0, sizeof(struct log_entry));
-
 	char *dot = strchr(file, '.');
 	unsigned int len = strlen(file);
 	if (dot) {
@@ -67,17 +61,38 @@ void pom_log_internal(char *file, const char *format, ...) {
 			len = new_len;
 	}
 
-	entry->file = malloc(len + 1);
-	memset(entry->file, 0, len + 1);
-	strncat(entry->file, file, len);
-	
-	entry->data = malloc(strlen(buff) + 1);
-	strcpy(entry->data, buff);
-	
-	entry->level = level;
+
+	int result = pthread_rwlock_wrlock(&log_buffer_lock);
+	if (result) {
+		printf("Error while locking the log lock. Aborting.\r");
+		abort();
+		return; // never reached
+	}
+
+	struct log_entry *entry;
 	if (level < *POM_LOG_TSHOOT) {
-		entry->id = log_buffer_entry_id;
-		log_buffer_entry_id++;
+		entry = malloc(sizeof(struct log_entry));
+		memset(entry, 0, sizeof(struct log_entry));
+
+
+		entry->file = malloc(len + 1);
+		memset(entry->file, 0, len + 1);
+		strncat(entry->file, file, len);
+		
+		entry->data = malloc(strlen(buff) + 1);
+		strcpy(entry->data, buff);
+		
+		entry->level = level;
+		if (level < *POM_LOG_TSHOOT) {
+			entry->id = log_buffer_entry_id;
+			log_buffer_entry_id++;
+		}
+	} else {
+		struct log_entry tmp;
+		tmp.file = file;
+		tmp.data = buff;
+		tmp.level = level;
+		entry = &tmp;
 	}
 
 	mgmtsrv_send_debug(entry);
@@ -85,21 +100,15 @@ void pom_log_internal(char *file, const char *format, ...) {
 	if (console_output && console_debug_level >= level)
 		printf("%s: %s\n", entry->file, entry->data);
 
-	if (level >= *POM_LOG_TSHOOT) { // We don't want to save troubleshooting output
-		free(entry->file);
-		free(entry->data);
-		free(entry);
+	if (level >= *POM_LOG_TSHOOT) {
+		if (pthread_rwlock_unlock(&log_buffer_lock)) {
+			printf("Error while unlocking the log lock. Aborting.\r");
+			abort();
+			return; // never reached
+		}
 		return;
 	}
 
-
-	int result = pthread_rwlock_wrlock(&log_buffer_lock);
-
-	if (result) {
-		printf("Error while locking the log lock. Aborting.\r");
-		abort();
-		return; // never reached
-	}
 
 	if (!log_tail) {
 		log_head = entry;

@@ -354,7 +354,7 @@ int target_process_line_msn(struct target *t, struct target_conntrack_priv_msn *
 			pom_log(POM_LOG_TSHOOT "Received error %u : %s", error, cp->buffer[cp->curdir]);
 			return POM_OK;
 		}
-		pom_log(POM_LOG_DEBUG "Unhandled command %3s", cp->buffer[cp->curdir]);
+		pom_log(POM_LOG_TSHOOT "Unhandled command %3s", cp->buffer[cp->curdir]);
 		return POM_OK;
 	}
 
@@ -395,8 +395,6 @@ int target_msn_handler_ver(struct target *t, struct target_conntrack_priv_msn *c
 		token = strtok_r(str, " ", &saveptr);
 		if (!token)
 			break;
-		if (!strlen(token))
-			continue;
 		
 		switch (token_id) {
 			case 0:
@@ -440,8 +438,6 @@ int target_msn_handler_cvr(struct target *t, struct target_conntrack_priv_msn *c
 		token = strtok_r(str, " ", &saveptr);
 		if (!token)
 			break;
-		if (!strlen(token))
-			continue;
 		
 		switch (token_id) {
 			case 0:
@@ -493,8 +489,6 @@ int target_msn_handler_usr(struct target *t, struct target_conntrack_priv_msn *c
 		token = strtok_r(str, " ", &saveptr);
 		if (!token)
 			break;
-		if (!strlen(token))
-			continue;
 		
 		switch (token_id) {
 			case 0: 
@@ -566,8 +560,6 @@ int target_msn_handler_xfr(struct target *t, struct target_conntrack_priv_msn *c
 		token = strtok_r(str, " ", &saveptr);
 		if (!token)
 			break;
-		if (!strlen(token))
-			continue;
 		
 		switch (token_id) {
 			case 0:
@@ -616,8 +608,6 @@ int target_msn_handler_msg(struct target *t, struct target_conntrack_priv_msn *c
 		token = strtok_r(str, " ", &saveptr);
 		if (!token)
 			break;
-		if (!strlen(token))
-			continue;
 		
 		switch (token_id) {
 			case 0:
@@ -720,8 +710,6 @@ int target_msn_handler_prp(struct target *t, struct target_conntrack_priv_msn *c
 		token = strtok_r(str, " ", &saveptr);
 		if (!token)
 			break;
-		if (!strlen(token))
-			continue;
 		
 		switch (token_id) {
 			case 0: {
@@ -897,8 +885,6 @@ int target_msn_handler_lst(struct target *t, struct target_conntrack_priv_msn *c
 		token = strtok_r(str, " ", &saveptr);
 		if (!token)
 			break;
-		if (!strlen(token))
-			continue;
 		
 		switch (token_id) {
 			case 0: {
@@ -969,8 +955,6 @@ int target_msn_handler_chg(struct target *t, struct target_conntrack_priv_msn *c
 		token = strtok_r(str, " ", &saveptr);
 		if (!token)
 			break;
-		if (!strlen(token))
-			continue;
 		
 		switch (token_id) {
 			case 0:
@@ -1076,8 +1060,6 @@ int target_msn_handler_ubx(struct target *t, struct target_conntrack_priv_msn *c
 		token = strtok_r(str, " ", &saveptr);
 		if (!token)
 			break;
-		if (!strlen(token))
-			continue;
 		
 		switch (token_id) {
 			case 0:
@@ -1128,8 +1110,6 @@ int target_msn_handler_cal(struct target *t, struct target_conntrack_priv_msn *c
 		token = strtok_r(str, " ", &saveptr);
 		if (!token)
 			break;
-		if (!strlen(token))
-			continue;
 		
 		switch (token_id) {
 			case 0:
@@ -1268,8 +1248,6 @@ int target_msn_handler_iro(struct target *t, struct target_conntrack_priv_msn *c
 		token = strtok_r(str, " ", &saveptr);
 		if (!token)
 			break;
-		if (!strlen(token))
-			continue;
 		
 		switch (token_id) {
 			case 0:
@@ -1353,8 +1331,6 @@ int target_msn_handler_ans(struct target *t, struct target_conntrack_priv_msn *c
 		token = strtok_r(str, " ", &saveptr);
 		if (!token)
 			break;
-		if (!strlen(token))
-			continue;
 		
 		switch (token_id) {
 			case 0:
@@ -1468,8 +1444,6 @@ int target_msn_handler_rng(struct target *t, struct target_conntrack_priv_msn *c
 		token = strtok_r(str, " ", &saveptr);
 		if (!token)
 			break;
-		if (!strlen(token))
-			continue;
 		
 		switch (token_id) {
 			case 0:
@@ -1554,8 +1528,6 @@ int target_msn_handler_nln(struct target *t, struct target_conntrack_priv_msn *c
 		token = strtok_r(str, " ", &saveptr);
 		if (!token)
 			break;
-		if (!strlen(token))
-			continue;
 		
 		switch (token_id) {
 			case 0:
@@ -1615,8 +1587,6 @@ int target_msn_handler_iln(struct target *t, struct target_conntrack_priv_msn *c
 		token = strtok_r(str, " ", &saveptr);
 		if (!token)
 			break;
-		if (!strlen(token))
-			continue;
 		
 		switch (token_id) {
 			case 0: {
@@ -1710,8 +1680,6 @@ int target_msn_handler_uux(struct target *t, struct target_conntrack_priv_msn *c
 		token = strtok_r(str, " ", &saveptr);
 		if (!token)
 			break;
-		if (!strlen(token))
-			continue;
 		
 		switch (token_id) {
 			case 0:
@@ -1752,8 +1720,6 @@ int target_msn_handler_gcf(struct target *t, struct target_conntrack_priv_msn *c
 		token = strtok_r(str, " ", &saveptr);
 		if (!token)
 			break;
-		if (!strlen(token))
-			continue;
 		
 		switch (token_id) {
 			case 0:
@@ -1803,8 +1769,6 @@ int target_msn_handler_adl(struct target *t, struct target_conntrack_priv_msn *c
 		token = strtok_r(str, " ", &saveptr);
 		if (!token)
 			break;
-		if (!strlen(token))
-			continue;
 		
 		switch (token_id) {
 			case 0:
@@ -1848,8 +1812,6 @@ int target_msn_handler_rml(struct target *t, struct target_conntrack_priv_msn *c
 		token = strtok_r(str, " ", &saveptr);
 		if (!token)
 			break;
-		if (!strlen(token))
-			continue;
 		
 		switch (token_id) {
 			case 0:
@@ -1893,8 +1855,6 @@ int target_msn_handler_fqy(struct target *t, struct target_conntrack_priv_msn *c
 		token = strtok_r(str, " ", &saveptr);
 		if (!token)
 			break;
-		if (!strlen(token))
-			continue;
 		
 		switch (token_id) {
 			case 0:

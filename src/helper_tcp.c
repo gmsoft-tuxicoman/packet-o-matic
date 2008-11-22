@@ -63,8 +63,6 @@ static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned in
 	struct tcphdr* hdr = f->buff + start;
 	int payload_size = l->payload_size;
 
-	if (!payload_size) // We don't need to reorder empty packets
-		return POM_OK;
 
 	// We need to track all the tcp packets
 	if (!f->ce)
@@ -99,6 +97,10 @@ static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned in
 
 	if (cp->flags[dir] & HELPER_TCP_SEQ_KNOWN) {
 	
+		if (!payload_size) // We don't need to reorder empty packets
+			return POM_OK;
+
+
 		if (new_seq + payload_size <= cp->seq_expected[dir]) {
 			//pom_log(POM_LOG_TSHOOT "helper_tcp.c: %u.%u 0x%x-%u, expected seq %u < got seq %u, bufflen is %d. discarding packet", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, cp->seq_expected[dir], new_seq, cp->buff_len[dir]);
 			return H_NEED_HELP;
@@ -221,6 +223,20 @@ static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned in
 			}
 
 			return H_NEED_HELP;
+		} else if (new_seq < cp->seq_expected[dir]) { // We must discard some of the begining of the packet
+
+			// FIXME this should be done in a cleaner way
+			int pos = cp->seq_expected[dir] - new_seq;
+			int len = payload_size - pos;
+
+			char *pload = f->buff + l->payload_start;
+
+			memmove(pload, pload + pos, len);
+			hdr->th_seq = htonl(cp->seq_expected[dir]);
+			new_seq = cp->seq_expected[dir];
+			l->payload_size -= pos;
+			payload_size -= pos;
+			f->len -= pos;
 		}
 
 
