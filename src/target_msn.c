@@ -1886,6 +1886,9 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 
 	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx", (unsigned long) conntrack_priv);
 
+	// Remove any remaining expectation
+	expectation_cleanup_ce(t, ce);
+
 	struct target_conntrack_priv_msn *cp;
 	cp = conntrack_priv;
 

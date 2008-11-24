@@ -310,6 +310,8 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 
 static int target_close_connection_tftp(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
+	// Remove any remaining expectation
+	expectation_cleanup_ce(t, ce);
 
 	struct target_conntrack_priv_tftp *cp;
 	cp = conntrack_priv;

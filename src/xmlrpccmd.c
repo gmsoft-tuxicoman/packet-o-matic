@@ -255,6 +255,12 @@ xmlrpc_value *xmlrpccmd_list_avail_modules(xmlrpc_env * const envP, char *type) 
 
 	char **list = list_modules(type);
 
+	if (!list) {
+	        xmlrpc_faultf(envP, "No module available");
+		return NULL;
+	}
+
+
 	xmlrpc_value *result = xmlrpc_array_new(envP);
 
 	if (envP->fault_occurred)

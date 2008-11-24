@@ -73,6 +73,7 @@ struct expectation_list *expectation_alloc(struct frame *f, struct target *t, st
 int expectation_set_target_priv(struct expectation_list *l, void *target_priv, int (*cleanup_handler) (struct target *t, struct conntrack_entry *ce, void *priv));
 int expectation_add(struct expectation_list *l, unsigned int expiry);
 int expectation_process (struct frame *f);
+int expectation_cleanup_ce(struct target *t, struct conntrack_entry *ce);
 int expectation_cleanup(struct expectation_list *l);
 int expectation_cleanup_all();
 int expectation_do_timer(void *priv);

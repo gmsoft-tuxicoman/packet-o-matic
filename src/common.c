@@ -255,7 +255,7 @@ static char ** list_modules_browse(char *path, char *type) {
 	DIR *d;
 	d = opendir(path);
 	if (!d) 
-		return 0;
+		return NULL;
 
 	struct dirent *dp;
 	char name[NAME_MAX];
@@ -312,6 +312,8 @@ char ** list_modules(char *type) {
 		int i, dupe = 0;
 		char **list;
 		list = list_modules_browse(token, type);
+		if (!list) 
+			return NULL;
 		for (i = 0; list[i]; i++) {
 			int j;
 			for (j = 0; res[j]; j++) {

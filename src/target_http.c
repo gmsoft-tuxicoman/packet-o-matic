@@ -346,8 +346,15 @@ static int target_process_http(struct target *t, struct frame *f) {
 					cp->state = HTTP_INVALID;
 					return POM_OK;
 				} else if (len == 0) { // Buffer incomplete
-					target_buffer_payload_http(cp, pload, psize);
-					return POM_OK;
+					if (psize > HTTP_MAX_HEADER_LINE) {
+						pom_log(POM_LOG_TSHOOT "Invalid HTTP query/request : too long");
+						target_reset_conntrack_http(cp);
+						cp->state = HTTP_INVALID;
+						break;
+					} else  {
+						target_buffer_payload_http(cp, pload, psize);
+						return POM_OK;
+					}
 				}
 				pload += len;
 				psize -= len;

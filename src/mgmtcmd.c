@@ -672,6 +672,10 @@ struct mgmt_command_arg* mgmtcmd_list_modules(char *type) {
 	struct mgmt_command_arg *res = NULL;
 
 	char **list = list_modules(type);
+
+	if (!list)
+		return NULL;
+
 	int i;
 	for (i = 0; list[i]; i++) {
 		struct mgmt_command_arg* item = malloc(sizeof(struct mgmt_command_arg));

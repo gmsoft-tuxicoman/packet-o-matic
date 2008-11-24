@@ -191,6 +191,24 @@ int expectation_add(struct expectation_list *l, unsigned int expiry) {
 	return POM_OK;
 }
 
+
+int expectation_cleanup_ce(struct target *t, struct conntrack_entry *ce) {
+
+	// Expectation list should be very small so we can just browse it
+	struct expectation_list *tmp = expt_head;
+	while (tmp) {
+		struct expectation_list *next = tmp->next;
+		if (tmp->t == t && tmp->parent_ce == ce) {
+			expectation_cleanup(tmp);
+			// Do not break, there could be more than one per target/conntrack entry
+		}
+		tmp =next;
+	}
+
+	return POM_OK;
+
+}
+
 int expectation_cleanup(struct expectation_list *l) {
 
 

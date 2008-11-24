@@ -210,16 +210,15 @@ static int target_process_pcap(struct target *t, struct frame *f) {
 	if (t->mode == mode_split) {
 		// Let's see if we have to open the next file
 
+		int next = 0;
 		time_t now;
 		time(&now);
-		int next = 0;
-		if (PTYPE_UINT64_GETVAL(priv->split_size) > 0 && pcap_dump_ftell(priv->pdump) + sizeof(struct pcap_pkthdr) + phdr.caplen > PTYPE_UINT64_GETVAL(priv->split_size))
+		if (PTYPE_UINT64_GETVAL(priv->split_size) > 0 && priv->cur_size + sizeof(struct pcap_pkthdr) + phdr.caplen > PTYPE_UINT64_GETVAL(priv->split_size)) {
 			next = 1;
-		else if (PTYPE_UINT64_GETVAL(priv->split_packets) > 0 && priv->packets_num > PTYPE_UINT64_GETVAL(priv->split_packets))
+		} else if (PTYPE_UINT64_GETVAL(priv->split_packets) > 0 && priv->cur_packets_num > PTYPE_UINT64_GETVAL(priv->split_packets)) {
 			next = 1;
-		else if (PTYPE_INTERVAL_GETVAL(priv->split_interval) > 0 && priv->split_time < now) {
+		} else if (PTYPE_INTERVAL_GETVAL(priv->split_interval) > 0 && priv->split_time < now) {
 			next = 1;
-			priv->split_time = now + PTYPE_INTERVAL_GETVAL(priv->split_interval);
 		}
 
 
@@ -238,19 +237,27 @@ static int target_process_pcap(struct target *t, struct frame *f) {
 				return POM_ERR;
 			}
 
+			priv->split_time = now + PTYPE_INTERVAL_GETVAL(priv->split_interval);
+			priv->tot_size += priv->cur_size;
+			priv->cur_size = 0;
+			priv->tot_packets_num += priv->cur_packets_num;
+			priv->cur_packets_num = 0;
+
 		}
 		
 	}
-	
+
 	pcap_dump((u_char*)priv->pdump, &phdr, f->buff + start);
+
+
 
 	if (PTYPE_BOOL_GETVAL(priv->unbuffered)) 
 		pcap_dump_flush(priv->pdump);
 
-	priv->size += len;
-	priv->packets_num++;
+	priv->cur_size = pcap_dump_ftell(priv->pdump);
+	priv->cur_packets_num++;
 
-	pom_log(POM_LOG_TSHOOT "Packet saved (%lu bytes (+%u bytes))!", priv->size, priv->size, len);
+	pom_log(POM_LOG_TSHOOT "Packet saved (%lu bytes )!", priv->tot_size, len);
 
 	return POM_OK;
 };
@@ -262,10 +269,16 @@ static int target_close_pcap(struct target *t) {
 	if (!t->target_priv)
 		return POM_ERR;
 
+	priv->tot_packets_num += priv->cur_packets_num;
+	priv->cur_packets_num = 0;
+	priv->tot_size += priv->cur_size;
+	priv->cur_size = 0;
+	priv->split_index++;
+
 	if (t->mode == mode_split)
-		pom_log("Saved %lu packets and %lu bytes in %lu files", priv->packets_num, priv->size, priv->split_index + 1);
+		pom_log("Saved %lu packets and %lu bytes in %lu files", priv->tot_packets_num, priv->tot_size, priv->split_index + 1);
 	else
-		pom_log("Saved %lu packets and %lu bytes", priv->packets_num, priv->size);
+		pom_log("Saved %lu packets and %lu bytes", priv->tot_packets_num, priv->tot_size);
 
 	if (priv->pdump) {
 		pcap_dump_close(priv->pdump);
