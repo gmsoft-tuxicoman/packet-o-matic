@@ -137,8 +137,7 @@ static int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned i
 
 	if (frag_start + frag_size > len + start) {
 		char buff[2048];
-		memset(buff, 0, sizeof(buff));
-		strcat(buff, "Error, packet len missmatch dropping this frag : ipv4 [");
+		strcpy(buff, "Error, packet len missmatch dropping this frag : ipv4 [");
 		int i;
 		for (i = 0; i < MAX_LAYER_FIELDS && l->fields[i]; i++) {
 			struct match_field_reg *field = match_get_field(l->type, i);
@@ -146,8 +145,8 @@ static int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned i
 				break;
 			char pbuff[32];
 			memset(pbuff, 0, sizeof(pbuff));
-			if(ptype_print_val(l->fields[i], pbuff, sizeof(pbuff) - 1)) {
-				snprintf(buff + strlen(buff), sizeof(buff) - strlen(buff) - 1, "%s: %s, ", field->name, buff);
+			if (ptype_print_val(l->fields[i], pbuff, sizeof(pbuff) - 1)) {
+				snprintf(buff + strlen(buff), sizeof(buff) - strlen(buff) - 1, "%s: %s, ", field->name, pbuff);
 			}
 		}
 		snprintf(buff + strlen(buff), sizeof(buff) - strlen(buff) - 1,  "frag_off: 0x%X, id: %u, frag_start: %u, frag_size: %u, size: %u]\r\n", frag_off, ntohs(hdr->ip_id), frag_start, (unsigned int) frag_size, l->prev->payload_size);

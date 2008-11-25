@@ -1,4 +1,7 @@
 * 2008/11/24 Guy Martin <gmsoft@tuxicoman.be>
+Fixed invalid packet warning message in helper_ipv4.
+
+* 2008/11/24 Guy Martin <gmsoft@tuxicoman.be>
 Add some more length checking when buffering in target_http.
 Fix pcap file size calculation and splitting.
 Make sure expectations are removed when parent conntrack entry is removed.

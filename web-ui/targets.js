@@ -11,8 +11,10 @@ pom.targets.onload = function() {
 	this._list_avail();
 	this._list_loaded();
 	this._target_dialog = $("target_dialog");
-	this._active_controls = $("target_gui_active");
-	this._new_controls = $("target_gui_new");
+	this._control_type = $("target_gui_type");
+	this._control_mode = $("target_gui_mode");
+	this._control_params = $("target_params");
+
 	this._list_ul = $("target_list");
 	this._cur_targets = {};
 	this._inp_descr = $("target_descr");
@@ -176,8 +178,9 @@ pom.targets.gui_edit = function(rule_id, target_id) {
 	this._cur_rule_id = rule_id;
 	this._cur_target = target_id;
 	Element.show(this._target_dialog);
-	Element.show(this._active_controls);
-	Element.hide(this._new_controls);
+	Element.hide(this._control_type);
+	Element.hide(this._control_mode);
+	Element.hide(this._control_params);
 	var target_obj = this._cur_targets[rule_id][target_id];
 	pom.dialog.create(this._target_dialog);
 	$("target_type").value = target_obj.name;
@@ -203,9 +206,11 @@ pom.targets.gui_add = function(rule_id) {
 	this._cur_rule_id = rule_id;
 	this._cur_target = "";
 	this._inp_descr.value = "";
+	$("target_type").selectedIndex = 0;
 	Element.show(this._target_dialog);
-	Element.hide(this._active_controls);
-	Element.show(this._new_controls);
+	Element.show(this._control_type);
+	Element.hide(this._control_mode);
+	Element.hide(this._control_params);
 	pom.dialog.create(this._target_dialog);
 };
 pom.targets._type_add_back = function(rule_id, target_id, descr, mode, params_arr, req) {
@@ -256,7 +261,7 @@ pom.targets.gui_save = function() {
 	var type = $F("target_type");
 	var descr = this._inp_descr.value;
 	if (!mode || !type)
-		return fatal("You must select a target mode and target type before saving a target");
+		return alert("You must select a target mode and target type before saving a target");
 	var x;
 	var val;
 	var params_arr = [];
@@ -332,6 +337,7 @@ pom.targets._mode_changed = function() {
 		ul.appendChild(li);
 		this._params[name] = defval;
 	}
+	Element.show(this._control_params);
 	pom.dialog.re_center();
 };
 pom.targets._type_changed = function() {
@@ -340,31 +346,41 @@ pom.targets._type_changed = function() {
 	while (select.childNodes.length)
 		select.removeChild(select.firstChild);
 	$("target_params").innerHTML = "";
-	if (!this._type)
+	if (!this._type) {
+		Element.hide(this._control_mode);
+		pom.dialog.re_center();
 		return;
+	}
+
 	if (!this._loaded[this._type] || this._loaded[this._type] == 1) {
 		this.load_target(this._type, this._type_changed.bind(this));
 		return;
 	}
+
+
 	var modes = pom.array.cast(this._loaded[this._type]);
 	var kids = modes.get_children();
+	if (!kids || kids.length < 1) {
+		Element.hide(this._control_mode);
+		pom.dialog.re_center();
+		return;
+	}
 	var x;
-	var option = $E("option");
-	option.value = "";
-	select.appendChild(option);
 	this._modes = {};
 	for (x = 0; x < kids.length; x++) {
 		var mode_info = pom.struct.cast(kids[x]);
 		var name = mode_info.get_child("name").get_value();
 		var desc = mode_info.get_child("descr").get_value();
-		option = $E("option");
+		var option = $E("option");
 		option.value = name;
 		option.innerHTML = name + " -- " + desc;
 		select.appendChild(option);
 		this._modes[name] = mode_info.get_child("params");
 	}
+	Element.show(this._control_mode);
+	select.selectedIndex = 0;
+	this._mode_changed();
 	select.onchange = pom.targets._mode_changed.bind(this);
-	pom.dialog.re_center();
 };
 pom.targets._setup_target_form = function() {
 	var select = $("target_mode");
@@ -378,8 +394,8 @@ pom.targets._setup_target_form = function() {
 	var x;
 	var elem = $E("option");
 	elem.value = "";
+	elem.innerHTML = " -- Pick one -- ";
 	select.appendChild(elem);
-	//for (x in this._avail) {
 	for (x = 0; x < this._avail.length; x++) {
 
 		elem = $E("OPTION");
