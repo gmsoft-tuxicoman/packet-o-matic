@@ -37,7 +37,6 @@
 #define HTTP_INVALID	9 ///< Invalid HTTP message, will discard the rest of the connection
 
 #define HTTP_FLAG_HAVE_CLEN	0x01
-#define HTTP_FLAG_HAVE_CTYPE	0x02
 #define HTTP_FLAG_CHUNKED	0x04
 #define HTTP_FLAG_GZIP		0x08
 #define HTTP_FLAG_DEFLATE	0x10
@@ -53,6 +52,14 @@
 
 #define HTTP_MAX_HEADER_LINE	4096
 
+#define HTTP_MIME_TYPE_UNK 0x00
+#define HTTP_MIME_TYPE_BIN 0x01
+#define HTTP_MIME_TYPE_IMG 0x02
+#define HTTP_MIME_TYPE_VID 0x04
+#define HTTP_MIME_TYPE_SND 0x08
+#define HTTP_MIME_TYPE_TXT 0x10
+#define HTTP_MIME_TYPE_DOC 0x20
+
 struct http_header {
 
 	char *name;
@@ -60,9 +67,17 @@ struct http_header {
 
 };
 
-struct mime_hash_entry {
+struct http_mime_type_entry {
+	
+	char *name;
+	char *extension;
+	unsigned int type;
+
+};
+
+struct http_mime_type_hash_entry {
 	unsigned int id;
-	struct mime_hash_entry *next;
+	struct http_mime_type_hash_entry *next;
 };
 
 struct target_conntrack_priv_info_http {
@@ -103,12 +118,17 @@ struct target_priv_http {
 
 	struct ptype *path;
 	struct ptype *decompress;
+	struct ptype *mime_types_db;
 	struct ptype *dump_img;
 	struct ptype *dump_vid;
 	struct ptype *dump_snd;
 	struct ptype *dump_txt;
 	struct ptype *dump_bin;
 	struct ptype *dump_doc;
+
+	struct http_mime_type_entry *mime_types;
+	unsigned int mime_types_size;
+	struct http_mime_type_hash_entry **mime_types_hash;
 
 	struct target_conntrack_priv_http *ct_privs;
 
@@ -117,21 +137,20 @@ struct target_priv_http {
 
 int target_register_http(struct target_reg *r);
 
-static int target_init_http(struct target *t);
-static int target_open_http(struct target *t);
-static int target_process_http(struct target *t, struct frame *f);
-static int target_close_connection_http(struct target *t, struct conntrack_entry *ce, void *conntrack_priv);
-static int target_close_http(struct target *t);
-static int target_cleanup_http(struct target *t);
-static int target_unregister_http(struct target_reg *r);
+int target_init_http(struct target *t);
+int target_open_http(struct target *t);
+int target_process_http(struct target *t, struct frame *f);
+int target_close_connection_http(struct target *t, struct conntrack_entry *ce, void *conntrack_priv);
+int target_close_http(struct target *t);
+int target_cleanup_http(struct target *t);
 
-static size_t target_parse_query_response_http(struct target_conntrack_priv_http *cp, char *pload, size_t psize);
-static int target_parse_response_headers_http(struct target_conntrack_priv_http *cp);
+size_t target_parse_query_response_http(struct target_conntrack_priv_http *cp, char *pload, size_t psize);
+int target_parse_response_headers_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp);
 #ifdef HAVE_ZLIB
-static size_t target_process_gzip_http(struct target_conntrack_priv_http *cp, char * pload, size_t size);
+size_t target_process_gzip_http(struct target_conntrack_priv_http *cp, char * pload, size_t size);
 #endif
-static int target_reset_conntrack_http(struct target_conntrack_priv_http *cp);
-static int target_buffer_payload_http(struct target_conntrack_priv_http *cp, char *pload, size_t psize);
-static int target_file_open_http(struct target *t, struct target_conntrack_priv_http *cp, struct frame *f, int is_gzip);
+int target_reset_conntrack_http(struct target_conntrack_priv_http *cp);
+int target_buffer_payload_http(struct target_conntrack_priv_http *cp, char *pload, size_t psize);
+int target_file_open_http(struct target *t, struct target_conntrack_priv_http *cp, struct frame *f, int is_gzip);
 
 #endif

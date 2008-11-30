@@ -36,6 +36,7 @@
 #include "helper.h"
 #include "ptype.h"
 #include "main.h"
+#include "core_param.h"
 #include "mgmtsrv.h"
 #include "datastore.h"
 #include "ptype_bool.h"
@@ -972,10 +973,19 @@ int config_write(struct conf *c, char *filename) {
 
 	// write the core parameters
 	int first_param = 1;
-	struct core_param *p = core_params;
+	struct core_param *p = core_param_get_head();
+	char *value = NULL;
+	size_t size = 0, new_size = 64;
 	while (p) {
-		char value[1024];
-		ptype_serialize(p->value, value, sizeof(value) - 1);
+		do {
+			if (new_size > size) {
+				value = realloc(value, new_size + 1);
+				size = new_size;
+			}
+			new_size = ptype_serialize(p->value, value, size);
+			new_size = (new_size < 1) ? new_size * 2 : new_size + 1;
+		} while (new_size > size);
+
 		if (strcmp(value, p->defval)) {
 			if (first_param) {
 				first_param = 0;
@@ -990,6 +1000,9 @@ int config_write(struct conf *c, char *filename) {
 		}
 		p = p->next;
 	}
+	if (value)
+		free(value);
+
 	if (!first_param)
 		xmlTextWriterWriteFormatString(writer, "\n");
 

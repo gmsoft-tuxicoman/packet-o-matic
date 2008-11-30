@@ -24,6 +24,7 @@
 #include "mgmtcmd.h"
 #include "match.h"
 #include "version.h"
+#include "core_param.h"
 
 #include <dirent.h>
 
@@ -414,7 +415,7 @@ int mgmtcmd_halt(struct mgmt_connection *c, int argc, char *argv[]) {
 
 int mgmtcmd_show_core_parameters(struct mgmt_connection *c, int argc, char *argv[]) {
 
-	struct core_param *p = core_params;
+	struct core_param *p = core_param_get_head();
 
 	while (p) {
 		char buff[2048];
@@ -447,7 +448,7 @@ struct mgmt_command_arg *mgmtcmd_set_core_parameter_completion(int argc, char *a
 
 	struct mgmt_command_arg *res = NULL;
 	
-	struct core_param *p = core_params;
+	struct core_param *p = core_param_get_head();
 	while (p) {
 		struct mgmt_command_arg *item = malloc(sizeof(struct mgmt_command_arg));
 		memset(item, 0, sizeof(struct mgmt_command_arg));

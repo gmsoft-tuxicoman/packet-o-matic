@@ -1,3 +1,9 @@
+* 2008/11/30 Guy Martin <gmsoft@tuxicoman.be>
+Moved core parameters handling in a separate file.
+Define DATAROOT instead of WWWROOT for more generic usage.
+Increase input serial when it stops on EOF.
+Moved built-in mime-type db from target_http to a config file.
+
 * 2008/11/24 Guy Martin <gmsoft@tuxicoman.be>
 Fixed invalid packet warning message in helper_ipv4.
 

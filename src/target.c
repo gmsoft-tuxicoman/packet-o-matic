@@ -26,6 +26,7 @@
 #include "conntrack.h"
 #include "ptype.h"
 #include "main.h"
+#include "core_param.h"
 
 #include "ptype_uint64.h"
 #include "ptype_string.h"

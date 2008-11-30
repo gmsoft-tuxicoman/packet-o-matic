@@ -25,6 +25,7 @@
 #include "conntrack.h"
 #include "main.h"
 #include "ptype_bool.h"
+#include "core_param.h"
 
 #include <pthread.h>
 

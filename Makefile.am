@@ -4,6 +4,8 @@ EXTRA_DIST = README
 
 doc_DATA = README
 
+dist_pkgdata_DATA = mime_types.db
+
 if USE_XMLRPC
 wwwdir = $(pkgdatadir)/web-ui
 wwwiconsdir = $(wwwdir)/icons

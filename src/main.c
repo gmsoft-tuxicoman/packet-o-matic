@@ -33,6 +33,7 @@
 #endif
 
 #include "main.h"
+#include "core_param.h"
 
 #include "ptype_bool.h"
 #include "ptype_uint32.h"
@@ -58,9 +59,6 @@
 #define INPUTSIG SIGUSR1
 
 struct conf *main_config;
-
-struct core_param *core_params;
-uint32_t core_params_serial;
 
 struct ringbuffer *rbuf;
 
@@ -373,8 +371,10 @@ void *input_thread_func(void *params) {
 			break;
 		}
 
-		if (!r->i->running) // Input was closed
+		if (!r->i->running) { // Input was closed
+			main_config->input_serial++;
 			break;
+		}
 
 		if (pthread_mutex_lock(&r->mutex)) {
 			pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording");
@@ -453,8 +453,6 @@ int main(int argc, char *argv[]) {
 #if defined DEBUG && defined HAVE_MCHECK_H
 	mtrace();
 #endif
-
-	core_params = NULL;
 
 	console_debug_level = *POM_LOG_INFO;
 	console_output = 1;
@@ -552,7 +550,8 @@ int main(int argc, char *argv[]) {
 				break;
 			case 'd':
 				if (sscanf(optarg, "%u", &console_debug_level) == 1) {
-					printf("Debug level set to %u\n", console_debug_level);
+					if (console_debug_level)
+						printf("Debug level set to %u\n", console_debug_level);
 					break;
 				} else {
 					printf("Invalid debug level \"%s\"\n", optarg);
@@ -853,7 +852,7 @@ int ringbuffer_init(struct ringbuffer *r) {
 	if (!r->size)
 		return POM_ERR;
 
-	core_register_param("ringbuffer_size", "10000", r->size, "Number of packets to hold in the ringbuffer", ringbuffer_can_change_size);
+	core_register_param("ringbuffer_size", "10000", r->size, "Number of packets to hold in the ringbuffer", ringbuffer_core_param_callback);
 
 	return POM_OK;
 
@@ -911,7 +910,8 @@ int ringbuffer_cleanup(struct ringbuffer *r) {
 	return POM_OK;
 }
 
-int ringbuffer_can_change_size(struct ptype *value, char *msg, size_t size) {
+int ringbuffer_core_param_callback(char *new_value, char *msg, size_t size) {
+
 
 	if (rbuf->state != rb_state_closed) {
 		strncpy(msg, "Input must be stopped in order to changed the buffer size", size);
@@ -945,83 +945,6 @@ int halt() {
 	return POM_OK;
 }
 
-int core_register_param(char *name, char *defval, struct ptype *value, char *descr, int (*param_can_change) (struct ptype *value, char *msg, size_t size)) {
-
-	struct core_param *p = malloc(sizeof(struct core_param));
-	memset(p, 0, sizeof(struct core_param));
-
-	p->name = malloc(strlen(name) + 1);
-	strcpy(p->name, name);
-	p->defval = malloc(strlen(defval) + 1);
-	strcpy(p->defval, defval);
-	p->descr = malloc(strlen(descr) + 1);
-	strcpy(p->descr, descr);
-	p->value = value;
-
-	p->can_change = param_can_change;
-
-	if (ptype_parse_val(p->value, defval) == POM_ERR)
-		return POM_ERR;
-
-	p->next = core_params;
-	core_params = p;
-
-	return POM_OK;
-
-}
-
-struct ptype* core_get_param_value(char *param) {
-
-	struct core_param *p = core_params;
-	while (p) {
-		if (!strcmp(p->name, param))
-			return p->value;
-		p = p->next;
-	}
-
-	return NULL;
-
-}
-
-int core_set_param_value(char *param, char *value, char *msg, size_t size) {
-
-	struct core_param *p = core_params;
-	while (p) {
-		if (!strcmp(p->name, param))
-			break;
-		p = p->next;
-	}
-
-	if (!p) {
-		snprintf(msg, size, "No such parameter %s", param);
-		return POM_ERR;
-	}
-
-	if (p->can_change && (*p->can_change) (p->value, msg, size) == POM_ERR)
-		return POM_ERR;
-
-	if (ptype_parse_val(p->value, value) == POM_ERR) {
-		snprintf(msg, size, "Unable to parse %s for parameter %s", value, param);
-		return POM_ERR;
-	}
-
-	core_params_serial++;
-
-	return POM_OK;
-}
-
-int core_param_unregister_all() {
-
-	while (core_params) {
-		struct core_param *p = core_params;
-		free(p->name);
-		free(p->defval);
-		free(p->descr);
-		core_params = core_params->next;
-		free(p);
-	}
-	return POM_OK;
-}
 
 int main_config_rules_lock(int write) {
 

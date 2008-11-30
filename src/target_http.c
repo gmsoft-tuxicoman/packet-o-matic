@@ -32,82 +32,10 @@
 #endif
 
 #include "target_http.h"
+#include "target_http_mime.h"
 
 #include "ptype_bool.h"
 #include "ptype_string.h"
-
-#define MIME_TYPES_COUNT 45
-
-#define MIME_BIN "\x01"
-#define MIME_IMG "\x02"
-#define MIME_VID "\x04"
-#define MIME_SND "\x08"
-#define MIME_TXT "\x10"
-#define MIME_DOC "\x20"
-
-#define TYPE_BIN 0x01
-#define TYPE_IMG 0x02
-#define TYPE_VID 0x04
-#define TYPE_SND 0x08
-#define TYPE_TXT 0x10
-#define TYPE_DOC 0x20
-
-// Random value
-#define HTTP_HASH_INITVAL 0x2f67bd9a
-
-
-static const char *mime_types[MIME_TYPES_COUNT][3] = {
-
-	{ "private/unknown", "unk", MIME_BIN }, // Special non-existant type
-	{ "application/x-javascript", "js", MIME_TXT },
-	{ "application/javascript", "js", MIME_TXT },
-	{ "application/json", "json", MIME_TXT },
-	{ "application/x-json", "json", MIME_TXT },
-	{ "application/zip", "gz", MIME_BIN },
-	{ "application/octet-stream", "bin", MIME_BIN },
-	{ "application/octetstream", "bin", MIME_BIN },
-	{ "application/x-shockwave-flash", "swf", MIME_BIN },
-	{ "application/x-rar-compressed", "rar", MIME_BIN },
-	{ "application/x-www-urlform-encoded", "url", MIME_TXT },
-	{ "application/xml", "xml", MIME_TXT },
-	{ "application/pdf", "pdf", MIME_DOC },
-	{ "application/vnd.ms-excel", "xls", MIME_DOC },
-	{ "application/vnd.ms-powerpoint", "ppt", MIME_DOC },
-	{ "application/msword", "doc", MIME_DOC },
-	{ "audio/mpeg", "mp3", MIME_SND },
-	{ "audio/mp3", "mp3", MIME_SND },
-	{ "audio/x-pn-realaudio", "rm", MIME_SND },
-	{ "video/x-ms-wma", "wma", MIME_SND },
-	{ "audio/x-wav", "wav", MIME_SND },
-	{ "audio/wav", "wav", MIME_SND },
-	{ "image/jpeg", "jpg", MIME_IMG },
-	{ "image/pjpeg", "pjpg", MIME_IMG },
-	{ "image/jpg", "jpg", MIME_IMG },
-	{ "image/gif", "gif", MIME_IMG },
-	{ "image/png", "png", MIME_IMG },
-	{ "image/bmp", "bmp", MIME_IMG },
-	{ "image/x-icon", "ico", MIME_IMG },
-	{ "message/rfc822", "msg", MIME_TXT },
-	{ "text/html", "html", MIME_TXT },
-	{ "text/x-js", "js", MIME_TXT },
-	{ "text/javascript", "js", MIME_TXT },
-	{ "text/plain", "txt", MIME_TXT },
-	{ "text/xml", "xml", MIME_TXT },
-	{ "text/css", "css", MIME_TXT },
-	{ "text/calendar", "cal", MIME_TXT },
-	{ "video/flv", "flv", MIME_VID },
-	{ "video/x-flv", "flv", MIME_VID },
-	{ "video/quicktime", "mov", MIME_VID },
-	{ "video/mpeg", "mpg", MIME_VID },
-	{ "video/x-ms-asf", "asf", MIME_VID },
-	{ "video/x-msvideo", "avi", MIME_VID },
-	{ "video/vnd.divx", "avi", MIME_VID },
-	{ "video/x-ms-wmv", "wmv", MIME_VID },
-
-
-};
-
-static struct mime_hash_entry *mime_types_hash[MIME_TYPES_HASH_SIZE];
 
 static unsigned int match_undefined_id;
 static struct target_mode *mode_default;
@@ -119,7 +47,6 @@ int target_register_http(struct target_reg *r) {
 	r->process = target_process_http;
 	r->close = target_close_http;
 	r->cleanup = target_cleanup_http;
-	r->unregister = target_unregister_http;
 
 	match_undefined_id = match_register("undefined");
 
@@ -132,6 +59,7 @@ int target_register_http(struct target_reg *r) {
 #ifdef HAVE_ZLIB
 	target_register_param(mode_default, "decompress", "yes", "Decompress the payload or not on the fly");
 #endif
+	target_register_param(mode_default, "mime_types_db", DATAROOT "/mime_types.db", "Mime types database path");
 	target_register_param(mode_default, "dump_img", "no", "Dump the images or not");
 	target_register_param(mode_default, "dump_vid", "no", "Dump the videos or not");
 	target_register_param(mode_default, "dump_snd", "no", "Dump the images or not");
@@ -139,29 +67,13 @@ int target_register_http(struct target_reg *r) {
 	target_register_param(mode_default, "dump_bin", "no", "Dump the binary or not");
 	target_register_param(mode_default, "dump_doc", "no", "Dump the documents or not");
 
-	// Calculate the mime hash table
-	
-	memset(mime_types_hash, 0, sizeof(mime_types_hash));
-	
-	int i;
-	for (i = 1; i < MIME_TYPES_COUNT; i++) {
-		uint32_t hash = jhash(mime_types[i][0], strlen(mime_types[i][0]), HTTP_HASH_INITVAL);
-		hash %= MIME_TYPES_HASH_SIZE;
-		struct  mime_hash_entry *tmp = malloc(sizeof(struct mime_hash_entry));
-		memset(tmp, 0, sizeof(struct mime_hash_entry));
-		tmp->id = i;
-		tmp->next = mime_types_hash[hash];
-		mime_types_hash[hash] = tmp;
-
-	}
-
 
 	return POM_OK;
 
 }
 
 
-static int target_init_http(struct target *t) {
+int target_init_http(struct target *t) {
 
 	struct target_priv_http *priv = malloc(sizeof(struct target_priv_http));
 	memset(priv, 0, sizeof(struct target_priv_http));
@@ -172,6 +84,7 @@ static int target_init_http(struct target *t) {
 #ifdef HAVE_ZLIB
 	priv->decompress = ptype_alloc("bool", NULL);
 #endif
+	priv->mime_types_db = ptype_alloc("string", NULL);
 	priv->dump_img = ptype_alloc("bool", NULL);
 	priv->dump_vid = ptype_alloc("bool", NULL);
 	priv->dump_snd = ptype_alloc("bool", NULL);
@@ -179,7 +92,17 @@ static int target_init_http(struct target *t) {
 	priv->dump_bin = ptype_alloc("bool", NULL);
 	priv->dump_doc = ptype_alloc("bool", NULL);
 
-	if (!priv->path || !priv->dump_img || !priv->dump_vid || !priv->dump_snd || !priv->dump_txt || !priv->dump_bin || !priv->dump_doc) {
+	if (!priv->path ||
+#ifdef HAVE_ZLIB
+		!priv->decompress ||
+#endif
+		!priv->mime_types_db ||
+		!priv->dump_img ||
+		!priv->dump_vid ||
+		!priv->dump_snd ||
+		!priv->dump_txt ||
+		!priv->dump_bin ||
+		!priv->dump_doc) {
 		target_cleanup_http(t);
 		return POM_ERR;
 	}
@@ -188,6 +111,7 @@ static int target_init_http(struct target *t) {
 #ifdef HAVE_ZLIB
 	target_register_param_value(t, mode_default, "decompress", priv->decompress);
 #endif
+	target_register_param_value(t, mode_default, "mime_types_db", priv->mime_types_db);
 	target_register_param_value(t, mode_default, "dump_img", priv->dump_img);
 	target_register_param_value(t, mode_default, "dump_vid", priv->dump_vid);
 	target_register_param_value(t, mode_default, "dump_snd", priv->dump_snd);
@@ -199,7 +123,7 @@ static int target_init_http(struct target *t) {
 	return POM_OK;
 }
 
-static int target_close_http(struct target *t) {
+int target_close_http(struct target *t) {
 
 	struct target_priv_http *priv = t->target_priv;
 
@@ -208,10 +132,12 @@ static int target_close_http(struct target *t) {
 		target_close_connection_http(t, priv->ct_privs->ce, priv->ct_privs);
 	}
 
+	target_http_mime_types_cleanup_db(priv);
+
 	return POM_OK;
 }
 
-static int target_cleanup_http(struct target *t) {
+int target_cleanup_http(struct target *t) {
 
 	struct target_priv_http *priv = t->target_priv;
 
@@ -221,6 +147,7 @@ static int target_cleanup_http(struct target *t) {
 #ifdef HAVE_ZLIB
 		ptype_cleanup(priv->decompress);
 #endif
+		ptype_cleanup(priv->mime_types_db);
 		ptype_cleanup(priv->dump_img);
 		ptype_cleanup(priv->dump_vid);
 		ptype_cleanup(priv->dump_snd);
@@ -233,49 +160,32 @@ static int target_cleanup_http(struct target *t) {
 	return POM_OK;
 }
 
-static int target_unregister_http(struct target_reg *r) {
-
-	// Free the mime hash table
-	
-	int i;
-	for (i = 0; i < MIME_TYPES_HASH_SIZE; i++) {
-		struct mime_hash_entry *tmp = mime_types_hash[i];
-		while (tmp) {
-			mime_types_hash[i] = tmp->next;
-			free(tmp);
-			tmp = mime_types_hash[i];
-		}
-
-	}
-	
-	return POM_OK;
-}
-
-
-static int target_open_http(struct target *t) {
+int target_open_http(struct target *t) {
 
 	struct target_priv_http *priv = t->target_priv;
 
 	priv->match_mask = 0;
 
 	if (PTYPE_BOOL_GETVAL(priv->dump_img)) // img
-		priv->match_mask |= TYPE_IMG;
+		priv->match_mask |= HTTP_MIME_TYPE_IMG;
 	if (PTYPE_BOOL_GETVAL(priv->dump_vid)) // vid
-		priv->match_mask |= TYPE_VID;
+		priv->match_mask |= HTTP_MIME_TYPE_VID;
 	if (PTYPE_BOOL_GETVAL(priv->dump_snd)) // snd
-		priv->match_mask |= TYPE_SND;
+		priv->match_mask |= HTTP_MIME_TYPE_SND;
 	if (PTYPE_BOOL_GETVAL(priv->dump_txt)) // txt
-		priv->match_mask |= TYPE_TXT;
+		priv->match_mask |= HTTP_MIME_TYPE_TXT;
 	if (PTYPE_BOOL_GETVAL(priv->dump_bin)) // bin
-		priv->match_mask |= TYPE_BIN;
+		priv->match_mask |= HTTP_MIME_TYPE_BIN;
 	if (PTYPE_BOOL_GETVAL(priv->dump_doc)) // doc
-		priv->match_mask |= TYPE_DOC;
+		priv->match_mask |= HTTP_MIME_TYPE_DOC;
 
-	return POM_OK;
+	int res = target_http_mime_types_read_db(priv);
+
+	return res;
 
 }
 
-static int target_process_http(struct target *t, struct frame *f) {
+int target_process_http(struct target *t, struct frame *f) {
 
 	struct target_priv_http *priv = t->target_priv;
 	
@@ -382,7 +292,7 @@ static int target_process_http(struct target *t, struct frame *f) {
 				pload += size;
 				psize -= size;
 
-				if (target_parse_response_headers_http(cp) == POM_ERR) {
+				if (target_parse_response_headers_http(priv, cp) == POM_ERR) {
 					pom_log(POM_LOG_TSHOOT "Invalid HTTP header received. Ignoring connection");
 					target_reset_conntrack_http(cp);
 					cp->state = HTTP_INVALID;
@@ -548,7 +458,7 @@ static int target_process_http(struct target *t, struct frame *f) {
 			if (size == 0) // Nothing more to process in this packet
 				break;
 			
-			if (*mime_types[cp->info.content_type][2] & priv->match_mask) { // Should we process the payload ?
+			if (priv->mime_types[cp->info.content_type].type & priv->match_mask) { // Should we process the payload ?
 #ifdef HAVE_ZLIB
 				if ((cp->info.flags & HTTP_FLAG_GZIP || cp->info.flags & HTTP_FLAG_DEFLATE) && PTYPE_BOOL_GETVAL(priv->decompress)) { // same shit, different headers
 					if (cp->fd == -1 && target_file_open_http(t, cp, f, 0) == POM_ERR)
@@ -606,7 +516,7 @@ static int target_process_http(struct target *t, struct frame *f) {
 	return POM_OK;
 }
 
-static int target_close_connection_http(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
+int target_close_connection_http(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
 	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx", (unsigned long) conntrack_priv);
 
@@ -657,7 +567,7 @@ static int target_close_connection_http(struct target *t, struct conntrack_entry
 }
 
 
-static size_t target_parse_query_response_http(struct target_conntrack_priv_http *cp, char *pload, size_t psize) {
+size_t target_parse_query_response_http(struct target_conntrack_priv_http *cp, char *pload, size_t psize) {
 
 	if (psize < strlen("HTTP/")) 
 		return 0; // Buffer incomplete
@@ -738,7 +648,7 @@ static size_t target_parse_query_response_http(struct target_conntrack_priv_http
 	return hdr_size;
 }
 
-static int target_parse_response_headers_http(struct target_conntrack_priv_http *cp) {
+int target_parse_response_headers_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp) {
 	int i;
 	for (i = 0; i < cp->info.headers_num; i++) {
 		if (!strcasecmp(cp->info.headers[i].name, "Content-Length")) {
@@ -751,25 +661,15 @@ static int target_parse_response_headers_http(struct target_conntrack_priv_http 
 			if (!strcasecmp(cp->info.headers[i].value, "deflate"))
 				cp->info.flags |= HTTP_FLAG_DEFLATE;
 		} else if (!strcasecmp(cp->info.headers[i].name, "Content-Type")) {
+			// Make sure it's lowercase as some stupid ppl put that uppercase
+			int j;
+			for (j = 0; j < strlen(cp->info.headers[i].value); j++)
+				cp->info.headers[i].value[j] = tolower(cp->info.headers[i].value[j]);
 			char *sc = strchr(cp->info.headers[i].value, ';');
 			if (sc)
-				*sc = 0;	
-			uint32_t hash = jhash(cp->info.headers[i].value, strlen(cp->info.headers[i].value), HTTP_HASH_INITVAL);
-			hash %= MIME_TYPES_HASH_SIZE;
-			if (mime_types_hash[hash]) {
-				if (mime_types_hash[hash]->next) {
-					struct mime_hash_entry *tmp = mime_types_hash[hash];
-					while (tmp) {
-						if (!strcmp(mime_types[tmp->id][0], cp->info.headers[i].value)){
-							cp->info.content_type = mime_types_hash[hash]->id;
-							break;
-						}
-						tmp = tmp->next;
-					}
-				} else {
-					cp->info.content_type = mime_types_hash[hash]->id;
-				}
-			}
+				*sc = 0;
+
+			cp->info.content_type = target_http_mime_type_get_generic_type(priv, cp->info.headers[i].value);
 
 		} else if (!strcasecmp(cp->info.headers[i].name, "Transfer-Encoding")) {
 			if (!strcasecmp(cp->info.headers[i].value, "chunked"))
@@ -784,7 +684,7 @@ static int target_parse_response_headers_http(struct target_conntrack_priv_http 
 
 #ifdef HAVE_ZLIB
 
-static size_t target_process_gzip_http(struct target_conntrack_priv_http *cp, char *pload, size_t size) {
+size_t target_process_gzip_http(struct target_conntrack_priv_http *cp, char *pload, size_t size) {
 
 	if (!cp->info.zbuff) {
 
@@ -870,7 +770,7 @@ static size_t target_process_gzip_http(struct target_conntrack_priv_http *cp, ch
 
 #endif
 
-static int target_reset_conntrack_http(struct target_conntrack_priv_http *cp) {
+int target_reset_conntrack_http(struct target_conntrack_priv_http *cp) {
 	cp->info.flags = 0;
 	if (cp->info.headers) {
 		int i;
@@ -905,7 +805,7 @@ static int target_reset_conntrack_http(struct target_conntrack_priv_http *cp) {
 	return POM_OK;
 }
 
-static int target_buffer_payload_http(struct target_conntrack_priv_http *cp, char *pload, size_t psize) {
+int target_buffer_payload_http(struct target_conntrack_priv_http *cp, char *pload, size_t psize) {
 
 	if (psize == 0) {
 		free(cp->buff);
@@ -926,7 +826,7 @@ static int target_buffer_payload_http(struct target_conntrack_priv_http *cp, cha
 
 }
 
-static int target_file_open_http(struct target *t, struct target_conntrack_priv_http *cp, struct frame *f, int is_gzip) {
+int target_file_open_http(struct target *t, struct target_conntrack_priv_http *cp, struct frame *f, int is_gzip) {
 
 	struct target_priv_http *priv = t->target_priv;
 
@@ -952,7 +852,7 @@ static int target_file_open_http(struct target *t, struct target_conntrack_priv_
 	sprintf(outstr, "%u", (unsigned int)f->tv.tv_usec);
 	strcat(filename, outstr);
 	strcat(filename, ".");
-	strcat(filename, mime_types[cp->info.content_type][1]);
+	strcat(filename, priv->mime_types[cp->info.content_type].extension);
 	if (is_gzip)
 		strcat(filename, ".gz");
 	cp->fd = target_file_open(f->l, filename, O_RDWR | O_CREAT, 0666);

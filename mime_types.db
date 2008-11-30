@@ -1,0 +1,78 @@
+#
+# Packet-o-matic mime-types database.
+#
+# Copyright (C) 2008 Guy Martin <gmsoft@tuxicoman.be>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+#
+# <mime-type name> <extension> <generic type>
+
+application/javascript			js	txt
+application/json			json	txt
+application/msword			doc	doc
+application/octet-stream		bin	bin
+application/octetstream			bin	bin
+application/pdf				pdf	doc
+application/vnd.ms-excel		xls	doc
+application/vnd.ms-powerpoint		ppt	doc
+application/x-javascript		js	txt
+application/x-json			json	txt
+application/x-rar-compressed		rar	bin
+application/x-shockwave-flash		swf	bin
+application/x-www-urlform-encoded	url	txt
+application/xml				xml	txt
+application/zip				gz	bin
+audio/mp3				mp3	snd
+audio/mpeg				mp3	snd
+audio/wav				wav	snd
+audio/x-pn-realaudio			rm	snd
+audio/x-wav				wav	snd
+image/bmp				bmp	img
+image/gif				gif	img
+image/jpeg				jpg	img
+image/jpg				jpg	img
+image/pjpeg				pjpg	img
+image/png				png	img
+image/x-icon				ico	img
+message/rfc822				msg	txt
+text/calendar				cal	txt
+text/css				css	txt
+text/html				html	txt
+text/javascript				js	txt
+text/plain				txt	txt
+text/x-js				js	txt
+text/xml				xml	txt
+text/json				json	txt
+video/flv				flv	vid
+video/mpeg				mpg	vid
+video/quicktime				mov	vid
+video/vnd.divx				avi	vid
+video/x-flv				flv	vid
+video/x-ms-asf				asf	vid
+video/x-ms-wma				wma	snd
+audio/x-ms-wma				wma	vid
+video/x-ms-wmv				wmv	vid
+video/x-msvideo				avi	vid
+application/x-gzip			gz	bin
+application/x-debian-package		deb	bin
+application/swf				swf	bin
+application/x-bittorrent		torrent	bin
+application/pkix-crl			crl	bin
+application/x-iso9660-image		iso	bin
+application/rdf+xml			rdf	txt
+application/rss+xml			rss	txt
+application/x-xmljson			json	txt
+image/vnd.microsoft.icon		ico	img
+image/x-png				png	img
+audio/x-ms-wma				wma	snd
+audio/x-ms-wax				wax	snd
+video/x-ms-wvx				wvx	vid
+video/x-ms-wm				wm	vid
+video/x-ms-wmx				wmx	vid
+application/x-ms-wmz			wmz	vid
+application/x-ms-wmd			wmd	vid
+application/vnd.ms.wms-hdr.asfv1	asf	bin

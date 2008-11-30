@@ -451,7 +451,7 @@ abyss_bool xmlrpcsrv_default_handler(TSession * const sessionP) {
 	}
 
 	char *filename = NULL;
-	char *www_root = WWWROOT;
+	char *www_root = DATAROOT "/web-ui";
 	filename = malloc(strlen(www_root) + 1);
 	strcpy(filename, www_root);
 	if (strlen(requestInfoP->uri) <= 1) {

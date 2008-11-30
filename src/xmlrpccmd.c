@@ -25,6 +25,7 @@
 #include "ptype.h"
 
 #include "main.h"
+#include "core_param.h"
 #include "helper.h"
 
 #include "version.h"
@@ -114,7 +115,7 @@ int xmlrpccmd_register_all() {
 
 xmlrpc_value *xmlrpccmd_get_core_parmeters(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
 
-	struct core_param *p = core_params;
+	struct core_param *p = core_param_get_head();
 
 	xmlrpc_value *result = xmlrpc_array_new(envP);
 	if (envP->fault_occurred)
@@ -171,7 +172,7 @@ xmlrpc_value *xmlrpccmd_main_get_serial(xmlrpc_env * const envP, xmlrpc_value * 
 				"rules", main_config->rules_serial,
 				"targets", main_config->target_serial,
 				"input", main_config->input_serial,
-				"core", core_params_serial,
+				"core", core_param_get_serial(),
 				"helper", helpers_serial,
 				"conntrack", conntracks_serial,
 				"logs", pom_log_get_serial());

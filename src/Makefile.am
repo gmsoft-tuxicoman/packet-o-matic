@@ -3,7 +3,6 @@ CFLAGS += -Wall -I$(srcdir)/include -D_XOPEN_SOURCE=600 --std=gnu99 -D__EXTENSIO
 MGMT_SRC = mgmtsrv.c mgmtsrv.h mgmtvty.c mgmtvty.h mgmtcmd.c mgmtcmd.h mgmtcmd_helper.c mgmtcmd_helper.h mgmtcmd_conntrack.c mgmtcmd_conntrack.h mgmtcmd_input.c mgmtcmd_input.h mgmtcmd_rule.c mgmtcmd_rule.h mgmtcmd_target.c mgmtcmd_target.h mgmtcmd_datastore.c mgmtcmd_datastore.h
 
 if USE_XMLRPC
-wwwdir = $(pkgdatadir)/web-ui
 XMLRPC_SRC = xmlrpcsrv.c xmlrpcsrv.h xmlrpccmd.c xmlrpccmd.h xmlrpccmd_input.c xmlrpccmd_input.h xmlrpccmd_helper.c xmlrpccmd_helper.h xmlrpccmd_conntrack.c xmlrpccmd_conntrack.h xmlrpccmd_rules.c xmlrpccmd_rules.h xmlrpccmd_match.c xmlrpccmd_match.h xmlrpccmd_target.c xmlrpccmd_target.h
 endif
 
@@ -11,8 +10,8 @@ BUILT_SOURCES = svnversion.h
 VERSION_SRC = version.h release.h svnversion.h
 
 bin_PROGRAMS = packet-o-matic
-packet_o_matic_SOURCES = main.c main.h rules.c rules.h conf.c conf.h layer.c layer.h $(VERSION_SRC) $(MGMT_SRC) $(XMLRPC_SRC)
-packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"' -DWWWROOT='"$(wwwdir)"'
+packet_o_matic_SOURCES = main.c main.h core_param.c core_param.h rules.c rules.h conf.c conf.h layer.c layer.h $(VERSION_SRC) $(MGMT_SRC) $(XMLRPC_SRC)
+packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"' -DDATAROOT='"$(pkgdatadir)"'
 packet_o_matic_LDFLAGS = @LIBS@ @libxml2_LIBS@
 packet_o_matic_LDADD = libpom.la @xmlrpc_LIBS@
 
@@ -111,7 +110,8 @@ target_display_la_LIBADD = libpom.la
 target_dump_payload_la_SOURCES = target_dump_payload.c target_dump_payload.h modules_common.h
 target_dump_payload_la_LDFLAGS = -module -avoid-version
 target_dump_payload_la_LIBADD = libpom.la
-target_http_la_SOURCES = target_http.c target_http.h modules_common.h
+target_http_la_SOURCES = target_http.c target_http.h target_http_mime.c target_http_mime.h modules_common.h
+target_http_la_CFLAGS = -DDATAROOT='"$(pkgdatadir)"'
 target_http_la_LDFLAGS = -module -avoid-version -rpath '$(libdir)' @zlib_LIBS@
 target_http_la_LIBADD = libpom.la
 target_inject_la_SOURCES = target_inject.c target_inject.h modules_common.h
