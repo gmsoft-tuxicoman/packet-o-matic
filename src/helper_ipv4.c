@@ -149,7 +149,7 @@ static int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned i
 				snprintf(buff + strlen(buff), sizeof(buff) - strlen(buff) - 1, "%s: %s, ", field->name, pbuff);
 			}
 		}
-		snprintf(buff + strlen(buff), sizeof(buff) - strlen(buff) - 1,  "frag_off: 0x%X, id: %u, frag_start: %u, frag_size: %u, size: %u]\r\n", frag_off, ntohs(hdr->ip_id), frag_start, (unsigned int) frag_size, l->prev->payload_size);
+		snprintf(buff + strlen(buff), sizeof(buff) - strlen(buff) - 1,  "frag_off: 0x%X, id: %u, frag_start: %u, frag_size: %u, size: %u]", frag_off, ntohs(hdr->ip_id), frag_start, (unsigned int) frag_size, l->prev->payload_size);
 		pom_log(POM_LOG_DEBUG "%s",  buff);
 
 		return POM_ERR;

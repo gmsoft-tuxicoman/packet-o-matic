@@ -25,7 +25,7 @@
 
 
 int target_http_mime_types_read_db(struct target_priv_http *priv);
-int target_http_mime_type_get_generic_type(struct target_priv_http *priv, char *mime_type);
+int target_http_mime_type_get_id(struct target_priv_http *priv, char *mime_type);
 int target_http_mime_types_cleanup_db(struct target_priv_http *priv);
 
 #endif

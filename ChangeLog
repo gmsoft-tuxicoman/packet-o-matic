@@ -1,3 +1,14 @@
+* 2008/12/02 Guy Martin <gmsoft@tuxicoman.be>
+Fix configure script to keep LDFLAGS after checking for pthread.
+Added mode directory to input_pcap.
+Fix typo in input_docsis.
+Fix invalid write when parsing description in config file.
+Fix target_pcap packet number calculation and some other cosmetic bug.
+Remove \r\n from debug message in helper_ipv4.
+Fix mime type checking in target_http.
+Move timercmp() from timers.c to common.c.
+Fix file name when log level is 5.
+
 * 2008/11/30 Guy Martin <gmsoft@tuxicoman.be>
 Moved core parameters handling in a separate file.
 Define DATAROOT instead of WWWROOT for more generic usage.

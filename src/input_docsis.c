@@ -351,7 +351,7 @@ static int input_open_docsis(struct input *i) {
 		goto err;
 	}
 
-	pom_log("Docsis stream opened successfullly");
+	pom_log("Docsis stream opened successfully");
 	
 	return POM_OK;
 

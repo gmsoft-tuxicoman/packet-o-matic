@@ -84,11 +84,11 @@ AC_MSG_RESULT($pthflag)
 for flag in "pthreads" "pthread"; do
   if test "x$checkpthread" = "xyes"; then
     AC_MSG_CHECKING([for pthread_create with -$flag])
-    OLDFLAGS="$LDFLAGS"
+    OLDLDFLAGS="$LDFLAGS"
     LDFLAGS="-$flag $LDFLAGS"
     AC_TRY_LINK([], [pthread_create();], 
                     [pthflag=yes; checkpthread=no], 
-                    [pthflag=no; LDFLAGS="$OLDCFLAGS"])
+                    [pthflag=no; LDFLAGS="$OLDLDFLAGS"])
     AC_MSG_RESULT($pthflag)
   fi
 done

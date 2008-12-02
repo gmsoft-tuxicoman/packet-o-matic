@@ -669,7 +669,7 @@ int target_parse_response_headers_http(struct target_priv_http *priv, struct tar
 			if (sc)
 				*sc = 0;
 
-			cp->info.content_type = target_http_mime_type_get_generic_type(priv, cp->info.headers[i].value);
+			cp->info.content_type = target_http_mime_type_get_id(priv, cp->info.headers[i].value);
 
 		} else if (!strcasecmp(cp->info.headers[i].name, "Transfer-Encoding")) {
 			if (!strcasecmp(cp->info.headers[i].value, "chunked"))

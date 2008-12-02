@@ -30,6 +30,14 @@
 
 #include <pcap.h>
 
+/// File info
+struct input_priv_file_pcap {
+
+	char *filename;
+	struct timeval first_pkt;
+	struct input_priv_file_pcap *next, *prev;
+};
+
 /// Private structure of the pcap input.
 struct input_priv_pcap {
 
@@ -40,6 +48,9 @@ struct input_priv_pcap {
 
 	unsigned long packets_read;
 
+	struct input_priv_file_pcap *dir_files;
+	struct input_priv_file_pcap *dir_cur_file;
+	int datalink;
 };
 
 int input_register_pcap(struct input_reg *r);
@@ -52,6 +63,8 @@ static int input_close_pcap(struct input *i);
 static int input_cleanup_pcap(struct input *i);
 static int input_getcaps_pcap(struct input *i, struct input_caps *ic);
 static int input_interrupt_pcap(struct input *i);
+static int input_browse_dir_pcap(struct input_priv_pcap *priv);
+static int input_open_next_file_pcap(struct input_priv_pcap *p);
 
 
 #endif

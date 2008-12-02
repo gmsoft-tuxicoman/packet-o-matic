@@ -206,7 +206,7 @@ int target_http_mime_types_read_db(struct target_priv_http *priv) {
 }
 
 
-int target_http_mime_type_get_generic_type(struct target_priv_http *priv, char *mime_type) {
+int target_http_mime_type_get_id(struct target_priv_http *priv, char *mime_type) {
 
 	uint32_t hash = jhash(mime_type, strlen(mime_type), HTTP_MIME_TYPE_HASH_INITVAL);	
 	hash %= priv->mime_types_size * HTTP_MIME_TYPE_HASH_SIZE_RATIO;
@@ -216,12 +216,12 @@ int target_http_mime_type_get_generic_type(struct target_priv_http *priv, char *
 			struct http_mime_type_hash_entry *tmp = priv->mime_types_hash[hash];
 			while (tmp) {
 				if (!strcmp(priv->mime_types[tmp->id].name, mime_type))
-					return priv->mime_types[tmp->id].type;
+					return tmp->id;
 				tmp = tmp->next;
 			}
 
 		} else {
-			return priv->mime_types[priv->mime_types_hash[hash]->id].type;
+			return priv->mime_types_hash[hash]->id;
 		}
 	}
 

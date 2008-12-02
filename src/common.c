@@ -76,8 +76,8 @@ void pom_log_internal(char *file, const char *format, ...) {
 
 
 		entry->file = malloc(len + 1);
-		memset(entry->file, 0, len + 1);
-		strncat(entry->file, file, len);
+		memcpy(entry->file, file, len);
+		entry->file[len] = 0;
 		
 		entry->data = malloc(strlen(buff) + 1);
 		strcpy(entry->data, buff);
@@ -89,7 +89,9 @@ void pom_log_internal(char *file, const char *format, ...) {
 		}
 	} else {
 		struct log_entry tmp;
-		tmp.file = file;
+		tmp.file = alloca(len + 1);
+		memcpy(tmp.file, file, len);
+		tmp.file[len] = 0;
 		tmp.data = buff;
 		tmp.level = level;
 		entry = &tmp;

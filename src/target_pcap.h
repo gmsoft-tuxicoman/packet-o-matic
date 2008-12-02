@@ -42,6 +42,7 @@ struct target_priv_pcap {
 	struct ptype *layer;
 	struct ptype *unbuffered;
 
+	struct ptype *split_prefix;
 	struct ptype *split_size;
 	struct ptype *split_packets;
 	struct ptype *split_interval;

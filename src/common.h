@@ -42,6 +42,14 @@
 #include <sys/time.h>
 #endif
 
+// Some OS don't define this
+#ifndef timercmp
+#define timercmp(a, b, CMP) 						      \
+  (((a)->tv_sec == (b)->tv_sec) ? 					      \
+   ((a)->tv_usec CMP (b)->tv_usec) : 					      \
+   ((a)->tv_sec CMP (b)->tv_sec))
+#endif
+
 #ifdef HAVE_SYS_ENDIAN_H
 #include <sys/endian.h>
 #elif HAVE_ENDIAN_H

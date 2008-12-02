@@ -240,7 +240,6 @@ struct target *parse_target(xmlDocPtr doc, xmlNodePtr cur) {
 		} else if (!xmlStrcmp(pcur->name, (const xmlChar *) "description") && !tp->description) {
 			char *value = (char *) xmlNodeListGetString(doc, pcur->xmlChildrenNode, 1);
 			tp->description = malloc(strlen(value) + 1);
-			memset(tp->description, 0, sizeof(tp->description));
 			strcpy(tp->description, value);
 			xmlFree(value);
 		}
@@ -499,7 +498,6 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "description")) {
 			char *value = (char *) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
 			r->description = malloc(strlen(value) + 1);
-			memset(r->description, 0, sizeof(r->description));
 			strcpy(r->description, value);
 			xmlFree(value);
 		}
