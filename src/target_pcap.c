@@ -25,6 +25,8 @@
 #include "ptype_bool.h"
 #include "ptype_interval.h"
 
+#include <sys/stat.h>
+
 static struct target_mode *mode_default, *mode_split;
 
 int target_register_pcap(struct target_reg *r) {
@@ -47,6 +49,7 @@ int target_register_pcap(struct target_reg *r) {
 	target_register_param(mode_default, "unbuffered", "no", "Write each packet to the output file directly without using a buffer");
 
 	target_register_param(mode_split, "prefix", "dump", "Prefix of output files to save packets to");
+	target_register_param(mode_split, "overwrite", "no", "Overwrite existing file in the directory");
 	target_register_param(mode_split, "snaplen", "1522", "Maximum size of saved packets");
 	target_register_param(mode_split, "layer", "ethernet", "Type of layer to capture. Either ethernet, linux_cooked, docsis or ipv4");
 	target_register_param(mode_split, "split_size", "0", "Split when reaching this size");
@@ -70,6 +73,7 @@ static int target_init_pcap(struct target *t) {
 	priv->unbuffered = ptype_alloc("bool", NULL);
 
 	priv->split_prefix = ptype_alloc("string", NULL);
+	priv->split_overwrite = ptype_alloc("bool", NULL);
 	priv->split_size = ptype_alloc("uint64", "bytes");
 	priv->split_size->print_mode = PTYPE_UINT64_PRINT_HUMAN_1024;
 	priv->split_packets = ptype_alloc("uint64", "packets");
@@ -81,6 +85,7 @@ static int target_init_pcap(struct target *t) {
 		!priv->layer ||
 		!priv->unbuffered ||
 		!priv->split_prefix ||
+		!priv->split_overwrite ||
 		!priv->split_size ||
 		!priv->split_packets ||
 		!priv->split_interval) {
@@ -94,6 +99,7 @@ static int target_init_pcap(struct target *t) {
 	target_register_param_value(t, mode_default, "unbuffered", priv->unbuffered);
 	
 	target_register_param_value(t, mode_split, "prefix", priv->split_prefix);
+	target_register_param_value(t, mode_split, "overwrite", priv->split_overwrite);
 	target_register_param_value(t, mode_split, "snaplen", priv->snaplen);
 	target_register_param_value(t, mode_split, "layer", priv->layer);
 	target_register_param_value(t, mode_split, "unbuffered", priv->unbuffered);
@@ -115,6 +121,7 @@ static int target_cleanup_pcap(struct target *t) {
 		ptype_cleanup(priv->unbuffered);
 
 		ptype_cleanup(priv->split_prefix);
+		ptype_cleanup(priv->split_overwrite);
 		ptype_cleanup(priv->split_size);
 		ptype_cleanup(priv->split_packets);
 		ptype_cleanup(priv->split_interval);
@@ -161,8 +168,21 @@ static int target_open_pcap(struct target *t) {
 
 	if (t->mode == mode_split) {
 		char my_name[NAME_MAX];
-		snprintf(my_name, NAME_MAX - 1, "%s_%05lu.cap", PTYPE_STRING_GETVAL(priv->split_prefix), priv->split_index);
+		if (!PTYPE_BOOL_GETVAL(priv->split_overwrite)) {
+			do {
+				struct stat tmp;
+				snprintf(my_name, NAME_MAX - 1, "%s_%05lu.cap", PTYPE_STRING_GETVAL(priv->split_prefix), priv->split_index);
+				if (stat(my_name, &tmp) != 0) {
+					break;
+				}
+				priv->split_index++;
+			} while(1);
+			
+		} else {
+			snprintf(my_name, NAME_MAX - 1, "%s_%05lu.cap", PTYPE_STRING_GETVAL(priv->split_prefix), priv->split_index);
+		}
 		filename = my_name;
+		pom_log("Writing output to file %s", my_name);
 	} else {
 		filename = PTYPE_STRING_GETVAL(priv->filename);
 	}
@@ -235,9 +255,22 @@ static int target_process_pcap(struct target *t, struct frame *f) {
 			char filename[NAME_MAX];
 
 			pcap_dump_close(priv->pdump);
+			priv->split_files_num++;
 			priv->split_index++;
 
-			snprintf(filename, NAME_MAX - 1, "%s_%05lu.cap", PTYPE_STRING_GETVAL(priv->split_prefix), priv->split_index);
+			if (!PTYPE_BOOL_GETVAL(priv->split_overwrite)) {
+				do {
+					struct stat tmp;
+					snprintf(filename, NAME_MAX - 1, "%s_%05lu.cap", PTYPE_STRING_GETVAL(priv->split_prefix), priv->split_index);
+					if (stat(filename, &tmp) != 0) {
+						break;
+					}
+					priv->split_index++;
+				} while(1);
+				
+			} else {
+				snprintf(filename, NAME_MAX - 1, "%s_%05lu.cap", PTYPE_STRING_GETVAL(priv->split_prefix), priv->split_index);
+			}
 			priv->pdump = pcap_dump_open(priv->p, filename);
 			if (!priv->pdump) {
 				pom_log(POM_LOG_ERR "Unable to open pcap file %s for writing !", filename);
@@ -294,10 +327,11 @@ static int target_close_pcap(struct target *t) {
 	priv->cur_packets_num = 0;
 	priv->tot_size += priv->cur_size;
 	priv->cur_size = 0;
+	priv->split_files_num++;
 	priv->split_index++;
 
 	if (t->mode == mode_split)
-		pom_log("Saved %lu packets and %lu bytes in %lu files", priv->tot_packets_num, priv->tot_size, priv->split_index);
+		pom_log("Saved %lu packets and %lu bytes in %lu files", priv->tot_packets_num, priv->tot_size, priv->split_files_num);
 	else
 		pom_log("Saved %lu packets and %lu bytes", priv->tot_packets_num, priv->tot_size);
 
@@ -310,7 +344,10 @@ static int target_close_pcap(struct target *t) {
 		pcap_close(priv->p);
 		priv->p = NULL;
 	}
+
+	priv->split_files_num = 0;
+
 	return POM_OK;
-};
+}
 
 

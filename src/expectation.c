@@ -202,7 +202,7 @@ int expectation_cleanup_ce(struct target *t, struct conntrack_entry *ce) {
 			expectation_cleanup(tmp);
 			// Do not break, there could be more than one per target/conntrack entry
 		}
-		tmp =next;
+		tmp = next;
 	}
 
 	return POM_OK;

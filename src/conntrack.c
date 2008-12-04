@@ -23,6 +23,7 @@
 #include "target.h"
 #include "timers.h"
 #include "ptype.h"
+#include "expectation.h"
 
 #define CONNTRACK_SIZE 1048576
 
@@ -802,6 +803,10 @@ int conntrack_close_connections(struct rule_list *r, pthread_rwlock_t *lock) {
 
 				hp = hp->next;
 			}
+			
+			// Avoid any expectation to be matched
+			expectation_cleanup_all();
+
 			conntrack_cleanup_connection(cl->ce);
 			cl = ct_table[i];
 		}
