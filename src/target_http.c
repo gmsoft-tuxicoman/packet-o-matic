@@ -55,7 +55,7 @@ int target_register_http(struct target_reg *r) {
 	if (!mode_default)
 		return POM_ERR;
 
-	target_register_param(mode_default, "path", "/tmp", "Path of dumped files");
+	target_register_param(mode_default, "prefix", "/tmp", "Path of dumped files");
 #ifdef HAVE_ZLIB
 	target_register_param(mode_default, "decompress", "yes", "Decompress the payload or not on the fly");
 #endif
@@ -80,7 +80,7 @@ int target_init_http(struct target *t) {
 
 	t->target_priv = priv;
 
-	priv->path = ptype_alloc("string", NULL);
+	priv->prefix = ptype_alloc("string", NULL);
 #ifdef HAVE_ZLIB
 	priv->decompress = ptype_alloc("bool", NULL);
 #endif
@@ -92,7 +92,7 @@ int target_init_http(struct target *t) {
 	priv->dump_bin = ptype_alloc("bool", NULL);
 	priv->dump_doc = ptype_alloc("bool", NULL);
 
-	if (!priv->path ||
+	if (!priv->prefix ||
 #ifdef HAVE_ZLIB
 		!priv->decompress ||
 #endif
@@ -107,7 +107,7 @@ int target_init_http(struct target *t) {
 		return POM_ERR;
 	}
 	
-	target_register_param_value(t, mode_default, "path", priv->path);
+	target_register_param_value(t, mode_default, "prefix", priv->prefix);
 #ifdef HAVE_ZLIB
 	target_register_param_value(t, mode_default, "decompress", priv->decompress);
 #endif
@@ -143,7 +143,7 @@ int target_cleanup_http(struct target *t) {
 
 	if (priv) {
 
-		ptype_cleanup(priv->path);
+		ptype_cleanup(priv->prefix);
 #ifdef HAVE_ZLIB
 		ptype_cleanup(priv->decompress);
 #endif
@@ -834,10 +834,7 @@ int target_file_open_http(struct target *t, struct target_conntrack_priv_http *c
 		return POM_ERR;
 
 	char filename[NAME_MAX];
-	strcpy(filename, PTYPE_STRING_GETVAL(priv->path));
-
-	if (*(filename + strlen(filename) - 1) != '/')
-		strcat(filename, "/");
+	strcpy(filename, PTYPE_STRING_GETVAL(priv->prefix));
 
 	char outstr[20];
 	memset(outstr, 0, sizeof(outstr));

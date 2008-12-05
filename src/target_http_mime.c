@@ -27,6 +27,7 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <ctype.h>
+#include <errno.h>
 
 #include "ptype_string.h"
 
@@ -38,12 +39,20 @@ unsigned int mime_type_db_size = 0;
 
 int target_http_mime_types_read_db(struct target_priv_http *priv) {
 
+	char errbuf[256 + 1];
+	*errbuf = 0;
+
 	int fd = open(PTYPE_STRING_GETVAL(priv->mime_types_db), O_RDONLY);
-	if (fd == -1)
+	if (fd == -1) {
+		strerror_r(errno, errbuf, 256);
+		pom_log(POM_LOG_ERR "Unable to open mime-types databse : %s", errbuf);
 		return POM_ERR;
+	}
 
 	struct stat s;
 	if (fstat(fd, &s) == -1) {
+		strerror_r(errno, errbuf, 256);
+		pom_log(POM_LOG_ERR "Unable to get mime-type database file size : %s", errbuf);
 		close(fd);
 		return POM_ERR;
 	}
@@ -51,6 +60,8 @@ int target_http_mime_types_read_db(struct target_priv_http *priv) {
 	char *map = mmap(NULL, s.st_size + 1, PROT_READ, MAP_PRIVATE, fd, 0);
 
 	if (map == MAP_FAILED) {
+		strerror_r(errno, errbuf, 256);
+		pom_log(POM_LOG_ERR "Unable to mmap() the mime-type database file : %s", errbuf);
 		close(fd);
 		return POM_ERR;
 	}

@@ -1,3 +1,7 @@
+* 2008/12/05 Guy Martin <gmsoft@tuxicoman.be>
+Changed parameter 'path' in 'prefix' to allow prefixing http files.
+Added debug if mime type database cannot be open in target_http.
+
 * 2008/12/04 Guy Martin <gmsoft@tuxicoman.be>
 Added overwrite parameter to target_pcap to avoid overwriting existing files.
 Make sure no expectation will be matched when closing all the conntracks.

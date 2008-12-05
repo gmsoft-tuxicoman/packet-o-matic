@@ -116,7 +116,7 @@ struct target_priv_http {
 
 	int match_mask;
 
-	struct ptype *path;
+	struct ptype *prefix;
 	struct ptype *decompress;
 	struct ptype *mime_types_db;
 	struct ptype *dump_img;
