@@ -76,7 +76,7 @@ static struct mgmt_command mgmt_datastore_commands[MGMT_DATASTORE_COMMANDS_NUM] 
 
 	{
 		.words = { "set", "datastore", "description",  NULL },
-		.help = "set a description on a datastore",
+		.help = "Set a description on a datastore",
 		.callback_func = mgmtcmd_set_datastore_descr,
 		.completion = mgmtcmd_datastore_completion_name3,
 		.usage = "set datastore description <datastore_id> <descr>",
@@ -84,7 +84,7 @@ static struct mgmt_command mgmt_datastore_commands[MGMT_DATASTORE_COMMANDS_NUM] 
 
 	{
 		.words = { "unset", "datastore", "description", NULL },
-		.help = "unset the description of a datastore",
+		.help = "Unset the description of a datastore",
 		.callback_func = mgmtcmd_unset_datastore_descr,
 		.completion = mgmtcmd_datastore_completion_name3,
 		.usage = "unset datastore description <datastore_name>",

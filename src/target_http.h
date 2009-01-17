@@ -64,6 +64,7 @@ struct http_header {
 
 	char *name;
 	char *value;
+	int type; // either HTTP_QUERY or HTTP_RESPONSE
 
 };
 
@@ -85,7 +86,6 @@ struct target_conntrack_priv_info_http {
 	struct http_header *headers;
 	unsigned int headers_num;
 	unsigned int err_code;
-	char *url;
 	unsigned int content_len, content_pos;
 	unsigned int chunk_len, chunk_pos;
 	unsigned int content_type; // index in the mime_type array
@@ -105,6 +105,7 @@ struct target_conntrack_priv_http {
 	char *buff;
 	size_t buff_size;
 	struct target_conntrack_priv_info_http info;
+	struct http_log_info *log_info;
 
 	struct conntrack_entry *ce;
 	struct target_conntrack_priv_http *next;
@@ -119,6 +120,8 @@ struct target_priv_http {
 	struct ptype *prefix;
 	struct ptype *decompress;
 	struct ptype *mime_types_db;
+	struct ptype *log_file;
+	struct ptype *log_format;
 	struct ptype *dump_img;
 	struct ptype *dump_vid;
 	struct ptype *dump_snd;
@@ -129,6 +132,9 @@ struct target_priv_http {
 	struct http_mime_type_entry *mime_types;
 	unsigned int mime_types_size;
 	struct http_mime_type_hash_entry **mime_types_hash;
+
+	uint16_t log_flags;
+	int log_fd;
 
 	struct target_conntrack_priv_http *ct_privs;
 
@@ -144,7 +150,7 @@ int target_close_connection_http(struct target *t, struct conntrack_entry *ce, v
 int target_close_http(struct target *t);
 int target_cleanup_http(struct target *t);
 
-size_t target_parse_query_response_http(struct target_conntrack_priv_http *cp, char *pload, size_t psize);
+size_t target_parse_query_response_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp, char *pload, size_t psize);
 int target_parse_response_headers_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp);
 #ifdef HAVE_ZLIB
 size_t target_process_gzip_http(struct target_conntrack_priv_http *cp, char * pload, size_t size);
@@ -152,5 +158,6 @@ size_t target_process_gzip_http(struct target_conntrack_priv_http *cp, char * pl
 int target_reset_conntrack_http(struct target_conntrack_priv_http *cp);
 int target_buffer_payload_http(struct target_conntrack_priv_http *cp, char *pload, size_t psize);
 int target_file_open_http(struct target *t, struct target_conntrack_priv_http *cp, struct frame *f, int is_gzip);
+
 
 #endif

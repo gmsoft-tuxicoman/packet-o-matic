@@ -110,7 +110,7 @@ target_display_la_LIBADD = libpom.la
 target_dump_payload_la_SOURCES = target_dump_payload.c target_dump_payload.h modules_common.h
 target_dump_payload_la_LDFLAGS = -module -avoid-version
 target_dump_payload_la_LIBADD = libpom.la
-target_http_la_SOURCES = target_http.c target_http.h target_http_mime.c target_http_mime.h modules_common.h
+target_http_la_SOURCES = target_http.c target_http.h target_http_mime.c target_http_mime.h target_http_log.c target_http_log.h modules_common.h
 target_http_la_CFLAGS = -DDATAROOT='"$(pkgdatadir)"'
 target_http_la_LDFLAGS = -module -avoid-version -rpath '$(libdir)' @zlib_LIBS@
 target_http_la_LIBADD = libpom.la

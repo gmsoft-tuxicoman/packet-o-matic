@@ -1,3 +1,10 @@
+* 2009/01/17 Guy Martin <gmsoft@tuxicoman.be>
+Make description of CLI function more consistent.
+Added logging support for target_http.
+Better handling of % sign in the CLI.
+Allow spaces in target parameters.
+Added definition of timeradd() and timersub() in common.h.
+
 * 2008/12/05 Guy Martin <gmsoft@tuxicoman.be>
 Changed parameter 'path' in 'prefix' to allow prefixing http files.
 Added debug if mime type database cannot be open in target_http.

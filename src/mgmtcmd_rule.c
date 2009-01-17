@@ -68,7 +68,7 @@ static struct mgmt_command mgmt_rule_commands[MGMT_RULE_COMMANDS_NUM] = {
 
 	{
 		.words = { "remove", "rule", NULL },
-		.help = "remove a rule",
+		.help = "Remove a rule",
 		.callback_func = mgmtcmd_remove_rule,
 		.completion = mgmtcmd_rule_id2_completion,
 		.usage = "remove rule <rule_id>",
@@ -79,12 +79,12 @@ static struct mgmt_command mgmt_rule_commands[MGMT_RULE_COMMANDS_NUM] = {
 		.help = "set a description on a rule",
 		.callback_func = mgmtcmd_set_rule_descr,
 		.completion = mgmtcmd_rule_id3_completion,
-		.usage = "set rule description <rule_id> <descr>",
+		.usage = "Set rule description <rule_id> <descr>",
 	},
 
 	{
 		.words = { "unset", "rule", "description", NULL },
-		.help = "unset the description on a rule",
+		.help = "Unset the description on a rule",
 		.callback_func = mgmtcmd_unset_rule_descr,
 		.completion = mgmtcmd_rule_id3_completion,
 		.usage = "unset rule description <rule_id>",

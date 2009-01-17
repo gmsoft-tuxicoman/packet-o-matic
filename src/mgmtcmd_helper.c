@@ -35,7 +35,7 @@ static struct mgmt_command mgmt_helper_commands[MGMT_HELPER_COMMANDS_NUM] = {
 	{
 		.words = { "load", "helper", NULL },
 		.help = "Load an helper into the system",
-		.usage = "load helper <helper_name>",
+		.usage = "load helper <helper>",
 		.callback_func = mgmtcmd_load_helper,
 		.completion = mgmtcmd_load_helper_completion,
 	},

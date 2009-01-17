@@ -77,7 +77,7 @@ static struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 
 	{
 		.words = { "set", "target", "description",  NULL },
-		.help = "set a description on a target",
+		.help = "Set a description on a target",
 		.callback_func = mgmtcmd_set_target_descr,
 		.completion = mgmtcmd_target_completion_id3,
 		.usage = "set target description <rule_id> <target_id> <descr>",
@@ -85,7 +85,7 @@ static struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 
 	{
 		.words = { "unset", "target", "description", NULL },
-		.help = "unset the description of a target",
+		.help = "Unset the description of a target",
 		.callback_func = mgmtcmd_unset_target_descr,
 		.completion = mgmtcmd_target_completion_id3,
 		.usage = "unset target description <rule_id> <target_id>",
@@ -495,11 +495,28 @@ int mgmtcmd_set_target_parameter(struct mgmt_connection *c, int argc, char *argv
 		return POM_OK;
 	}
 
-	if (ptype_parse_val(value, argv[3]) == POM_ERR) {
+
+
+	// first, let's reconstruct the whole rule
+	int i, param_len = 0;
+	for (i = 1; i < argc; i++) {
+		param_len += strlen(argv[i]) + 1;
+	}
+	char *param_str = malloc(param_len + 1);
+	memset(param_str, 0, param_len + 1);
+	for (i = 3; i < argc; i++) {
+		strcat(param_str, argv[i]);
+		if (i < argc - 1)
+			strcat(param_str, " ");
+	}
+
+	if (ptype_parse_val(value, param_str) == POM_ERR) {
 		target_unlock_instance(t);
-		mgmtsrv_send(c, "Unable to parse \"%s\" for parameter %s\r\n", argv[3], argv[2]);
+		mgmtsrv_send(c, "Unable to parse \"%s\" for parameter %s\r\n", param_str, argv[2]);
+		free(param_str);
 		return POM_OK;
 	}
+	free(param_str);
 
 	main_config->target_serial++;
 	rl->target_serial++;

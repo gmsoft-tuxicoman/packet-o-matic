@@ -38,16 +38,16 @@ int mgmtvty_init(struct mgmt_connection *c) {
 		return POM_ERR;
 	}
 
-	mgmtsrv_send(c, "\nThis is packet-o-matic " POM_VERSION "\nCopyright Guy Martin 2006-2008\n\n");
+	mgmtsrv_send(c, "%s", "\nThis is packet-o-matic " POM_VERSION "\nCopyright Guy Martin 2006-2008\n\n");
 
 	char commands[] = { IAC, WILL, TELOPT_ECHO, IAC, WILL, TELOPT_SGA, IAC, DO, TELOPT_NAWS, IAC, DONT, TELOPT_LINEMODE };
 	send(c->fd, commands, sizeof(commands), 0);
 
 	if (!mgmtsrv_get_password()) {
-		mgmtsrv_send(c, MGMT_CMD_PROMPT);
+		mgmtsrv_send(c, "%s", MGMT_CMD_PROMPT);
 		c->state = MGMT_STATE_AUTHED;
 	} else {
-		mgmtsrv_send(c, MGMT_CMD_PWD_PROMPT);
+		mgmtsrv_send(c, "%s", MGMT_CMD_PWD_PROMPT);
 		c->state = MGMT_STATE_PASSWORD;
 	}
 
@@ -158,7 +158,7 @@ int mgmtvty_process(struct mgmt_connection *c, unsigned char *buffer, unsigned i
 							for (i = 0; i < c->cursor_pos; i++)
 								mgmtsrv_send(c, "\b");
 
-							mgmtsrv_send(c, c->history[prev]);
+							mgmtsrv_send(c, "%s", c->history[prev]);
 
 							int lendiff = strlen(c->curcmd) - strlen(c->history[prev]);
 							if (lendiff > 0) {
@@ -189,7 +189,7 @@ int mgmtvty_process(struct mgmt_connection *c, unsigned char *buffer, unsigned i
 							for (i = 0; i < c->cursor_pos; i++)
 								mgmtsrv_send(c, "\b");
 
-							mgmtsrv_send(c, c->history[next]);
+							mgmtsrv_send(c, "%s", c->history[next]);
 
 							int lendiff = strlen(c->curcmd) - strlen(c->history[next]);
 							if (lendiff > 0) {
@@ -210,10 +210,7 @@ int mgmtvty_process(struct mgmt_connection *c, unsigned char *buffer, unsigned i
 						}
 					case 'C': // right arrow
 						if (c->cursor_pos < strlen(c->curcmd)) {
-							char chr[2];
-							chr[0] = c->curcmd[c->cursor_pos];
-							chr[1] = 0;
-							mgmtsrv_send(c, chr);
+							mgmtsrv_send(c, "%hhc", c->curcmd[c->cursor_pos]);
 							c->cursor_pos++;
 						}	
 						break;
@@ -373,7 +370,7 @@ int mgmtvty_completion(struct mgmt_connection *c, unsigned char key) {
 
 	for (str = tmpcmdstr; ;str = NULL) {
 		if (words_count >= MGMT_MAX_CMD_WORDS_ARGS) {
-			mgmtsrv_send(c, "\r\nToo many arguments\r\n" MGMT_CMD_PROMPT "%s", c->curcmd);
+			mgmtsrv_send(c, "\r\nToo many arguments\r\n%s",  MGMT_CMD_PROMPT, c->curcmd);
 			free(tmpcmdstr);
 			return POM_OK;
 		}
@@ -399,7 +396,7 @@ int mgmtvty_completion(struct mgmt_connection *c, unsigned char key) {
 	if (key == '?') {
 		mgmtsrv_send(c, "\r\n");
 		mgmtcmd_print_help(c, cmds, 0);
-		mgmtsrv_send(c, MGMT_CMD_PROMPT "%s", c->curcmd);
+		mgmtsrv_send(c, "%s%s", MGMT_CMD_PROMPT, c->curcmd);
 
 	} else if (key == '\t') {
 		// compute the amount of possible matches
@@ -519,7 +516,7 @@ int mgmtvty_completion(struct mgmt_connection *c, unsigned char key) {
 					mgmtsrv_send(c, "%s ", tmp->word);
 					tmp = tmp->next;
 				}
-				mgmtsrv_send(c, "\r\n" MGMT_CMD_PROMPT "%s", c->curcmd);
+				mgmtsrv_send(c, "\r\n%s%s", MGMT_CMD_PROMPT, c->curcmd);
 				// Try to complete as much as we can
 				int l;
 				if (!words[words_count])
@@ -546,7 +543,7 @@ int mgmtvty_completion(struct mgmt_connection *c, unsigned char key) {
 					int size = strlen(c->curcmd);
 					c->curcmd = realloc(c->curcmd, size + 2);
 					strcat(c->curcmd, buff);
-					mgmtsrv_send(c, buff);
+					mgmtsrv_send(c, "%s", buff);
 				}
 				c->cursor_pos = strlen(c->curcmd);
 			}
@@ -593,7 +590,7 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 		}
 
 		case 0x3: { // Ctrl-C
-			mgmtsrv_send(c, "\r\n" MGMT_CMD_PROMPT);
+			mgmtsrv_send(c, "\r\n%s", MGMT_CMD_PROMPT);
 			c->curcmd = realloc(c->curcmd, 1);
 			*c->curcmd = 0;
 			c->cursor_pos = 0;
@@ -623,8 +620,7 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 				if (c->cursor_pos < cmdlen) {
 					memmove(c->curcmd + c->cursor_pos, c->curcmd + c->cursor_pos + 1, cmdlen - c->cursor_pos);
 					c->curcmd = realloc(c->curcmd, cmdlen);
-					mgmtsrv_send(c, c->curcmd + c->cursor_pos);
-					mgmtsrv_send(c, " ");
+					mgmtsrv_send(c, "%s ", c->curcmd + c->cursor_pos);
 					int i;
 					for (i = strlen(c->curcmd); i >= c->cursor_pos; i--)
 						mgmtsrv_send(c, "\b");
@@ -637,7 +633,7 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 
 		case 0x5: { // Ctrl-E
 			while (c->cursor_pos < strlen(c->curcmd)) {
-				mgmtsrv_send(c, c->curcmd + c->cursor_pos);
+				mgmtsrv_send(c, "%s", c->curcmd + c->cursor_pos);
 				c->cursor_pos = strlen(c->curcmd);
 			}
 			break;
@@ -654,9 +650,7 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 			memmove(c->curcmd + c->cursor_pos, c->curcmd + c->cursor_pos + 1, cmdlen - c->cursor_pos);
 			c->curcmd[cmdlen - 1] = 0;
 			c->curcmd = realloc(c->curcmd, cmdlen);
-			mgmtsrv_send(c, "\b");
-			mgmtsrv_send(c, c->curcmd + c->cursor_pos);
-			mgmtsrv_send(c, " ");
+			mgmtsrv_send(c, "\b%s ", c->curcmd + c->cursor_pos);
 			int i;
 			for (i = c->cursor_pos; i < cmdlen; i++)
 				mgmtsrv_send(c, "\b");
@@ -665,8 +659,7 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 		}
 
 		case 0x0C: { // Ctrl-L
-			mgmtsrv_send(c, "\033c" MGMT_CMD_PROMPT);
-			mgmtsrv_send(c, c->curcmd);
+			mgmtsrv_send(c, "\033c%s%s", MGMT_CMD_PROMPT, c->curcmd);
 			int pos = strlen(c->curcmd) - c->cursor_pos;
 			for (; pos > 0; pos--)
 				mgmtsrv_send(c, "\b");
@@ -692,7 +685,7 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 			if (c->state == MGMT_STATE_PASSWORD) {
 				if (!mgmtsrv_get_password() || !strcmp(c->curcmd, mgmtsrv_get_password())) {
 					c->state = MGMT_STATE_AUTHED;
-					mgmtsrv_send(c, "\r\n" MGMT_CMD_PROMPT);
+					mgmtsrv_send(c, "\r\n%s", MGMT_CMD_PROMPT);
 				} else {
 					// Need this to actualy send something in the vty
 					c->state = MGMT_STATE_INIT;
@@ -702,7 +695,7 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 						mgmtsrv_close_connection(c);
 						break;
 					}
-					mgmtsrv_send(c, "\r\n" MGMT_CMD_PWD_PROMPT);
+					mgmtsrv_send(c, "\r\n%s", MGMT_CMD_PWD_PROMPT);
 					c->state = MGMT_STATE_PASSWORD;
 					c->auth_tries++;
 				}
@@ -714,7 +707,7 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 			}
 
 			if (strlen(c->curcmd) == 0) {
-				mgmtsrv_send(c, "\r\n" MGMT_CMD_PROMPT);
+				mgmtsrv_send(c, "\r\n%s", MGMT_CMD_PROMPT);
 				break;
 			}
 	
@@ -745,7 +738,7 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 			c->cursor_pos = 0;
 			c->curcmd = realloc(c->curcmd, 1);
 			*c->curcmd = 0;
-			mgmtsrv_send(c, "\r" MGMT_CMD_PROMPT);
+			mgmtsrv_send(c, "\r%s", MGMT_CMD_PROMPT);
 
 			break;
 		}
@@ -765,7 +758,7 @@ int mgmtvty_process_key(struct mgmt_connection *c, unsigned char key) {
 			c->curcmd = realloc(c->curcmd, cmdlen + 1);
 			memmove(c->curcmd + c->cursor_pos + 1, c->curcmd + c->cursor_pos, cmdlen - c->cursor_pos);
 			c->curcmd[c->cursor_pos] = key;
-			mgmtsrv_send(c, c->curcmd + c->cursor_pos);
+			mgmtsrv_send(c, "%s", c->curcmd + c->cursor_pos);
 			int i;
 			for (i = cmdlen - 1; i > c->cursor_pos; i--)
 				mgmtsrv_send(c, "\b");
@@ -783,12 +776,11 @@ int mgmtvty_print_usage(struct mgmt_connection *c, struct mgmt_command *cmd) {
 
 	mgmtsrv_send(c, "Usage : ");
 	if (cmd->usage) {
-		mgmtsrv_send(c, cmd->usage);
+		mgmtsrv_send(c, "%s", cmd->usage);
 	} else {
 		int i;
 		for (i = 0; i < MGMT_MAX_CMD_WORDS && cmd->words[i]; i++) {
-			mgmtsrv_send(c, cmd->words[i]);
-			mgmtsrv_send(c, " ");
+			mgmtsrv_send(c, "%s ", cmd->words[i]);
 		}
 			
 

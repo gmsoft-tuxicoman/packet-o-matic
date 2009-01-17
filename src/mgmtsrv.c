@@ -607,7 +607,7 @@ int mgmtsrv_send_debug(struct log_entry *entry) {
 			mgmtsrv_send(c, "%s: %s\r\n", entry->file, entry->data);
 
 			if (! (c->flags & MGMT_FLAG_PROCESSING)) {
-				mgmtsrv_send(c, MGMT_CMD_PROMPT "%s", c->curcmd);
+				mgmtsrv_send(c, "%s%s", MGMT_CMD_PROMPT, c->curcmd);
 				for (i = strlen(c->curcmd); i > c->cursor_pos; i--)
 					mgmtsrv_send(c, "\b");
 			}

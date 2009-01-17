@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,6 +33,7 @@
 
 #include "target_http.h"
 #include "target_http_mime.h"
+#include "target_http_log.h"
 
 #include "ptype_bool.h"
 #include "ptype_string.h"
@@ -55,14 +56,16 @@ int target_register_http(struct target_reg *r) {
 	if (!mode_default)
 		return POM_ERR;
 
-	target_register_param(mode_default, "prefix", "/tmp", "Path of dumped files");
+	target_register_param(mode_default, "prefix", "/tmp/", "Path of dumped files");
 #ifdef HAVE_ZLIB
 	target_register_param(mode_default, "decompress", "yes", "Decompress the payload or not on the fly");
 #endif
 	target_register_param(mode_default, "mime_types_db", DATAROOT "/mime_types.db", "Mime types database path");
+	target_register_param(mode_default, "log_file", "", "File where to log the queries");
+	target_register_param(mode_default, "log_format", "%v %h %l %u %t \"%r\" %s %b", "Log format");
 	target_register_param(mode_default, "dump_img", "no", "Dump the images or not");
 	target_register_param(mode_default, "dump_vid", "no", "Dump the videos or not");
-	target_register_param(mode_default, "dump_snd", "no", "Dump the images or not");
+	target_register_param(mode_default, "dump_snd", "no", "Dump the audio files or not");
 	target_register_param(mode_default, "dump_txt", "no", "Dump the text or not");
 	target_register_param(mode_default, "dump_bin", "no", "Dump the binary or not");
 	target_register_param(mode_default, "dump_doc", "no", "Dump the documents or not");
@@ -85,6 +88,8 @@ int target_init_http(struct target *t) {
 	priv->decompress = ptype_alloc("bool", NULL);
 #endif
 	priv->mime_types_db = ptype_alloc("string", NULL);
+	priv->log_file = ptype_alloc("string", NULL);
+	priv->log_format = ptype_alloc("string", NULL);
 	priv->dump_img = ptype_alloc("bool", NULL);
 	priv->dump_vid = ptype_alloc("bool", NULL);
 	priv->dump_snd = ptype_alloc("bool", NULL);
@@ -97,6 +102,8 @@ int target_init_http(struct target *t) {
 		!priv->decompress ||
 #endif
 		!priv->mime_types_db ||
+		!priv->log_file ||
+		!priv->log_format ||
 		!priv->dump_img ||
 		!priv->dump_vid ||
 		!priv->dump_snd ||
@@ -112,6 +119,8 @@ int target_init_http(struct target *t) {
 	target_register_param_value(t, mode_default, "decompress", priv->decompress);
 #endif
 	target_register_param_value(t, mode_default, "mime_types_db", priv->mime_types_db);
+	target_register_param_value(t, mode_default, "log_file", priv->log_file);
+	target_register_param_value(t, mode_default, "log_format", priv->log_format);
 	target_register_param_value(t, mode_default, "dump_img", priv->dump_img);
 	target_register_param_value(t, mode_default, "dump_vid", priv->dump_vid);
 	target_register_param_value(t, mode_default, "dump_snd", priv->dump_snd);
@@ -132,6 +141,9 @@ int target_close_http(struct target *t) {
 		target_close_connection_http(t, priv->ct_privs->ce, priv->ct_privs);
 	}
 
+	if (priv->log_fd != -1)
+		close(priv->log_fd);
+
 	target_http_mime_types_cleanup_db(priv);
 
 	return POM_OK;
@@ -148,6 +160,8 @@ int target_cleanup_http(struct target *t) {
 		ptype_cleanup(priv->decompress);
 #endif
 		ptype_cleanup(priv->mime_types_db);
+		ptype_cleanup(priv->log_file);
+		ptype_cleanup(priv->log_format);
 		ptype_cleanup(priv->dump_img);
 		ptype_cleanup(priv->dump_vid);
 		ptype_cleanup(priv->dump_snd);
@@ -179,7 +193,11 @@ int target_open_http(struct target *t) {
 	if (PTYPE_BOOL_GETVAL(priv->dump_doc)) // doc
 		priv->match_mask |= HTTP_MIME_TYPE_DOC;
 
-	int res = target_http_mime_types_read_db(priv);
+	int res = target_init_log_http(priv);
+	if (res == POM_ERR)
+		return POM_ERR;
+
+	res = target_http_mime_types_read_db(priv);
 
 	return res;
 
@@ -215,15 +233,15 @@ int target_process_http(struct target *t, struct frame *f) {
 		if (priv->ct_privs)
 			priv->ct_privs->prev = cp;
 		priv->ct_privs = cp;
-	
+
 	}
 
 	if (cp->state == HTTP_INVALID)
 		return POM_OK;
 
-	if (lastl->payload_size == 0) {
+	if (lastl->payload_size == 0)
 		return POM_OK;
-	}
+
 
 
 
@@ -250,7 +268,15 @@ int target_process_http(struct target *t, struct frame *f) {
 		if (cp->state == HTTP_HEADER || cp->state == HTTP_QUERY || cp->state == HTTP_RESPONSE) {
 
 			if (cp->state == HTTP_HEADER) {
-				size_t len = target_parse_query_response_http(cp, pload, psize);
+
+				if (!cp->log_info && priv->log_flags) { // We need to log this
+					cp->log_info = malloc(sizeof(struct http_log_info));
+					memset(cp->log_info, 0, sizeof(struct http_log_info));
+					cp->log_info->log_flags = priv->log_flags;
+				}
+				
+				size_t len = target_parse_query_response_http(priv, cp, pload, psize);
+
 				if (len == POM_ERR) {
 					target_reset_conntrack_http(cp);
 					cp->state = HTTP_INVALID;
@@ -266,6 +292,12 @@ int target_process_http(struct target *t, struct frame *f) {
 						return POM_OK;
 					}
 				}
+
+
+
+				if (cp->log_info)
+					target_initial_log_http(cp, f, lastl);
+
 				pload += len;
 				psize -= len;
 			}
@@ -305,8 +337,8 @@ int target_process_http(struct target *t, struct frame *f) {
 						cp->info.content_type = 0; // Make sure the body isn't matched
 						continue;
 					} else {
+						// Wait for the reply
 						cp->state = HTTP_HEADER;
-						target_reset_conntrack_http(cp);
 						return POM_OK;
 					}
 				} else if (cp->state == HTTP_RESPONSE) {
@@ -359,6 +391,7 @@ int target_process_http(struct target *t, struct frame *f) {
 			cp->info.headers[cp->info.headers_num - 1].value = malloc(value_size + 1);
 			memcpy(cp->info.headers[cp->info.headers_num - 1].value, colon, value_size);
 			cp->info.headers[cp->info.headers_num - 1].value[value_size] = 0;
+			cp->info.headers[cp->info.headers_num - 1].type = cp->state;
 
 			pload += size;
 			psize -= size;
@@ -366,6 +399,7 @@ int target_process_http(struct target *t, struct frame *f) {
 		}
 
 		if (cp->info.flags & HTTP_FLAG_HAVE_CLEN && cp->info.content_len == 0) {
+			target_write_log_http(priv, cp);
 			target_reset_conntrack_http(cp);
 			continue;
 		}
@@ -381,7 +415,7 @@ int target_process_http(struct target *t, struct frame *f) {
 
 			if (cp->info.flags & HTTP_FLAG_CHUNKED) {
 				if (cp->info.chunk_len == 0) {
-					/// RFC 2616 specifies that Content-Lenght mus be ignore if transfer encoding is used
+					/// RFC 2616 specifies that Content-Lenght must be ignored if transfer encoding is used
 					if (cp->info.flags & HTTP_FLAG_HAVE_CLEN) {
 						pom_log(POM_LOG_TSHOOT "Ignoring invalid Content-Length");
 						cp->info.flags &= ~HTTP_FLAG_HAVE_CLEN;
@@ -433,6 +467,7 @@ int target_process_http(struct target *t, struct frame *f) {
 					psize -= num_size + 2;
 				}
 				if (cp->info.chunk_len == 0) {
+					target_write_log_http(priv, cp);
 					target_reset_conntrack_http(cp);
 					if (size > 2) {
 						psize -= 2; // add the crlf
@@ -502,6 +537,7 @@ int target_process_http(struct target *t, struct frame *f) {
 		}
 		if (cp->info.flags & HTTP_FLAG_HAVE_CLEN) {
 			if (cp->info.content_pos >= cp->info.content_len) {
+				target_write_log_http(priv, cp);
 				target_reset_conntrack_http(cp);
 			}
 		}
@@ -520,36 +556,16 @@ int target_close_connection_http(struct target *t, struct conntrack_entry *ce, v
 
 	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx", (unsigned long) conntrack_priv);
 
+	struct target_priv_http *priv = t->target_priv;
+
 	struct target_conntrack_priv_http *cp;
 	cp = conntrack_priv;
 
-	if (cp->fd != -1)
-		close(cp->fd);
+	target_write_log_http(priv, cp);
+	target_reset_conntrack_http(cp);
+
 	if (cp->buff)
 		free(cp->buff);
-	if (cp->info.url)
-		free(cp->info.url);
-
-	if (cp->info.headers) {
-		int i;
-		for (i = 0; i < cp->info.headers_num; i++) {
-			free(cp->info.headers[i].name);
-			free(cp->info.headers[i].value);
-		}
-
-		free(cp->info.headers);
-			
-	}
-
-#ifdef HAVE_ZLIB
-	if (cp->info.zbuff) {
-		inflateEnd(cp->info.zbuff);
-		free(cp->info.zbuff);
-		cp->info.zbuff = NULL;
-	}
-#endif
-
-	struct target_priv_http *priv = t->target_priv;
 
 	if (cp->prev)
 		cp->prev->next = cp->next;
@@ -567,7 +583,7 @@ int target_close_connection_http(struct target *t, struct conntrack_entry *ce, v
 }
 
 
-size_t target_parse_query_response_http(struct target_conntrack_priv_http *cp, char *pload, size_t psize) {
+size_t target_parse_query_response_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp, char *pload, size_t psize) {
 
 	if (psize < strlen("HTTP/")) 
 		return 0; // Buffer incomplete
@@ -586,6 +602,8 @@ size_t target_parse_query_response_http(struct target_conntrack_priv_http *cp, c
 	hdr_size = size + 1;
 	if (size > 1 && *(nl - 1) == '\r')
 		size -= 1;
+
+	size_t line_size = size;
 
 	int tok_num = 0;
 	char *token = NULL, *tok_end = pload;
@@ -612,10 +630,41 @@ size_t target_parse_query_response_http(struct target_conntrack_priv_http *cp, c
 
 		switch (tok_num) {
 			case 0:
-				if (strlen("HTTP/1.1") && !strncmp(token, "HTTP/", strlen("HTTP/"))) {
+				if (!strncasecmp(token, "HTTP/", strlen("HTTP/"))) {
+					if (cp->log_info && (cp->log_info->log_flags & HTTP_LOG_LOGGED_RESPONSE)) {
+						// We got a new response but we already have logging info from a previous one
+						// Let's log the previous one and start a new one
+						target_write_log_http(priv, cp);
+						cp->log_info = malloc(sizeof(struct http_log_info));
+						memset(cp->log_info, 0, sizeof(struct http_log_info));
+						cp->log_info->log_flags = priv->log_flags | HTTP_LOG_LOGGED_RESPONSE;
+					
+					}
 					cp->state = HTTP_RESPONSE;
-				} else if (!strncmp(token, "GET ", strlen("GET ")) || !strncmp(token, "POST ", strlen("POST "))) {
-					cp->state = HTTP_QUERY; 
+					if (cp->log_info && (cp->log_info->log_flags & HTTP_LOG_REQUEST_PROTOCOL)) {
+						cp->log_info->request_proto = malloc(tok_size + 1);
+						memcpy(cp->log_info->request_proto, token, tok_size);
+						cp->log_info->request_proto[tok_size] = 0;
+					}
+				} else if (!strncasecmp(token, "GET ", strlen("GET ")) || !strncasecmp(token, "POST ", strlen("POST "))) {
+					if (cp->info.headers_num > 0) // New query but headers are present -> reset
+						target_reset_conntrack_http(cp);
+
+					if (cp->log_info && (cp->log_info->log_flags & HTTP_LOG_LOGGED_RESPONSE)) {
+						// We got a new query but we already have logging info from a previous one
+						// Let's log the previous one and start a new one
+						target_write_log_http(priv, cp);
+						cp->log_info = malloc(sizeof(struct http_log_info));
+						memset(cp->log_info, 0, sizeof(struct http_log_info));
+						cp->log_info->log_flags = priv->log_flags | HTTP_LOG_LOGGED_QUERY;
+					
+					}
+					if (cp->log_info && (cp->log_info->log_flags & HTTP_LOG_REQUEST_METHOD)) {
+						cp->log_info->request_method = malloc(tok_size + 1);
+						memcpy(cp->log_info->request_method, token, tok_size);
+						cp->log_info->request_method[tok_size] = 0;
+					}
+					cp->state = HTTP_QUERY;
 				} else {
 					return POM_ERR; // Unhandled stuff that we won't care
 				}
@@ -629,13 +678,25 @@ size_t target_parse_query_response_http(struct target_conntrack_priv_http *cp, c
 					err_num[tok_size] = 0;
 					if (sscanf(err_num, "%u", &cp->info.err_code) != 1)
 						return POM_ERR;
-				} else if (cp->state == HTTP_QUERY) {
-					cp->info.url = malloc(tok_size + 1);
-					memcpy(cp->info.url, token, tok_size);
-					cp->info.url[tok_size] = 0;
+				} else if (cp->state == HTTP_QUERY && cp->log_info && (cp->log_info->log_flags & HTTP_LOG_URL)) {
+					cp->log_info->url = malloc(tok_size + 1);
+					memcpy(cp->log_info->url, token, tok_size);
+					cp->log_info->url[tok_size] = 0;
 				}
 				break;
-			
+			case 2:
+				if (cp->state == HTTP_RESPONSE) {
+					if (cp->log_info && (cp->log_info->log_flags & HTTP_LOG_REQUEST_PROTOCOL) && !cp->log_info->request_proto) {
+						cp->log_info->request_proto = malloc(tok_size + 1);
+						memcpy(cp->log_info->request_proto, token, tok_size);
+						cp->log_info->request_proto[tok_size] = 0;
+					}
+				}
+				break;
+
+			default:
+				break;
+
 		}
 		tok_num++;
 	}
@@ -643,6 +704,12 @@ size_t target_parse_query_response_http(struct target_conntrack_priv_http *cp, c
 	if (tok_num < 1) { // Stuff not matched
 		pom_log(POM_LOG_TSHOOT "Unable to parse the response/query");
 		return POM_ERR;
+	}
+
+	if (cp->state == HTTP_QUERY && cp->log_info && (cp->log_info->log_flags & HTTP_LOG_FIRST_LINE)) {
+		cp->log_info->first_line = malloc(line_size + 1);
+		strncpy(cp->log_info->first_line, pload, line_size);
+		cp->log_info->first_line[line_size] = 0;
 	}
 
 	return hdr_size;
@@ -783,6 +850,7 @@ int target_reset_conntrack_http(struct target_conntrack_priv_http *cp) {
 		cp->info.headers_num = 0;
 	}
 
+
 	if (cp->fd != -1) {
 		close(cp->fd);
 		cp->fd = -1;
@@ -834,7 +902,7 @@ int target_file_open_http(struct target *t, struct target_conntrack_priv_http *c
 		return POM_ERR;
 
 	char filename[NAME_MAX];
-	strcpy(filename, PTYPE_STRING_GETVAL(priv->prefix));
+	memset(filename, 0, NAME_MAX);
 
 	char outstr[20];
 	memset(outstr, 0, sizeof(outstr));
@@ -845,14 +913,17 @@ int target_file_open_http(struct target *t, struct target_conntrack_priv_http *c
 
 	strftime(outstr, sizeof(outstr), format, &tmp);
 
-	strcat(filename, outstr);
-	sprintf(outstr, "%u", (unsigned int)f->tv.tv_usec);
-	strcat(filename, outstr);
-	strcat(filename, ".");
-	strcat(filename, priv->mime_types[cp->info.content_type].extension);
 	if (is_gzip)
-		strcat(filename, ".gz");
-	cp->fd = target_file_open(f->l, filename, O_RDWR | O_CREAT, 0666);
+		snprintf(filename, NAME_MAX, "%s%s%u.%s.gz", PTYPE_STRING_GETVAL(priv->prefix), outstr, (unsigned int)f->tv.tv_usec, priv->mime_types[cp->info.content_type].extension);
+	else
+		snprintf(filename, NAME_MAX, "%s%s%u.%s", PTYPE_STRING_GETVAL(priv->prefix), outstr, (unsigned int)f->tv.tv_usec, priv->mime_types[cp->info.content_type].extension);
+
+	char filename_final[NAME_MAX];
+	memset(filename_final, 0, NAME_MAX);
+
+	layer_field_parse(f->l, filename, filename_final, NAME_MAX);
+
+	cp->fd = target_file_open(NULL, filename_final, O_RDWR | O_CREAT, 0666);
 
 	if (cp->fd == -1) {
 		char errbuff[256];
@@ -862,7 +933,14 @@ int target_file_open_http(struct target *t, struct target_conntrack_priv_http *c
 		return POM_ERR;
 	}
 
+	if (cp->log_info && (cp->log_info->log_flags & HTTP_LOG_FILENAME)) {
+		cp->log_info->filename = malloc(strlen(filename_final) + 1);
+		strcpy(cp->log_info->filename, filename_final);
+	}
+
 	pom_log(POM_LOG_TSHOOT "%s opened", filename);
 
 	return POM_OK;
 }
+
+
