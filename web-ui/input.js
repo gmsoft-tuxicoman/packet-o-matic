@@ -50,17 +50,6 @@ pom.input.load = function(name, on_done) {
 	var params = pom.tools.create_params("string", name);
 	pom.tools.make_request("input.load", params, this._load_back.bind(this, name, on_done));
 };
-pom.input.load_all = function() {
-	var x;
-	for (x = 0; x < this._avail.length; x++) {
-		var type = this._avail[x];
-		if (this._input_types[type])
-			continue;
-		this._input_types[type] = 1;
-		this.load(type);
-	}
-	setTimeout(this.list_loaded.bind(this), 500);
-};
 pom.input._type_save_back = function(mode, params_arr, req) {
 	if (req) {
 		req = firefox_fix(req);

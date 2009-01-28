@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -71,7 +71,8 @@ static struct timeval now; ///< Used to get the current time from the input pers
 
 void signal_handler(int signal) {
 	
-	pom_log("Received signal. Finishing ... !");
+	// Use printf and not pom_log
+	printf("Received signal. Finishing ... !\n");
 	finish = 1;
 	if (rbuf && rbuf->state != rb_state_closed)
 		rbuf->state = rb_state_stopping;

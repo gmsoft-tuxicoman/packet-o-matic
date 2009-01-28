@@ -415,18 +415,6 @@ pom.targets.load_rule = function(rule_id,child_node) {
 	pom.tools.make_request("target.get", params, this._load_rule_back.bind(this,rule_id,child_node));
 
 };
-pom.targets.load_all = function() {
-	var x;
-	this._loaded['null'] = 1;
-	for (x = 0; x < this._avail.length; x++) {
-		var name = this._avail[x];
-		if (this._loaded[name])
-			continue;
-		this._loaded[name] = 1;
-		this.load_target(name);
-	}
-	setTimeout(this._list_loaded.bind(this), 1000);
-};
 pom.targets._load_target_back = function(name, on_done, req) {
 	req = firefox_fix(req);
 	if (pom.tools.check_fault("Loading module: " + name, req.responseXML))

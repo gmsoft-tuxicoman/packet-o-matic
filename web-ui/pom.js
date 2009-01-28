@@ -18,10 +18,6 @@ function doload() {
 	this._last_log_id = 0;
 	log_check(0);	
 }
-function load_all_modules() {
-	pom.input.load_all();
-	pom.targets.load_all();
-}
 function _serial_changed(name) {
 	switch (name) {
 		case "logs":

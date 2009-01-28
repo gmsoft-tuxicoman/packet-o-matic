@@ -1,3 +1,8 @@
+* 2008/01/28 Guy Martin <gmsoft@tuxicoman.be>
+Use printf() instead of pom_log() in signal_handler().
+Use time of the response if time of the request is unknown for %t in target_http.
+Removed duplicate %h in target_http log_format.
+
 * 2009/01/17 Guy Martin <gmsoft@tuxicoman.be>
 Make description of CLI function more consistent.
 Added logging support for target_http.

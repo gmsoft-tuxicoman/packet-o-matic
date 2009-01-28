@@ -33,7 +33,6 @@ int target_init_log_http(struct target_priv_http *priv) {
 	flags['A'] = HTTP_LOG_SERVER_IP;
 	flags['D'] = HTTP_LOG_TIME;
 	flags['f'] = HTTP_LOG_FILENAME;
-	flags['h'] = HTTP_LOG_CLIENT_IP;
 	flags['H'] = HTTP_LOG_REQUEST_PROTOCOL;
 	flags['m'] = HTTP_LOG_REQUEST_METHOD;
 	flags['p'] = HTTP_LOG_SERVER_PORT;
@@ -269,7 +268,6 @@ int target_write_log_http(struct target_priv_http *priv, struct target_conntrack
 			}
 			
 			case 'a':
-			case 'h': 
 				output = info->client_host;
 				break;
 
@@ -330,6 +328,12 @@ int target_write_log_http(struct target_priv_http *priv, struct target_conntrack
 				if (info->query_time.tv_sec) {
 					struct tm tmp;
 					localtime_r((time_t*)&info->query_time.tv_sec, &tmp);
+					strftime(buff, sizeof(buff) - 1, "[%d/%b/%Y:%T %z]", &tmp);
+					output = buff;
+				} else if (info->response_time.tv_sec) {
+					// Should we mark that it was the response time ?
+					struct tm tmp;
+					localtime_r((time_t*)&info->response_time.tv_sec, &tmp);
 					strftime(buff, sizeof(buff) - 1, "[%d/%b/%Y:%T %z]", &tmp);
 					output = buff;
 				}
