@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -311,7 +311,7 @@ static int target_process_pcap(struct target *t, struct frame *f) {
 	priv->cur_size = pcap_dump_ftell(priv->pdump);
 	priv->cur_packets_num++;
 
-	pom_log(POM_LOG_TSHOOT "Packet saved (%lu bytes )!", priv->tot_size, len);
+	pom_log(POM_LOG_TSHOOT "Packet saved (%lu bytes)!", len);
 
 	return POM_OK;
 };

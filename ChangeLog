@@ -1,3 +1,13 @@
+* 2008/02/09 Guy Martin <gmsoft@tuxicoman.be>
+Fix target_pcap TSHOOT output.
+Added resize function to helpers.
+Added helper_docsis for resizing only.
+Added fill_gaps parameter to helper_tcp.
+Fix bug in rules.c that prevented some packets to be processed.
+Update default log format in target_http.
+Prevent logging empty entries in target_http.
+Added function target_cleanup_log_http().
+
 * 2008/01/28 Guy Martin <gmsoft@tuxicoman.be>
 Use printf() instead of pom_log() in signal_handler().
 Use time of the response if time of the request is unknown for %t in target_http.

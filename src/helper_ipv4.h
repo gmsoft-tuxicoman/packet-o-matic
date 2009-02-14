@@ -53,6 +53,7 @@ struct helper_priv_ipv4 {
 
 int helper_register_ipv4(struct helper_reg *r);
 static int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned int len, struct layer *l);
+static int helper_resize_ipv4(struct frame *f, unsigned int start, unsigned int new_psize);
 static int helper_cleanup_ipv4_frag(void *priv);
 static int helper_cleanup_ipv4();
 

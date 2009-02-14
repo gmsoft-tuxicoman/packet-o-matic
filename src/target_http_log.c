@@ -88,9 +88,10 @@ int target_init_log_http(struct target_priv_http *priv) {
 int target_initial_log_http(struct target_conntrack_priv_http *cp, struct frame *f, struct layer *lastl) {
 
 	if (cp->state == HTTP_QUERY && (cp->log_info->log_flags & HTTP_LOG_TIME))
-			memcpy(&cp->log_info->query_time, &f->tv, sizeof(struct timeval));
+		memcpy(&cp->log_info->query_time, &f->tv, sizeof(struct timeval));
+
 	if (cp->state == HTTP_RESPONSE && (cp->log_info->log_flags & HTTP_LOG_TIME))
-			memcpy(&cp->log_info->response_time, &f->tv, sizeof(struct timeval));
+		memcpy(&cp->log_info->response_time, &f->tv, sizeof(struct timeval));
 
 	int direction = -1;
 	if (cp->log_info->log_flags & HTTP_LOG_CLIENT_IP ||
@@ -157,6 +158,8 @@ int target_initial_log_http(struct target_conntrack_priv_http *cp, struct frame 
 
 	}
 
+	cp->log_info->log_flags |= HTTP_LOG_GOT_SOME;
+
 	return POM_OK;
 }
 
@@ -166,6 +169,11 @@ int target_write_log_http(struct target_priv_http *priv, struct target_conntrack
 
 	if (!info)
 		return POM_OK;
+
+	if (!(info->log_flags & HTTP_LOG_GOT_SOME)) {
+		target_cleanup_log_http(cp);
+		return POM_OK;
+	}
 
 	char *log_format = PTYPE_STRING_GETVAL(priv->log_format);
 	char *pc = NULL;
@@ -384,6 +392,19 @@ int target_write_log_http(struct target_priv_http *priv, struct target_conntrack
 		write(priv->log_fd, log_format, size);
 	write(priv->log_fd, "\n", strlen("\n"));
 
+	if (creds_buff)
+		free(creds_buff);
+
+	return target_cleanup_log_http(cp);
+
+}
+
+int target_cleanup_log_http(struct target_conntrack_priv_http *cp) {
+
+	struct http_log_info *info = cp->log_info;
+
+	if (!info)
+		return POM_OK;
 
 	// Free the log info
 	
@@ -406,11 +427,7 @@ int target_write_log_http(struct target_priv_http *priv, struct target_conntrack
 
 	free(info);
 
-	if (creds_buff)
-		free(creds_buff);
-
 	cp->log_info = NULL;
-
 
 	return POM_OK;
 }

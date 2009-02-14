@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -66,6 +66,14 @@ struct helper_reg {
 	 */
 	int (*need_help) (struct frame *f, unsigned int start, unsigned int len, struct layer *l);
 
+	/// Pointer to the resize function
+	/**
+	 * @param f The frame for which to resize the payload
+	 * @param start The start of the current layer in the provided frame
+	 * @param new_psize The new payload length for the current layer
+	 */
+	int (*resize) (struct frame *f, unsigned int start, unsigned int new_psize);
+
 	/// Pointer to the cleanup function
 	/**
 	 * @return POM_OK on sucess, POM_ERR on error.
@@ -123,6 +131,9 @@ int helper_unregister(int helper_type);
 
 /// Unregister all the helpers
 int helper_unregister_all();
+
+/// Update headers when resizing a payload
+int helper_resize_payload(struct frame *f, struct layer *l, unsigned int new_psize);
 
 /// Get a read or write lock on the helpers
 int helper_lock(int write);

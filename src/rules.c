@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -225,8 +225,6 @@ int do_rules(struct frame *f, struct rule_list *rules, pthread_rwlock_t *rule_lo
 
 
 	f->l = l;
-
-	struct conntrack_entry *old_ce = f->ce;
 	f->ce = NULL;
 
 
@@ -307,7 +305,7 @@ int do_rules(struct frame *f, struct rule_list *rules, pthread_rwlock_t *rule_lo
 
 	expectation_process(f);
 
-	if (conntrack_get_entry(f) == POM_OK && (old_ce == NULL || f->ce == old_ce)) { // We got a conntrack_entry, process the corresponding targets
+	if (conntrack_get_entry(f) == POM_OK) { // We got a conntrack_entry, process the corresponding targets
 		struct conntrack_target_priv *cp = f->ce->target_privs;
 		while (cp) {
 			// need buffer as the present cp can be deleted by target_process if an error occurs

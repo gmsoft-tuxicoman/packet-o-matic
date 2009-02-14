@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -83,6 +83,12 @@ int mgmtcmd_show_helpers(struct mgmt_connection *c, int argc, char *argv[]) {
 		mgmtsrv_send(c, "  %s\r\n", match_get_name(i));
 
 		struct helper_param *tmp = helpers[i]->params;
+
+		if (!tmp) {
+			mgmtsrv_send(c, "   no parameter\r\n");
+			continue;
+		}
+
 		while (tmp) {
 			char buff[256];
 			memset(buff, 0, sizeof(buff));

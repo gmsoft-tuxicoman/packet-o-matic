@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -290,6 +290,41 @@ int helper_process_queue(struct rule_list *list, pthread_rwlock_t *lock) {
 		free(tmpf);
 	}
 	frame_tail = NULL;
+
+	return POM_OK;
+}
+
+/**
+ * @ingroup helper_api
+ * @param f Frame to resize payload
+ * @param l Layer to start resize the payload of
+ * @param new_psize New payload size
+ */
+
+int helper_resize_payload(struct frame *f, struct layer *l, unsigned int new_psize) {
+
+	int change = l->payload_size - new_psize;
+
+	if (change == 0)
+		return POM_OK;
+
+	f->len -= change;
+
+	while (l) {
+		unsigned int start;
+		if (l->prev)
+			start = l->prev->payload_start;
+		else
+			start = 0;
+
+		int res;
+		if (helpers[l->type] && helpers[l->type]->resize)
+			res = helpers[l->type]->resize(f, start, new_psize);
+		l->payload_size = new_psize;
+		new_psize += l->payload_start - start;
+
+		l = l->prev;
+	}
 
 	return POM_OK;
 }

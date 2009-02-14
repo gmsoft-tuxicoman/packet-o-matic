@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -64,6 +64,7 @@ struct helper_timer_priv_tcp {
 
 int helper_register_tcp(struct helper_reg *r);
 static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, struct layer *l);
+static int helper_fill_gap_tcp(struct frame *f, struct layer *l, uint32_t seq_init, unsigned int gap_size);
 static int helper_process_next_tcp(struct helper_priv_tcp *p, int dir);
 static int helper_process_timer_tcp(void *priv);
 static int helper_flush_buffer_tcp(struct conntrack_entry *ce, void *conntrack_priv);

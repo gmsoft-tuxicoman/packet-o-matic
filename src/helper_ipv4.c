@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -39,6 +39,7 @@ static struct ptype *frag_timeout;
 int helper_register_ipv4(struct helper_reg *r) {
 	
 	r->need_help = helper_need_help_ipv4;
+	r->resize = helper_resize_ipv4;
 	r->cleanup = helper_cleanup_ipv4;
 
 	frags_head = NULL;
@@ -277,6 +278,14 @@ static int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned i
 	// We miss the last packet
 
 	return H_NEED_HELP;
+}
+
+static int helper_resize_ipv4(struct frame *f, unsigned int start, unsigned int new_psize) {
+	
+	struct ip* hdr = f->buff + start;
+	unsigned int hdr_len = hdr->ip_hl * 4;
+	hdr->ip_len = htons(new_psize + hdr_len);
+	return POM_OK;
 }
 
 static int helper_cleanup_ipv4_frag(void *priv) {

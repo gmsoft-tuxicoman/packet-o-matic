@@ -23,7 +23,7 @@ libpom_la_CFLAGS = -DLIBDIR='"@LIB_DIR@"'
 INPUT_OBJS = @INPUT_OBJS@
 MATCH_OBJS = match_docsis.la match_ethernet.la match_vlan.la match_ipv4.la match_icmp.la match_ipv6.la match_icmpv6.la match_tcp.la match_udp.la match_rtp.la match_undefined.la match_linux_cooked.la
 CONNTRACK_OBJS = conntrack_ipv4.la conntrack_ipv6.la conntrack_rtp.la conntrack_tcp.la conntrack_udp.la
-HELPER_OBJS = helper_ipv4.la helper_tcp.la helper_rtp.la
+HELPER_OBJS = helper_docsis.la helper_ipv4.la helper_tcp.la helper_rtp.la
 TARGET_OBJS = target_display.la target_dump_payload.la target_irc.la target_http.la target_msn.la target_pop.la target_rtp.la target_tftp.la target_null.la @TARGET_OBJS@
 PTYPES_OBJS = ptype_bool.la ptype_uint8.la ptype_uint16.la ptype_uint32.la ptype_uint64.la ptype_mac.la ptype_ipv4.la ptype_ipv6.la ptype_string.la ptype_bytes.la ptype_interval.la
 DATASTORE_OBJS = @DATASTORE_OBJS@
@@ -93,6 +93,9 @@ conntrack_udp_la_SOURCES = conntrack_udp.c conntrack_udp.h modules_common.h incl
 conntrack_udp_la_LDFLAGS = -module -avoid-version
 conntrack_udp_la_LIBADD = libpom.la
 
+helper_docsis_la_SOURCES = helper_docsis.c helper_docsis.h modules_common.h
+helper_docsis_la_LDFLAGS = -module -avoid-version
+helper_docsis_la_LIBADD = libpom.la
 helper_ipv4_la_SOURCES = helper_ipv4.c helper_ipv4.h modules_common.h
 helper_ipv4_la_LDFLAGS = -module -avoid-version
 helper_ipv4_la_LIBADD = libpom.la

@@ -62,7 +62,7 @@ int target_register_http(struct target_reg *r) {
 #endif
 	target_register_param(mode_default, "mime_types_db", DATAROOT "/mime_types.db", "Mime types database path");
 	target_register_param(mode_default, "log_file", "", "File where to log the queries");
-	target_register_param(mode_default, "log_format", "%v %h %l %u %t \"%r\" %s %b", "Log format");
+	target_register_param(mode_default, "log_format", "%v %a %u %t \"%r\" %s %b", "Log format");
 	target_register_param(mode_default, "dump_img", "no", "Dump the images or not");
 	target_register_param(mode_default, "dump_vid", "no", "Dump the videos or not");
 	target_register_param(mode_default, "dump_snd", "no", "Dump the audio files or not");
@@ -838,6 +838,7 @@ size_t target_process_gzip_http(struct target_conntrack_priv_http *cp, char *plo
 #endif
 
 int target_reset_conntrack_http(struct target_conntrack_priv_http *cp) {
+
 	cp->info.flags = 0;
 	if (cp->info.headers) {
 		int i;
