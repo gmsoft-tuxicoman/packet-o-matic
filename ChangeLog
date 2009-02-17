@@ -1,4 +1,11 @@
-* 2008/02/09 Guy Martin <gmsoft@tuxicoman.be>
+* 2009/02/17 Guy Martin <gmsoft@tuxicoman.be>
+Get rid of alloca() in favor of malloc() in input_pcap.
+Make struct log_entry->file a table.
+Make sure bswap64 isn't defined before declaring it.
+Fix possible double free in helper_tcp in the fill_gaps code.
+Cleanup modules_common.h.
+
+* 2009/02/09 Guy Martin <gmsoft@tuxicoman.be>
 Fix target_pcap TSHOOT output.
 Added resize function to helpers.
 Added helper_docsis for resizing only.
@@ -8,7 +15,7 @@ Update default log format in target_http.
 Prevent logging empty entries in target_http.
 Added function target_cleanup_log_http().
 
-* 2008/01/28 Guy Martin <gmsoft@tuxicoman.be>
+* 2009/01/28 Guy Martin <gmsoft@tuxicoman.be>
 Use printf() instead of pom_log() in signal_handler().
 Use time of the response if time of the request is unknown for %t in target_http.
 Removed duplicate %h in target_http log_format.

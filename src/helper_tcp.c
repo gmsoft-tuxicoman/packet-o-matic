@@ -324,13 +324,14 @@ static int helper_fill_gap_tcp(struct frame *f, struct layer *l, uint32_t seq_in
 
 	pom_log(POM_LOG_TSHOOT "Filling gap of %u bytes from sequence %u", gap_size, seq_init);
 
-	// Alloc the frame
-	struct frame *fgap = malloc(sizeof(struct frame));
-	memcpy(fgap, f, sizeof(struct frame));
 
 	unsigned int remaining = gap_size;
 
 	while (remaining > 0) {
+
+		// Alloc the frame
+		struct frame *fgap = malloc(sizeof(struct frame));
+		memcpy(fgap, f, sizeof(struct frame));
 
 		unsigned int cur, max = f->bufflen - l->payload_start;
 		if (remaining > max) {

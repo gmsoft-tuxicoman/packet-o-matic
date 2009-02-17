@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -136,7 +136,7 @@ extern int console_output;
 struct log_entry {
 
 	uint32_t id; // Only valid if level < POM_LOG_TSHOOT
-	char *file;
+	char file[64];
 	char *data;
 	char level;
 

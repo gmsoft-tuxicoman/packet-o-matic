@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -61,6 +61,11 @@ void pom_log_internal(char *file, const char *format, ...) {
 			len = new_len;
 	}
 
+	struct log_entry *entry;
+	if (len >= sizeof(entry->file)) {
+		len = sizeof(entry->file) - 1;
+		file[sizeof(entry->file)] = 0;
+	}
 
 	int result = pthread_rwlock_wrlock(&log_buffer_lock);
 	if (result) {
@@ -69,15 +74,12 @@ void pom_log_internal(char *file, const char *format, ...) {
 		return; // never reached
 	}
 
-	struct log_entry *entry;
 	if (level < *POM_LOG_TSHOOT) {
 		entry = malloc(sizeof(struct log_entry));
 		memset(entry, 0, sizeof(struct log_entry));
 
 
-		entry->file = malloc(len + 1);
-		memcpy(entry->file, file, len);
-		entry->file[len] = 0;
+		strncpy(entry->file, file, sizeof(entry->file) - 1);
 		
 		entry->data = malloc(strlen(buff) + 1);
 		strcpy(entry->data, buff);
@@ -89,9 +91,7 @@ void pom_log_internal(char *file, const char *format, ...) {
 		}
 	} else {
 		struct log_entry tmp;
-		tmp.file = alloca(len + 1);
-		memcpy(tmp.file, file, len);
-		tmp.file[len] = 0;
+		strncpy(tmp.file, file, sizeof(entry->file) - 1);
 		tmp.data = buff;
 		tmp.level = level;
 		entry = &tmp;
@@ -127,7 +127,6 @@ void pom_log_internal(char *file, const char *format, ...) {
 		log_head = log_head->next;
 		log_head->prev = NULL;
 
-		free(tmp->file);
 		free(tmp->data);
 		free(tmp);
 		
@@ -185,7 +184,6 @@ int pom_log_cleanup() {
 	while (log_head) {
 		struct log_entry *tmp = log_head;
 		log_head = log_head->next;
-		free(tmp->file);
 		free(tmp->data);
 		free(tmp);
 
@@ -432,6 +430,7 @@ int base64_decode(char *output, char *input) {
 
 }
 
+#ifndef bswap64
 
 uint64_t bswap64(uint64_t x) {
 
@@ -457,6 +456,8 @@ uint64_t bswap64(uint64_t x) {
 	th = ntohl((uint32_t)(x & 0x00000000ffffffffULL));
 	tl = ntohl((uint32_t)((x >> 32) & 0x00000000ffffffffULL));
 	return ((uint64_t)th << 32) | tl;
+#endif
+
 #endif
 
 }

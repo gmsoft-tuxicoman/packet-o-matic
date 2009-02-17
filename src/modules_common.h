@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -50,10 +50,6 @@
 typedef unsigned long   u_long;
 #endif
 
-// Those two collide // TOBE REMOVED
-#ifndef __COMMON_H__
-
-
 // Those types are missing on some systems
 #ifndef u_int
 typedef unsigned int u_int;
@@ -64,9 +60,5 @@ typedef unsigned short u_short;
 #ifndef u_char
 typedef unsigned char u_char;
 #endif
-
-int layer_find_start(struct layer *l, int header_type);
-
-#endif // __COMMON_H__
 
 #endif // __MODULES_COMMON_H__
