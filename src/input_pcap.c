@@ -316,7 +316,7 @@ static int input_close_pcap(struct input *i) {
 
 	struct pcap_stat ps;
 	if (i->mode != mode_directory && !pcap_stats(p->p, &ps)) 
-		pom_log("Total packet read %u, dropped %u (%.1f%%)", (unsigned long) i->input_priv, ps.ps_recv, ps.ps_drop, 100.0 / (ps.ps_recv + ps.ps_drop)  * (float)ps.ps_drop);
+		pom_log("Total packet read %u, dropped %u (%.1f%%)", ps.ps_recv, ps.ps_drop, 100.0 / (ps.ps_recv + ps.ps_drop)  * (float)ps.ps_drop);
 	else
 		pom_log("Total packet read %lu", p->packets_read);
 

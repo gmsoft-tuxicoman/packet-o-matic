@@ -4,6 +4,7 @@ Make struct log_entry->file a table.
 Make sure bswap64 isn't defined before declaring it.
 Fix possible double free in helper_tcp in the fill_gaps code.
 Cleanup modules_common.h.
+Fix input_pcap statistic output when stopping it.
 
 * 2009/02/09 Guy Martin <gmsoft@tuxicoman.be>
 Fix target_pcap TSHOOT output.
