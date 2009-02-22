@@ -206,6 +206,11 @@ static int input_open_pcap(struct input *i) {
 			p->output_layer = match_register("ipv4");
 			break;
 
+		case DLT_IEEE802_11:
+			pom_log("PCAP output type ie ieee80211");
+			p->output_layer = match_register("80211");
+			break;
+
 		default:
 			pom_log("PCAP output type is undefined");
 			p->output_layer = match_register("undefined");

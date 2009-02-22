@@ -154,6 +154,9 @@ static int target_open_pcap(struct target *t) {
 		priv->p = pcap_open_dead(DLT_DOCSIS, snaplen);
 		priv->last_layer_type = match_register("docsis");
 #endif
+	} else if (!strcasecmp("80211", PTYPE_STRING_GETVAL(priv->layer))) {
+		priv->p = pcap_open_dead(DLT_IEEE802_11, snaplen);
+		priv->last_layer_type = match_register("80211");
 	} else {
 		pom_log(POM_LOG_ERR "Pcap : error: no supported header found.");
 		return POM_ERR;
