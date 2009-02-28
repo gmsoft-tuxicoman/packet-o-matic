@@ -1,3 +1,10 @@
+* 2009/02/28 Guy Martin <gmsoft@tuxicoman.be>
+Fix typo in input_docsis.c and target_http_mime.c.
+Fix compilation on various OS.
+Cleanup unneeded compile flags and defines.
+Fix bug in target_http that prevented requests to be parsed after a result code > 304.
+Fix trimming of file extension when logging.
+
 * 2009/02/22 Guy Martin <gmsoft@tuxicoman.be>
 Added match_80211 thanks to Mike Kershaw <dragorn@kismetwireless.net>.
 Added 802.11 support into input_pcap and target_pcap.

@@ -342,7 +342,7 @@ int target_process_http(struct target *t, struct frame *f) {
 						return POM_OK;
 					}
 				} else if (cp->state == HTTP_RESPONSE) {
-					if ((cp->info.err_code > 100 && cp->info.err_code < 200) || cp->info.err_code == 204 || cp->info.err_code >= 304)
+					if ((cp->info.err_code >= 100 && cp->info.err_code < 200) || cp->info.err_code == 204 || cp->info.err_code == 304)
 						cp->state = HTTP_HEADER; // HTTP RFC specified that those reply don't have a body
 					else
 						cp->state = HTTP_BODY;

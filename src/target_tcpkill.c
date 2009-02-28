@@ -23,6 +23,7 @@
 
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <netinet/in.h>
 #include <netinet/ip6.h>
 #include "ptype_uint16.h"
 #include "ptype_string.h"
@@ -37,8 +38,8 @@
 #include <netinet/tcp.h>
 #include <netinet/in_systm.h>
 #include <netinet/in.h>
-#include <netinet/if_ether.h>
 #include <netinet/ip.h>
+#include <ethernet.h>
 
 static int cksum(uint16_t *addr, int len)
 {
@@ -53,7 +54,7 @@ static int cksum(uint16_t *addr, int len)
 		len -= 2;
 	}
 	if (len == 1) {
-		*(u_int8_t*)&last_byte = *(u_int8_t*)addr;
+		*(uint8_t*)&last_byte = *(uint8_t*)addr;
 		sum += last_byte;
 	}
 

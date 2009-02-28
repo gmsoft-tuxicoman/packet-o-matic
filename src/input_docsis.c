@@ -673,7 +673,7 @@ static int input_scan_docsis(struct input *i) {
 		return POM_OK;
 	}
 
-	pom_log("Frequency tunned. Looking up for SYNC messages ...");
+	pom_log("Frequency tuned. Looking up for SYNC messages ...");
 
 	if (input_docsis_check_downstream(i) == POM_ERR)
 		return POM_OK;

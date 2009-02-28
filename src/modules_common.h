@@ -45,20 +45,4 @@
 #define s6_addr32 _S6_un._S6_u32
 #endif
 
-// BSD hides it from us while it uses it sometimes
-#ifndef u_long
-typedef unsigned long   u_long;
-#endif
-
-// Those types are missing on some systems
-#ifndef u_int
-typedef unsigned int u_int;
-#endif
-#ifndef u_short
-typedef unsigned short u_short;
-#endif
-#ifndef u_char
-typedef unsigned char u_char;
-#endif
-
 #endif // __MODULES_COMMON_H__

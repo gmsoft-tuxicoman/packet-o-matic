@@ -18,6 +18,11 @@
  *
  */
 
+// Required for isblank() on linux
+#define _ISOC99_SOURCE
+#include <ctype.h>
+#undef _ISOC99_SOURCE
+
 
 #include "target_http.h"
 #include "target_http_mime.h"
@@ -26,7 +31,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <ctype.h>
 #include <errno.h>
 
 #include "ptype_string.h"
@@ -45,7 +49,7 @@ int target_http_mime_types_read_db(struct target_priv_http *priv) {
 	int fd = open(PTYPE_STRING_GETVAL(priv->mime_types_db), O_RDONLY);
 	if (fd == -1) {
 		strerror_r(errno, errbuf, 256);
-		pom_log(POM_LOG_ERR "Unable to open mime-types databse : %s", errbuf);
+		pom_log(POM_LOG_ERR "Unable to open mime-types database : %s", errbuf);
 		return POM_ERR;
 	}
 

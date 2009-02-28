@@ -19,7 +19,9 @@
  */
 
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <fcntl.h>
+#include <ctype.h>
 
 #include "target_http_log.h"
 
@@ -187,10 +189,13 @@ int target_write_log_http(struct target_priv_http *priv, struct target_conntrack
 		for (i = 0; i < cp->info.headers_num; i++) {
 			if (cp->info.headers[i].type == HTTP_QUERY && !strcasecmp("Authorization", cp->info.headers[i].name)) {
 				char *value = cp->info.headers[i].value;
-				char *basic = strcasestr(value, "Basic");
+				int j;
+				for (j = 0; value[j] && value[j] != ' '; j++)
+					value[j] = tolower(value[j]);
+				char *basic = strstr(value, "basic");
 				if (!basic) // Not basic authentication
 					break;
-				value = basic + strlen("Basic ");
+				value = basic + strlen("basic ");
 				while (*value == ' ')
 					value++;
 				while (value[strlen(value)] == ' ')

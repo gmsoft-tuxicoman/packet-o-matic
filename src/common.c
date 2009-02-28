@@ -79,7 +79,7 @@ void pom_log_internal(char *file, const char *format, ...) {
 		memset(entry, 0, sizeof(struct log_entry));
 
 
-		strncpy(entry->file, file, sizeof(entry->file) - 1);
+		strncpy(entry->file, file, len);
 		
 		entry->data = malloc(strlen(buff) + 1);
 		strcpy(entry->data, buff);
@@ -91,7 +91,7 @@ void pom_log_internal(char *file, const char *format, ...) {
 		}
 	} else {
 		struct log_entry tmp;
-		strncpy(tmp.file, file, sizeof(entry->file) - 1);
+		strncpy(tmp.file, file, len);
 		tmp.data = buff;
 		tmp.level = level;
 		entry = &tmp;
@@ -457,9 +457,9 @@ uint64_t bswap64(uint64_t x) {
 	tl = ntohl((uint32_t)((x >> 32) & 0x00000000ffffffffULL));
 	return ((uint64_t)th << 32) | tl;
 #endif
+}
 
 #endif
 
-}
 
 
