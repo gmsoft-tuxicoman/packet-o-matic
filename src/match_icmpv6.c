@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 #include "match_icmpv6.h"
 #include "ptype_uint8.h"
 
-static struct match_dep *match_ipv6;
+static struct match_dep *match_undefined;
 
 static int field_type, field_code;
 
@@ -36,7 +36,7 @@ int match_register_icmpv6(struct match_reg *r) {
 	r->identify = match_identify_icmpv6;
 	r->unregister = match_unregister_icmpv6;
 
-	match_ipv6 = match_add_dependency(r->type, "ipv6");
+	match_undefined = match_add_dependency(r->type, "undefined");
 
 	ptype_uint8 = ptype_alloc("uint8", NULL);
 
@@ -62,11 +62,11 @@ static int match_identify_icmpv6(struct frame *f, struct layer* l, unsigned int 
 	PTYPE_UINT8_SETVAL(l->fields[field_type], ihdr->icmp6_type);
 	PTYPE_UINT8_SETVAL(l->fields[field_code], ihdr->icmp6_code);
 
+	/* For now we don't advertise the ip layer
 	if (!(ihdr->icmp6_type & ICMP6_INFOMSG_MASK))
-			// For now we don't advertise the ip layer
-			//return match_ipv6->id;
-			return POM_ERR;
-	return POM_ERR;
+			return match_ipv6->id;
+	*/
+	return match_undefined->id;
 }
 
 static int match_unregister_icmpv6(struct match_reg *r) {

@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -39,15 +39,26 @@ struct target_priv_pcap {
 	time_t split_time;
 	struct ptype *snaplen;
 	struct ptype *filename;
+	struct ptype *prefix;
 	struct ptype *layer;
 	struct ptype *unbuffered;
 
-	struct ptype *split_prefix;
 	struct ptype *split_overwrite;
 	struct ptype *split_size;
 	struct ptype *split_packets;
 	struct ptype *split_interval;
 	unsigned long split_index, split_files_num;
+
+	struct target_conntrack_priv_pcap *ct_privs;
+};
+
+struct target_conntrack_priv_pcap {
+
+	struct conntrack_entry *ce;
+	pcap_dumper_t *pdump;
+
+	struct target_conntrack_priv_pcap *next;
+	struct target_conntrack_priv_pcap *prev;
 
 };
 
@@ -55,6 +66,7 @@ int target_register_pcap(struct target_reg *r);
 static int target_init_pcap(struct target *t);
 static int target_open_pcap(struct target *t);
 static int target_process_pcap(struct target *t, struct frame *f);
+int target_close_connection_pcap(struct target *t, struct conntrack_entry *ce, void *conntrack_priv);
 static int target_close_pcap(struct target *t);
 static int target_cleanup_pcap(struct target *t);
 

@@ -22,7 +22,7 @@
 #include "match_vlan.h"
 #include "ptype_uint16.h"
 
-static struct match_dep *match_ipv4, *match_ipv6, *match_arp, *match_vlan;
+static struct match_dep *match_undefined, *match_ipv4, *match_ipv6, *match_arp, *match_vlan;
 
 static int field_vid;
 
@@ -34,6 +34,7 @@ int match_register_vlan(struct match_reg *r) {
 	r->get_expectation = match_get_expectation_vlan;
 	r->unregister = match_unregister_vlan;
 	
+	match_undefined = match_add_dependency(r->type, "undefined");
 	match_ipv4 = match_add_dependency(r->type, "ipv4");
 	match_ipv6 = match_add_dependency(r->type, "ipv6");
 	match_arp = match_add_dependency(r->type, "arp");
@@ -74,7 +75,7 @@ static int match_identify_vlan(struct frame *f, struct layer* l, unsigned int st
 			return match_ipv6->id;
 	}
 
-	return POM_ERR;
+	return match_undefined->id;
 }
 
 static int match_get_expectation_vlan(int field_id, int direction) {

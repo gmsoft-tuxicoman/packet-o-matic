@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -116,13 +116,13 @@ static int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int st
 				return match_undefined->id;
 
 			default:
-				return POM_ERR;
+				return match_undefined->id;
 
 		}
 	}
 
 
-	return POM_ERR;
+	return match_undefined->id;
 
 }
 

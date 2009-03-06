@@ -40,7 +40,6 @@ struct helper_priv_tcp_packet {
 
 struct helper_priv_tcp {
 
-	uint32_t last_seq[2];
 	uint32_t seq_expected[2];
 	int flags[2];
 
@@ -64,6 +63,7 @@ struct helper_timer_priv_tcp {
 
 int helper_register_tcp(struct helper_reg *r);
 static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned int len, struct layer *l);
+static int helper_fill_gap_no_layer_tcp(struct frame *f, uint32_t seq_init, unsigned int gap_size);
 static int helper_fill_gap_tcp(struct frame *f, struct layer *l, uint32_t seq_init, unsigned int gap_size);
 static int helper_process_next_tcp(struct helper_priv_tcp *p, int dir);
 static int helper_process_timer_tcp(void *priv);

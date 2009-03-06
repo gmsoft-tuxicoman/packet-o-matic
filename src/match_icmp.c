@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -26,7 +26,7 @@
 #include <netinet/ip.h>
 #include <netinet/ip_icmp.h>
 
-static struct match_dep *match_ipv4;
+static struct match_dep *match_undefined;
 static int field_type, field_code;
 
 static struct ptype *ptype_uint8;
@@ -36,7 +36,7 @@ int match_register_icmp(struct match_reg *r) {
 	r->identify = match_identify_icmp;
 	r->unregister = match_unregister_icmp;
 
-	match_ipv4 = match_add_dependency(r->type, "ipv4");
+	match_undefined = match_add_dependency(r->type, "undefined");
 
 	ptype_uint8 = ptype_alloc("uint8", NULL);
 
@@ -63,7 +63,7 @@ static int match_identify_icmp(struct frame *f, struct layer* l, unsigned int st
 	PTYPE_UINT8_SETVAL(l->fields[field_type], ihdr->icmp_type);
 	PTYPE_UINT8_SETVAL(l->fields[field_code], ihdr->icmp_code);
 
-	return POM_ERR;
+	return match_undefined->id;
 }
 
 static int match_unregister_icmp(struct match_reg *r) {

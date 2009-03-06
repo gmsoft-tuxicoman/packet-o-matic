@@ -33,6 +33,8 @@ static struct ptype *fill_gaps;
 // Helps to track all the connections
 static struct helper_priv_tcp *conn_head;
 
+static int match_tcp_id, match_undefined_id;
+
 int helper_register_tcp(struct helper_reg *r) {
 	
 	r->need_help = helper_need_help_tcp;
@@ -46,10 +48,13 @@ int helper_register_tcp(struct helper_reg *r) {
 		goto err;
 
 	helper_register_param(r->type, "pkt_timeout", "30", pkt_timeout, "Number of seconds to wait for out of order packets");
-	helper_register_param(r->type, "conn_buffer", "256", conn_buff, "Maximum KBytes of buffer per connection");
+	helper_register_param(r->type, "conn_buffer", "64", conn_buff, "Maximum KBytes of buffer per connection");
 	helper_register_param(r->type, "fill_gaps", "yes", fill_gaps, "Fill gaps in connections with empty packets");
 
 	conn_head = NULL;
+
+	match_tcp_id = r->type;
+	match_undefined_id = match_register("undefined");
 
 	return POM_OK;
 
@@ -77,6 +82,8 @@ static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned in
 	uint32_t new_seq, new_ack;
 	new_seq = ntohl(hdr->th_seq);
 	new_ack = ntohl(hdr->th_ack);
+
+	pom_log(POM_LOG_TSHOOT "Got packet %u -> %u", new_seq, new_seq + payload_size);
 
 	struct helper_priv_tcp *cp = conntrack_get_helper_priv(l->type, f->ce);
 	if (!cp) {
@@ -106,77 +113,45 @@ static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned in
 
 
 		if (new_seq + payload_size <= cp->seq_expected[dir]) {
-			//pom_log(POM_LOG_TSHOOT "%u.%u 0x%x-%u, expected seq %u < got seq %u, bufflen is %d. discarding packet", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, cp->seq_expected[dir], new_seq, cp->buff_len[dir]);
+			pom_log(POM_LOG_TSHOOT "Discarded, duplicate of already processed payload : expected seq %u", cp->seq_expected[dir]);
 			return H_NEED_HELP;
 		} else if (new_seq > cp->seq_expected[dir]) {
 		
 
 			struct helper_priv_tcp_packet *tmp_pkt = cp->pkts[dir];
 
+			// If there is something in the queue, let's see where to put our packet
+			// Go up to seq of packet in the queue is >= to the current one
+			while (tmp_pkt && tmp_pkt->seq < new_seq) 
+				tmp_pkt = tmp_pkt->next;
+
 			if (tmp_pkt) {
-				// There is something in the queue
-				// Let's see where to put our packet
-				
+				if ((tmp_pkt->seq >= new_seq) && (tmp_pkt->seq + tmp_pkt->data_len <= new_seq + payload_size)) {
+					// same payload size -> we can safely discard it
+					pom_log(POM_LOG_TSHOOT "Discarded, duplicate of packet already in the queue : %u -> %u", tmp_pkt->seq, tmp_pkt->seq + tmp_pkt->data_len);
+					return H_NEED_HELP;
+				} else if ((tmp_pkt->seq == new_seq) && (tmp_pkt->data_len < payload_size)) {
+					pom_log(POM_LOG_TSHOOT "Replacing smaller packet from the queue : %u -> %u", tmp_pkt->seq, tmp_pkt->seq + tmp_pkt->data_len);
 
-				// Go up to seq of packet in the queue is >= to the current one
-				while (tmp_pkt && tmp_pkt->seq < new_seq) 
-					tmp_pkt = tmp_pkt->next;
+					cp->buff_len[dir] += payload_size - tmp_pkt->data_len;
 
-				if (tmp_pkt && tmp_pkt->seq == new_seq) {
+					free(tmp_pkt->f->buff_base);
 
-					// We got a packet with an existing seq in the queue
-					// There are a few possibilities
-					//  - it's a retransmit of an old packet -> payload size of both packet != 0 and is the same -> we discard it
-					//  - it's a retransmit with a different size -> payload size of both packet != 0 and payload size differ -> we keep the biggest one
-					//  - it's a ACK with 0 payload -> we keep it
-
-					while (tmp_pkt && tmp_pkt->seq == new_seq) {
-						
-						if (payload_size == 0) {
-							// we are dealing with a ack here
-							// we don't really care where it'll end up in the queue so let's queue it at the end
-							if (tmp_pkt->ack == new_ack) {
-								// got duplicate. discard it
-								return H_NEED_HELP;
-							}
-
-						} else {
-							// we are dealing with a packed with some payload
-							if (tmp_pkt->data_len == 0) { // we don't care about ACKs
-								tmp_pkt = tmp_pkt->next;
-								continue;
-							} else {
-								// looks like we already got a packet with some payload
-								if (tmp_pkt->data_len >= payload_size) {
-									// same payload size -> we can safely discard it
-									//pom_log(POM_LOG_TSHOOT "%u.%u 0x%x-%u, got seq %u, bufflen is %d. discarding duplicate already in the queue", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, new_seq, cp->buff_len[dir]);
-									return H_NEED_HELP;
-								} else {
-									//pom_log(POM_LOG_TSHOOT "%u.%u 0x%x-%u, got seq %u, bufflen is %d. replacing duplicate already in the queue", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, new_seq, cp->buff_len[dir]);
-									cp->buff_len[dir] += payload_size - tmp_pkt->data_len;
-
-									free(tmp_pkt->f->buff_base);
-									free(tmp_pkt->f);
-									tmp_pkt->f = malloc(sizeof(struct frame));
-									memcpy(tmp_pkt->f, f, sizeof(struct frame));
-									frame_alloc_aligned_buff(tmp_pkt->f, f->len);
-									memcpy(tmp_pkt->f->buff, f->buff, f->len);
-									tmp_pkt->seq = new_seq;
-									tmp_pkt->ack = new_ack;
-									tmp_pkt->data_len = payload_size;
-									return H_NEED_HELP;
-								}
-							}
-						}
-
-						tmp_pkt = tmp_pkt->next;
-					}
+					memcpy(tmp_pkt->f, f, sizeof(struct frame));
+					frame_alloc_aligned_buff(tmp_pkt->f, f->len);
+					memcpy(tmp_pkt->f->buff, f->buff, f->len);
+					tmp_pkt->seq = new_seq;
+					tmp_pkt->ack = new_ack;
+					tmp_pkt->data_len = payload_size;
+					return H_NEED_HELP;
 				}
-				
-			}
 
-			// At this point we need to queue the packet before tmp_pkt or at the end of the list if empty
-			//pom_log(POM_LOG_TSHOOT "%u.%u 0x%x-%u, expected seq %u > got seq %u, bufflen is %d. queuing packet", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, cp->seq_expected[dir], new_seq, cp->buff_len[dir]);
+			}
+				
+
+			// At this point we need to queue the packet before tmp_pkt or at the end of the list if tmp_pkt == NULL
+
+			pom_log(POM_LOG_TSHOOT "Queuing packet");
 
 			struct helper_priv_tcp_packet *pkt = malloc(sizeof(struct helper_priv_tcp_packet));
 			memset(pkt, 0, sizeof(struct helper_priv_tcp_packet));
@@ -222,17 +197,24 @@ static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned in
 
 			// Maybe we suffer from packet loss. Default maximum buffer is 256 KBytes 
 			if (cp->buff_len[dir] > PTYPE_UINT32_GETVAL(conn_buff) * 1024) {
-				//pom_log(POM_LOG_TSHOOT "0x%x-%u, warning, buffer is too large : %u. we probably lost a packet. processing anyway. lost %u bytes cp = 0x%x, seq %u, expected %u", (unsigned) f->ce, dir, cp->buff_len[dir], cp->seq_expected[dir] - cp->last_seq[dir], (unsigned) cp, cp->last_seq[dir], cp->seq_expected[dir]);
-				if (PTYPE_BOOL_GETVAL(fill_gaps))
-					helper_fill_gap_tcp(f, l, cp->seq_expected[dir], cp->seq_expected[dir] - cp->last_seq[dir]);
-				helper_process_next_tcp(cp, dir);
+				if (PTYPE_BOOL_GETVAL(fill_gaps)) {
+					pom_log(POM_LOG_TSHOOT "Buffer reached treshold : %u. Filling gap", cp->buff_len[dir]);
+					if (helper_fill_gap_tcp(f, l, cp->seq_expected[dir], cp->pkts[dir]->seq - cp->seq_expected[dir]) == POM_ERR)
+						 helper_process_next_tcp(cp, dir);
+				} else {
+					pom_log(POM_LOG_TSHOOT "Buffer reached treshold : %u. Processing next packet", cp->buff_len[dir]);
+					helper_process_next_tcp(cp, dir);
+				}
 			}
-
 			return H_NEED_HELP;
+
 		} else if (new_seq < cp->seq_expected[dir]) { // We must discard some of the begining of the packet
 
 			int pos = cp->seq_expected[dir] - new_seq;
 			int new_len = payload_size - pos;
+
+			pom_log(POM_LOG_TSHOOT "Discarding %u bytes at the begining of the packet", pos);
+
 
 			char *pload = f->buff + l->payload_start;
 
@@ -241,11 +223,19 @@ static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned in
 			new_seq = cp->seq_expected[dir];
 
 			helper_resize_payload(f, l, new_len);
+			f->len -= pos;
 			payload_size = new_len;
 		}
 
 
 	} else {
+
+		if (hdr->th_flags & TH_RST) {
+			// Don't learn initial sequence from RST packets as it's often bogus (0)
+			pom_log(POM_LOG_TSHOOT "Ignoring sequence from RST packet and processing it");
+			return POM_OK;
+		}
+
 		cp->flags[dir] |= HELPER_TCP_SEQ_KNOWN;
 		struct helper_timer_priv_tcp *tmp = malloc(sizeof(struct helper_timer_priv_tcp));
 		memset(tmp, 0, sizeof(struct helper_timer_priv_tcp));
@@ -254,17 +244,15 @@ static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned in
 		cp->t[dir] = timer_alloc(tmp, f->input, helper_process_timer_tcp);
 	}
 
-	cp->last_seq[dir] = new_seq;
-	
 	cp->seq_expected[dir] = new_seq + payload_size;
 	if (hdr->th_flags & TH_SYN || hdr->th_flags & TH_FIN)
 		cp->seq_expected[dir]++;
 
-	//pom_log(POM_LOG_TSHOOT "%u.%u 0x%x-%u, got seq %u, new expected seq %u, bufflen is %d. processing packet", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, new_seq, cp->seq_expected[dir], cp->buff_len[dir]);
+	pom_log(POM_LOG_TSHOOT "Processing packet");
 
 	// Discard any packet that we are sure not to need anymore
 	while (cp->pkts[dir] && ((cp->pkts[dir]->seq + cp->pkts[dir]->data_len) < cp->seq_expected[dir])) {
-		//pom_log(POM_LOG_TSHOOT "0x%x-%u, discarding packet with seq %u from queue", (unsigned) f->ce, dir, cp->pkts[dir]->seq);
+		pom_log(POM_LOG_TSHOOT "Discarding useless packet packet from the queue : %u -> %u", cp->pkts[dir]->seq, cp->pkts[dir]->seq + cp->pkts[dir]->data_len);
 		struct helper_priv_tcp_packet *pkt = cp->pkts[dir];
 		cp->pkts[dir] = cp->pkts[dir]->next;
 		if (cp->pkts[dir]) {
@@ -282,27 +270,23 @@ static int helper_need_help_tcp(struct frame *f, unsigned int start, unsigned in
 
 	// Let's see if we can dequeue the next packets now
 	if (cp->pkts[dir]) {
-		//pom_log(POM_LOG_TSHOOT "%u.%u 0x%x-%u, expected seq %u, first packet in queue seq %u", (unsigned)f->tv.tv_sec, (unsigned)f->tv.tv_usec, (unsigned) f->ce, dir, cp->seq_expected[dir], cp->pkts[dir]->seq);
+
 		if (cp->pkts[dir]->seq == cp->seq_expected[dir]) {
+			pom_log(POM_LOG_TSHOOT "Processing next packet from the queue, exact match : %u -> %u", cp->pkts[dir]->seq, cp->pkts[dir]->seq + cp->pkts[dir]->data_len);
 			// It's easy, the sequence number match !
 			helper_process_next_tcp(cp, dir);
 		} else if (cp->pkts[dir]->seq < cp->seq_expected[dir] && // packet must be before what we expect
-				cp->pkts[dir]->seq + cp->pkts[dir]->data_len >= cp->seq_expected[dir] && 
-				(!cp->pkts[dir]->next || cp->pkts[dir]->seq + cp->pkts[dir]->data_len < cp->pkts[dir]->next->seq + cp->pkts[dir]->next->data_len)) {
+				cp->pkts[dir]->seq + cp->pkts[dir]->data_len >= cp->seq_expected[dir]) {
 			// Looks like we need already have data from this packet in the buffer
 			unsigned int dup_data_len = cp->seq_expected[dir] - cp->pkts[dir]->seq;
-			//pom_log(POM_LOG_TSHOOT "0x%x-%u, need to drop %u of data over %u from current packet", (unsigned) f->ce, dir, dup_data_len, payload_size);
+			pom_log(POM_LOG_TSHOOT "Discarding %u of data over %u from current packet and processing it : %u -> %u", dup_data_len, payload_size, cp->pkts[dir]->seq, cp->pkts[dir]->seq + l->payload_size - dup_data_len);
 			helper_resize_payload(f, l, l->payload_size - dup_data_len);
+			f->len -= dup_data_len;
 			helper_process_next_tcp(cp, dir);
 		}
 		
 	}
-/*
-	if (cp->t[dir] && cp->pkts[dir]) {
-		timer_dequeue(cp->t[dir]);
-		timer_queue(cp->t[dir], PTYPE_UINT32_GETVAL(pkt_timeout));
-	}
-*/
+
 	return POM_OK;
 }
 
@@ -315,17 +299,78 @@ static int helper_process_timer_tcp(void *priv) {
 		return POM_OK;
 	}
 
-	//pom_log(POM_LOG_TSHOOT "0x%x-%u, warning, timer expired for missing segment. processing anyway. lost %u bytes cp = 0x%x, seq %u, expected %u", (unsigned) p->priv->pkts[p->dir]->f->ce, p->dir, p->priv->seq_expected[p->dir] - p->priv->last_seq[p->dir], (unsigned) p->priv, p->priv->last_seq[p->dir], p->priv->seq_expected[p->dir]);
-	return helper_process_next_tcp(p->priv, p->dir);
+	int result = POM_OK;
+	if (PTYPE_BOOL_GETVAL(fill_gaps)) {
+		pom_log(POM_LOG_TSHOOT "Timer fired, filling gap");
+		if (helper_fill_gap_no_layer_tcp(p->priv->pkts[p->dir]->f, p->priv->seq_expected[p->dir], p->priv->pkts[p->dir]->seq - p->priv->seq_expected[p->dir]) == POM_OK) {
+			timer_dequeue(p->priv->t[p->dir]);
+			timer_queue(p->priv->t[p->dir], PTYPE_UINT32_GETVAL(pkt_timeout));
+		} else {
+			result = helper_process_next_tcp(p->priv, p->dir);
+		}
+	} else {
+		pom_log(POM_LOG_TSHOOT "Timer fired, processing next packet");
+		result = helper_process_next_tcp(p->priv, p->dir);
+	}
+	return result;
 
+}
+
+static int helper_fill_gap_no_layer_tcp(struct frame *f, uint32_t seq_init, unsigned int gap_size) {
+	// Layer information was lost, we need to compute it again
+	// No need to do lots of checking since it was already done in do_rule before
+	// WARNING : this means that TCP into TCP connection won't work
+
+	layer_pool_discard();
+
+	struct layer *l = layer_pool_get();
+	l->type = f->first_layer;
+	layer_field_pool_get(l);
+	f->l = l;
+	int new_start = 0, new_len = f->len;
+	while (l && l->type != match_tcp_id) {
+		l->next = layer_pool_get();
+		l->next->prev = l;
+		if (l->prev) {
+			new_start = l->prev->payload_start;
+			new_len = l->prev->payload_size;
+		}
+
+		// identify must populate payload_start and payload_size
+		l->next->type = match_identify(f, l, new_start, new_len);
+		if (l->next->type == POM_ERR || l->next->type == match_undefined_id) {
+			pom_log(POM_LOG_TSHOOT "Unable to identify the TCP packet !!!");
+			return POM_ERR;
+		}
+		layer_field_pool_get(l->next);
+
+		l = l->next;
+	}
+
+	if (l->prev) {
+		new_start = l->prev->payload_start;
+		new_len = l->prev->payload_size;
+	}
+	match_identify(f, l, new_start, new_len);
+
+	return helper_fill_gap_tcp(f, l, seq_init, gap_size);
 }
 
 static int helper_fill_gap_tcp(struct frame *f, struct layer *l, uint32_t seq_init, unsigned int gap_size) {
 
+
+	if (gap_size > PTYPE_UINT32_GETVAL(conn_buff) * 1024) {
+		pom_log(POM_LOG_TSHOOT "Gap size bigger than max connection buffer. Ignoring");
+		return POM_ERR;
+	}
+
 	pom_log(POM_LOG_TSHOOT "Filling gap of %u bytes from sequence %u", gap_size, seq_init);
 
-
 	unsigned int remaining = gap_size;
+
+	unsigned int max = f->bufflen - l->payload_start;
+	if (max < 1280) // minimum value for MTU
+		max = 1280;
 
 	while (remaining > 0) {
 
@@ -333,7 +378,7 @@ static int helper_fill_gap_tcp(struct frame *f, struct layer *l, uint32_t seq_in
 		struct frame *fgap = malloc(sizeof(struct frame));
 		memcpy(fgap, f, sizeof(struct frame));
 
-		unsigned int cur, max = f->bufflen - l->payload_start;
+		unsigned int cur;
 		if (remaining > max) {
 			cur = max;
 			remaining -= cur;
@@ -344,7 +389,7 @@ static int helper_fill_gap_tcp(struct frame *f, struct layer *l, uint32_t seq_in
 
 
 		// Alloc the frame payload
-		frame_alloc_aligned_buff(fgap, f->bufflen);
+		frame_alloc_aligned_buff(fgap, l->payload_start + cur);
 
 		// Copy headers
 		memcpy(fgap->buff, f->buff, l->payload_start);
@@ -359,6 +404,8 @@ static int helper_fill_gap_tcp(struct frame *f, struct layer *l, uint32_t seq_in
 
 		if (helper_resize_payload(fgap, l, cur) == POM_ERR)
 			return POM_ERR;
+
+		fgap->len = l->payload_start + cur;
 
 		helper_queue_frame(fgap);
 
@@ -395,7 +442,7 @@ static int helper_process_next_tcp(struct helper_priv_tcp *p, int dir) {
 			timer_queue(p->t[dir], PTYPE_UINT32_GETVAL(pkt_timeout));
 		}
 	}
-	//pom_log(POM_LOG_TSHOOT "%u.%u 0x%x-%u, dequeuing packet with seq %u, bufflen is %d", (unsigned)pkt->f->tv.tv_sec, (unsigned)pkt->f->tv.tv_usec, (unsigned) pkt->f->ce, dir, pkt->seq, p->buff_len[dir]);
+	pom_log(POM_LOG_TSHOOT "Dequeuing packet : %u -> %u", pkt->seq, pkt->seq + pkt->seq + pkt->data_len);
 	helper_queue_frame(pkt->f);
 
 	free(pkt);
@@ -408,14 +455,19 @@ static int helper_flush_buffer_tcp(struct conntrack_entry *ce, void *conntrack_p
 
 	struct helper_priv_tcp *cp = conntrack_priv;
 
-	if (cp->pkts[0]) {
-		helper_process_next_tcp(cp, 0);
-		return POM_OK;
-	}
-
-	if (cp->pkts[1]) {
-		helper_process_next_tcp(cp, 1);
-		return POM_OK;
+	int i;
+	for (i = 0; i <= 1; i++ ) {
+		if (cp->pkts[i]) {
+			
+			if (PTYPE_BOOL_GETVAL(fill_gaps) &&
+				(helper_fill_gap_no_layer_tcp(cp->pkts[i]->f, cp->seq_expected[i], cp->pkts[i]->seq - cp->seq_expected[i]) == POM_OK)) {
+				timer_dequeue(cp->t[i]);
+				timer_queue(cp->t[i], PTYPE_UINT32_GETVAL(pkt_timeout));
+			} else {
+				helper_process_next_tcp(cp, i);
+			}
+			return POM_OK;
+		}
 	}
 
 	return POM_ERR;
@@ -426,7 +478,7 @@ static int helper_cleanup_connection_tcp(struct conntrack_entry *ce, void *connt
 	struct helper_priv_tcp *cp = conntrack_priv;
 
 	if (cp->pkts[0] || cp->pkts[1]) {
-		pom_log(POM_LOG_DEBUG "helper_tcp : There should not be any remaining packet at this point !!!!");
+		pom_log(POM_LOG_DEBUG "There should not be any remaining packet at this point !!!!");
 		int i;
 		for (i = 0; i < 2; i++)
 			while (cp->pkts[i]) {

@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
 #include "match_docsis.h"
 #include "ptype_uint8.h"
 
-static struct match_dep *match_atm, *match_ethernet;
+static struct match_dep *match_undefined, *match_atm, *match_ethernet;
 
 static int field_fc_type, field_fc_parm;
 
@@ -32,6 +32,7 @@ int match_register_docsis(struct match_reg *r) {
 	r->identify = match_identify_docsis;
 	r->unregister = match_unregister_docsis;
 
+	match_undefined = match_add_dependency(r->type, "undefined");
 	match_atm = match_add_dependency(r->type, "atm");
 	match_ethernet = match_add_dependency(r->type, "ethernet");
 
@@ -92,7 +93,7 @@ static int match_identify_docsis(struct frame *f, struct layer* l, unsigned int 
 			return -1;
 	}
 */
-	return POM_ERR;
+	return match_undefined->id;
 }
 
 static int match_unregister_docsis(struct match_reg *r) {

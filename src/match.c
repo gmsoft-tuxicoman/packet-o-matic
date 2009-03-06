@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -137,7 +137,10 @@ struct match_dep *match_add_dependency(int match_type, const char *dep_name) {
 		if (!r->match_deps[i].name) {
 			r->match_deps[i].name = malloc(strlen(dep_name) + 1);
 			strcpy(r->match_deps[i].name, dep_name);
-			r->match_deps[i].id = match_register(dep_name);
+			int id = match_register(dep_name);
+			if (id == POM_ERR)
+				id = match_register("undefined");
+			r->match_deps[i].id = id;
 			return &r->match_deps[i];
 		}
 	}
@@ -295,6 +298,20 @@ int match_get_type(const char *match_name) {
 	}
 
 	return POM_ERR;
+}
+
+/**
+ * @ingroup match_core
+ * @param match_type Type of the match to get the flags from
+ * @return The flags of the corresponding match
+ */
+
+unsigned int match_get_flags(int match_type) {
+
+	if (matches[match_type])
+		return matches[match_type]->flags;
+
+	return 0;
 }
 
 /**

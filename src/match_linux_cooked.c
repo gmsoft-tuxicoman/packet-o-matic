@@ -22,7 +22,7 @@
 #include "ptype_uint16.h"
 #include "ptype_bytes.h"
 
-static struct match_dep *match_ipv4, *match_ipv6;
+static struct match_dep *match_undefined, *match_ipv4, *match_ipv6;
 
 static int field_pkt_type, field_ha_type, field_addr;
 
@@ -34,6 +34,7 @@ int match_register_linux_cooked(struct match_reg *r) {
 	r->get_expectation = match_get_expectation_linux_cooked;
 	r->unregister = match_unregister_linux_cooked;
 
+	match_undefined = match_add_dependency(r->type, "undefined");
 	match_ipv4 = match_add_dependency(r->type, "ipv4");
 	match_ipv6 = match_add_dependency(r->type, "ipv6");
 
@@ -77,7 +78,7 @@ static int match_identify_linux_cooked(struct frame *f, struct layer* l, unsigne
 			return match_ipv6->id;
 	}
 
-	return POM_ERR;
+	return match_undefined->id;
 }
 
 static int match_get_expectation_linux_cooked(int field_id, int direction) {

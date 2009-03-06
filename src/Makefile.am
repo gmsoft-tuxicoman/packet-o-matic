@@ -10,20 +10,20 @@ BUILT_SOURCES = svnversion.h
 VERSION_SRC = version.h release.h svnversion.h
 
 bin_PROGRAMS = packet-o-matic
-packet_o_matic_SOURCES = main.c main.h core_param.c core_param.h rules.c rules.h conf.c conf.h layer.c layer.h $(VERSION_SRC) $(MGMT_SRC) $(XMLRPC_SRC)
+packet_o_matic_SOURCES = main.c main.h core_param.c core_param.h rules.c rules.h conf.c conf.h $(VERSION_SRC) $(MGMT_SRC) $(XMLRPC_SRC)
 packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"' -DDATAROOT='"$(pkgdatadir)"'
 packet_o_matic_LDFLAGS = @LIBS@ @libxml2_LIBS@
 packet_o_matic_LDADD = libpom.la @xmlrpc_LIBS@
 
 noinst_HEADERS = include/jhash.h
 
-libpom_la_SOURCES = input.c input.h match.c match.h conntrack.c conntrack.h target.c target.h timers.c timers.h helper.c helper.h ptype.c ptype.h expectation.c expectation.h common.c common.h include/jhash.h datastore.c datastore.h
+libpom_la_SOURCES = input.c input.h match.c match.h conntrack.c conntrack.h target.c target.h timers.c timers.h helper.c helper.h ptype.c ptype.h expectation.c expectation.h common.c common.h layer.c layer.h include/jhash.h datastore.c datastore.h
 libpom_la_CFLAGS = -DLIBDIR='"@LIB_DIR@"'
 
 INPUT_OBJS = @INPUT_OBJS@
 MATCH_OBJS = match_docsis.la match_ethernet.la match_80211.la match_vlan.la match_ipv4.la match_icmp.la match_ipv6.la match_icmpv6.la match_tcp.la match_udp.la match_rtp.la match_undefined.la match_linux_cooked.la
 CONNTRACK_OBJS = conntrack_ipv4.la conntrack_ipv6.la conntrack_rtp.la conntrack_tcp.la conntrack_udp.la
-HELPER_OBJS = helper_docsis.la helper_ipv4.la helper_tcp.la helper_rtp.la
+HELPER_OBJS = helper_docsis.la helper_ipv4.la helper_ipv6.la helper_tcp.la helper_rtp.la
 TARGET_OBJS = target_display.la target_dump_payload.la target_irc.la target_http.la target_msn.la target_pop.la target_rtp.la target_tftp.la target_null.la @TARGET_OBJS@
 PTYPES_OBJS = ptype_bool.la ptype_uint8.la ptype_uint16.la ptype_uint32.la ptype_uint64.la ptype_mac.la ptype_ipv4.la ptype_ipv6.la ptype_string.la ptype_bytes.la ptype_interval.la
 DATASTORE_OBJS = @DATASTORE_OBJS@
@@ -102,6 +102,9 @@ helper_docsis_la_LIBADD = libpom.la
 helper_ipv4_la_SOURCES = helper_ipv4.c helper_ipv4.h modules_common.h
 helper_ipv4_la_LDFLAGS = -module -avoid-version
 helper_ipv4_la_LIBADD = libpom.la
+helper_ipv6_la_SOURCES = helper_ipv6.c helper_ipv6.h modules_common.h
+helper_ipv6_la_LDFLAGS = -module -avoid-version
+helper_ipv6_la_LIBADD = libpom.la
 helper_tcp_la_SOURCES = helper_tcp.c helper_tcp.h modules_common.h
 helper_tcp_la_LDFLAGS = -module -avoid-version
 helper_tcp_la_LIBADD = libpom.la

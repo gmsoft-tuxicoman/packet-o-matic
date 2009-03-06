@@ -227,16 +227,11 @@ int target_http_mime_type_get_id(struct target_priv_http *priv, char *mime_type)
 	hash %= priv->mime_types_size * HTTP_MIME_TYPE_HASH_SIZE_RATIO;
 
 	if (priv->mime_types_hash[hash]) {
-		if (priv->mime_types_hash[hash]->next) {
-			struct http_mime_type_hash_entry *tmp = priv->mime_types_hash[hash];
-			while (tmp) {
-				if (!strcmp(priv->mime_types[tmp->id].name, mime_type))
-					return tmp->id;
-				tmp = tmp->next;
-			}
-
-		} else {
-			return priv->mime_types_hash[hash]->id;
+		struct http_mime_type_hash_entry *tmp = priv->mime_types_hash[hash];
+		while (tmp) {
+			if (!strcmp(priv->mime_types[tmp->id].name, mime_type))
+				return tmp->id;
+			tmp = tmp->next;
 		}
 	}
 

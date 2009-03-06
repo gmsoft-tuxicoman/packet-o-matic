@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 #include <netinet/in.h>
 #include <netinet/ip.h>
 
-static struct match_dep *match_icmp, *match_tcp, *match_udp, *match_ipv6;
+static struct match_dep *match_undefined, *match_icmp, *match_tcp, *match_udp, *match_ipv6, *match_gre;
 
 static int field_saddr, field_daddr, field_tos, field_ttl;
 
@@ -40,10 +40,12 @@ int match_register_ipv4(struct match_reg *r) {
 	r->get_expectation = match_get_expectation_ipv4;
 	r->unregister = match_unregister_ipv4;
 
+	match_undefined = match_add_dependency(r->type, "undefined");
 	match_icmp = match_add_dependency(r->type, "icmp");
 	match_tcp = match_add_dependency(r->type, "tcp");
 	match_udp = match_add_dependency(r->type, "udp");
 	match_ipv6 = match_add_dependency(r->type, "ipv6");
+	match_gre = match_add_dependency(r->type, "gre");
 
 	ptype_ipv4 = ptype_alloc("ipv4", NULL);
 	ptype_uint8 = ptype_alloc("uint8", NULL);
@@ -99,9 +101,11 @@ int match_identify_ipv4(struct frame *f, struct layer* l, unsigned int start, un
 			return match_udp->id;
 		case IPPROTO_IPV6: //41
 			return match_ipv6->id;
+		case IPPROTO_GRE: // 47
+			return match_gre->id;
 	}
 
-	return POM_ERR;
+	return match_undefined->id;
 }
 
 static int match_get_expectation_ipv4(int field_id, int direction) {

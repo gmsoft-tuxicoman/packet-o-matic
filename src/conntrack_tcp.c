@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,11 +21,12 @@
 
 #include "conntrack_tcp.h"
 #include "ptype_uint16.h"
+#include "ptype_bool.h"
 
 
 #define INITVAL 0x84fa0b2c
 
-static struct ptype *tcp_syn_sent_t, *tcp_syn_recv_t, *tcp_last_ack_t, *tcp_close_t, *tcp_time_wait_t, *tcp_established_t;
+static struct ptype *tcp_syn_sent_t, *tcp_syn_recv_t, *tcp_last_ack_t, *tcp_close_t, *tcp_time_wait_t, *tcp_established_t, *tcp_reuse_handling;
 
 int conntrack_register_tcp(struct conntrack_reg *r) {
 	
@@ -42,8 +43,10 @@ int conntrack_register_tcp(struct conntrack_reg *r) {
 	tcp_close_t = ptype_alloc("uint16", "seconds");
 	tcp_time_wait_t = ptype_alloc("uint16", "seconds");
 	tcp_established_t = ptype_alloc("uint16", "seconds");
+	tcp_reuse_handling = ptype_alloc("bool", NULL);
+	
 
-	if (!tcp_syn_sent_t || !tcp_syn_recv_t || !tcp_last_ack_t || !tcp_close_t || !tcp_time_wait_t || !tcp_established_t) {
+	if (!tcp_syn_sent_t || !tcp_syn_recv_t || !tcp_last_ack_t || !tcp_close_t || !tcp_time_wait_t || !tcp_established_t || !tcp_reuse_handling) {
 		conntrack_unregister_tcp(r);
 		return POM_ERR;
 	}
@@ -55,6 +58,7 @@ int conntrack_register_tcp(struct conntrack_reg *r) {
 	conntrack_register_param(r->type, "close_timer", "10", tcp_close_t, "Close timer");
 	conntrack_register_param(r->type, "time_wait_timer", "180", tcp_time_wait_t, "Time wait timer");
 	conntrack_register_param(r->type, "established_timer", "7200", tcp_established_t, "Established timer");
+	conntrack_register_param(r->type, "enable_reuse_handling", "false", tcp_reuse_handling, "Handle connection reuse handling (SO_REUSEADDR)");
 	
 	return POM_OK;
 }
@@ -150,8 +154,17 @@ static int conntrack_doublecheck_tcp(struct frame *f, unsigned int start, void *
 		default:
 			return POM_ERR;
 	}
-	
-	conntrack_tcp_update_timer(priv, hdr);
+
+	if (PTYPE_BOOL_GETVAL(tcp_reuse_handling) && (hdr->th_flags & TH_SYN) && (p->state == STATE_TCP_TIME_WAIT || p->state == STATE_TCP_LAST_ACK)) {
+		// This connection has been reused (SO_REUSEADDR)
+		// Make sure we invalidate the current one and force creation of a new one
+		pom_log(POM_LOG_TSHOOT "Reuse of connection detected. Closing current conntrack");
+		timer_dequeue(p->timer);
+		timer_queue(p->timer, 0);
+		return POM_OK;
+	}
+
+	conntrack_tcp_update_timer(p, hdr);
 
 	return POM_OK;
 }
@@ -212,6 +225,7 @@ static int conntrack_unregister_tcp(struct conntrack_reg *r) {
 	ptype_cleanup(tcp_close_t);
 	ptype_cleanup(tcp_time_wait_t);
 	ptype_cleanup(tcp_established_t);
+	ptype_cleanup(tcp_reuse_handling);
 
 	return POM_OK;
 }

@@ -1,3 +1,28 @@
+* 2009/03/06 Guy Martin <gmsoft@tuxicoman.be>
+Function match_identify now returns POM_ERR on invalid packet and the id of
+undefined match if the next layer is unknown.
+Prevent input_pcap from skipping the first file in mode directory.
+Fix small memory leak while parsing helper parameters.
+Added support for reused connection in conntrack_tcp.
+Added mode connection to target_pcap to save each connection in different files.
+Have timers process the queue after each run.
+Update timer.c to use POM_OK and POM_ERR.
+Fix invalid memory access in helper_ipv4.
+Remove useless helper_lock() in main loop.
+Made layer.c part of libpom.
+Added more validation checks in match_tcp.
+Updated copyright date in CLI.
+Process the helper queue after each attempt to close a conntrack.
+Changed default helper_tcp connection buffer to 64K.
+Improved troubleshooting messages in helper_tcp.
+Cleanup helper_tcp.
+Avoid to learn sequence from RST packets in helper_tcp as it's often bogus.
+Fixed and improved the fill_gap option in helper_tcp.
+Make sure we will use the next layer from the rules only if the previous match
+can't identify the next layer.
+Always doublecheck the mime type hash in target_http.
+Added helper_ipv6 for resizing payload size in the header.
+
 * 2009/02/28 Guy Martin <gmsoft@tuxicoman.be>
 Fix typo in input_docsis.c and target_http_mime.c.
 Fix compilation on various OS.

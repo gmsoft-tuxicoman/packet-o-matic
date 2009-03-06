@@ -26,8 +26,10 @@
 #include "ptype_interval.h"
 
 #include <sys/stat.h>
+#include <errno.h>
+#include <fcntl.h>
 
-static struct target_mode *mode_default, *mode_split;
+static struct target_mode *mode_default, *mode_split, *mode_connection;
 
 int target_register_pcap(struct target_reg *r) {
 
@@ -39,23 +41,30 @@ int target_register_pcap(struct target_reg *r) {
 
 	mode_default = target_register_mode(r->type, "default", "Dump all the packets into a PCAP file");
 	mode_split = target_register_mode(r->type, "split", "Dump all packets into multiple PCAP files");
+	mode_connection = target_register_mode(r->type, "connection", "Dump connections in separate PCAP files");
 
-	if (!mode_default)
+	if (!mode_default || !mode_split || !mode_connection)
 		return POM_ERR;
 
 	target_register_param(mode_default, "filename", "dump.cap", "Filename to save packets to");
 	target_register_param(mode_default, "snaplen", "1522", "Maximum size of saved packets");
-	target_register_param(mode_default, "layer", "ethernet", "Type of layer to capture. Either ethernet, linux_cooked, docsis or ipv4");
+	target_register_param(mode_default, "layer", "ethernet", "Type of layer to capture. Either ethernet, linux_cooked, docsis, 80211 or ipv4");
 	target_register_param(mode_default, "unbuffered", "no", "Write each packet to the output file directly without using a buffer");
 
 	target_register_param(mode_split, "prefix", "dump", "Prefix of output files to save packets to");
 	target_register_param(mode_split, "overwrite", "no", "Overwrite existing file in the directory");
 	target_register_param(mode_split, "snaplen", "1522", "Maximum size of saved packets");
-	target_register_param(mode_split, "layer", "ethernet", "Type of layer to capture. Either ethernet, linux_cooked, docsis or ipv4");
+	target_register_param(mode_split, "layer", "ethernet", "Type of layer to capture. Either ethernet, linux_cooked, docsis, 80211 or ipv4");
 	target_register_param(mode_split, "split_size", "0", "Split when reaching this size");
 	target_register_param(mode_split, "split_packets", "0", "Split when reaching this number of packets");
 	target_register_param(mode_split, "split_interval", "0", "Split when reaching this number of seconds");
 	target_register_param(mode_split, "unbuffered", "no", "Write each packet to the output file directly without using a buffer");
+
+	target_register_param(mode_connection, "prefix", "dump", "Prefix of output files to save packets to");
+	target_register_param(mode_connection, "snaplen", "1522", "Maximum size of saved packets");
+	target_register_param(mode_connection, "layer", "ethernet", "Type of layer to capture. Either ethernet, linux_cooked, docsis, 80211 or ipv4");
+	target_register_param(mode_connection, "unbuffered", "no", "Write each packet to the output file directly without using a buffer");
+
 
 	return POM_OK;
 
@@ -72,7 +81,7 @@ static int target_init_pcap(struct target *t) {
 	priv->layer = ptype_alloc("string", NULL);
 	priv->unbuffered = ptype_alloc("bool", NULL);
 
-	priv->split_prefix = ptype_alloc("string", NULL);
+	priv->prefix = ptype_alloc("string", NULL);
 	priv->split_overwrite = ptype_alloc("bool", NULL);
 	priv->split_size = ptype_alloc("uint64", "bytes");
 	priv->split_size->print_mode = PTYPE_UINT64_PRINT_HUMAN_1024;
@@ -84,7 +93,7 @@ static int target_init_pcap(struct target *t) {
 		!priv->snaplen ||
 		!priv->layer ||
 		!priv->unbuffered ||
-		!priv->split_prefix ||
+		!priv->prefix ||
 		!priv->split_overwrite ||
 		!priv->split_size ||
 		!priv->split_packets ||
@@ -98,7 +107,7 @@ static int target_init_pcap(struct target *t) {
 	target_register_param_value(t, mode_default, "layer", priv->layer);
 	target_register_param_value(t, mode_default, "unbuffered", priv->unbuffered);
 	
-	target_register_param_value(t, mode_split, "prefix", priv->split_prefix);
+	target_register_param_value(t, mode_split, "prefix", priv->prefix);
 	target_register_param_value(t, mode_split, "overwrite", priv->split_overwrite);
 	target_register_param_value(t, mode_split, "snaplen", priv->snaplen);
 	target_register_param_value(t, mode_split, "layer", priv->layer);
@@ -107,6 +116,11 @@ static int target_init_pcap(struct target *t) {
 	target_register_param_value(t, mode_split, "split_packets", priv->split_packets);
 	target_register_param_value(t, mode_split, "split_interval", priv->split_interval);
 
+	target_register_param_value(t, mode_connection, "prefix", priv->prefix);
+	target_register_param_value(t, mode_connection, "snaplen", priv->snaplen);
+	target_register_param_value(t, mode_connection, "layer", priv->layer);
+	target_register_param_value(t, mode_connection, "unbuffered", priv->unbuffered);
+	
 	return POM_OK;
 }
 
@@ -120,7 +134,7 @@ static int target_cleanup_pcap(struct target *t) {
 		ptype_cleanup(priv->layer);
 		ptype_cleanup(priv->unbuffered);
 
-		ptype_cleanup(priv->split_prefix);
+		ptype_cleanup(priv->prefix);
 		ptype_cleanup(priv->split_overwrite);
 		ptype_cleanup(priv->split_size);
 		ptype_cleanup(priv->split_packets);
@@ -174,7 +188,7 @@ static int target_open_pcap(struct target *t) {
 		if (!PTYPE_BOOL_GETVAL(priv->split_overwrite)) {
 			do {
 				struct stat tmp;
-				snprintf(my_name, NAME_MAX - 1, "%s_%05lu.cap", PTYPE_STRING_GETVAL(priv->split_prefix), priv->split_index);
+				snprintf(my_name, NAME_MAX - 1, "%s_%05lu.cap", PTYPE_STRING_GETVAL(priv->prefix), priv->split_index);
 				if (stat(my_name, &tmp) != 0) {
 					break;
 				}
@@ -182,23 +196,29 @@ static int target_open_pcap(struct target *t) {
 			} while(1);
 			
 		} else {
-			snprintf(my_name, NAME_MAX - 1, "%s_%05lu.cap", PTYPE_STRING_GETVAL(priv->split_prefix), priv->split_index);
+			snprintf(my_name, NAME_MAX - 1, "%s_%05lu.cap", PTYPE_STRING_GETVAL(priv->prefix), priv->split_index);
 		}
 		filename = my_name;
 		pom_log("Writing output to file %s", my_name);
-	} else {
+
+		if (PTYPE_INTERVAL_GETVAL(priv->split_interval) > 0)
+			priv->split_time = time(NULL) + PTYPE_INTERVAL_GETVAL(priv->split_interval);
+
+	} else if (t->mode == mode_default) {
 		filename = PTYPE_STRING_GETVAL(priv->filename);
 	}
 
-	priv->pdump = pcap_dump_open(priv->p, filename);
-	if (!priv->pdump) {
-		pom_log(POM_LOG_ERR "Unable to open pcap file %s for writing !", filename);
-		pcap_close(priv->p);
-		return POM_ERR;
-	}
 
-	if (PTYPE_INTERVAL_GETVAL(priv->split_interval) > 0)
-		priv->split_time = time(NULL) + PTYPE_INTERVAL_GETVAL(priv->split_interval);
+	if (filename) { // Only not NULL when mode is split or default
+
+		priv->pdump = pcap_dump_open(priv->p, filename);
+		if (!priv->pdump) {
+			pom_log(POM_LOG_ERR "Unable to open pcap file %s for writing !", filename);
+			pcap_close(priv->p);
+			return POM_ERR;
+		}
+
+	}
 
 	return POM_OK;
 
@@ -209,11 +229,6 @@ static int target_open_pcap(struct target *t) {
 static int target_process_pcap(struct target *t, struct frame *f) {
 
 	struct target_priv_pcap *priv = t->target_priv;
-	
-	if (!priv->pdump) {
-		pom_log(POM_LOG_ERR "Error, pcap target not opened !");
-		return POM_ERR;
-	}
 	
 	int start = layer_find_start(f->l, priv->last_layer_type);
 
@@ -238,8 +253,13 @@ static int target_process_pcap(struct target *t, struct frame *f) {
 	else
 		phdr.caplen = SNAPLEN;
 
+	pcap_dumper_t *pdump = NULL;
 
-	if (t->mode == mode_split) {
+
+	if (t->mode == mode_default) {
+		pdump = priv->pdump;
+
+	} else if (t->mode == mode_split) {
 		// Let's see if we have to open the next file
 
 		int next = 0;
@@ -264,7 +284,7 @@ static int target_process_pcap(struct target *t, struct frame *f) {
 			if (!PTYPE_BOOL_GETVAL(priv->split_overwrite)) {
 				do {
 					struct stat tmp;
-					snprintf(filename, NAME_MAX - 1, "%s_%05lu.cap", PTYPE_STRING_GETVAL(priv->split_prefix), priv->split_index);
+					snprintf(filename, NAME_MAX - 1, "%s_%05lu.cap", PTYPE_STRING_GETVAL(priv->prefix), priv->split_index);
 					if (stat(filename, &tmp) != 0) {
 						break;
 					}
@@ -272,7 +292,7 @@ static int target_process_pcap(struct target *t, struct frame *f) {
 				} while(1);
 				
 			} else {
-				snprintf(filename, NAME_MAX - 1, "%s_%05lu.cap", PTYPE_STRING_GETVAL(priv->split_prefix), priv->split_index);
+				snprintf(filename, NAME_MAX - 1, "%s_%05lu.cap", PTYPE_STRING_GETVAL(priv->prefix), priv->split_index);
 			}
 			priv->pdump = pcap_dump_open(priv->p, filename);
 			if (!priv->pdump) {
@@ -301,24 +321,126 @@ static int target_process_pcap(struct target *t, struct frame *f) {
 			}
 
 		}
+	
+		pdump = priv->pdump;
+
+	} else if (t->mode == mode_connection) {
+		// Let's see if this connection already has a file open
 		
+		if (!f->ce)
+			if (conntrack_create_entry(f) == POM_ERR)
+				return POM_OK; // This packet can't be tracked
+
+		struct target_conntrack_priv_pcap *cp;
+		cp = conntrack_get_target_priv(t, f->ce);
+
+		if (!cp) {
+			cp = malloc(sizeof(struct target_conntrack_priv_pcap));
+			memset(cp, 0, sizeof(struct target_conntrack_priv_pcap));
+		
+
+			char filename[NAME_MAX];
+			memset(filename, 0, NAME_MAX);
+			char outstr[20];
+			memset(outstr, 0, sizeof(outstr));
+			// YYYYMMDD-HHMMSS-UUUUUU
+			char *format = "%Y%m%d-%H%M%S-";
+			struct tm tmp;
+			localtime_r((time_t*)&f->tv.tv_sec, &tmp);
+		
+			strftime(outstr, sizeof(outstr), format, &tmp);
+		
+			snprintf(filename, NAME_MAX - 1, "%s%s%u.cap", PTYPE_STRING_GETVAL(priv->prefix), outstr, (unsigned int)f->tv.tv_usec);
+
+			char filename_final[NAME_MAX];
+			memset(filename_final, 0, NAME_MAX);
+			layer_field_parse(f->l, filename, filename_final, NAME_MAX);
+
+			// Since we are not calling target_file_open(), we need to create the missing directories ourselves
+
+			char *slash = filename_final;
+			if (*slash == '/') // we assume that the root directory exists :)
+				slash++;
+
+			slash = strchr(slash, '/');
+			while (slash) {
+				*slash = 0;
+				struct stat stats;
+				if (stat(filename_final, &stats)) {
+					switch (errno) {
+						case ENOENT:
+							mkdir(filename_final, 00777);
+							break;
+						default:
+							pom_log(POM_LOG_ERR "Unable to create directory %s !", filename_final);
+							return POM_ERR;
+					}
+				}
+				*slash = '/';
+				slash = strchr(slash + 1, '/');
+			}
+
+			cp->pdump = pcap_dump_open(priv->p, filename_final);
+
+			if (!cp->pdump) {
+				pom_log(POM_LOG_ERR "Unable to open pcap file %s for writing !", filename_final);
+				return POM_ERR;
+			}
+
+			conntrack_add_target_priv(cp, t, f->ce, target_close_connection_pcap);
+			cp->ce = f->ce;
+			cp->next = priv->ct_privs;
+			if (priv->ct_privs)
+				priv->ct_privs->prev = cp;
+			priv->ct_privs = cp;
+		}
+
+		pdump = cp->pdump;
+
 	}
 
-	pcap_dump((u_char*)priv->pdump, &phdr, f->buff + start);
+	if (!pdump) {
+		pom_log(POM_LOG_ERR "Error : pdump pointer NULL !");
+		return POM_ERR;
+	}
 
-
+	pcap_dump((u_char*)pdump, &phdr, f->buff + start);
 
 	if (PTYPE_BOOL_GETVAL(priv->unbuffered)) 
-		pcap_dump_flush(priv->pdump);
+		pcap_dump_flush(pdump);
 
-	priv->cur_size = pcap_dump_ftell(priv->pdump);
+	priv->cur_size = pcap_dump_ftell(pdump);
 	priv->cur_packets_num++;
 
 	pom_log(POM_LOG_TSHOOT "Packet saved (%lu bytes)!", len);
 
 	return POM_OK;
-};
+}
 
+int target_close_connection_pcap(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
+
+	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx", (unsigned long) conntrack_priv);
+
+	struct target_conntrack_priv_pcap *cp;
+	cp = conntrack_priv;
+
+	pcap_dump_close(cp->pdump);
+
+	struct target_priv_pcap *priv = t->target_priv;
+
+	if (cp->prev)
+		cp->prev->next = cp->next;
+	else
+		priv->ct_privs = cp->next;
+	
+	if (cp->next)
+		cp->next->prev = cp->prev;
+
+	free(cp);
+
+	return POM_OK;
+
+}
 static int target_close_pcap(struct target *t) {
 	
 	struct target_priv_pcap *priv = t->target_priv;
@@ -337,6 +459,11 @@ static int target_close_pcap(struct target *t) {
 		pom_log("Saved %lu packets and %lu bytes in %lu files", priv->tot_packets_num, priv->tot_size, priv->split_files_num);
 	else
 		pom_log("Saved %lu packets and %lu bytes", priv->tot_packets_num, priv->tot_size);
+
+	while (priv->ct_privs) {
+		conntrack_remove_target_priv(priv->ct_privs, priv->ct_privs->ce);
+		target_close_connection_pcap(t, priv->ct_privs->ce, priv->ct_privs);
+	}
 
 	if (priv->pdump) {
 		pcap_dump_close(priv->pdump);

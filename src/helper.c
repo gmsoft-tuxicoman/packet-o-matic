@@ -303,13 +303,6 @@ int helper_process_queue(struct rule_list *list, pthread_rwlock_t *lock) {
 
 int helper_resize_payload(struct frame *f, struct layer *l, unsigned int new_psize) {
 
-	int change = l->payload_size - new_psize;
-
-	if (change == 0)
-		return POM_OK;
-
-	f->len -= change;
-
 	while (l) {
 		unsigned int start;
 		if (l->prev)

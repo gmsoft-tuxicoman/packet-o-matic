@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -806,6 +806,7 @@ int config_parse(struct conf *c, char * filename) {
 					if (!param) {
 						pom_log(POM_LOG_WARN "No parameter %s for helper %s", type, name);
 						sub = sub->next;
+						xmlFree(name);
 						continue;
 					}
 					char *value = (char *) xmlNodeListGetString(doc, sub->xmlChildrenNode, 1);
@@ -815,7 +816,8 @@ int config_parse(struct conf *c, char * filename) {
 					} else {
 						pom_log(POM_LOG_WARN "No value given for param %s of helper %s", name, type);
 					}
-
+					xmlFree(value);
+					xmlFree(name);
 
 				}
 				sub = sub->next;

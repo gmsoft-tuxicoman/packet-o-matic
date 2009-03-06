@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,6 +24,7 @@
 
 #include "common.h"
 #include "input.h"
+#include "rules.h"
 
 #include <time.h>
 #ifdef TIME_WITH_SYS_TIME
@@ -54,7 +55,7 @@ struct timer_queue {
 
 
 
-int timers_process();
+int timers_process(struct rule_list *list, pthread_rwlock_t *lock);
 int timers_cleanup();
 struct timer *timer_alloc(void* priv, struct input *i, int (*handler) (void*));
 int timer_cleanup(struct timer *t);

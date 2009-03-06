@@ -63,7 +63,7 @@ int dump_invalid_packet(struct frame *f) {
  * @param l Current layer that we are currently looking at
  * @param n Current node what we are evaluating
  * @param last Last node what we should evaluate
- * @return True or false. Set *l to the last matched layer.
+ * @return 1 if true, 0 if false, -1 in case of invalid packet. Set *l to the last matched layer.
  **/
 
 int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct rule_node *last) {
@@ -91,6 +91,10 @@ int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct ru
 					pom_log(POM_LOG_ERR "Error, first layer is undefined !");
 					return 0;
 				}
+
+				if (!(match_get_flags((*l)->prev->type) & MATCH_FLAG_NO_IDENTIFY))
+					return 0; // The previous layer should have identified something, let's not try to override it
+
 				unsigned int next_layer;
 				(*l)->type = n->layer;
 				if (layer_field_pool_get(*l) != POM_OK) {
@@ -99,9 +103,8 @@ int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct ru
 				}
 				next_layer = match_identify(f, *l, (*l)->prev->payload_start, (*l)->prev->payload_size);
 				if (next_layer == POM_ERR) {
-					// restore the original value
-					(*l)->type = match_undefined_id;
-					return 0;
+					// invalid packet
+					return -1;
 				} else {
 					(*l)->next = layer_pool_get();
 					(*l)->next->prev = *l;
@@ -171,6 +174,8 @@ int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct ru
 				struct layer *layer_a = (*l), *layer_b = (*l);
 				result_a = node_match(f, &layer_a, n->a, new_last);
 				result_b = node_match(f, &layer_b, n->b, new_last);
+				if (result_a == -1 || result_b == -1)
+					return -1; // Invalid packet
 				if (n->op & RULE_OP_OR)
 					result = result_a || result_b;
 				else
@@ -179,10 +184,16 @@ int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct ru
 					return 0;
 				if ((result_a && result_b) && (layer_a != layer_b)) { // we have to branch here because both side didn't match up to the same layer
 					// last layer matched is different, branching
-					if (result_a) 
+					if (result_a)  {
 						result_a = node_match(f, &layer_a, new_last, last);
-					if (result_b)
+						if (result_a == -1)
+							return -1; // Invalid packet
+					}
+					if (result_b) {
 						result_b = node_match(f, &layer_b, new_last, last);
+						if (result_b == -1)
+							return -1; //Invalid packet
+					}
 					if (n->op & RULE_OP_OR)
 						result = result_a || result_b;
 					else
@@ -242,7 +253,8 @@ int do_rules(struct frame *f, struct rule_list *rules, pthread_rwlock_t *rule_lo
 		l->next->type = match_identify(f, l, new_start, new_len);
 
 		if (l->next->type == POM_ERR) {
-			l->next = NULL;
+			// Invalid packet
+			return POM_OK;
 		} else if (l->next->type != match_undefined_id) {
 			// Next layer is new. Need to discard current conntrack entry
 			f->ce = NULL;
@@ -293,6 +305,8 @@ int do_rules(struct frame *f, struct rule_list *rules, pthread_rwlock_t *rule_lo
 			// If there is a conntrack_entry, it means one of the target added it's priv, so the packet needs to be processed
 			struct layer *start_l = f->l;
 			r->result = node_match(f, &start_l, r->node, NULL); // Get the result to fully populate layers
+			if (r->result == -1) // Invalid packet
+				return POM_OK;
 			if (r->result) {
 			//	pom_log(POM_LOG_TSHOOT "Rule matched");
 				PTYPE_UINT64_INC(r->pkt_cnt, 1);

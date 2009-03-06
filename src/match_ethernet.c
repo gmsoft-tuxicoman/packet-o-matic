@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,7 +25,7 @@
 #include <sys/socket.h>
 
 
-static struct match_dep *match_ipv4, *match_ipv6, *match_arp, *match_vlan;
+static struct match_dep *match_undefined, *match_ipv4, *match_ipv6, *match_arp, *match_vlan;
 
 static int field_saddr, field_daddr;
 
@@ -36,6 +36,7 @@ int match_register_ethernet(struct match_reg *r) {
 	r->identify = match_identify_ethernet;
 	r->unregister = match_unregister_ethernet;
 	
+	match_undefined = match_add_dependency(r->type, "undefined");
 	match_ipv4 = match_add_dependency(r->type, "ipv4");
 	match_ipv6 = match_add_dependency(r->type, "ipv6");
 	match_arp = match_add_dependency(r->type, "arp");
@@ -79,7 +80,7 @@ static int match_identify_ethernet(struct frame *f, struct layer* l, unsigned in
 			return match_ipv6->id;
 	}
 
-	return POM_ERR;
+	return match_undefined->id;
 }
 
 static int match_unregister_ethernet(struct match_reg *r) {

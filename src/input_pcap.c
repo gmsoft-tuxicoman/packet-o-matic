@@ -147,9 +147,6 @@ static int input_open_pcap(struct input *i) {
 			return POM_ERR;
 		p->dir_cur_file = p->dir_files;
 
-		// Open the next file if any
-		p->dir_cur_file = p->dir_cur_file->next;
-
 		// Skip files which could not be read
 		while (p->dir_cur_file && !p->dir_cur_file->first_pkt.tv_sec)
 			p->dir_cur_file = p->dir_cur_file->next;

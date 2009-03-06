@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -55,6 +55,9 @@ struct match_dep {
 /// Maximum of register matches
 #define MAX_MATCH 16
 
+/// Flag set if the next layer will always be undefined
+#define MATCH_FLAG_NO_IDENTIFY 0x01
+
 /// Variable that hold info about all the registered matches
 extern struct match_reg *matches[MAX_MATCH];
 
@@ -70,6 +73,7 @@ struct match_reg {
 	void *dl_handle; ///< Handle of the library
 	unsigned int refcount; ///< Reference count
 	struct match_dep match_deps[MAX_MATCH]; ///< Match dependencies
+	unsigned int flags; ///< Match flags, currently only for MATCH_FLAG_NO_IDENTIFY
 
 	/// Pointer to the identify function
 	/**
@@ -78,7 +82,7 @@ struct match_reg {
 	 * @param l The current layer
 	 * @param start Offset of this layer in the buffer
 	 * @param len Length of this layer
-	 * @return POM_OK on success, POM_ERR if there is nothing more on error.
+	 * @return POM_OK on success, POM_ERR if the packet is invalid.
 	 */
 	int (*identify) (struct frame *f, struct layer* l, unsigned int start, unsigned int len);
 
@@ -133,6 +137,9 @@ int match_cleanup_field(struct match_field *p);
 
 /// Get the type of the match from its name
 int match_get_type(const char *match_name);
+
+/// Get the flags from a specific match
+unsigned int match_get_flags(int match_type);
 
 /// Get the name of the match from its type
 char *match_get_name(int match_type);

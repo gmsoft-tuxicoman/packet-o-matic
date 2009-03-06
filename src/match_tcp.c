@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -50,6 +50,8 @@ int match_register_tcp(struct match_reg *r) {
 		match_unregister_tcp(r);
 		return POM_ERR;
 	}
+	
+	r->flags |= MATCH_FLAG_NO_IDENTIFY;
 
 	field_sport = match_register_field(r->type, "sport", ptype_uint16, "Source port");
 	field_dport = match_register_field(r->type, "dport", ptype_uint16, "Destination port");
@@ -71,11 +73,18 @@ static int match_identify_tcp(struct frame *f, struct layer* l, unsigned int sta
 	
 	unsigned int hdrlen = (hdr->th_off << 2);
 
-	if (hdrlen > len)
-		return POM_ERR; // Incomplete packet
+	if (hdrlen > len || hdrlen < 20)
+		return POM_ERR; // Incomplete or invalid packet
+
 
 	l->payload_start = start + hdrlen;
 	l->payload_size = len - hdrlen;
+
+	if (((hdr->th_flags & TH_SYN) || (hdr->th_flags & TH_RST)) && l->payload_size > 0)
+		return POM_ERR; // Invalid packet, SYN or RST flag present and len > 0
+	
+	if ((hdr->th_flags & TH_SYN) && ((hdr->th_flags & TH_RST) || (hdr->th_flags & TH_FIN)))
+		return POM_ERR; // Invalid packet SYN and either RST or FIN flag present
 
 
 	PTYPE_UINT16_SETVAL(l->fields[field_sport], ntohs(hdr->th_sport));

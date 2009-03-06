@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -43,6 +43,8 @@ int match_register_udp(struct match_reg *r) {
 
 	if (!ptype_uint16)
 		return POM_ERR;
+
+	r->flags |= MATCH_FLAG_NO_IDENTIFY;
 
 	field_sport = match_register_field(r->type, "sport", ptype_uint16, "Source port");
 	field_dport = match_register_field(r->type, "dport", ptype_uint16, "Destination port");

@@ -58,15 +58,22 @@ static int helper_ipv4_process_frags(struct helper_priv_ipv4 *p) {
 	struct frame *f = p->f;
 
 	struct helper_priv_ipv4_frag *frg = p->frags;
-	int pos = f->bufflen;
+
+	unsigned int pos = f->len;
+	void* old_buff_base = f->buff_base;
+	void* old_buff = f->buff;
 
 	// Calculate the total size of the new packet
 	while (frg) {
-		f->bufflen += frg->len;
+		f->len += frg->len;
 		frg = frg->next;
 	}
 
-	f->len = f->bufflen;
+
+	frame_alloc_aligned_buff(f, f->len);
+	memcpy(f->buff, old_buff, pos);
+
+	free(old_buff_base);
 
 	frg = p->frags;
 	while (frg) {
@@ -171,6 +178,7 @@ static int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned i
 		tmp->f = malloc(sizeof(struct frame));
 		memcpy(tmp->f, f, sizeof(struct frame));
 		frame_alloc_aligned_buff(tmp->f, frag_start);
+		memcpy(tmp->f->buff, f->buff, frag_start);
 		tmp->f->len = frag_start;
 		tmp->hdr_offset = start;
 

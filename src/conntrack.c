@@ -794,6 +794,7 @@ int conntrack_close_connections(struct rule_list *r, pthread_rwlock_t *lock) {
 		struct conntrack_list *cl = ct_table[i];
 		while (cl) {
 			conntrack_close_connection(cl->ce);
+			helper_process_queue(r, lock);
 			// At this point we want to process all the remaining packets in the buffer
 			
 			struct conntrack_helper_priv *hp = cl->ce->helper_privs;

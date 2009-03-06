@@ -27,7 +27,7 @@
 #include <sys/socket.h>
 
 
-static struct match_dep *match_ipv4, *match_ipv6, *match_arp;
+static struct match_dep *match_undefined, *match_ipv4, *match_ipv6, *match_arp;
 
 static int field_saddr, field_daddr, field_baddr, field_type, field_subtype;
 
@@ -38,6 +38,7 @@ int match_register_80211(struct match_reg *r) {
 	r->identify = match_identify_80211;
 	r->unregister = match_unregister_80211;
 	
+	match_undefined = match_add_dependency(r->type, "undefined");
 	match_ipv4 = match_add_dependency(r->type, "ipv4");
 	match_ipv6 = match_add_dependency(r->type, "ipv6");
 	match_arp = match_add_dependency(r->type, "arp");
@@ -72,7 +73,7 @@ static int match_identify_80211(struct frame *f, struct layer* l, unsigned int s
 
 	int offt = 0;
 	
-	int ret = POM_ERR;
+	int ret = match_undefined->id;
 
 	PTYPE_UINT8_SETVAL(l->fields[field_type], i80211hdr->u1.fc.type);
 	PTYPE_UINT8_SETVAL(l->fields[field_subtype], i80211hdr->u1.fc.subtype);

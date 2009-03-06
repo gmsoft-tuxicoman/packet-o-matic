@@ -91,6 +91,7 @@ void pom_log_internal(char *file, const char *format, ...) {
 		}
 	} else {
 		struct log_entry tmp;
+		memset(&tmp, 0, sizeof(struct log_entry));
 		strncpy(tmp.file, file, len);
 		tmp.data = buff;
 		tmp.level = level;
@@ -356,24 +357,6 @@ int uid_init() {
 uint32_t get_uid() {
 
 	return (uint32_t) rand_r(&random_seed);
-}
-
-int layer_find_start(struct layer *l, int header_type) {
-	
-	if (!l)
-		return POM_ERR;
-
-	do {
-		if(l->type == header_type) {
-			if (l->prev)
-				return l->prev->payload_start;
-			else
-				return 0;
-		}
-		l = l->next;
-	} while(l);
-
-	return POM_ERR;
 }
 
 int base64_decode(char *output, char *input) {

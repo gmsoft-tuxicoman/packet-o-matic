@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,7 +28,7 @@
 static struct timer_queue *timer_queues;
 
 
-int timers_process() {
+int timers_process(struct rule_list *list, pthread_rwlock_t *lock) {
 
 	struct timeval now;
 	get_current_input_time(&now);
@@ -40,12 +40,13 @@ int timers_process() {
 		while (tq->head && timercmp(&tq->head->expires, &now, <)) {
 				pom_log(POM_LOG_TSHOOT "Timer 0x%lx reached. Starting handler ...", (unsigned long) tq->head);
 				(*tq->head->handler) (tq->head->priv);
+				helper_process_queue(list, lock);
 		}
 		tq = tq->next;
 
 	}
 
-	return 1;
+	return POM_OK;
 }
 
 
@@ -73,7 +74,7 @@ int timers_cleanup() {
 		free(tmpq);
 	}
 
-	return 1;
+	return POM_OK;
 
 }
 
@@ -108,7 +109,7 @@ int timer_cleanup(struct timer *t) {
 
 	free(t);
 	
-	return 1;
+	return POM_OK;
 }
 
 int timer_queue(struct timer *t, unsigned int expiry) {
@@ -118,7 +119,7 @@ int timer_queue(struct timer *t, unsigned int expiry) {
 
 	if (t->prev || t->next) {
 		pom_log(POM_LOG_WARN "Error, timer not dequeued correctly");
-		return -1;
+		return POM_ERR;
 	}
 
 	// First find the right queue or create it
@@ -201,7 +202,7 @@ int timer_queue(struct timer *t, unsigned int expiry) {
 	memcpy(&t->expires, &tv, sizeof(struct timeval));
 	t->expires.tv_sec += expiry;
 
-	return 1;
+	return POM_OK;
 }
 
 
@@ -233,7 +234,7 @@ int timer_dequeue(struct timer *t) {
 
 
 					free (tq);
-					return 1;
+					return POM_OK;
 				}*/
 				break;
 			}
@@ -265,5 +266,5 @@ int timer_dequeue(struct timer *t) {
 	t->prev = NULL;
 	t->next = NULL;
 
-	return 1;
+	return POM_OK;
 }
