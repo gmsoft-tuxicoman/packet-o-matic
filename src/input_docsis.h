@@ -33,8 +33,14 @@
 /// Length of a MPEG packet
 #define MPEG_TS_LEN 188
 
+/// snaplen for docsis input
+#define DOCSIS_SNAPLEN 1800 // should be less but we alloc a bit more for internal processing
+
 /// Buffer to temporarily store parts of DOCSIS packets
 #define TEMP_BUFF_LEN 2000
+
+/// Transmition time of a MPEG frame in usec assuming QAM256 and 6952000 sym/sec
+#define MPEG_XMIT_TIME 188 * 1000000 / 6952000
 
 /// Private structure of the docsis input.
 struct input_priv_docsis {
@@ -55,12 +61,15 @@ struct input_priv_docsis {
 	unsigned int scan_srate; ///< Symbol rate to use
 	fe_modulation_t scan_modulation; ////< Modulation to use
 
+	// variables used in mode file to compute packet arrival time
+	uint32_t last_sync_tstamp;
+	struct timeval packet_time, packet_time_last_sync;
+
 	// stats stuff
 	unsigned long total_packets; ///< Total packet read.
 	unsigned long missed_packets; ///< Number of missed packets.
 	unsigned long error_packets; ///< Number of erroneous packets.
 	unsigned long invalid_packets; ///< Number of invalid packets.
-
 
 };
 

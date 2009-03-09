@@ -80,7 +80,10 @@ static int match_identify_tcp(struct frame *f, struct layer* l, unsigned int sta
 	l->payload_start = start + hdrlen;
 	l->payload_size = len - hdrlen;
 
-	if (((hdr->th_flags & TH_SYN) || (hdr->th_flags & TH_RST)) && l->payload_size > 0)
+	if ((hdr->th_flags & TH_RST) && l->payload_size > 0)
+		l->payload_size = 0; // RFC 1122 4.2.2.12 : RST may contain the data that caused the packet to be sent
+
+	if ((hdr->th_flags & TH_SYN) && l->payload_size > 0)
 		return POM_ERR; // Invalid packet, SYN or RST flag present and len > 0
 	
 	if ((hdr->th_flags & TH_SYN) && ((hdr->th_flags & TH_RST) || (hdr->th_flags & TH_FIN)))

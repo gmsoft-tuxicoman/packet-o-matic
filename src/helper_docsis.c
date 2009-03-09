@@ -35,9 +35,9 @@ static int helper_resize_docsis(struct frame *f, unsigned int start, unsigned in
 	struct docsis_hdr *dhdr = f->buff + start;
 
 	if (dhdr->ehdr_on)
-		dhdr->len = htons(new_psize +  dhdr->fc_parm);
+		dhdr->len = htons(new_psize + dhdr->fc_parm + sizeof(struct docsis_hdr));
 	else
-		dhdr->len = htons(new_psize);
+		dhdr->len = htons(new_psize + sizeof(struct docsis_hdr));
 
 	return POM_OK;
 }

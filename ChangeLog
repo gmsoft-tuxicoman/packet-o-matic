@@ -1,3 +1,15 @@
+* 2009/03/08 Guy Martin <gmsoft@tuxicoman.be>
+Added mode_file to input_docsis.
+Get rid of memmove() when skipping docsis header in input_docsis.
+Fix stuff byte detection at begining of new packets in input_docsis.
+Fix small memory leak in conntrack parameter parsing.
+Handle TCP RST packets with payload.
+Fix resizing of docsis packets.
+Fix match dependencies when unloading a match.
+Improve processing targets associated with the conntracks.
+Clear SYN FIN and RST flag from frame being used as a template for filling gap in helper_tcp.
+Fix false positive buffer overflow detection with FORTIFY_SOURCE in mgmtcmd.c.
+
 * 2009/03/06 Guy Martin <gmsoft@tuxicoman.be>
 Function match_identify now returns POM_ERR on invalid packet and the id of
 undefined match if the next layer is unknown.

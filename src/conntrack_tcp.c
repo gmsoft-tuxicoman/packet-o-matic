@@ -58,7 +58,7 @@ int conntrack_register_tcp(struct conntrack_reg *r) {
 	conntrack_register_param(r->type, "close_timer", "10", tcp_close_t, "Close timer");
 	conntrack_register_param(r->type, "time_wait_timer", "180", tcp_time_wait_t, "Time wait timer");
 	conntrack_register_param(r->type, "established_timer", "7200", tcp_established_t, "Established timer");
-	conntrack_register_param(r->type, "enable_reuse_handling", "false", tcp_reuse_handling, "Handle connection reuse handling (SO_REUSEADDR)");
+	conntrack_register_param(r->type, "enable_reuse_handling", "no", tcp_reuse_handling, "Handle connection reuse handling (SO_REUSEADDR)");
 	
 	return POM_OK;
 }

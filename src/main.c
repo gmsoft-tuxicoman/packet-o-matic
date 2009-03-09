@@ -885,6 +885,7 @@ int ringbuffer_alloc(struct ringbuffer *r, struct input *in) {
 		r->buffer[i] = malloc(sizeof(struct frame));
 		memset(r->buffer[i], 0, sizeof(struct frame));
 		r->buffer[i]->input = in;
+		r->buffer[i]->align_offset = r->ic.buff_align_offset;
 		frame_alloc_aligned_buff(r->buffer[i], r->ic.snaplen);
 		r->buffer[i]->input = main_config->input;
 

@@ -738,6 +738,7 @@ int config_parse(struct conf *c, char * filename) {
 					if (!param) {
 						pom_log(POM_LOG_WARN "No parameter %s for conntrack %s", type, name);
 						sub = sub->next;
+						xmlFree(name);
 						continue;
 					}
 					char *value = (char *) xmlNodeListGetString(doc, sub->xmlChildrenNode, 1);
@@ -747,6 +748,8 @@ int config_parse(struct conf *c, char * filename) {
 					} else {
 						pom_log(POM_LOG_WARN "No value given for param %s of conntrack %s", name, type);
 					}
+					xmlFree(value);
+					xmlFree(name);
 
 
 				}

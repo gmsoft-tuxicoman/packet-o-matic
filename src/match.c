@@ -457,7 +457,7 @@ int match_unregister(unsigned int match_type) {
 			if (!matches[i]->match_deps[j].name)
 				break;
 			if (!strcmp(matches[i]->match_deps[j].name, r->name)) {
-				matches[i]->match_deps[j].id = POM_ERR;
+				matches[i]->match_deps[j].id = match_undefined_id;
 				break;
 			}
 		}

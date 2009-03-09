@@ -698,7 +698,7 @@ struct mgmt_command_arg *mgmtcmd_completion_int_range(int start, int count) {
 	int i, end = start + count;
 	for (i = start; i < end; i++) {
 		char temp[64];
-		snprintf(temp, sizeof(temp), "%u", i);
+		snprintf(temp, sizeof(temp) - 1, "%u", i);
 		struct mgmt_command_arg* item = malloc(sizeof(struct mgmt_command_arg));
 		memset(item, 0, sizeof(struct mgmt_command_arg));
 		item->word = malloc(strlen(temp) + 1);

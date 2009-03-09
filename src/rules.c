@@ -104,6 +104,7 @@ int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct ru
 				next_layer = match_identify(f, *l, (*l)->prev->payload_start, (*l)->prev->payload_size);
 				if (next_layer == POM_ERR) {
 					// invalid packet
+					dump_invalid_packet(f);
 					return -1;
 				} else {
 					(*l)->next = layer_pool_get();
@@ -254,6 +255,7 @@ int do_rules(struct frame *f, struct rule_list *rules, pthread_rwlock_t *rule_lo
 
 		if (l->next->type == POM_ERR) {
 			// Invalid packet
+			dump_invalid_packet(f);
 			return POM_OK;
 		} else if (l->next->type != match_undefined_id) {
 			// Next layer is new. Need to discard current conntrack entry
@@ -324,18 +326,13 @@ int do_rules(struct frame *f, struct rule_list *rules, pthread_rwlock_t *rule_lo
 		while (cp) {
 			// need buffer as the present cp can be deleted by target_process if an error occurs
 			struct conntrack_target_priv *cp_next = cp->next;
-			r = rules;
-			while (r) {
-				struct target *t = r->target;
-				while (t) {
-					if (t == cp->t && !t->matched) {
-						target_process(t, f);
-						t->matched = 1; // Do no process this target again if it matched here
-					}
-					t = t->next;
-				}
-				r = r->next;
+				
+			struct target *t = cp->t;
+			if (!t->matched) {
+				target_process(t, f);
+				t->matched = 1; // Do no process this target again if it matched here
 			}
+
 			cp = cp_next;
 		}
 	}

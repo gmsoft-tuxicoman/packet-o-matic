@@ -402,6 +402,9 @@ static int helper_fill_gap_tcp(struct frame *f, struct layer *l, uint32_t seq_in
 		struct tcphdr *hdr = fgap->buff + start;
 		hdr->th_seq = htonl(seq_init);
 
+		// Clear SYN/FIN/RST packet
+		hdr->th_flags &= ~(TH_SYN | TH_FIN | TH_RST);
+
 		if (helper_resize_payload(fgap, l, cur) == POM_ERR)
 			return POM_ERR;
 
