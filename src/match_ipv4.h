@@ -26,6 +26,10 @@
 #include "modules_common.h"
 #include "match.h"
 
+#ifndef IPPROTO_GRE
+#define IPPROTO_GRE 47
+#endif
+
 
 int match_register_ipv4(struct match_reg *r);
 static int match_identify_ipv4(struct frame *f, struct layer* l, unsigned int start, unsigned int len);

@@ -47,7 +47,10 @@ int dump_invalid_packet(struct frame *f) {
 	snprintf(buff, sizeof(buff), "Invalid packet : frame len %u, bufflen %u > ", f->len, f->bufflen);
 
 	while (l) {
-		snprintf(buff + strlen(buff), sizeof(buff) - strlen(buff) - 1, "%s pstart %u, psize %u", match_get_name(l->type), l->payload_start, l->payload_size);
+		char *match_name = match_get_name(l->type);
+		if (!match_name)
+			match_name = "invalid";
+		snprintf(buff + strlen(buff), sizeof(buff) - strlen(buff) - 1, "%s pstart %u, psize %u", match_name, l->payload_start, l->payload_size);
 		l = l->next;
 		if (l)
 			snprintf(buff + strlen(buff), sizeof(buff) - strlen(buff) - 1, " > ");

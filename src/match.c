@@ -265,6 +265,9 @@ int match_init() {
  */
 char *match_get_name(int match_type) {
 
+	if (match_type < 0 || match_type > MAX_MATCH)
+		return NULL;
+
 	if (matches[match_type])
 		return matches[match_type]->name;
 	

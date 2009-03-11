@@ -1,3 +1,7 @@
+* 2009/03/11 Guy Martin <gmsoft@tuxicoman.be>
+Defined IPPROTO_GRE if not defined.
+Make sure match_name is not null when printing invalid paket layers.
+
 * 2009/03/08 Guy Martin <gmsoft@tuxicoman.be>
 Added mode_file to input_docsis.
 Get rid of memmove() when skipping docsis header in input_docsis.
