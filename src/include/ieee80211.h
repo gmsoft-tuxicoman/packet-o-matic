@@ -149,10 +149,12 @@
 
 struct ieee80211_hdr {
 	union {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 		struct {
 			uint8_t version:2;
 			uint8_t type:2;
 			uint8_t subtype:4;
+
 			uint8_t to_ds:1;
 			uint8_t from_ds:1;
 			uint8_t more_frag:1;
@@ -162,7 +164,24 @@ struct ieee80211_hdr {
 			uint8_t wep:1;
 			uint8_t order:1;
 		} __attribute__ ((packed)) fc;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+		struct {
+			uint8_t subtype:4;
+			uint8_t type:2;
+			uint8_t version:2;
 
+			uint8_t order:1;
+			uint8_t wep:1;
+			uint8_t more_data:1;
+			uint8_t pwrmgmt:1;
+			uint8_t retry:1;
+			uint8_t more_frag:1;
+			uint8_t from_ds:1;
+			uint8_t to_ds:1;
+		} __attribute__ ((packed)) fc;
+#else
+# error "Please fix <endian.h>"
+#endif
 		uint16_t fchdr;
 	} u1;
 
@@ -173,8 +192,13 @@ struct ieee80211_hdr {
 
 	union {
 		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 			uint16_t fragment:4;
 			uint16_t sequence:12;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+			uint16_t sequence:12;
+			uint16_t fragment:4;
+#endif
 		} __attribute__ ((packed)) seq;
 
 		uint16_t seqhdr;
@@ -245,11 +269,19 @@ struct ieee80211_beacon_fixparm {
 } __attribute__ ((packed));
 
 struct ieee80211_qos {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 	uint8_t priority:3;
 	uint8_t reserved3:1;
 	uint8_t eosp:1;
 	uint8_t ackpol:2;
 	uint8_t reserved1:1;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+	uint8_t reserved1:1;
+	uint8_t ackpol:2;
+	uint8_t eosp:1;
+	uint8_t reserved3:1;
+	uint8_t priority:3;
+#endif
 	uint8_t reserved2;
 } __attribute__ ((packed));
 
@@ -268,8 +300,13 @@ struct ieee80211_wep {
 		uint8_t indexhdr;
 
 		struct {
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 			uint8_t reserved1:6;
 			uint8_t keyid:2;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+			uint8_t keyid:2;
+			uint8_t reserved1:6;
+#endif
 		} __attribute__ ((packed)) index;
 	} u1;
 } __attribute__ ((packed));
@@ -280,9 +317,15 @@ struct ieee80211_tkip {
 			uint8_t tsc1;
 			uint8_t wepseed;
 			uint8_t tsc0;
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 			uint8_t reserved1:5;
 			uint8_t extiv:1;
 			uint8_t keyid:2;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+			uint8_t keyid:2;
+			uint8_t extiv:1;
+			uint8_t reserved1:5;
+#endif
 		} __attribute__ ((packed)) iv;
 
 		uint8_t ivhdr;
@@ -307,9 +350,15 @@ struct ieee80211_ccmp {
 			uint8_t pn0;
 			uint8_t pn1;
 			uint8_t reserved1;
+#if __BYTE_ORDER == __LITTLE_ENDIAN
 			uint8_t reserved2:5;
 			uint8_t extiv:1;
 			uint8_t keyid:2;
+#elif __BYTE_ORDER == __BIG_ENDIAN
+			uint8_t keyid:2;
+			uint8_t extiv:1;
+			uint8_t reserved2:5;
+#endif
 		} __attribute__ ((packed)) iv;
 
 		uint8_t ivhdr;

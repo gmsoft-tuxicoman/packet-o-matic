@@ -203,8 +203,23 @@ static int input_open_pcap(struct input *i) {
 			break;
 
 		case DLT_IEEE802_11:
-			pom_log("PCAP output type ie ieee80211");
+			pom_log("PCAP output type is ieee80211");
 			p->output_layer = match_register("80211");
+			break;
+
+		case DLT_PRISM_HEADER:
+			pom_log("PCAP output type is prism (prism2/AVS)");
+			p->output_layer = match_register("prism");
+			break;
+
+		case DLT_PPI:
+			pom_log("PCAP output type is ppi");
+			p->output_layer = match_register("ppi");
+			break;
+
+		case DLT_IEEE802_11_RADIO:
+			pom_log("PCAP output type is radiotap");
+			p->output_layer = match_register("radiotap");
 			break;
 
 		default:

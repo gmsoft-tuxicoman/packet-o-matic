@@ -152,7 +152,7 @@ static int match_identify_80211(struct frame *f, struct layer* l, unsigned int s
 				offt += 30;
 			}
 
-			if (start + offt + sizeof(struct ieee80211_llc) > len)
+			if (offt + sizeof(struct ieee80211_llc) > len)
 				return POM_ERR;
 
 			struct ieee80211_llc *llc = f->buff + start + offt;
@@ -160,7 +160,7 @@ static int match_identify_80211(struct frame *f, struct layer* l, unsigned int s
 			if (llc->dsnap != 0xaa || llc->ssap != 0xaa ||
 				llc->control != 0x03) {
 				// looks like wrong LLC? 
-				return POM_ERR;
+				return match_undefined->id;
 			}
 
 			offt += sizeof(struct ieee80211_llc);
@@ -181,6 +181,25 @@ static int match_identify_80211(struct frame *f, struct layer* l, unsigned int s
 
 	l->payload_start = start + offt;
 	l->payload_size = len - offt;
+
+// x86 can do non aligned access 
+#if !defined(__i386__) && !defined(__x86_64__)
+
+	// Let's align the buffer
+	// Why is this stupid header not always a multiple of 4 bytes ?
+	char offset = (long)(f->buff + l->payload_start) & 3;
+	if (offset) {
+		if (f->buff - offset > f->buff_base) {
+			memmove(f->buff - offset, f->buff, f->len);
+			f->buff -= offset;
+		} else {
+			memmove(f->buff + offset, f->buff, f->len);
+			f->buff += offset;
+
+		}
+	}
+
+#endif
 
 	return ret;
 }

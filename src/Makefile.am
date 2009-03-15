@@ -21,7 +21,7 @@ libpom_la_SOURCES = input.c input.h match.c match.h conntrack.c conntrack.h targ
 libpom_la_CFLAGS = -DLIBDIR='"@LIB_DIR@"'
 
 INPUT_OBJS = @INPUT_OBJS@
-MATCH_OBJS = match_docsis.la match_ethernet.la match_80211.la match_vlan.la match_ipv4.la match_icmp.la match_ipv6.la match_icmpv6.la match_tcp.la match_udp.la match_rtp.la match_undefined.la match_linux_cooked.la
+MATCH_OBJS = match_docsis.la match_ethernet.la match_80211.la match_vlan.la match_ipv4.la match_icmp.la match_ipv6.la match_icmpv6.la match_tcp.la match_udp.la match_rtp.la match_undefined.la match_linux_cooked.la match_prism.la match_ppi.la match_radiotap.la
 CONNTRACK_OBJS = conntrack_ipv4.la conntrack_ipv6.la conntrack_rtp.la conntrack_tcp.la conntrack_udp.la
 HELPER_OBJS = helper_docsis.la helper_ipv4.la helper_ipv6.la helper_tcp.la helper_rtp.la
 TARGET_OBJS = target_display.la target_dump_payload.la target_irc.la target_http.la target_msn.la target_pop.la target_rtp.la target_tftp.la target_null.la @TARGET_OBJS@
@@ -79,6 +79,15 @@ match_undefined_la_LIBADD = libpom.la
 match_linux_cooked_la_SOURCES = match_linux_cooked.c match_linux_cooked.h modules_common.h include/sll.h
 match_linux_cooked_la_LDFLAGS = -module -avoid-version
 match_linux_cooked_la_LIBADD = libpom.la
+match_prism_la_SOURCES = match_prism.c match_prism.h modules_common.h include/prism.h
+match_prism_la_LDFLAGS = -module -avoid-version
+match_prism_la_LIBADD = libpom.la
+match_ppi_la_SOURCES = match_ppi.c match_ppi.h modules_common.h include/ppi.h
+match_ppi_la_LDFLAGS = -module -avoid-version
+match_ppi_la_LIBADD = libpom.la
+match_radiotap_la_SOURCES = match_radiotap.c match_radiotap.h modules_common.h include/radiotap.h
+match_radiotap_la_LDFLAGS = -module -avoid-version
+match_radiotap_la_LIBADD = libpom.la
 
 conntrack_ipv4_la_SOURCES = conntrack_ipv4.c conntrack_ipv4.h modules_common.h include/jhash.h
 conntrack_ipv4_la_LDFLAGS = -module -avoid-version

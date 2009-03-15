@@ -428,7 +428,7 @@ void *input_thread_func(void *params) {
 	while (r->usage) {
 		pthread_cond_signal(&r->underrun_cond);
 		pthread_mutex_unlock(&r->mutex);
-		pom_log(POM_LOG_TSHOOT "Waiting for ringbuffer to be empty");
+		//pom_log(POM_LOG_TSHOOT "Waiting for ringbuffer to be empty");
 		usleep(50000);
 		pthread_mutex_lock(&r->mutex);
 		

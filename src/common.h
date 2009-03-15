@@ -74,6 +74,16 @@
 #include <sys/endian.h>
 #elif HAVE_ENDIAN_H
 #include <endian.h>
+#else
+
+#define LITTLE_ENDIAN	1234
+#define BIG_ENDIAN	4321
+#ifdef WORDS_BIGENDIAN
+#define BYTE_ORDER	BIG_ENDIAN
+#else
+#define BYTE_ORDER	LITTLE_ENDIAN
+#endif
+
 #endif
 
 #include "layer.h"
@@ -155,12 +165,26 @@ int base64_decode(char *output, char *input);
 
 uint64_t bswap64(uint64_t x);
 
+#ifndef bswap16
+#define bswap16(x) \
+	((((x) >> 8) & 0xffu) | (((x) & 0xffu) << 8))
+#endif
+#ifndef bswap32
+#define bswap32(x) \
+	((((x) & 0xff000000u) >> 24) | (((x) & 0x00ff0000u) >>  8) | \
+	(((x) & 0x0000ff00u) <<  8) | (((x) & 0x000000ffu) << 24))
+#endif
+
 #if BYTE_ORDER == BIG_ENDIAN
-#define ntohll(x) (x)
-#define htonll(x) (x)
+#define le16(x)		bswap16(x)
+#define le32(x)		bswap32(x)
+#define ntohll(x)	(x)
+#define htonll(x)	(x)
 #elif BYTE_ORDER == LITTLE_ENDIAN
-#define ntohll(x) bswap64(x)
-#define htonll(x) bswap64(x)
+#define le16(x)		(x)
+#define le32(x)		(x)
+#define ntohll(x)	bswap64(x)
+#define htonll(x)	bswap64(x)
 #else
 #error "Please define byte ordering"
 #endif

@@ -327,7 +327,10 @@ unsigned int match_get_flags(int match_type) {
  */
 
 int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigned int len) {
-	
+
+	if (l->type < 0 || l->type > MAX_MATCH)
+		return POM_ERR;
+
 	if (matches[l->type]->identify)
 		return (*matches[l->type]->identify) (f, l, start, len);
 

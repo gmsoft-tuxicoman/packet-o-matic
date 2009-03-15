@@ -758,8 +758,9 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 	int dlen = 0; // len of the docsis MAC frame including headers
 
 	// Recalculate correct offset for the buffer as it may have been moved to skip the docsis header
-	int frame_len = DOCSIS_SNAPLEN + f->align_offset + 4;
-	f->buff = (void*) (((long)f->buff_base & ~3) + 4 + f->align_offset);
+	// We should not take the align_offset in account here as the ethernet header will align perfectly
+	int frame_len = DOCSIS_SNAPLEN + 4;
+	f->buff = (void*) (((long)f->buff_base & ~3) + 4);
 	f->bufflen = frame_len - ((long)f->buff - (long)f->buff_base);
 	
 

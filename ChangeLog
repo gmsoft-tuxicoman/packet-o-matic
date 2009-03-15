@@ -1,3 +1,11 @@
+* 2009/03/15 Guy Martin <gmsoft@tuxicoman.be>
+Added support for prism, ppi and radiotap headers.
+Fix frame alignment in input_docsis.
+Fix big-endian support for match_80211.
+Make sure the frame is aligned after matching the 80211 header.
+First layers can now be skipped in the rule declaration.
+Fix endianess detection on opensolaris.
+
 * 2009/03/11 Guy Martin <gmsoft@tuxicoman.be>
 Defined IPPROTO_GRE if not defined.
 Make sure match_name is not null when printing invalid paket layers.

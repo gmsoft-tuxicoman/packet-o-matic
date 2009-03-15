@@ -88,6 +88,14 @@ int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct ru
 		}
 
 		if (!n->b) { // Only one node is attached to this one
+
+			if (!(*l)->prev) {
+				// We're dealing with the first layer, let's see when we start matching something
+				while (*l && n->layer != (*l)->type)
+					*l = (*l)->next;
+				if (!*l)
+					return 0;
+			}
 			// The current layer is not identified. Let's see if we can match with the current match type
 			if ((*l)->type == match_undefined_id) {
 				if (!(*l)->prev) {

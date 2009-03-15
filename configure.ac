@@ -50,6 +50,8 @@ AC_CHECK_HEADERS([sys/endian.h])
 # Linux specidic header files
 AC_CHECK_HEADERS([mcheck.h endian.h])
 
+# Check endianess
+AC_C_BIGENDIAN
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_CONST
