@@ -79,7 +79,7 @@ static struct mgmt_command mgmt_rule_commands[MGMT_RULE_COMMANDS_NUM] = {
 		.help = "set a description on a rule",
 		.callback_func = mgmtcmd_set_rule_descr,
 		.completion = mgmtcmd_rule_id3_completion,
-		.usage = "Set rule description <rule_id> <descr>",
+		.usage = "set rule description <rule_id> <descr>",
 	},
 
 	{

@@ -399,7 +399,7 @@ int target_process_mime_msnmsgrp2p_msg(struct target *t, struct target_conntrack
 						break;
 					account[strlen(account) - 1] = 0;
 					// We got a message to the server
-					target_msn_session_found_account(cp, arg);
+					target_msn_session_found_account(cp, account);
 				} else if (!strcasecmp(line, "EUF-GUID")) {
 					if (!strcasecmp(arg, "{A4268EEC-FEC5-49E5-95C3-F126696BDBF6}")) {
 						cp->file->type = target_file_type_display_image;

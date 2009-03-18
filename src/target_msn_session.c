@@ -119,14 +119,16 @@ int target_msn_session_found_account(struct target_conntrack_priv_msn *cp, char 
 
 	struct target_session_priv_msn *sess = cp->session;
 
+	char *sc = strchr(account, ';');
+	if (sc)
+		*sc = 0;
+
 	if (!sess->account) {
 		sess->account = malloc(strlen(account) + 1);
 		strcpy(sess->account, account);
-		char *sc = strchr(sess->account, ';');
-		if (sc)
-			*sc = 0;
 		pom_log(POM_LOG_TSHOOT "User account is %s", sess->account);
 	} else {
+
 		if (strcmp(sess->account, account)) {
 			pom_log(POM_LOG_WARN "Warning, account missmatch for the msn connection");
 			return POM_ERR;

@@ -1,3 +1,6 @@
+* 2009/03/18 Guy Martin <gmsoft@tuxicoman.be>
+Fix msn account parsing when processing INVITE.
+
 * 2009/03/15 Guy Martin <gmsoft@tuxicoman.be>
 Added support for prism, ppi and radiotap headers.
 Fix frame alignment in input_docsis.
