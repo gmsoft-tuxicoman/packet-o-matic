@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -52,20 +52,12 @@ struct target_param {
 
 };
 
-/// This structure is used by targets to specify how they will save the data 
-struct target_dataset_reg {
-	char *name; ///< Dataset name
-	char *descr; ///< Description
-	struct datavalue_descr *fields; ///< NULL terminated array of fields
-	struct target_dataset_reg *next; ///< Used for linking
-
-};
 
 /// Instance of a dataset for a target
 struct target_dataset {
-	struct target_dataset_reg *type; ///< Common info about the datastore
-	struct ptype *ds_path; ///< Ptype for the dataset parameter value
+	char  *name; ///< Name of the dataset
 	struct dataset *dset; ///< Pointer to the dataset
+	struct datavalue *orig_ds_data; ///< Original datavalue allocated by the dataset
 	struct target_dataset *next; ///<  Used for linking
 
 };
@@ -76,7 +68,6 @@ struct target_mode {
 	char *name; ///< Name of the mode
 	char *descr; ///< Description of the mode
 	struct target_param_reg *params; ///< Parameters associated with this mode
-	struct target_dataset_reg *datasets; ///< Datasets associated with this mode
 	struct target_mode *next; ///< Used for linking
 
 };
@@ -254,16 +245,16 @@ int target_lock(int write);
 /// Release a read or write lock on the targets
 int target_unlock();
 
-/// Register a dataset for a target mode
-int target_register_dataset(struct target_mode *mode, char *name, char *descr, struct datavalue_descr *fields);
-
 /// Return the instance of a previously registered dataset
-struct target_dataset *target_get_dataset_instance(struct target *t, char *name);
+struct target_dataset *target_open_dataset(struct target *t, char *name, char *descr, char *ds_path, struct datavalue_descr *fields);
 
-/// Return the struct datavalue associated with the registered parameters
-struct datavalue *target_get_dataset_values(struct target_dataset *ds);
+/// Allocate a new struct datavalue to be used by a target's connection
+struct datavalue *target_alloc_dataset_values(struct target_dataset *ds);
+
+/// Cleanup allocated datavalue
+int target_cleanup_dataset_values(struct datavalue *dv);
 
 /// Write data in the datastore
-int target_write_dataset(struct target_dataset *ds, struct frame *f);
+int target_write_dataset(struct target_dataset *ds, struct datavalue *dv);
 
 #endif

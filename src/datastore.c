@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -330,14 +330,14 @@ int datastore_open(struct datastore *d) {
 		qv[i].value = ptype_alloc(datasetdbdescr[i][1], NULL);
 	}
 
+	dsdb->dstore = d;
+
 	if (datastores[d->type]->dataset_alloc) {
-		if ((*datastores[d->type]->dataset_alloc) (d, dsdb) == POM_ERR) {
+		if ((*datastores[d->type]->dataset_alloc) (dsdb) == POM_ERR) {
 			goto err;
 		}
 
 	}
-
-	dsdb->dstore = d;
 
 	// Allocate the dataset fields db
 	
@@ -377,14 +377,15 @@ int datastore_open(struct datastore *d) {
 	memset(dsfields->query_read_order, 0, sizeof(struct datavalue_read_order));
 	dsfields->query_read_order->field_id = 3;
 
+	dsfields->dstore = d;
+
 	if (datastores[d->type]->dataset_alloc) {
-		if ((*datastores[d->type]->dataset_alloc) (d, dsfields) == POM_ERR) {
+		if ((*datastores[d->type]->dataset_alloc) (dsfields) == POM_ERR) {
 			goto err;
 		}
 
 	}
 
-	dsfields->dstore = d;
 
 	struct dataset *tmp;
 
@@ -497,7 +498,7 @@ err:
 		struct dataset *tmp = d->datasets;
 		d->datasets = tmp->next;
 		if (datastores[d->type]->dataset_cleanup)
-			(*datastores[d->type]->dataset_cleanup) (d, tmp);
+			(*datastores[d->type]->dataset_cleanup) (tmp);
 		struct datavalue *dv = tmp->query_data;
 		if (dv) {
 			int i;
@@ -515,7 +516,7 @@ err:
 
 	if (dsdb) {
 		if (datastores[d->type]->dataset_cleanup)
-			(*datastores[d->type]->dataset_cleanup) (d, dsdb);
+			(*datastores[d->type]->dataset_cleanup) (dsdb);
 		int i;
 		struct datavalue *dv = dsdb->query_data;
 		if (dv) {
@@ -531,7 +532,7 @@ err:
 	}
 	if (dsfields) {
 		if (datastores[d->type]->dataset_cleanup)
-			(*datastores[d->type]->dataset_cleanup) (d, dsfields);
+			(*datastores[d->type]->dataset_cleanup) (dsfields);
 		int i;
 		struct datavalue *dv = dsfields->query_data;
 		if (dv) {
@@ -565,6 +566,7 @@ struct dataset *datastore_dataset_open(struct datastore *d, char *name, char *ty
 	}
 
 
+	// Check if this datastore already has the wanted dataset
 	struct dataset *tmp = d->datasets;
 	while (tmp) {
 		if (!strcmp(tmp->name, name)) {
@@ -573,7 +575,8 @@ struct dataset *datastore_dataset_open(struct datastore *d, char *name, char *ty
 		}
 		tmp = tmp->next;
 	}
-
+	
+	// Make sure dataset we found is the same as the requested one
 	if (tmp) {
 		if (strcmp(tmp->type, type)) {
 			pom_log(POM_LOG_ERR "Could not open dataset %s of type %s in datastore %s : Dataset type supplied differs (%s)", name, tmp->type, d->name, type);
@@ -603,13 +606,14 @@ struct dataset *datastore_dataset_open(struct datastore *d, char *name, char *ty
 		tmp->dstore = d;
 
 		if (datastores[d->type]->dataset_alloc) {
-			if ((*datastores[d->type]->dataset_alloc) (d, tmp) == POM_ERR) {
+			if ((*datastores[d->type]->dataset_alloc) (tmp) == POM_ERR) {
 				pom_log(POM_LOG_ERR "Unable to allocate the dataset");
 				goto err;
 			}
 		}
 	}
 
+	// Dataset wasn't found in the datastore, let's create it
 	if (!tmp) {
 
 		pom_log("Dataset %s in datastore %s doesn't exist yet. Creating it ...", name, d->name);
@@ -646,9 +650,10 @@ struct dataset *datastore_dataset_open(struct datastore *d, char *name, char *ty
 		}
 
 		tmp->query_data = dfields;
+		tmp->dstore = d;
 
 		if (datastores[d->type]->dataset_alloc) {
-			if ((*datastores[d->type]->dataset_alloc) (d, tmp) == POM_ERR) {
+			if ((*datastores[d->type]->dataset_alloc) (tmp) == POM_ERR) {
 				pom_log(POM_LOG_ERR "Unable to allocate the dataset");
 				goto err;
 			}
@@ -682,9 +687,6 @@ struct dataset *datastore_dataset_open(struct datastore *d, char *name, char *ty
 			}
 		}
 
-
-		tmp->dstore = d;
-
 		struct dataset *dsnext = d->datasets;
 		if (!dsnext) {
 			d->datasets = tmp;
@@ -702,7 +704,7 @@ struct dataset *datastore_dataset_open(struct datastore *d, char *name, char *ty
 err:
 	if (tmp && !tmp->open) { // if not open means we were allocating it
 		if (tmp->priv) 
-			(*datastores[d->type]->dataset_cleanup) (d, tmp);
+			(*datastores[d->type]->dataset_cleanup) (tmp);
 		
 		struct datavalue *query = tmp->query_data;
 		int i;
@@ -725,7 +727,7 @@ int datastore_dataset_create(struct dataset *query) {
 	struct datastore *d = query->dstore;
 
 	if (datastores[d->type] && datastores[d->type]->dataset_create)
-		return (*datastores[d->type]->dataset_create) (d, query);
+		return (*datastores[d->type]->dataset_create) (query);
 
 	return POM_OK;
 }
@@ -735,7 +737,7 @@ int datastore_dataset_read(struct dataset *query) {
 	struct datastore *d = query->dstore;
 
 	if (datastores[d->type] && datastores[d->type]->dataset_read)
-		return (*datastores[d->type]->dataset_read) (d, query);
+		return (*datastores[d->type]->dataset_read) (query);
 
 	return POM_ERR;
 
@@ -746,7 +748,7 @@ int datastore_dataset_write(struct dataset *query) {
 	struct datastore *d = query->dstore;
 
 	if (datastores[d->type] && datastores[d->type]->dataset_write)
-		return (*datastores[d->type]->dataset_write) (d, query);
+		return (*datastores[d->type]->dataset_write) (query);
 
 	return POM_ERR;
 
@@ -762,7 +764,7 @@ int datastore_dataset_close(struct dataset *ds) {
 	}
 
 	if (datastores[d->type] && datastores[d->type]->dataset_cleanup)
-		(*datastores[d->type]->dataset_cleanup) (d, ds);
+		(*datastores[d->type]->dataset_cleanup) (ds);
 		
 		
 	ds->priv = NULL;
@@ -824,7 +826,7 @@ int datastore_close(struct datastore *d) {
 
 	struct dataset *tmp = d->datasetdb;
 	if (datastores[d->type]->dataset_cleanup)
-		(*datastores[d->type]->dataset_cleanup) (d, tmp);
+		(*datastores[d->type]->dataset_cleanup) (tmp);
 	dv = tmp->query_data;
 	for (i = 0; dv[i].name; i++) {
 		free(dv[i].name);
@@ -838,7 +840,7 @@ int datastore_close(struct datastore *d) {
 
 	tmp = d->datasetfieldsdb;
 	if (datastores[d->type]->dataset_cleanup)
-		(*datastores[d->type]->dataset_cleanup) (d, tmp);
+		(*datastores[d->type]->dataset_cleanup) (tmp);
 	dv = tmp->query_data;
 	for (i = 0; dv[i].name; i++) {
 		free(dv[i].name);

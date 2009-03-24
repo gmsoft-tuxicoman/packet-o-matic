@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -252,27 +252,6 @@ struct target *target_alloc(int target_type) {
 		return NULL;
 	}
 
-	// Init the datasets parameters
-
-	struct target_mode *m = targets[target_type]->modes;
-	while (m) {
-		struct target_dataset_reg *ds_reg = m->datasets;
-		while (ds_reg) {
-			struct target_dataset *ds = NULL;
-			ds = malloc(sizeof(struct target_dataset));
-			memset(ds, 0, sizeof(struct target_dataset));
-			ds->type = ds_reg;
-			ds->ds_path = ptype_alloc("string", NULL);
-			ds->next = t->datasets;
-			t->datasets = ds;
-			target_register_param_value(t, m, TARGET_DATASTORE_PARAM_NAME, ds->ds_path);
-
-			ds_reg = ds_reg->next;
-		}
-		m = m->next;
-	}
-
-
 	// Init the target internal stuff
 
 	if (targets[target_type]->init) {
@@ -281,8 +260,6 @@ struct target *target_alloc(int target_type) {
 			return NULL;
 		}
 	}
-
-
 
 
 	t->uid = get_uid();
@@ -472,11 +449,15 @@ int target_close(struct target *t) {
 	if (targets[t->type] && targets[t->type]->close)
 		result = (*targets[t->type]->close) (t);
 
-	struct target_dataset *ds = t->datasets;
-	while (ds) {
-		if (ds->dset && ds->dset->open)
+	while (t->datasets) {
+		struct target_dataset *ds = t->datasets;
+		t->datasets = t->datasets->next;
+		if (ds->dset && ds->dset->open) {
+			ds->dset->query_data = ds->orig_ds_data;
 			datastore_dataset_close(ds->dset);
-		ds = ds->next;
+		}
+		free(ds->name);
+		free(ds);
 	}
 
 	t->serial++;
@@ -511,14 +492,6 @@ int target_cleanup_module(struct target *t) {
 			t->params = p;
 		}
 		targets[t->type]->refcount--;
-	}
-
-	while (t->datasets) {
-		struct target_dataset *ds = t->datasets;
-		t->datasets = t->datasets->next;
-		ptype_cleanup(ds->ds_path);
-		free(ds);
-
 	}
 
 	ptype_cleanup(t->pkt_cnt);
@@ -568,16 +541,6 @@ int target_unregister(int target_type) {
 			mode->params = p;
 		}
 		
-		struct target_dataset_reg *ds = NULL;
-		while (mode->datasets) {
-			ds = mode->datasets;
-			mode->datasets = ds->next;
-
-			free(ds->name);
-			free(ds->descr);
-			free(ds);
-		}
-
 		free(mode->name);
 		free(mode->descr);
 		mode = mode->next;
@@ -790,72 +753,23 @@ int target_unlock() {
 
 }
 
-int target_register_dataset(struct target_mode *mode, char *name, char *descr, struct datavalue_descr *fields) {
-
-	// FIXME check that param has been registered or not
-
-	if (target_register_param(mode, TARGET_DATASTORE_PARAM_NAME, "", "Datastore to use") == POM_ERR)
-		return POM_ERR;
-	
-	struct target_dataset_reg *ds;
-	ds = malloc(sizeof(struct target_dataset));
-	memset(ds, 0, sizeof(struct target_dataset));
-	
-	ds->name = malloc(strlen(name) + 1);
-	strcpy(ds->name, name);
-
-	ds->descr = malloc(strlen(descr) + 1);
-	strcpy(ds->descr, descr);
-
-	ds->fields = fields;
-
-	ds->next = mode->datasets;
-	mode->datasets = ds;
+struct target_dataset *target_open_dataset(struct target *t, char *name, char *descr, char *ds_path, struct datavalue_descr *fields) {
 
 
-	return POM_OK;
+	struct target_dataset *ds = t->datasets;
 
-}
-
-struct target_dataset *target_get_dataset_instance(struct target *t, char *name) {
-
-
-	// Find the dataset registered by the given name
-	struct target_dataset_reg *ds_reg = t->mode->datasets;
-
-	while (ds_reg) {
-		if (!strcmp(ds_reg->name, name))
-			break;
-		ds_reg = ds_reg->next;
-	}
-
-	if (!ds_reg) {
-		pom_log(POM_LOG_ERR "Error, dataset %s was not previously registered", name);
-		return NULL;
-	}
-	
-	// Fin the instance of that dataset
-	struct target_dataset *res = t->datasets;
-	while (res) {
-		if (res->type == ds_reg)
-			break;
-		res = res->next;
-	}
-
-	struct ptype* ds_path = target_get_param_value(t, TARGET_DATASTORE_PARAM_NAME);
-	if (!ds_path) {
-		pom_log(POM_LOG_ERR "Internal error, value of parameter " TARGET_DATASTORE_PARAM_NAME " not found");
-		return NULL;
+	while (ds) {
+		if (!strcmp(ds->name, name)) // Dataset already opened
+			return NULL;
+		ds = ds->next;
 	}
 
 	// Compute the name of the datastore and the dataset
-	char *ds_path_val = PTYPE_STRING_GETVAL(ds_path);
-
-	if (!strlen(ds_path_val))
+	if (!strlen(ds_path))
 		return NULL;
 
-	char *datastore_name = malloc(strlen(ds_path_val) + 1);
-	strcpy(datastore_name, ds_path_val);
+	char *datastore_name = malloc(strlen(ds_path) + 1);
+	strcpy(datastore_name, ds_path);
 
 	char *dataset_name = strchr(datastore_name, '/');
 
@@ -903,7 +817,11 @@ struct target_dataset *target_get_dataset_instance(struct target *t, char *name)
 	strcat(dataset_type, name);
 
 	
-	res->dset = datastore_dataset_open(dstore, dataset_name, dataset_type, ds_reg->descr, ds_reg->fields);
+	struct target_dataset *res = malloc(sizeof(struct target_dataset));
+	memset(res, 0, sizeof(struct target_dataset));
+	res->name = malloc(strlen(name) + 1);
+	strcpy(res->name, name);
+	res->dset = datastore_dataset_open(dstore, dataset_name, dataset_type, descr, fields);
 
 	free(dataset_type);
 
@@ -913,19 +831,54 @@ struct target_dataset *target_get_dataset_instance(struct target *t, char *name)
 		return NULL;
 	}
 	free(datastore_name);
+
+	// Targets should alloc their own datavalue
+	res->orig_ds_data = res->dset->query_data;
+	res->dset->query_data = NULL;
+
+	res->next = t->datasets;
+	t->datasets = res;
+
 	return res;
 
 }
 
 
-struct datavalue *target_get_dataset_values(struct target_dataset *ds) {
+struct datavalue *target_alloc_dataset_values(struct target_dataset *ds) {
+	
+	struct datavalue *res, *dv = ds->orig_ds_data;
 
-	return ds->dset->query_data;
+	unsigned int count, i;
+
+	// Count the number of fields
+	for (count = 0; dv[count].name; count++);
+	res = malloc(sizeof(struct datavalue) * (count + 1));
+	memcpy(res, dv, sizeof(struct datavalue) * (count + 1));
+
+	for (i = 0; i < count; i++)
+		res[i].value = ptype_alloc_from(dv[i].value);
+
+	return res;
 }
 
 
-int target_write_dataset(struct target_dataset *ds, struct frame *f) {
+int target_cleanup_dataset_values(struct datavalue *dv) {
 
-	return datastore_dataset_write(ds->dset);
+	unsigned int i;
+	for (i = 0; dv[i].name; i++)
+		ptype_cleanup(dv[i].value);
+
+	free(dv);
+
+	return POM_OK;
+}
+
+
+int target_write_dataset(struct target_dataset *ds, struct datavalue *dv) {
+
+	ds->dset->query_data = dv;
+	int res = datastore_dataset_write(ds->dset);
+	ds->dset->query_data = NULL;
+	return res;
 
 }

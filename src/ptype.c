@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,7 +23,7 @@
 
 #include <pthread.h>
 
-struct ptype_reg *ptypes[MAX_PTYPE];
+static struct ptype_reg *ptypes[MAX_PTYPE];
 
 static pthread_rwlock_t ptype_global_lock = PTHREAD_RWLOCK_INITIALIZER;
 
@@ -141,8 +141,10 @@ struct ptype* ptype_alloc_from(struct ptype *pt) {
 	memset(ret, 0, sizeof(struct ptype));
 	ret->type = pt->type;
 	if (ptypes[ret->type]) {
-		ptypes[pt->type]->alloc(ret);
-		ptypes[pt->type]->copy(ret, pt);
+		if (ptypes[pt->type]->alloc)
+			ptypes[pt->type]->alloc(ret);
+		if (ptypes[pt->type]->copy)
+			ptypes[pt->type]->copy(ret, pt);
 	}
 
 
@@ -169,7 +171,7 @@ int ptype_parse_val(struct ptype *pt, char *val) {
 }
 
 /**
- * @ingroup ptype_core
+ * @ingroup ptype_api
  * @param pt Ptype which contains the value to print
  * @param val Preallocated buffer to store the value
  * @param size Size of the preallocated buffer
@@ -178,6 +180,26 @@ int ptype_parse_val(struct ptype *pt, char *val) {
 int ptype_print_val(struct ptype *pt, char *val, size_t size) {
 
 	return ptypes[pt->type]->print_val(pt, val, size);
+}
+
+/**
+ * @ingroup ptype_api
+ * @param pt Ptype which contains the value to print
+ * @return A newly allocated string containing the sting representation of the ptype value or NULL on error
+ */
+char *ptype_print_val_alloc(struct ptype *pt) {
+
+	char *res = NULL;
+
+	int size, new_size = DEFAULT_PRINT_VAL_ALLOC_BUFF;
+	do {
+		size = new_size;
+		res = realloc(res, size + 1);
+		new_size = ptype_print_val(pt, res, size);
+		new_size = (new_size < 1) ? new_size * 2 : new_size + 1;
+	} while (new_size > size);
+
+	return res;
 }
 
 /**
@@ -314,7 +336,7 @@ int ptype_unserialize(struct ptype *pt, char *val) {
 int ptype_copy(struct ptype *dst, struct ptype *src) {
 
 	if (dst->type != src->type) {
-		pom_log(POM_LOG_ERR "Error, trying to copy pytes of different type");
+		pom_log(POM_LOG_ERR "Error, trying to copy ptypes of different type");
 		return POM_ERR;
 	}
 
@@ -370,6 +392,23 @@ char *ptype_get_name(unsigned int type) {
 		return ptypes[type]->name;
 
 	return NULL;
+}
+
+/**
+ * @ingroup ptyp_core
+ * @oaran type Type of the ptype
+ * @return The reference count of the ptype
+ **/
+
+unsigned int ptype_get_refcount(unsigned int type) {
+
+	if (type > MAX_PTYPE)
+		return 0;
+
+	if (ptypes[type])
+		return ptypes[type]->refcount;
+
+	return 0;
 }
 
 /**

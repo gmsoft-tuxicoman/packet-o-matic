@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -111,7 +111,7 @@ static int datastore_open_sqlite(struct datastore *d) {
 
 }
 
-static int datastore_dataset_alloc_sqlite(struct datastore *d, struct dataset *ds) {
+static int datastore_dataset_alloc_sqlite(struct dataset *ds) {
 
 
 	struct dataset_priv_sqlite *priv = malloc(sizeof(struct dataset_priv_sqlite));
@@ -195,10 +195,10 @@ static int datastore_dataset_alloc_sqlite(struct datastore *d, struct dataset *d
 	return POM_OK;
 }
 
-static int datastore_dataset_create_sqlite(struct datastore *d, struct dataset *ds) {
+static int datastore_dataset_create_sqlite(struct dataset *ds) {
 
 
-	struct datastore_priv_sqlite *priv = d->priv;
+	struct datastore_priv_sqlite *priv = ds->dstore->priv;
 
 	struct datavalue *dv = ds->query_data;
 
@@ -234,10 +234,10 @@ static int datastore_dataset_create_sqlite(struct datastore *d, struct dataset *
 	return POM_OK;
 }
 
-static int datastore_dataset_read_sqlite(struct datastore *d, struct dataset *ds) {
+static int datastore_dataset_read_sqlite(struct dataset *ds) {
 
 	struct dataset_priv_sqlite *priv = ds->priv;
-	struct datastore_priv_sqlite *dpriv = d->priv;
+	struct datastore_priv_sqlite *dpriv = ds->dstore->priv;
 
 
 	if (ds->state != DATASET_STATE_MORE) {
@@ -327,7 +327,7 @@ static int datastore_dataset_read_sqlite(struct datastore *d, struct dataset *ds
 			}
 			strcat(read_query, " ORDER BY ");
 			strcat(read_query, dv[qro->field_id].name);
-			if (qro->direction)	
+			if (qro->direction == DATASET_READ_ORDER_DESC)
 				strcat(read_query, " DESC");
 			priv->read_query_buff = read_query;
 		}
@@ -402,9 +402,9 @@ static int datastore_dataset_read_sqlite(struct datastore *d, struct dataset *ds
 	return POM_OK;
 }
 
-static int datastore_dataset_write_sqlite(struct datastore *d, struct dataset *ds) {
+static int datastore_dataset_write_sqlite(struct dataset *ds) {
 
-	struct datastore_priv_sqlite *dpriv = d->priv;
+	struct datastore_priv_sqlite *dpriv = ds->dstore->priv;
 	struct dataset_priv_sqlite *priv = ds->priv;
 
 	int res;
@@ -475,7 +475,7 @@ static int datastore_dataset_write_sqlite(struct datastore *d, struct dataset *d
 	return POM_OK;
 }
 
-static int datastore_dataset_cleanup_sqlite(struct datastore *d, struct dataset *ds) {
+static int datastore_dataset_cleanup_sqlite(struct dataset *ds) {
 
 	struct dataset_priv_sqlite *priv = ds->priv;
 	free(priv->read_query);

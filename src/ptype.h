@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -66,6 +66,9 @@
 /// Maximum number of registered
 #define MAX_PTYPE 256
 
+/// Default size for first allocation in ptype_print_val_alloc()
+#define DEFAULT_PRINT_VAL_ALLOC_BUFF 64
+
 /// This structure hold all the informations about a ptype and its attibutes
 struct ptype {
 	int type; ///< Type of the ptype
@@ -112,6 +115,7 @@ struct ptype_reg {
 	 * @return POM_OK on success, POM_ERR on failure.
 	 */
 	int (*parse_val) (struct ptype *pt, char *val);
+
 	/// Pointer to the print function
 	/**
 	 * This function should store a string representation of the ptype value into val.
@@ -162,10 +166,6 @@ struct ptype_reg {
 
 };
 
-/// Contains all the registered ptypes
-/** @ingroup ptype_core **/
-extern struct ptype_reg *ptypes[MAX_PTYPE];
-
 /// Init the ptype subsystem.
 int ptype_init(void);
 
@@ -184,11 +184,17 @@ int ptype_parse_val(struct ptype *pt, char *val);
 /// Print the value of the ptype in a string.
 int ptype_print_val(struct ptype *pt, char *val, size_t size);
 
+/// Allocate a new string and save it's value
+char *ptype_print_val_alloc(struct ptype *pt);
+
 /// Give the type of the ptype from its name.
 int ptype_get_type(char* ptype_name);
 
 /// Give the name of the ptype type
 char *ptype_get_name(unsigned int type);
+
+/// Give the refcount of the ptype
+unsigned int ptype_get_refcount(unsigned int type);
 
 /// Give the ptype operation identifier from it's string representation.
 int ptype_get_op(struct ptype *pt, char *op);

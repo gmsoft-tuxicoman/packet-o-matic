@@ -37,6 +37,13 @@
 	(x)->value = str;			\
 }
 
+/// x is the struct ptype, y the string pointer
+#define PTYPE_STRING_SETVAL_P(x, y) {		\
+	if ((x)->value)				\
+		free((x)->value);		\
+	(x)->value = y;			\
+}
+
 int ptype_register_string(struct ptype_reg *r);
 int ptype_cleanup_string(struct ptype *p);
 int ptype_parse_string(struct ptype *p, char *val);

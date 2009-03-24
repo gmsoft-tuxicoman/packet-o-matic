@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -43,7 +43,7 @@
 #define DATASET_STATE_MORE 1
 
 /// Possible read directions
-#define DATASET_READ_ORDER_INC 0
+#define DATASET_READ_ORDER_ASC 0
 #define DATASET_READ_ORDER_DESC 1
 
 /// Variable that hold info about all the registered datastores
@@ -166,46 +166,41 @@ struct datastore_reg {
 	/// Pointer to the dataset_alloc function
 	/**
 	 * The dataste_alloc function will allocate private data for the dataset
-	 * @param d The datastore where the dataset will be created
 	 * @param ds The dataset to allocate private data to
 	 * @return POM_OK on success, POM_ERR on failure.
 	 */
-	int (*dataset_alloc) (struct datastore *d, struct dataset *ds);
+	int (*dataset_alloc) (struct dataset *ds);
 
 	/// Pointer to the dataset_create function
 	/**
 	 * The dataste_create function will create a new dataset in the database.
-	 * @param d The datastore where the dataset will be created
 	 * @param query The full description of the dataset
 	 * @return POM_OK on success, POM_ERR on failure.
 	 */
-	int (*dataset_create) (struct datastore *d, struct dataset *query);
+	int (*dataset_create) (struct dataset *query);
 
 	/// Pointer to the dataset_read function
 	/**
 	 * The dataste_read function will read data from the dataset
-	 * @param d The datastore where the dataset reside
 	 * @param query Query
 	 * @return POM_OK on success, POM_ERR on failure.
 	 */
-	int (*dataset_read) (struct datastore *d, struct dataset *query);
+	int (*dataset_read) (struct dataset *query);
 
 	/// Pointer to the dataset_write function
 	/**
 	 * The dataste_write function will read write to the dataset
-	 * @param d The datastore where the dataset reside
 	 * @param query Query
 	 * @return POM_OK on success, POM_ERR on failure.
 	 */
-	int (*dataset_write) (struct datastore *d, struct dataset *query);
+	int (*dataset_write) (struct dataset *query);
 
 	/**
 	 * The dataste_cleanup function will free the private data of the dataset
-	 * @param d The datastore where the dataset will be created
 	 * @param query The dataset to free the private data from
 	 * @return POM_OK on success, POM_ERR on failure.
 	 */
-	int (*dataset_cleanup) (struct datastore *d, struct dataset *ds);
+	int (*dataset_cleanup) (struct dataset *ds);
 
 	/// Pointer to the close function
 	/**

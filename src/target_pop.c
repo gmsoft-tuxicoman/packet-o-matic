@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2008-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -28,6 +28,7 @@
 #include "target_pop.h"
 
 #include "ptype_bool.h"
+#include "ptype_uint16.h"
 #include "ptype_string.h"
 
 static unsigned int match_undefined_id;
@@ -35,8 +36,12 @@ static struct target_mode *mode_default;
 
 static unsigned long long total_delivery = 0; ///< Used in mail filename to avoid duplicate
 
-static struct datavalue_descr dataset_fields[3] = { 
-	{ "login", "string" },
+static struct datavalue_descr dataset_fields[7] = {
+	{ "time", "string" },
+	{ "client", "string" },
+	{ "server", "string" },
+	{ "port", "uint16" },
+	{ "user", "string" },
 	{ "password", "string" },
 	{ NULL, NULL },
 };
@@ -63,11 +68,10 @@ int target_register_pop(struct target_reg *r) {
 
 	mode_default = target_register_mode(r->type, "dump", "Dump emails into separate maildir folders");
 
-	target_register_dataset(mode_default, TARGET_POP_DATASET_CREDENTIAL, "Credentials found", dataset_fields);
-
 	if (!mode_default)
 		return POM_ERR;
 
+	target_register_param(mode_default, "datastore_path", "", "Path to the datastore");
 	target_register_param(mode_default, "path", "/tmp/", "Path of the maildir folder used to save the emails");
 
 	return POM_OK;
@@ -82,13 +86,15 @@ static int target_init_pop(struct target *t) {
 	t->target_priv = priv;
 
 	priv->path = ptype_alloc("string", NULL);
+	priv->ds_path = ptype_alloc("string", NULL);
 
-	if (!priv->path) {
+	if (!priv->path || !priv->ds_path) {
 		target_cleanup_pop(t);
 		return POM_ERR;
 	}
 
 	target_register_param_value(t, mode_default, "path", priv->path);
+	target_register_param_value(t, mode_default, "datastore_path", priv->ds_path);
 
 	return POM_OK;
 }
@@ -97,7 +103,7 @@ static int target_open_pop(struct target *t) {
 
 	struct target_priv_pop *priv = t->target_priv;
 
-	priv->dset = target_get_dataset_instance(t, TARGET_POP_DATASET_CREDENTIAL);
+	priv->dset = target_open_dataset(t, TARGET_POP_DATASET_CREDENTIAL, "Credential founds", PTYPE_STRING_GETVAL(priv->ds_path), dataset_fields);
 
 	return POM_OK;
 
@@ -121,6 +127,7 @@ static int target_cleanup_pop(struct target *t) {
 
 	if (priv) {
 			
+		ptype_cleanup(priv->ds_path);
 		ptype_cleanup(priv->path);
 		free(priv);
 
@@ -165,6 +172,9 @@ static int target_process_pop(struct target *t, struct frame *f) {
 		if (*(cp->parsed_path + strlen(cp->parsed_path) - 1) != '/')
 			strcat(cp->parsed_path, "/");
 
+		if (priv->dset)
+			cp->logon_data = target_alloc_dataset_values(priv->dset);
+
 		conntrack_add_target_priv(cp, t, f->ce, target_close_connection_pop);
 
 		cp->ce = f->ce;
@@ -174,9 +184,6 @@ static int target_process_pop(struct target *t, struct frame *f) {
 		priv->ct_privs = cp;
 	
 	
-
-
-
 	}
 
 	if (lastl->payload_size == 0)
@@ -191,7 +198,7 @@ static int target_process_pop(struct target *t, struct frame *f) {
 	while (bufpos < lastl->payload_size && linepos < sizeof(line) - 1) {
 		line[linepos] = payload[bufpos];
 		if (payload[bufpos] == '\n') {
-			if (pop_process_line(t, cp, line, linepos, f) == POM_ERR)
+			if (pop_process_line(t, cp, line, linepos, f, lastl) == POM_ERR)
 				return POM_ERR;
 			memset(line, 0, sizeof(line));
 			linepos = 0;
@@ -204,14 +211,14 @@ static int target_process_pop(struct target *t, struct frame *f) {
 	}
 
 	if (linepos > 0)
-		if (pop_process_line(t, cp, line, linepos, f) == POM_ERR)
+		if (pop_process_line(t, cp, line, linepos, f, lastl) == POM_ERR)
 			return POM_ERR;
 
 
 	return POM_OK;
 }
 
-static int pop_process_line(struct target *t, struct target_conntrack_priv_pop *cp, char *line, int size, struct frame *f) {
+static int pop_process_line(struct target *t, struct target_conntrack_priv_pop *cp, char *line, int size, struct frame *f, struct layer *lastl) {
 
 	enum pop_reply {
 		pop_reply_unk = 0,
@@ -230,15 +237,8 @@ static int pop_process_line(struct target *t, struct target_conntrack_priv_pop *
 		} else if (!strncasecmp("-ERR", line, strlen("-ERR"))) {
 			cp->server_dir = cp->ce->direction;
 			reply = pop_reply_err;
-		} else 
-			return POM_OK;
+		}
 
-	}
-
-	// skip space in front of commands sent by client
-	while ((*line == ' ' || *line == '\t') && cp->server_dir != cp->ce->direction) {
-		line++;
-		size--;
 	}
 
 	if (cp->server_dir == cp->ce->direction) {
@@ -250,19 +250,18 @@ static int pop_process_line(struct target *t, struct target_conntrack_priv_pop *
 		switch (cp->lastcmd) {
 			case pop_cmd_user:
 			case pop_cmd_pass:
-				if (reply == pop_reply_err) {
-					if (cp->username) {
-						free(cp->username);
-						cp->username = NULL;
-					}
-					if (cp->password) {
-						free(cp->password);
-						cp->password = NULL;
-					}
-				} else if (cp->username && cp->password) {
-					if (pop_write_login_info(t, cp, f) == POM_ERR)
+				if (reply == pop_reply_ok) {
+					if (pop_write_login_info(t, cp) == POM_ERR)
 						return POM_ERR;
+				} else {
+					// Login invalid, forget about it
+					if (cp->logon_info_str) {
+						free(cp->logon_info_str);
+						cp->logon_info_str = NULL;
+					}
+					cp->logon_got_pass = 0;
 				}
+
 				cp->lastcmd = pop_cmd_other;
 				break;
 
@@ -342,7 +341,7 @@ static int pop_process_line(struct target *t, struct target_conntrack_priv_pop *
 						cp->lastcmd = pop_cmd_multiline;
 					} else { // most probably a message :)
 						cp->lastcmd = pop_cmd_retr_maybe;
-						pop_process_line(t, cp, line, size, f);
+						pop_process_line(t, cp, line, size, f, lastl);
 					}
 				
 				} else
@@ -352,21 +351,105 @@ static int pop_process_line(struct target *t, struct target_conntrack_priv_pop *
 
 
 	} else {
+		// Direction is client or unknown
 		int len = 0;
+
+		if (cp->server_dir == CE_DIR_UNK) // We don't know the direction, reset command to see if this is client direction
+			cp->lastcmd = pop_cmd_other;
+
+		// trim white spaces
+		while (*line && *line == ' ') {
+			line++;
+			size--;
+		}
+
 		if (!strncasecmp("USER", line, strlen("USER"))) {
 			len = strlen(line + strlen("USER "));
-			if (cp->username)
-				free(cp->username);
-			cp->username = malloc(len + 1);
-			strcpy(cp->username, line + strlen("USER "));
+			char *username = line + strlen("USER ");
+			char *end = strchr(username, '\r');
+			*end = 0;
+
 			cp->lastcmd = pop_cmd_user;
+
+			// save the time and other stuff
+			char strformat[32];
+			char *format = "%Y-%m-%d %H:%M:%S";
+			struct tm tmp;
+			localtime_r((time_t*)&f->tv.tv_sec, &tmp);
+			strftime(strformat, sizeof(strformat), format, &tmp);
+			
+			char *src = NULL, *dst = NULL, *port = NULL;
+
+			int i;
+			for (i = 0; i < MAX_LAYER_FIELDS; i++) {
+				struct layer *l3 = lastl->prev;
+				struct match_field_reg *l4f, *l3f;
+				l4f = match_get_field(lastl->type, i);
+				l3f = match_get_field(l3->type, i);
+				if (!src && !strcmp(l3f->name, "src"))
+					src = ptype_print_val_alloc(l3->fields[i]);
+				else if (!dst && !strcmp(l3f->name, "dst"))
+					dst = ptype_print_val_alloc(l3->fields[i]);
+				if (!port && !strcmp(l4f->name, "dport"))
+					port = ptype_print_val_alloc(lastl->fields[i]);
+
+				if (src && dst && port)
+					break;
+			}
+
+			if (!src || !dst || !port) {
+				if (src)
+					free(src);
+				if (dst)
+					free(dst);
+				if (port)
+					free(port);
+				pom_log(POM_LOG_ERR "Unable to get all the layer info");
+				return POM_ERR;
+
+			}
+
+			if (cp->logon_info_str)
+				free(cp->logon_info_str);
+
+			unsigned int len = strlen(strformat) + strlen(", ") +
+				strlen(src) + strlen(" -> ") + strlen(dst) + strlen(":") + 5 + // 5 is space for port size (max 65535)
+				strlen(" | \"") + strlen(username) + strlen("\", \"");
+			cp->logon_info_str = malloc(len + 1);
+			snprintf(cp->logon_info_str, len, "%s, %s -> %s:%s | \"%s\", \"", strformat, src, dst, port, username);
+
+			if (cp->logon_data) {
+				struct datavalue *dv = cp->logon_data;
+				PTYPE_STRING_SETVAL(dv[0].value, strformat);
+				PTYPE_STRING_SETVAL_P(dv[1].value, src);
+				PTYPE_STRING_SETVAL_P(dv[2].value, dst);
+				ptype_parse_val(dv[3].value, port);
+				PTYPE_STRING_SETVAL(dv[4].value, username);
+			}
+
+			free(port);
+
 		} else if (!strncasecmp("PASS", line, strlen("PASS"))) {
-			len = strlen(line + strlen("PASS "));
-			if (cp->password)
-				free(cp->password);
-			cp->password = malloc(len + 1);
-			strcpy(cp->password, line + strlen("PASS "));
+
+			if (cp->logon_info_str) {
+				char *pass = line + strlen("PASS ");
+				char *end = strchr(pass, '\r');
+				*end = 0;
+
+
+				// Record some more useful info
+				cp->logon_info_str = realloc(cp->logon_info_str, strlen(cp->logon_info_str) + strlen(pass) + strlen("\"\n") + 1);
+				strcat(cp->logon_info_str, pass);
+				strcat(cp->logon_info_str, "\"\n");
+
+				if (cp->logon_data)
+					PTYPE_STRING_SETVAL(cp->logon_data[5].value, pass);
+
+				cp->logon_got_pass = 1;
+			}
+
 			cp->lastcmd = pop_cmd_pass;
+
 		} else if (!strncasecmp("RETR", line, strlen("RETR"))) {
 			cp->lastcmd = pop_cmd_retr;
 		} else if (!strncasecmp("STAT", line, strlen("STAT"))) {
@@ -378,6 +461,14 @@ static int pop_process_line(struct target *t, struct target_conntrack_priv_pop *
 		} else if (!strncasecmp("CAPA", line, strlen("CAPA"))) {
 			cp->lastcmd = pop_cmd_multiline;
 		}
+
+		if (cp->server_dir == CE_DIR_UNK && cp->lastcmd != pop_cmd_other) {
+			if (cp->ce->direction == CE_DIR_FWD)
+				cp->server_dir = CE_DIR_REV;
+			else if (cp->ce->direction == CE_DIR_REV)
+				cp->server_dir = CE_DIR_FWD;
+		}
+
 
 	}
 
@@ -391,14 +482,17 @@ static int target_close_connection_pop(struct target *t, struct conntrack_entry 
 
 	struct target_conntrack_priv_pop *cp;
 	cp = conntrack_priv;
+
+	if (cp->logon_got_pass)
+		pop_write_login_info(t, cp);
 	
 	if (cp->fd != -1)
 		pop_file_close(cp);
 
-	if (cp->username)
-		free(cp->username);
-	if (cp->password)
-		free(cp->password);
+	if (cp->logon_info_str)
+		free(cp->logon_info_str);
+	if (cp->logon_data)
+		target_cleanup_dataset_values(cp->logon_data);
 	if (cp->parsed_path)
 		free(cp->parsed_path);
 	if (cp->filename)
@@ -503,22 +597,21 @@ static int pop_file_close(struct target_conntrack_priv_pop *cp) {
 
 }
 
-static int pop_write_login_info(struct target *t, struct target_conntrack_priv_pop *cp, struct frame *f) {
+static int pop_write_login_info(struct target *t, struct target_conntrack_priv_pop *cp) {
 
 	struct target_priv_pop *priv = t->target_priv;
 
-	char *end;
-	end = strchr(cp->username, '\r');
-	*end = 0;
-	end = strchr(cp->password, '\r');
-	*end = 0;
+	if (!cp->logon_info_str) // No login was captured
+		return POM_OK;
 
+	if (!cp->logon_got_pass) { // Password wasn't captured
+		free(cp->logon_info_str);
+		cp->logon_info_str = NULL;
+		return POM_OK;
+	}
 
-	if (priv->dset) {
-		struct datavalue *dv = target_get_dataset_values(priv->dset);
-		PTYPE_STRING_SETVAL(dv[0].value, cp->username);
-		PTYPE_STRING_SETVAL(dv[1].value, cp->password);
-		if (target_write_dataset(priv->dset, f) == POM_ERR) {
+	if (cp->logon_data) {
+		if (target_write_dataset(priv->dset, cp->logon_data) == POM_ERR) {
 			pom_log(POM_LOG_WARN "Failed to write in the dataset");
 			return POM_ERR;
 		}
@@ -528,34 +621,20 @@ static int pop_write_login_info(struct target *t, struct target_conntrack_priv_p
 	char final_name[NAME_MAX + 1];
 	memset(final_name, 0, sizeof(final_name));
 	strcpy(final_name, cp->parsed_path);
-	strncat(final_name, "logins", NAME_MAX - strlen(final_name));
+	strncat(final_name, "credentials", NAME_MAX - strlen(final_name));
 
-
-	char line[2048];
-	memset(line, 0, sizeof(line));
-
-	char strformat[1024];
-	char *format = "%Y-%m-%d %H:%M:%S, ${ipv4.dst} ${ipv6.dst} ${tcp.dport} -> ${ipv4.src} ${ipv6.src} ${tcp.sport}";
-	struct tm tmp;
-	localtime_r((time_t*)&f->tv.tv_sec, &tmp);
-	strftime(strformat, sizeof(strformat), format, &tmp);
-
-
-	if (layer_field_parse(f->l, strformat, line, sizeof(line)) == POM_ERR) {
-		pom_log(POM_LOG_WARN "Internal error while parsing string for target_pop logins");
-		return POM_ERR;
-	}
-	
-	strncat(line, " | \"", NAME_MAX - strlen(line));
-	strncat(line, cp->username, NAME_MAX - strlen(line));
-	strncat(line, "\", \"", NAME_MAX - strlen(line));
-	strncat(line, cp->password, NAME_MAX - strlen(line));
-	strncat(line, "\"\n", NAME_MAX - strlen(line));
-	
 	int fd;
 	fd = target_file_open(NULL, final_name, O_RDWR | O_APPEND | O_CREAT, 0666);
-	write(fd, line, strlen(line));
+	if (fd == POM_ERR) {
+		pom_log(POM_LOG_ERR "Unable to open file %s to write credentials", final_name);
+		return POM_ERR;
+	}
+	write(fd, cp->logon_info_str, strlen(cp->logon_info_str));
 	close(fd);
+
+	free(cp->logon_info_str);
+	cp->logon_info_str = NULL;
+	cp->logon_got_pass = 0;
 
 	return POM_OK;
 }

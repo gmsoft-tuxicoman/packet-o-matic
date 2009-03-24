@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -146,7 +146,7 @@ static int datastore_open_postgres(struct datastore *d) {
 
 }
 
-static int datastore_dataset_alloc_postgres(struct datastore *d, struct dataset *ds) {
+static int datastore_dataset_alloc_postgres(struct dataset *ds) {
 
 	struct dataset_priv_postgres *priv = malloc(sizeof(struct dataset_priv_postgres));
 	memset(priv, 0, sizeof(struct dataset_priv_postgres));
@@ -300,10 +300,10 @@ static int datastore_dataset_alloc_postgres(struct datastore *d, struct dataset 
 	return POM_OK;
 }
 
-static int datastore_dataset_create_postgres(struct datastore *d, struct dataset *ds) {
+static int datastore_dataset_create_postgres(struct dataset *ds) {
 
 
-	struct datastore_priv_postgres *priv = d->priv;
+	struct datastore_priv_postgres *priv = ds->dstore->priv;
 
 	struct datavalue *dv = ds->query_data;
 
@@ -350,7 +350,7 @@ static int datastore_dataset_create_postgres(struct datastore *d, struct dataset
 
 	PGresult *res = PQexec(priv->connection, query);
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-		pom_log(POM_LOG_ERR "Failed to create dataset \"%s\" in datastore %s : %s", ds->name, d->name, PQerrorMessage(priv->connection));
+		pom_log(POM_LOG_ERR "Failed to create dataset \"%s\" in datastore %s : %s", ds->name, ds->dstore->name, PQerrorMessage(priv->connection));
 		PQclear(res);
 		return POM_ERR;
 	}
@@ -360,10 +360,10 @@ static int datastore_dataset_create_postgres(struct datastore *d, struct dataset
 	return POM_OK;
 }
 
-static int datastore_dataset_read_postgres(struct datastore *d, struct dataset *ds) {
+static int datastore_dataset_read_postgres(struct dataset *ds) {
 
 	struct dataset_priv_postgres *priv = ds->priv;
-	struct datastore_priv_postgres *dpriv = d->priv;
+	struct datastore_priv_postgres *dpriv = ds->dstore->priv;
 
 	if (ds->state != DATASET_STATE_MORE) {
 		 PGresult *res = PQexec(dpriv->connection, "BEGIN");
@@ -459,7 +459,7 @@ static int datastore_dataset_read_postgres(struct datastore *d, struct dataset *
 			}
 			strcat(read_query, " ORDER BY ");
 			strcat(read_query, dv[qro->field_id].name);
-			if (qro->direction)	
+			if (qro->direction == DATASET_READ_ORDER_DESC)	
 				strcat(read_query, " DESC");
 			priv->read_query_buff = read_query;
 		}
@@ -565,10 +565,10 @@ static int datastore_dataset_read_postgres(struct datastore *d, struct dataset *
 	return POM_OK;
 }
 
-static int datastore_dataset_write_postgres(struct datastore *d, struct dataset *ds) {
+static int datastore_dataset_write_postgres(struct dataset *ds) {
 
 
-	struct datastore_priv_postgres *dpriv = d->priv;
+	struct datastore_priv_postgres *dpriv = ds->dstore->priv;
 	struct dataset_priv_postgres *priv = ds->priv;
 
 	PGresult *res = PQexec(dpriv->connection, "begin;");
@@ -619,15 +619,7 @@ static int datastore_dataset_write_postgres(struct datastore *d, struct dataset 
 				break;
 			}	
 			default: {
-				int size, new_size = DATASTORE_POSTGRES_TEMP_BUFFER_SIZE;
-				do {
-					size = new_size;
-					priv->write_query_param_val[i] = realloc(priv->write_query_param_val[i], size + 1);
-					new_size = ptype_print_val(dv[i].value, priv->write_query_param_val[i], size);
-					priv->write_query_param_len[i] = strlen(priv->write_query_param_val[i]);
-					new_size = (new_size < 1) ? new_size * 2 : new_size + 1;
-				} while (new_size > size);
-
+				priv->write_query_param_val[i] = ptype_print_val_alloc(dv[i].value);
 				break;
 			}
 		}
@@ -676,7 +668,7 @@ static int datastore_dataset_write_postgres(struct datastore *d, struct dataset 
 	return POM_OK;
 }
 
-static int datastore_dataset_cleanup_postgres(struct datastore *d, struct dataset *ds) {
+static int datastore_dataset_cleanup_postgres(struct dataset *ds) {
 
 	struct dataset_priv_postgres *priv = ds->priv;
 	free(priv->read_query_start);

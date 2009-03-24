@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2008-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -34,8 +34,9 @@ struct target_conntrack_priv_pop {
 	int fd; ///< Must be -1 if no file is open
 	int server_dir; ///< Indicates which direction is the server
 
-	char *username;
-	char *password;
+	char *logon_info_str;
+	struct datavalue *logon_data;
+	int logon_got_pass; ///< Do we have all the login info to save ?
 
 	int lastcmd; ///< Last pop command received
 
@@ -52,6 +53,7 @@ struct target_conntrack_priv_pop {
 struct target_priv_pop {
 
 	struct ptype *path;
+	struct ptype *ds_path;
 	struct target_dataset *dset;
 
 	struct target_conntrack_priv_pop *ct_privs;
@@ -66,9 +68,9 @@ static int target_close_connection_pop(struct target *t, struct conntrack_entry*
 static int target_close_pop(struct target *t);
 static int target_cleanup_pop(struct target *t);
 
-static int pop_process_line(struct target *t, struct target_conntrack_priv_pop *cp, char *line, int size, struct frame *f);
+static int pop_process_line(struct target *t, struct target_conntrack_priv_pop *cp, char *line, int size, struct frame *f, struct layer *lastl);
 static int pop_file_open(struct target_conntrack_priv_pop *cp, struct timeval *recvd_time);
 static int pop_file_close(struct target_conntrack_priv_pop *cp);
-static int pop_write_login_info(struct target *t, struct target_conntrack_priv_pop *cp, struct frame *f);
+static int pop_write_login_info(struct target *t, struct target_conntrack_priv_pop *cp);
 
 #endif

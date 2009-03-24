@@ -625,7 +625,7 @@ int mgmtcmd_unload_ptype(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (id == POM_ERR) {
 		mgmtsrv_send(c, "Ptype %s not loaded\r\n", argv[0]);
-	} else 	if (ptypes[id]->refcount) {
+	} else 	if (ptype_get_refcount(id)) {
 		mgmtsrv_send(c, "Ptype %s is still in use. Cannot unload it\r\n", argv[0]);
 	} else 	if (ptype_unregister(id) != POM_ERR) {
 		mgmtsrv_send(c, "Ptype unloaded successfully\r\n");
@@ -650,10 +650,10 @@ struct mgmt_command_arg* mgmtcmd_unload_ptype_completion(int argc, char *argv[])
 
 	int i;
 	for (i = 0; i < MAX_PTYPE; i++) {
-		if (ptypes[i]) {
+		char *name = ptype_get_name(i);
+		if (name) {
 			struct mgmt_command_arg *item = malloc(sizeof(struct mgmt_command_arg));
 			memset(item, 0, sizeof(struct mgmt_command_arg));
-			char *name = ptypes[i]->name;
 			item->word = malloc(strlen(name) + 1);
 			strcpy(item->word, name);
 			item->next = res;

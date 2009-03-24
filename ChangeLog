@@ -1,3 +1,13 @@
+* 2009/03/24 Guy Martin <gmsoft@tuxicoman.be>
+Update datastore API to make it more useable.
+Add function ptype_print_val_alloc().
+Make sure alloc() and copy() exists in ptype_alloc_from().
+Added function ptype_get_refcount().
+Made the symbol ptypes static in ptype.c.
+Added PTYPE_STRING_SETVAL_P() to give a pointer to use.
+Improved logic in target_pop to capture credentials with only client direction.
+Added fields in target_pop credential dataset.
+
 * 2009/03/18 Guy Martin <gmsoft@tuxicoman.be>
 Fix msn account parsing when processing INVITE.
 

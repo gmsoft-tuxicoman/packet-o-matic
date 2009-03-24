@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,8 +29,6 @@
 #include "ptype_string.h"
 
 #include <libpq-fe.h>
-
-#define DATASTORE_POSTGRES_TEMP_BUFFER_SIZE 256
 
 struct datastore_priv_postgres {
 
@@ -82,11 +80,11 @@ struct dataset_priv_postgres {
 int datastore_register_postgres(struct datastore_reg *r);
 static int datastore_init_postgres(struct datastore *d);
 static int datastore_open_postgres(struct datastore *d);
-static int datastore_dataset_alloc_postgres(struct datastore *d, struct dataset *ds);
-static int datastore_dataset_create_postgres(struct datastore *d, struct dataset *ds);
-static int datastore_dataset_read_postgres(struct datastore *d, struct dataset *ds);
-static int datastore_dataset_write_postgres(struct datastore *d, struct dataset *ds);
-static int datastore_dataset_cleanup_postgres(struct datastore *d, struct dataset *ds);
+static int datastore_dataset_alloc_postgres(struct dataset *ds);
+static int datastore_dataset_create_postgres(struct dataset *ds);
+static int datastore_dataset_read_postgres(struct dataset *ds);
+static int datastore_dataset_write_postgres( struct dataset *ds);
+static int datastore_dataset_cleanup_postgres(struct dataset *ds);
 static int datastore_close_postgres(struct datastore *d);
 static int datastore_cleanup_postgres(struct datastore *d);
 static int datastore_unregister_postgres(struct datastore_reg *r);

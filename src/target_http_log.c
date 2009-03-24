@@ -124,22 +124,10 @@ int target_initial_log_http(struct target_conntrack_priv_http *cp, struct frame 
 			if (cp->log_info->log_flags & HTTP_LOG_SERVER_IP || cp->log_info->log_flags & HTTP_LOG_CLIENT_IP) {
 				struct match_field_reg *field = match_get_field(l3->type, i);
 				if ((cp->log_info->log_flags & HTTP_LOG_SERVER_IP) && !strcmp(field->name, server)) {
-					int size, new_size = 64;
-					do {
-						size = new_size;
-						cp->log_info->server_host = realloc(cp->log_info->server_host, size + 1);
-						new_size = ptype_print_val(l3->fields[i], cp->log_info->server_host, size);
-						new_size = (new_size < 1) ? new_size * 2 : new_size + 1;
-					} while (new_size > size);
+					cp->log_info->server_host = ptype_print_val_alloc(l3->fields[i]);
 				}
 				if ((cp->log_info->log_flags & HTTP_LOG_CLIENT_IP) && !strcmp(field->name, client)) {
-					int size, new_size = 64;
-					do {
-						size = new_size;
-						cp->log_info->client_host = realloc(cp->log_info->client_host, size + 1);
-						new_size = ptype_print_val(l3->fields[i], cp->log_info->client_host, size);
-						new_size = (new_size < 1) ? new_size * 2 : new_size + 1;
-					} while (new_size > size);
+					cp->log_info->client_host = ptype_print_val_alloc(l3->fields[i]);
 				}
 			}
 
