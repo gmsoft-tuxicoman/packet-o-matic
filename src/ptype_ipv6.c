@@ -102,7 +102,7 @@ int ptype_print_ipv6(struct ptype *p, char *val, size_t size) {
 
 	struct ptype_ipv6_val *v = p->value;
 	char buff[INET6_ADDRSTRLEN + 1];
-	inet_ntop(AF_INET6, &v->addr, val, INET6_ADDRSTRLEN);
+	inet_ntop(AF_INET6, &v->addr, buff, INET6_ADDRSTRLEN);
 	if (v->mask < 128) 
 		return snprintf(val, size, "%s/%hhu", buff, v->mask);
 

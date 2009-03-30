@@ -66,7 +66,7 @@ int match_register_80211(struct match_reg *r) {
 
 static int match_identify_80211(struct frame *f, struct layer* l, unsigned int start, unsigned int len) {
 
-	if (sizeof(struct ieee80211_hdr) > len)
+	if (len < 12) // Min length is 12 (CTRL ACK frame)
 		return POM_ERR;
 
 	struct ieee80211_hdr *i80211hdr = f->buff + start;
@@ -78,9 +78,13 @@ static int match_identify_80211(struct frame *f, struct layer* l, unsigned int s
 	PTYPE_UINT8_SETVAL(l->fields[field_type], i80211hdr->u1.fc.type);
 	PTYPE_UINT8_SETVAL(l->fields[field_subtype], i80211hdr->u1.fc.subtype);
 
+	uint8_t empty_addr[6] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 };
+
 	switch (i80211hdr->u1.fc.type) {
 		case WLAN_FC_TYPE_MGMT:
 			/* Management frames */
+			if (len < 24)
+				return POM_ERR;
 			switch (i80211hdr->u1.fc.subtype) {
 				case WLAN_FC_SUBTYPE_PROBEREQ:
 					PTYPE_MAC_SETADDR(l->fields[field_saddr], i80211hdr->addr2);
@@ -105,21 +109,55 @@ static int match_identify_80211(struct frame *f, struct layer* l, unsigned int s
 			}
 			break;
 		case WLAN_FC_TYPE_CTRL:
-			/* Error out on PHY */
-			return POM_ERR;
+			/* Control frame */
+			switch (i80211hdr->u1.fc.subtype) {
+				case WLAN_FC_SUBTYPE_PSPOLL:
+				case WLAN_FC_SUBTYPE_RTS:
+				case WLAN_FC_SUBTYPE_CFEND:
+				case WLAN_FC_SUBTYPE_CFENDACK:
+					PTYPE_MAC_SETADDR(l->fields[field_daddr], i80211hdr->addr1);
+					PTYPE_MAC_SETADDR(l->fields[field_saddr], i80211hdr->addr2);
+					PTYPE_MAC_SETADDR(l->fields[field_baddr], empty_addr);
+					offt = 16;
+					break;
+
+				case WLAN_FC_SUBTYPE_CTS:
+				case WLAN_FC_SUBTYPE_ACK:
+					PTYPE_MAC_SETADDR(l->fields[field_daddr], i80211hdr->addr1);
+					PTYPE_MAC_SETADDR(l->fields[field_saddr], empty_addr);
+					PTYPE_MAC_SETADDR(l->fields[field_baddr], empty_addr);
+					offt = 10;
+					break;
+
+				case WLAN_FC_SUBTYPE_BLOCKACKREQ:
+					PTYPE_MAC_SETADDR(l->fields[field_daddr], i80211hdr->addr1);
+					PTYPE_MAC_SETADDR(l->fields[field_saddr], i80211hdr->addr2);
+					offt = 20; // 16 + 2 for BAR Control + 2 BAR Seq Control
+					break;
+				
+				case WLAN_FC_SUBTYPE_BLOCKACK:
+					PTYPE_MAC_SETADDR(l->fields[field_daddr], i80211hdr->addr1);
+					PTYPE_MAC_SETADDR(l->fields[field_saddr], i80211hdr->addr2);
+					offt = 148; // 16 + 2 for BA Control + 2 Seq Control + 128 BA Bitmap
+					break;
+
+			}
 			break;
 		case WLAN_FC_TYPE_DATA:
 			/* Data frames can have funny-length headers and offsets */
 
+			if (len < 24)
+				return POM_ERR;
+
 			/* Handle QoS */
 			switch (i80211hdr->u1.fc.subtype) {
-				case 8:
-				case 9:
-				case 10:
-				case 11:
-				case 12:
-				case 14:
-				case 15:
+				case WLAN_FC_SUBTYPE_QOSDATA:
+				case WLAN_FC_SUBTYPE_QOSDATACFACK:
+				case WLAN_FC_SUBTYPE_QOSDATACFPOLL:
+				case WLAN_FC_SUBTYPE_QOSDATACFACKPOLL:
+				case WLAN_FC_SUBTYPE_QOSNULL:
+				case WLAN_FC_SUBTYPE_QOSNULLCFPOLL:
+				case WLAN_FC_SUBTYPE_QOSNULLCFACKPOLL:
 					offt += 2;
 					break;
 			}
@@ -152,6 +190,12 @@ static int match_identify_80211(struct frame *f, struct layer* l, unsigned int s
 				offt += 30;
 			}
 
+			if (i80211hdr->u1.fc.subtype & WLAN_FC_SUBTYPE_MASK_NODATA) {
+				l->payload_start = start + offt;
+				l->payload_size = 0;
+				return ret;
+			}
+
 			if (offt + sizeof(struct ieee80211_llc) > len)
 				return POM_ERR;
 
@@ -178,6 +222,9 @@ static int match_identify_80211(struct frame *f, struct layer* l, unsigned int s
 			}
 
 	}
+
+	if (offt > len)
+		return POM_ERR;
 
 	l->payload_start = start + offt;
 	l->payload_size = len - offt;
