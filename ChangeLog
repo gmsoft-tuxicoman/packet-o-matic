@@ -1,3 +1,7 @@
+* 2009/03/31 Guy Martin <gmsoft@tuxicoman.be>
+Fix memory leak in rule parsing when provided rule is incorrect and contains a branch.
+Catch invalid frame types in match_80211.
+
 * 2009/03/30 Guy Martin <gmsoft@tuxicoman.be>
 Added support for control frames in match_80211.
 Fix ptype_ipv6 print_val().

@@ -221,6 +221,11 @@ static int match_identify_80211(struct frame *f, struct layer* l, unsigned int s
 					break;
 			}
 
+			break;
+
+		default:
+			return POM_ERR;
+
 	}
 
 	if (offt > len)

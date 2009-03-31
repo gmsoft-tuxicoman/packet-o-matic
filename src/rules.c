@@ -750,14 +750,17 @@ static int rule_parse_branch(char *expr, struct rule_node **start, struct rule_n
 			*end = my_end;
 
 			struct rule_node *the_end = NULL;
-			if (rule_parse(expr, &my_start->a, &the_end, errbuff, errlen) == POM_ERR)
+			if (rule_parse(expr, &my_start->a, &the_end, errbuff, errlen) == POM_ERR || !the_end) {
+				free(my_start);
+				free(my_end);
 				return POM_ERR;
-			if (!the_end)
-				return POM_ERR;
+			}
 
 			the_end->a = my_end;
-			if (rule_parse(expr + i + found_len, &my_start->b, &the_end, errbuff, errlen) == POM_ERR)
+			if (rule_parse(expr + i + found_len, &my_start->b, &the_end, errbuff, errlen) == POM_ERR) {
+				node_destroy(my_start, 0);
 				return POM_ERR;
+			}
 			the_end->a = my_end;
 
 			return POM_OK;
