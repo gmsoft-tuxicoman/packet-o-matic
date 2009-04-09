@@ -71,6 +71,9 @@ struct input_priv_docsis {
 	unsigned long error_packets; ///< Number of erroneous packets.
 	unsigned long invalid_packets; ///< Number of invalid packets.
 
+	// misc stuff
+	int encrypted_warning; ///< Was encrypted traffic found and a warning issued 
+
 };
 
 /// Register the docsis modulbe

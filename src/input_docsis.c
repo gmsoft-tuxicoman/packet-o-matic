@@ -956,7 +956,20 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 	if (dlen < packet_pos) { // Copy leftover if any
 		memcpy(p->temp_buff, f->buff + dlen, packet_pos - dlen);
 		p->temp_buff_len = packet_pos - dlen;
-	} 
+	}
+
+	if (dhdr->ehdr_on) {
+		struct docsis_ehdr *ehdr = (struct docsis_ehdr*) &dhdr->hcs;
+		// EH_TYPE_BP_UP should not occur as we only support downstream
+		if (ehdr->eh_type == EH_TYPE_BP_DOWN) {
+			if (!p->encrypted_warning) {
+				pom_log(POM_LOG_WARN "Encrypted packet detected. You may not be able to see a lot of traffic");
+				p->encrypted_warning = 1;
+			}
+			if (p->output_layer != match_docsis_id)
+				return POM_OK;
+		}
+	}
 
 
 	if (p->output_layer == match_ethernet_id || p->output_layer == match_atm_id) {
@@ -1047,6 +1060,8 @@ static int input_close_docsis(struct input *i) {
 
 	// Reset temporary buffer
 	p->temp_buff_len = 0;
+
+	p->encrypted_warning = 0;
 
 	return POM_OK;
 

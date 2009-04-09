@@ -576,32 +576,32 @@ struct dataset *datastore_dataset_open(struct datastore *d, char *name, char *ty
 		tmp = tmp->next;
 	}
 	
-	// Make sure dataset we found is the same as the requested one
+	// Make sure dataset we found contains all the requested fields
 	if (tmp) {
 		if (strcmp(tmp->type, type)) {
 			pom_log(POM_LOG_ERR "Could not open dataset %s of type %s in datastore %s : Dataset type supplied differs (%s)", name, tmp->type, d->name, type);
 			return NULL;
 		}
 		if (tmp->open) {
-			pom_log(POM_LOG_ERR "Could not open dataset %s of type %s in datastore %s : Dataset already open.", name, type, d->name);
+			pom_log(POM_LOG_ERR "Could not open dataset %s of type %s in datastore %s : Dataset already open", name, type, d->name);
 			return NULL;
 		}
+
 		struct datavalue *flds = tmp->query_data;
 		int i;
-		for (i = 0; flds[i].name; i++) {
-			int j, found = 0;
-			for (j = 0; dv[j].name; j++) {
-				if (!strcmp(flds[i].name, dv[j].name) && !strcmp(ptype_get_name(flds[i].value->type), dv[j].type)) {
-					found = 1;
-					break;
-				}
-			}
-			if (!found) {
+		for (i = 0; dv[i].name; i++) {
+			if (strcmp(dv[i].name, flds[i].name) || strcmp(ptype_get_name(flds[i].value->type), dv[i].type)) {
 				pom_log(POM_LOG_ERR "Could not open dataset %s of type %s in datastore %s : Dataset fields supplied differs", name, tmp->type, d->name);
 				return NULL;
 			}
 
 		}
+
+		if (flds[i].name) {
+			 pom_log(POM_LOG_ERR "Could not open dataset %s of type %s in datastore %s : Dataset has more fields than supplied", name, tmp->type, d->name);
+			 return NULL;
+		}
+
 		tmp->open = 1;
 		tmp->dstore = d;
 

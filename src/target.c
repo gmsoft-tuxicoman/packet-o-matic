@@ -793,7 +793,6 @@ struct target_dataset *target_open_dataset(struct target *t, char *name, char *d
 			if (!dstore->started) {
 				if (PTYPE_BOOL_GETVAL(param_autostart_datastore)) {
 					if (datastore_open(dstore) == POM_ERR) {
-						pom_log(POM_LOG_WARN "Datastore %s failed to start and won't be used", dstore->name);
 						free(datastore_name);
 						return NULL;
 					}
@@ -826,7 +825,6 @@ struct target_dataset *target_open_dataset(struct target *t, char *name, char *d
 	free(dataset_type);
 
 	if (!res->dset) {
-		pom_log(POM_LOG_WARN "Could not open the dataset %s in datastore %s", dataset_name, dstore->name);
 		free(datastore_name);
 		return NULL;
 	}

@@ -623,6 +623,7 @@ int config_parse(struct conf *c, char * filename) {
 
 	if (!doc) {
 		pom_log(POM_LOG_ERR "Parse error when parsing %s!", filename);
+		pom_log(POM_LOG_ERR "To start with an empty configuration run `packet-o-matic -e`");
 		return POM_ERR;
 	}
 

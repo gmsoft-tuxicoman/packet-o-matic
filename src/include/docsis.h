@@ -73,4 +73,11 @@ struct docsis_ehdr {
 #define FCP_REQ		0x02 // Request header (upstream only)
 #define FCP_CONCAT	0x1C // Concatenation header (upstream only)
 
+// Definition of extended header types
+#define EH_TYPE_NULL		0x0	// Null type for padding
+#define EH_TYPE_MINI_REQ	0x1	// Mini-slot request
+#define EH_TYPE_ACK		0x1	// Ack request
+#define EH_TYPE_BP_UP		0x2	// Upstream privacy element
+#define EH_TYPE_BP_DOWN		0x4	// Downstream privacy element
+
 #endif

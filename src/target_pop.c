@@ -612,7 +612,7 @@ static int pop_write_login_info(struct target *t, struct target_conntrack_priv_p
 
 	if (cp->logon_data) {
 		if (target_write_dataset(priv->dset, cp->logon_data) == POM_ERR) {
-			pom_log(POM_LOG_WARN "Failed to write in the dataset");
+			pom_log(POM_LOG_ERR "Failed to write credential info in the dataset");
 			return POM_ERR;
 		}
 	}

@@ -1,3 +1,10 @@
+* 2009/04/09 Guy Martin <gmsoft@tuxicoman.be>
+Add a warning when encrypted traffic is seen in input_docsis.
+Mark next layer of docsis encrypted traffic as undefined.
+Add tip about starting pom with -e if the config cannot be parsed/found.
+Force a one to one match for the fields of datasets when opening an existing one.
+Added support for datastore logging in target_http.
+
 * 2009/03/31 Guy Martin <gmsoft@tuxicoman.be>
 Fix memory leak in rule parsing when provided rule is incorrect and contains a branch.
 Catch invalid frame types in match_80211.

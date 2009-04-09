@@ -614,8 +614,12 @@ static int datastore_dataset_write_postgres(struct dataset *ds) {
 				break;
 			}
 			case POSTGRES_PTYPE_STRING: {
-				priv->write_query_param_val[i] = PTYPE_STRING_GETVAL(dv[i].value);
-				priv->write_query_param_len[i] = strlen(priv->write_query_param_val[i]);
+				char *value = PTYPE_STRING_GETVAL(dv[i].value);
+				priv->write_query_param_val[i] = value;
+				if (value) 
+					priv->write_query_param_len[i] = strlen(priv->write_query_param_val[i]);
+				else 
+					priv->write_query_param_len[i] = 0;
 				break;
 			}	
 			default: {

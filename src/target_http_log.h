@@ -25,6 +25,8 @@
 #include <target_http.h>
 
 
+#define TARGET_HTTP_DATASET_LOGS	"logs"
+
 #define HTTP_LOG_ENABLED		0x0001
 #define HTTP_LOG_GOT_SOME		0x0002
 #define HTTP_LOG_CLIENT_IP		0x0004
@@ -47,16 +49,17 @@ struct http_log_info {
 
 	uint16_t log_flags;
 
-	char *server_host, *server_port, *client_host;
+	char *server_host, *client_host;
+	uint16_t server_port;
 	char *request_proto, *request_method;
 	char *first_line;
 	char *url;
 	char *filename;
 	struct timeval query_time, response_time;
-
+	struct datavalue *dset_data;
 };
 
-int target_init_log_http(struct target_priv_http *priv);
+int target_init_log_http(struct target *t);
 int target_initial_log_http(struct target_conntrack_priv_http *cp, struct frame *f, struct layer *lastl);
 int target_write_log_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp);
 int target_cleanup_log_http(struct target_conntrack_priv_http *cp);

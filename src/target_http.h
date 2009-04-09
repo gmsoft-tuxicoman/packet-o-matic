@@ -122,6 +122,8 @@ struct target_priv_http {
 	struct ptype *mime_types_db;
 	struct ptype *log_file;
 	struct ptype *log_format;
+	struct ptype *ds_log_path;
+	struct ptype *ds_log_format;
 	struct ptype *dump_img;
 	struct ptype *dump_vid;
 	struct ptype *dump_snd;
@@ -135,6 +137,7 @@ struct target_priv_http {
 
 	uint16_t log_flags;
 	int log_fd;
+	struct target_dataset *dset;
 
 	struct target_conntrack_priv_http *ct_privs;
 

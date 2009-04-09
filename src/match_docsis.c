@@ -57,17 +57,20 @@ static int match_identify_docsis(struct frame *f, struct layer* l, unsigned int 
 	l->payload_start = start + sizeof(struct docsis_hdr);
 	l->payload_size = ntohs(dhdr->len);
 
+	PTYPE_UINT8_SETVAL(l->fields[field_fc_type], dhdr->fc_type);
+	PTYPE_UINT8_SETVAL(l->fields[field_fc_parm], dhdr->fc_parm);
+
 	if (dhdr->ehdr_on) {
 		// fc_parm is len of ehdr if ehdr_on == 1
 		l->payload_start += dhdr->fc_parm;
 		l->payload_size -= dhdr->fc_parm;
 
-		// TODO : process the ehdr
+		struct docsis_ehdr *ehdr = (struct docsis_ehdr*)&dhdr->hcs;
+		
+		// Make sure this is not matched as valid traffic
+		if (ehdr->eh_type == EH_TYPE_BP_DOWN || ehdr->eh_type == EH_TYPE_BP_DOWN) 
+			return match_undefined->id;
 	}
-
-	PTYPE_UINT8_SETVAL(l->fields[field_fc_type], dhdr->fc_type);
-	PTYPE_UINT8_SETVAL(l->fields[field_fc_parm], dhdr->fc_parm);
-
 
 	switch (dhdr->fc_type) {
 		case FC_TYPE_PKT_MAC:

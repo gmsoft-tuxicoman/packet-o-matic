@@ -63,6 +63,8 @@ int target_register_http(struct target_reg *r) {
 	target_register_param(mode_default, "mime_types_db", DATAROOT "/mime_types.db", "Mime types database path");
 	target_register_param(mode_default, "log_file", "", "File where to log the queries");
 	target_register_param(mode_default, "log_format", "%v %a %u %t \"%r\" %s %b", "Log format");
+	target_register_param(mode_default, "ds_log_path", "", "Datastore path for the logs");
+	target_register_param(mode_default, "ds_log_format", "%v %a %u %t %r %s %b", "Database log format");
 	target_register_param(mode_default, "dump_img", "no", "Dump the images or not");
 	target_register_param(mode_default, "dump_vid", "no", "Dump the videos or not");
 	target_register_param(mode_default, "dump_snd", "no", "Dump the audio files or not");
@@ -90,6 +92,8 @@ int target_init_http(struct target *t) {
 	priv->mime_types_db = ptype_alloc("string", NULL);
 	priv->log_file = ptype_alloc("string", NULL);
 	priv->log_format = ptype_alloc("string", NULL);
+	priv->ds_log_path = ptype_alloc("string", NULL);
+	priv->ds_log_format = ptype_alloc("string", NULL);
 	priv->dump_img = ptype_alloc("bool", NULL);
 	priv->dump_vid = ptype_alloc("bool", NULL);
 	priv->dump_snd = ptype_alloc("bool", NULL);
@@ -104,6 +108,8 @@ int target_init_http(struct target *t) {
 		!priv->mime_types_db ||
 		!priv->log_file ||
 		!priv->log_format ||
+		!priv->ds_log_path ||
+		!priv->ds_log_format ||
 		!priv->dump_img ||
 		!priv->dump_vid ||
 		!priv->dump_snd ||
@@ -121,6 +127,8 @@ int target_init_http(struct target *t) {
 	target_register_param_value(t, mode_default, "mime_types_db", priv->mime_types_db);
 	target_register_param_value(t, mode_default, "log_file", priv->log_file);
 	target_register_param_value(t, mode_default, "log_format", priv->log_format);
+	target_register_param_value(t, mode_default, "ds_log_path", priv->ds_log_path);
+	target_register_param_value(t, mode_default, "ds_log_format", priv->ds_log_format);
 	target_register_param_value(t, mode_default, "dump_img", priv->dump_img);
 	target_register_param_value(t, mode_default, "dump_vid", priv->dump_vid);
 	target_register_param_value(t, mode_default, "dump_snd", priv->dump_snd);
@@ -162,6 +170,8 @@ int target_cleanup_http(struct target *t) {
 		ptype_cleanup(priv->mime_types_db);
 		ptype_cleanup(priv->log_file);
 		ptype_cleanup(priv->log_format);
+		ptype_cleanup(priv->ds_log_path);
+		ptype_cleanup(priv->ds_log_format);
 		ptype_cleanup(priv->dump_img);
 		ptype_cleanup(priv->dump_vid);
 		ptype_cleanup(priv->dump_snd);
@@ -193,7 +203,7 @@ int target_open_http(struct target *t) {
 	if (PTYPE_BOOL_GETVAL(priv->dump_doc)) // doc
 		priv->match_mask |= HTTP_MIME_TYPE_DOC;
 
-	int res = target_init_log_http(priv);
+	int res = target_init_log_http(t);
 	if (res == POM_ERR)
 		return POM_ERR;
 
@@ -273,6 +283,8 @@ int target_process_http(struct target *t, struct frame *f) {
 					cp->log_info = malloc(sizeof(struct http_log_info));
 					memset(cp->log_info, 0, sizeof(struct http_log_info));
 					cp->log_info->log_flags = priv->log_flags;
+					if (priv->dset)
+						cp->log_info->dset_data = target_alloc_dataset_values(priv->dset);
 				}
 				
 				size_t len = target_parse_query_response_http(priv, cp, pload, psize);
