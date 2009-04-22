@@ -183,7 +183,7 @@ int mgmtcmd_show_datastores(struct mgmt_connection *c, int argc, char *argv[]) {
 			char buff[256];
 			memset(buff, 0, sizeof(buff));
 			ptype_print_val(p->value , buff, sizeof(buff));
-			mgmtsrv_send(c, "        %s = %s %s\r\n", p->type->name, buff, p->value->unit);
+			mgmtsrv_send(c, "   %s = %s %s\r\n", p->type->name, buff, p->value->unit);
 			p = p->next;
 		}
 		mgmtsrv_send(c, "\r\n");
@@ -295,7 +295,7 @@ int mgmtcmd_add_datastore(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (datastore_type == POM_ERR) {
 		datastore_unlock();
-		mgmtsrv_send(c, "Datastore %s not found\r\n", argv[1]);
+		mgmtsrv_send(c, "Datastore type %s not found\r\n", argv[0]);
 		return POM_OK;
 	}
 	

@@ -64,5 +64,7 @@ static int datastore_close_sqlite(struct datastore *d);
 static int datastore_cleanup_sqlite(struct datastore *d);
 static int datastore_unregister_sqlite(struct datastore_reg *r);
 
+static int sqlite_get_ds_state_error(int res);
+
 
 #endif

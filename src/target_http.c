@@ -411,7 +411,8 @@ int target_process_http(struct target *t, struct frame *f) {
 		}
 
 		if (cp->info.flags & HTTP_FLAG_HAVE_CLEN && cp->info.content_len == 0) {
-			target_write_log_http(priv, cp);
+			if (target_write_log_http(priv, cp) == POM_ERR)
+				return POM_ERR;
 			target_reset_conntrack_http(cp);
 			continue;
 		}
@@ -479,7 +480,8 @@ int target_process_http(struct target *t, struct frame *f) {
 					psize -= num_size + 2;
 				}
 				if (cp->info.chunk_len == 0) {
-					target_write_log_http(priv, cp);
+					if (target_write_log_http(priv, cp) == POM_ERR)
+						return POM_ERR;
 					target_reset_conntrack_http(cp);
 					if (size > 2) {
 						psize -= 2; // add the crlf
@@ -549,7 +551,8 @@ int target_process_http(struct target *t, struct frame *f) {
 		}
 		if (cp->info.flags & HTTP_FLAG_HAVE_CLEN) {
 			if (cp->info.content_pos >= cp->info.content_len) {
-				target_write_log_http(priv, cp);
+				if (target_write_log_http(priv, cp) == POM_ERR)
+					return POM_ERR;
 				target_reset_conntrack_http(cp);
 			}
 		}
@@ -573,7 +576,7 @@ int target_close_connection_http(struct target *t, struct conntrack_entry *ce, v
 	struct target_conntrack_priv_http *cp;
 	cp = conntrack_priv;
 
-	target_write_log_http(priv, cp);
+	int res = target_write_log_http(priv, cp);
 	target_reset_conntrack_http(cp);
 
 	if (cp->buff)
@@ -590,7 +593,7 @@ int target_close_connection_http(struct target *t, struct conntrack_entry *ce, v
 
 	free(cp);
 
-	return POM_OK;
+	return res;
 
 }
 
@@ -646,7 +649,8 @@ size_t target_parse_query_response_http(struct target_priv_http *priv, struct ta
 					if (cp->log_info && (cp->log_info->log_flags & HTTP_LOG_LOGGED_RESPONSE)) {
 						// We got a new response but we already have logging info from a previous one
 						// Let's log the previous one and start a new one
-						target_write_log_http(priv, cp);
+						if (target_write_log_http(priv, cp) == POM_ERR)
+							return POM_ERR;
 						cp->log_info = malloc(sizeof(struct http_log_info));
 						memset(cp->log_info, 0, sizeof(struct http_log_info));
 						cp->log_info->log_flags = priv->log_flags | HTTP_LOG_LOGGED_RESPONSE;
@@ -665,7 +669,8 @@ size_t target_parse_query_response_http(struct target_priv_http *priv, struct ta
 					if (cp->log_info && (cp->log_info->log_flags & HTTP_LOG_LOGGED_RESPONSE)) {
 						// We got a new query but we already have logging info from a previous one
 						// Let's log the previous one and start a new one
-						target_write_log_http(priv, cp);
+						if (target_write_log_http(priv, cp) == POM_ERR)
+							return POM_ERR;
 						cp->log_info = malloc(sizeof(struct http_log_info));
 						memset(cp->log_info, 0, sizeof(struct http_log_info));
 						cp->log_info->log_flags = priv->log_flags | HTTP_LOG_LOGGED_QUERY;

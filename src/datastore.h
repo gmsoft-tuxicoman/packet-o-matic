@@ -37,10 +37,11 @@
 /// Name of the type dataset
 #define DATASTORE_DATASET_TYPE_NAME "datastore_dataset"
 
-/// Returned by datastore_dataset_read() if there are more results
-#define DATASET_STATE_ERR -1
+/// Set by dataset_{create,read,write}()
 #define DATASET_STATE_DONE 0
 #define DATASET_STATE_MORE 1
+#define DATASET_STATE_ERR -1
+#define DATASET_STATE_DATSTORE_ERR -2 // Error occured at datastore level
 
 /// Possible read directions
 #define DATASET_READ_ORDER_ASC 0
@@ -96,6 +97,8 @@ struct dataset {
 
 	void *priv; ///< Private data of the dataset
 
+	int (*error_notify) (struct dataset *dset);
+
 	struct datastore *dstore;
 
 	struct dataset *next;
@@ -121,7 +124,7 @@ struct datastore_param {
 
 struct datastore {
 	int type; ///< Type of the datastore
-	char *name;
+	char *name; ///< Name of the datastore
 	void *priv; ///< Private data of the datastore
 	struct datastore_param *params; ///< Parameters of this datastore
 	int started; ///< If the sdatastore is started or not
@@ -258,7 +261,7 @@ struct datastore *datastore_alloc(int datastore_type);
 int datastore_open(struct datastore *d);
 
 /// Open a dataset from a datastore
-struct dataset *datastore_dataset_open(struct datastore *d, char *name, char *type, char *descr, struct datavalue_descr *dv);
+struct dataset *datastore_dataset_open(struct datastore *d, char *name, char *type, char *descr, struct datavalue_descr *dv, int (*error_notify) (struct dataset *dset));
 
 /// Create a dataset in a datastore
 int datastore_dataset_create(struct dataset *query);
@@ -304,6 +307,10 @@ int datastore_unregister(unsigned int datastore_type);
 
 /// Unregister all the datastores
 int datastore_unregister_all();
+
+
+/// Notify that the datastore is in an error state
+int datastore_error_notify(struct datastore *d);
 
 #endif
 

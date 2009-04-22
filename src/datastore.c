@@ -331,6 +331,7 @@ int datastore_open(struct datastore *d) {
 	}
 
 	dsdb->dstore = d;
+	dsdb->open = 1;
 
 	if (datastores[d->type]->dataset_alloc) {
 		if ((*datastores[d->type]->dataset_alloc) (dsdb) == POM_ERR) {
@@ -378,6 +379,7 @@ int datastore_open(struct datastore *d) {
 	dsfields->query_read_order->field_id = 3;
 
 	dsfields->dstore = d;
+	dsfields->open = 1;
 
 	if (datastores[d->type]->dataset_alloc) {
 		if ((*datastores[d->type]->dataset_alloc) (dsfields) == POM_ERR) {
@@ -558,7 +560,7 @@ err:
 
 }
 
-struct dataset *datastore_dataset_open(struct datastore *d, char *name, char *type, char *descr, struct datavalue_descr *dv) {
+struct dataset *datastore_dataset_open(struct datastore *d, char *name, char *type, char *descr, struct datavalue_descr *dv, int (*error_notify) (struct dataset *dset)) {
 
 	if (!d->started) {
 		pom_log(POM_LOG_ERR "Cannot open dataset %s. Datastore %s not started", name, d->name);
@@ -604,6 +606,7 @@ struct dataset *datastore_dataset_open(struct datastore *d, char *name, char *ty
 
 		tmp->open = 1;
 		tmp->dstore = d;
+		tmp->error_notify = error_notify;
 
 		if (datastores[d->type]->dataset_alloc) {
 			if ((*datastores[d->type]->dataset_alloc) (tmp) == POM_ERR) {
@@ -726,20 +729,35 @@ int datastore_dataset_create(struct dataset *query) {
 
 	struct datastore *d = query->dstore;
 
-	if (datastores[d->type] && datastores[d->type]->dataset_create)
-		return (*datastores[d->type]->dataset_create) (query);
+	int res = POM_OK;
 
-	return POM_OK;
+	if (datastores[d->type] && datastores[d->type]->dataset_create)
+		res = (*datastores[d->type]->dataset_create) (query);
+
+	if (res != POM_OK && query->state == DATASET_STATE_DATSTORE_ERR) 
+		datastore_error_notify(d);
+
+	return res;
 }
 
 int datastore_dataset_read(struct dataset *query) {
 
+	if (!query->open) {
+		pom_log(POM_LOG_ERR "Cannot read from dataset as it's not opened yet");
+		return POM_ERR;
+	}
+
 	struct datastore *d = query->dstore;
 
-	if (datastores[d->type] && datastores[d->type]->dataset_read)
-		return (*datastores[d->type]->dataset_read) (query);
+	int res = POM_ERR;
 
-	return POM_ERR;
+	if (datastores[d->type] && datastores[d->type]->dataset_read)
+		res = (*datastores[d->type]->dataset_read) (query);
+
+	if (res != POM_OK && query->state == DATASET_STATE_DATSTORE_ERR) 
+		datastore_error_notify(d);
+
+	return res;
 
 }
 
@@ -747,10 +765,20 @@ int datastore_dataset_write(struct dataset *query) {
 
 	struct datastore *d = query->dstore;
 
-	if (datastores[d->type] && datastores[d->type]->dataset_write)
-		return (*datastores[d->type]->dataset_write) (query);
+	if (!query->open) {
+		pom_log(POM_LOG_ERR "Cannot write to dataset as it's not opened yet");
+		return POM_ERR;
+	}
 
-	return POM_ERR;
+	int res = POM_ERR;
+
+	if (datastores[d->type] && datastores[d->type]->dataset_write)
+		res = (*datastores[d->type]->dataset_write) (query);
+
+	if (res != POM_OK && query->state == DATASET_STATE_DATSTORE_ERR) 
+		datastore_error_notify(d);
+
+	return res;
 
 }
 
@@ -769,6 +797,7 @@ int datastore_dataset_close(struct dataset *ds) {
 		
 	ds->priv = NULL;
 	ds->open = 0;
+	ds->error_notify = NULL;
 
 	return POM_OK;
 }
@@ -1087,3 +1116,30 @@ int datastore_unlock_instance(struct datastore *d) {
 	return POM_OK;
 }
 
+
+/**
+ * @ingroup datastore_core
+ * @param d Datastore to notify errors for
+ * @return POM_OK on success, POM_ERR on failure
+ */
+int datastore_error_notify(struct datastore *d) {
+
+	struct dataset *tmp = d->datasets;
+	while (tmp) {
+		if (tmp->open) {
+
+			(*tmp->error_notify) (tmp);
+			if (tmp->open) {
+				pom_log(POM_LOG_ERR "Error, dataset %s in datastore %s wasn't closed after error notification. Aborting", d->name, tmp->name);
+				abort();
+			}
+
+		}
+
+		tmp = tmp->next;
+	}
+
+	datastore_close(d);
+
+	return POM_OK;
+}

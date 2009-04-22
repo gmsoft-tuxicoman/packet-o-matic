@@ -202,34 +202,53 @@ static int datastore_dataset_create_sqlite(struct dataset *ds) {
 
 	struct datavalue *dv = ds->query_data;
 
-	char query[2048];
-	memset(query, 0, sizeof(query));
+	char *query = NULL;
 
-	strcat(query, "CREATE TABLE ");
+	unsigned int len = strlen("CREATE TABLE ") + strlen(ds->name) + strlen(" ( " SQLITE_PKID_NAME " INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, ") + strlen(" )");
+	int i;
+
+	query = malloc(len + 1);
+	memset(query, 0, len + 1);
+
+	strcpy(query, "CREATE TABLE ");
 	strcat(query, ds->name);
 	strcat(query, " ( " SQLITE_PKID_NAME " INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT, ");
-	int i;
+
 	for (i = 0; dv[i].name; i++) {
 		
-		strcat(query, dv[i].name);
+		len += strlen(dv[i].name);
+
+		char *type = " INTEGER";
 		if (dv[i].native_type == SQLITE_PTYPE_OTHER || dv[i].native_type == SQLITE_PTYPE_STRING)
-			strcat(query, " STRING");
-		else
-			strcat(query, " INTEGER");
+			type = " STRING";
+		len += strlen(type);
+		if (dv[i + 1].name)
+			len += strlen(", ");
+
+		query = realloc(query, len + 1);
+
+		strcat(query, dv[i].name);
+		strcat(query, type);
 		if (dv[i + 1].name)
 			strcat(query, ", ");
-
 	}
+
 
 	strcat(query, " )");
 	
 	pom_log(POM_LOG_TSHOOT "CREATE QUERY : %s", query);
 
-	if (sqlite3_exec(priv->db, query, NULL, NULL, NULL) != SQLITE_OK) {
+	int res = sqlite3_exec(priv->db, query, NULL, NULL, NULL);
+
+	free(query);
+
+	if (res != SQLITE_OK) {
+		ds->state = sqlite_get_ds_state_error(res);
 		pom_log(POM_LOG_ERR "Failed to create dataset \"%s\"", ds->name);
 		return POM_ERR;
 	}
 
+	ds->state = DATASET_STATE_DONE;
 
 	return POM_OK;
 }
@@ -284,7 +303,8 @@ static int datastore_dataset_read_sqlite(struct dataset *ds) {
 						pom_log(POM_LOG_ERR "Unsupported ptype in read condition");
 						priv->read_query_buff = read_query;
 						priv->read_query_buff_size = size;
-						break;
+						ds->state = DATASET_STATE_ERR;
+						return POM_ERR;
 				}
 
 				if (new_size >= -1 && new_size < size)
@@ -332,7 +352,9 @@ static int datastore_dataset_read_sqlite(struct dataset *ds) {
 			priv->read_query_buff = read_query;
 		}
 
-		if (sqlite3_prepare_v2(dpriv->db, read_query, -1, &priv->read_stmt, NULL) != SQLITE_OK) {
+		int res = sqlite3_prepare_v2(dpriv->db, read_query, -1, &priv->read_stmt, NULL);
+		if (res != SQLITE_OK) {
+			ds->state = sqlite_get_ds_state_error(res);
 			pom_log(POM_LOG_DEBUG "Unable to prepare the READ SQL query : %s", sqlite3_errmsg(dpriv->db));
 			return POM_ERR;
 		}
@@ -346,7 +368,7 @@ static int datastore_dataset_read_sqlite(struct dataset *ds) {
 		return POM_OK;
 	} else if (res != SQLITE_ROW) {
 		pom_log(POM_LOG_ERR "Error while reading data from dataset %s : %s", ds->name, sqlite3_errmsg(dpriv->db));
-		ds->state = DATASET_STATE_ERR;
+		ds->state = sqlite_get_ds_state_error(res);
 		sqlite3_finalize(priv->read_stmt);
 		priv->read_stmt = NULL;
 		return POM_ERR;
@@ -411,13 +433,15 @@ static int datastore_dataset_write_sqlite(struct dataset *ds) {
 
 	if (priv->write_stmt) {
 		res = sqlite3_reset(priv->write_stmt);
-		if (res == SQLITE_DONE) {
+		if (res != SQLITE_OK) {
+			ds->state = sqlite_get_ds_state_error(res);
 			pom_log(POM_LOG_ERR "Unable to reset the prepared write query : %s", sqlite3_errmsg(dpriv->db));
 			return POM_ERR;
 		}
 	} else {
 		res = sqlite3_prepare_v2(dpriv->db, priv->write_query, -1, &priv->write_stmt, NULL);
 		if (res != SQLITE_OK) {
+			ds->state = sqlite_get_ds_state_error(res);
 			pom_log(POM_LOG_ERR "Error while while preparing the write query : %s", sqlite3_errmsg(dpriv->db));
 			return POM_ERR;
 		}
@@ -459,18 +483,22 @@ static int datastore_dataset_write_sqlite(struct dataset *ds) {
 				break;
 			}
 		}
+		if (res != SQLITE_OK) {
+			ds->state = sqlite_get_ds_state_error(res);
+			pom_log(POM_LOG_ERR "Unable to bind the value to the query : %s", sqlite3_errmsg(dpriv->db));
+			return POM_ERR;
+		}
 		
 	}
 
 	res = sqlite3_step(priv->write_stmt);
 	if (res != SQLITE_DONE) {
+		ds->state = sqlite_get_ds_state_error(res);
 		pom_log(POM_LOG_DEBUG "Unable to execute the write query : %s", sqlite3_errmsg(dpriv->db));
 		return POM_ERR;
 	}
 
 	ds->data_id = sqlite3_last_insert_rowid(dpriv->db);
-
-
 
 	return POM_OK;
 }
@@ -527,4 +555,17 @@ static int datastore_unregister_sqlite(struct datastore_reg *r) {
 	ptype_cleanup(pt_string);
 
 	return POM_OK;
+}
+
+static int sqlite_get_ds_state_error(int res) {
+
+	switch (res) {
+		case SQLITE_ERROR:
+		case SQLITE_ABORT:
+		case SQLITE_MISMATCH:
+			return DATASET_STATE_ERR;
+	}
+	
+	return DATASET_STATE_DATSTORE_ERR;
+
 }

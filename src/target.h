@@ -257,4 +257,7 @@ int target_cleanup_dataset_values(struct datavalue *dv);
 /// Write data in the datastore
 int target_write_dataset(struct target_dataset *ds, struct datavalue *dv);
 
+/// Handle errors from datasets
+int target_dataset_error(struct dataset *dset);
+
 #endif

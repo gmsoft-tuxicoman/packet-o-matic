@@ -417,8 +417,8 @@ int target_process(struct target *t, struct frame *f) {
 		PTYPE_UINT64_INC(t->byte_cnt, f->len);
 		if (targets[t->type]->process && (*targets[t->type]->process) (t, f) == POM_ERR) {
 			pom_log(POM_LOG_ERR "Target %s returned an error. Stopping it", target_get_name(t->type));
-			target_unlock_instance(t);
 			target_close(t);
+			target_unlock_instance(t);
 			return POM_ERR;
 		}
 	}
@@ -818,17 +818,18 @@ struct target_dataset *target_open_dataset(struct target *t, char *name, char *d
 	
 	struct target_dataset *res = malloc(sizeof(struct target_dataset));
 	memset(res, 0, sizeof(struct target_dataset));
-	res->name = malloc(strlen(name) + 1);
-	strcpy(res->name, name);
-	res->dset = datastore_dataset_open(dstore, dataset_name, dataset_type, descr, fields);
+	res->dset = datastore_dataset_open(dstore, dataset_name, dataset_type, descr, fields, target_dataset_error);
 
 	free(dataset_type);
+	free(datastore_name);
 
 	if (!res->dset) {
-		free(datastore_name);
+		free(res);
 		return NULL;
 	}
-	free(datastore_name);
+
+	res->name = malloc(strlen(name) + 1);
+	strcpy(res->name, name);
 
 	// Targets should alloc their own datavalue
 	res->orig_ds_data = res->dset->query_data;
@@ -874,9 +875,57 @@ int target_cleanup_dataset_values(struct datavalue *dv) {
 
 int target_write_dataset(struct target_dataset *ds, struct datavalue *dv) {
 
+	if (!ds->dset)
+		return POM_ERR;
+
 	ds->dset->query_data = dv;
 	int res = datastore_dataset_write(ds->dset);
-	ds->dset->query_data = NULL;
+	if (ds->dset) // Datastore could have been closed in the meantime
+		ds->dset->query_data = NULL;
 	return res;
 
+}
+
+int target_dataset_error(struct dataset *dset) {
+
+	// This is ugly and slow but it's not supposed to happen ...
+
+	struct rule_list *rl = main_config->rules;
+
+	while (rl) {
+
+		struct target *t = rl->target;
+		while (t) {
+
+			struct target_dataset *tds = t->datasets;
+			while (tds) {
+				if (tds->dset == dset) {
+					int res = pthread_rwlock_trywrlock(&t->lock);
+					if (res == EBUSY) {
+						// Target is busy, probably processing. Let's close the dataset
+						tds->dset->query_data = tds->orig_ds_data;
+						datastore_dataset_close(tds->dset);
+						tds->dset = NULL;
+					} else if (!res) {
+						// Target is not busy, let's close it
+						target_close(t);
+						target_unlock_instance(t);
+					} else {
+						// Locking operation failed
+						pom_log(POM_LOG_ERR "Error while locking a target instance lock");
+						abort();
+						return POM_ERR;
+
+					}
+					return POM_OK;
+				}
+
+				tds = tds->next;
+			}
+			t = t->next;
+		}
+		rl = rl->next;
+	}
+
+	return POM_OK;
 }

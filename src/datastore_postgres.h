@@ -38,6 +38,8 @@ struct datastore_priv_postgres {
 	struct ptype *user;
 	struct ptype *password;
 
+	char *conninfo; // Connection string
+
 
 	PGconn *connection;
 
@@ -89,5 +91,9 @@ static int datastore_close_postgres(struct datastore *d);
 static int datastore_cleanup_postgres(struct datastore *d);
 static int datastore_unregister_postgres(struct datastore_reg *r);
 
+static int postgres_exec(struct dataset *ds, const char *query);
+static int postgres_reconnect(struct datastore_priv_postgres *priv);
+static int postgres_get_ds_state_error(struct dataset *ds, PGresult *res);
+static void postgres_notice_processor(void *arg, const char *message);
 
 #endif

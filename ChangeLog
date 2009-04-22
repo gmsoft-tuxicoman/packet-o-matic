@@ -1,3 +1,13 @@
+* 2009/04/22 Guy Martin <gmsoft@tuxicoman.be>
+Improve CLI commands output for datastores.
+Added error notification callback to datasets in case the whole datastore fails.
+Fix compilation of datastore_postgres.c on open solaris.
+Change postgres port parameter from uint16 to string.
+Try to reconnect to postgres db when connection is dropped.
+Improve sqlite and postgres create query buffer handling.
+Close targets when the conntrack cleanup_handler callback fails.
+Make sure error is propagated when target_write_log_http() fails.
+
 * 2009/04/09 Guy Martin <gmsoft@tuxicoman.be>
 Add a warning when encrypted traffic is seen in input_docsis.
 Mark next layer of docsis encrypted traffic as undefined.

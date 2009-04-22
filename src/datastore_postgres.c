@@ -20,8 +20,6 @@
 
 #include "datastore_postgres.h"
 
-#include <byteswap.h>
-
 #include "ptype_bool.h"
 #include "ptype_uint8.h"
 #include "ptype_uint16.h"
@@ -85,7 +83,7 @@ static int datastore_init_postgres(struct datastore *d) {
 
 	priv->dbname = ptype_alloc("string", NULL);
 	priv->host = ptype_alloc("string", NULL);
-	priv->port = ptype_alloc("uint16", NULL);
+	priv->port = ptype_alloc("string", NULL);
 	priv->user = ptype_alloc("string", NULL);
 	priv->password = ptype_alloc("string", NULL);
 
@@ -107,26 +105,70 @@ static int datastore_open_postgres(struct datastore *d) {
 
 	struct datastore_priv_postgres *priv = d->priv;
 
-	char conninfo[2048];
-	memset(conninfo, 0, sizeof(conninfo));
-	char *dbname = PTYPE_STRING_GETVAL(priv->dbname);
-	snprintf(conninfo, sizeof(conninfo) - 1, "dbname=%s", dbname);
+	char *conninfo = NULL;
+
+	char *dbname = malloc((strlen(PTYPE_STRING_GETVAL(priv->dbname)) * 2) + 1);
+	PQescapeString(dbname, PTYPE_STRING_GETVAL(priv->dbname), strlen(PTYPE_STRING_GETVAL(priv->dbname)));
+	
+	unsigned int len = strlen("dbname='") + strlen(dbname) + strlen("'");
+	conninfo = malloc(len + 1);
+	memset(conninfo, 0, len + 1);
+
+	// DB name
+	strcpy(conninfo, "dbname='");
+	strcat(conninfo, dbname);
+	strcat(conninfo, "'");
+	free(dbname);
 
 	char *host = PTYPE_STRING_GETVAL(priv->host);
-	if (*host) {
-		snprintf(conninfo + strlen(conninfo), sizeof(conninfo) - strlen(conninfo) - 1, " host=%s", host);
-	} else if (*host == '/') {
-		strncat(conninfo + strlen(conninfo), " port=", sizeof(conninfo) - strlen(conninfo) - 1);
-		ptype_print_val(priv->port, conninfo + strlen(conninfo), sizeof(conninfo) - strlen(conninfo) - 1);
+	if (host && *host) {
+		char *ehost = malloc((strlen(host) * 2) + 1);
+		PQescapeString(ehost, host, strlen(host));
+		len += strlen(" host='") + strlen(ehost) + strlen("'");
+		conninfo = realloc(conninfo, len + 1);
+		strcat(conninfo, " host='");
+		strcat(conninfo, ehost);
+		strcat(conninfo, "'");
+		free(ehost);
 	}
 
-	char *user = PTYPE_STRING_GETVAL(priv->user);
-	if (*user) 
-		snprintf(conninfo + strlen(conninfo), sizeof(conninfo) - strlen(conninfo) - 1, " user=%s", user);
+	char *port = PTYPE_STRING_GETVAL(priv->port);
+	if (port && *port) {
+		char *eport = malloc((strlen(port) * 2) + 1);
+		PQescapeString(eport, port, strlen(port));
+		len += strlen(" port='") + strlen(eport) + strlen("'");
+		conninfo = realloc(conninfo, len + 1);
+		strcat(conninfo, " port='");
+		strcat(conninfo, eport);
+		strcat(conninfo, "'");
+		free(eport);
+	}
 
-	char *password = PTYPE_STRING_GETVAL(priv->password);
-	if (*password) 
-		snprintf(conninfo + strlen(conninfo), sizeof(conninfo) - strlen(conninfo) - 1, " password=%s", password);
+
+	char *user = PTYPE_STRING_GETVAL(priv->user);
+	if (user && *user) {
+		char *euser = malloc((strlen(user) * 2) + 1);
+		PQescapeString(euser, user, strlen(user));
+		len += strlen(" user='") + strlen(euser) + strlen("'");
+		conninfo = realloc(conninfo, len + 1);
+		strcat(conninfo, " user='");
+		strcat(conninfo, euser);
+		strcat(conninfo, "'");
+		free(euser);
+	}
+
+	char *pass = PTYPE_STRING_GETVAL(priv->password);
+	if (pass && *pass) {
+		char *epass = malloc((strlen(pass) * 2) + 1);
+		PQescapeString(epass, pass, strlen(pass));
+		len += strlen(" password='") + strlen(epass) + strlen("'");
+		conninfo = realloc(conninfo, len + 1);
+		strcat(conninfo, " password='");
+		strcat(conninfo, epass);
+		strcat(conninfo, "'");
+		free(epass);
+	}
+
 
 	priv->connection = PQconnectdb(conninfo);
 
@@ -137,10 +179,14 @@ static int datastore_open_postgres(struct datastore *d) {
 		pom_log(POM_LOG_ERR "Connection to database failed: %s", error);
 		PQfinish(priv->connection);
 		priv->connection = NULL;
+		free(conninfo);
 		return POM_ERR;
 	}
+	PQsetNoticeProcessor(priv->connection, postgres_notice_processor, NULL);
 
-	pom_log(POM_LOG_INFO "Connected on database %s at %s", dbname, host);
+	priv->conninfo = conninfo;
+
+	pom_log(POM_LOG_INFO "Connected on database %s at %s", PTYPE_STRING_GETVAL(priv->dbname), PTYPE_STRING_GETVAL(priv->host));
 
 	return POM_OK;
 
@@ -302,13 +348,13 @@ static int datastore_dataset_alloc_postgres(struct dataset *ds) {
 
 static int datastore_dataset_create_postgres(struct dataset *ds) {
 
-
-	struct datastore_priv_postgres *priv = ds->dstore->priv;
-
 	struct datavalue *dv = ds->query_data;
 
-	char query[2048];
-	memset(query, 0, sizeof(query));
+	unsigned int len = strlen("CREATE SEQUENCE ") + strlen(ds->name) + strlen("_seq; ") + \
+		strlen("CREATE TABLE ") + strlen(ds->name) + strlen(" ( " POSTGRES_PKID_NAME " bigint NOT NULL PRIMARY KEY, ") + strlen(" );");
+
+	char *query = malloc(len + 1);
+	memset(query, 0, len + 1);
 
 	strcat(query, "CREATE SEQUENCE ");
 	strcat(query, ds->name);
@@ -317,28 +363,35 @@ static int datastore_dataset_create_postgres(struct dataset *ds) {
 	strcat(query, "CREATE TABLE ");
 	strcat(query, ds->name);
 	strcat(query, " ( " POSTGRES_PKID_NAME " bigint NOT NULL PRIMARY KEY, ");
+
 	int i;
 	for (i = 0; dv[i].name; i++) {
-		
-		strcat(query, dv[i].name);
+	
+		char *type = " varchar";
 		switch (dv[i].native_type) {
 			case POSTGRES_PTYPE_BOOL:
-				strcat(query, " boolean");
+				type = " boolean";
 				break;
 			case POSTGRES_PTYPE_UINT8:
 			case POSTGRES_PTYPE_UINT16:
-				strcat(query, " smallint");
+				type = " smallint";
 				break;
 			case POSTGRES_PTYPE_UINT32:
-				strcat(query, " integer");
+				type = " integer";
 				break;
 			case POSTGRES_PTYPE_UINT64:
-				strcat(query, " bigint");
-				break;
-			default:
-				strcat(query, " varchar");
+				type = " bigint";
 				break;
 		}
+
+		len += strlen(dv[i].name) + strlen(type);
+		if (dv[i + 1].name)
+			len += strlen(", ");
+
+		query = realloc(query, len + 1);
+
+		strcat(query, dv[i].name);
+		strcat(query, type);
 		if (dv[i + 1].name)
 			strcat(query, ", ");
 
@@ -348,16 +401,15 @@ static int datastore_dataset_create_postgres(struct dataset *ds) {
 	
 	pom_log(POM_LOG_TSHOOT "CREATE QUERY : %s", query);
 
-	PGresult *res = PQexec(priv->connection, query);
-	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+	int res = postgres_exec(ds, query);
+	free(query);
+
+	struct datastore_priv_postgres *priv = ds->dstore->priv;
+	if (res == POM_ERR && priv->connection) {
 		pom_log(POM_LOG_ERR "Failed to create dataset \"%s\" in datastore %s : %s", ds->name, ds->dstore->name, PQerrorMessage(priv->connection));
-		PQclear(res);
-		return POM_ERR;
 	}
 
-	PQclear(res);
-
-	return POM_OK;
+	return res;
 }
 
 static int datastore_dataset_read_postgres(struct dataset *ds) {
@@ -366,14 +418,11 @@ static int datastore_dataset_read_postgres(struct dataset *ds) {
 	struct datastore_priv_postgres *dpriv = ds->dstore->priv;
 
 	if (ds->state != DATASET_STATE_MORE) {
-		 PGresult *res = PQexec(dpriv->connection, "BEGIN");
-		if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-			pom_log(POM_LOG_DEBUG "Unable to read to dataset %s query : %s", ds->name, PQresultErrorMessage(res));
-			PQclear(res);
-			ds->state = DATASET_STATE_ERR;
+		if (postgres_exec(ds, "BEGIN;") == POM_ERR) {
+			if (dpriv->connection)
+				pom_log(POM_LOG_ERR "Failed to begin read transaction to dataset %s : %s", ds->name, PQerrorMessage(dpriv->connection));
 			return POM_ERR;
 		}
-		PQclear(res);
 
 		char *read_query = priv->read_query_start;
 		struct datavalue_read_condition *qrc = ds->query_read_cond;
@@ -464,9 +513,10 @@ static int datastore_dataset_read_postgres(struct dataset *ds) {
 			priv->read_query_buff = read_query;
 		}
 
-		res = PQexec(dpriv->connection, read_query);
+		PGresult *res = PQexec(dpriv->connection, read_query);
 		if (PQresultStatus(res) != PGRES_COMMAND_OK) {
 			pom_log(POM_LOG_DEBUG "Unable to execute the READ SQL query : %s", PQresultErrorMessage(res));
+			ds->state = postgres_get_ds_state_error(ds, res);
 			PQclear(res);
 			res = PQexec(dpriv->connection, "ROLLBACK");
 			PQclear(res);
@@ -478,6 +528,7 @@ static int datastore_dataset_read_postgres(struct dataset *ds) {
 		priv->read_res = PQexec(dpriv->connection, priv->read_query);
 		if (PQresultStatus(priv->read_res) != PGRES_TUPLES_OK) {
 			pom_log(POM_LOG_DEBUG "Unable to execute the READ SQL query : %s", PQresultErrorMessage(priv->read_res));
+			ds->state = postgres_get_ds_state_error(ds, priv->read_res);
 			PQclear(priv->read_res);
 			priv->read_res = NULL;
 			res = PQexec(dpriv->connection, "ROLLBACK");
@@ -497,6 +548,7 @@ static int datastore_dataset_read_postgres(struct dataset *ds) {
 		PGresult *res = PQexec(dpriv->connection, priv->read_query_end);
 		if (PQresultStatus(res) != PGRES_COMMAND_OK) {
 			pom_log(POM_LOG_DEBUG "Error while ending the transaction : %s", PQresultErrorMessage(res));
+			ds->state = postgres_get_ds_state_error(ds, res);
 			PQclear(res);
 			return POM_ERR;
 		}
@@ -504,6 +556,7 @@ static int datastore_dataset_read_postgres(struct dataset *ds) {
 		res = PQexec(dpriv->connection, "COMMIT");
 		if (PQresultStatus(res) != PGRES_COMMAND_OK) {
 			pom_log(POM_LOG_DEBUG "Error while commiting the transaction : %s", PQresultErrorMessage(res));
+			ds->state = postgres_get_ds_state_error(ds, res);
 			PQclear(res);
 			return POM_ERR;
 		}
@@ -571,13 +624,12 @@ static int datastore_dataset_write_postgres(struct dataset *ds) {
 	struct datastore_priv_postgres *dpriv = ds->dstore->priv;
 	struct dataset_priv_postgres *priv = ds->priv;
 
-	PGresult *res = PQexec(dpriv->connection, "begin;");
-	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-		pom_log(POM_LOG_ERR "failed to begin to write to dataset \"%s\" : %s", ds->name, PQresultErrorMessage(res));
-		PQclear(res);
+	if (postgres_exec(ds, "BEGIN;") == POM_ERR) {
+		if (dpriv->connection)
+			pom_log(POM_LOG_ERR "Failed to begin write transaction to dataset %s : %s", ds->name, PQerrorMessage(dpriv->connection));
 		return POM_ERR;
 	}
-	PQclear(res);
+
 
 	struct datavalue *dv = ds->query_data;
 	int i;
@@ -631,7 +683,7 @@ static int datastore_dataset_write_postgres(struct dataset *ds) {
 	
 
 
-	res = PQexecParams(dpriv->connection, priv->write_query, priv->num_fields, NULL, (const char * const *)priv->write_query_param_val, priv->write_query_param_len, priv->write_query_param_format, 1);
+	PGresult *res = PQexecParams(dpriv->connection, priv->write_query, priv->num_fields, NULL, (const char * const *)priv->write_query_param_val, priv->write_query_param_len, priv->write_query_param_format, 1);
 
 	// Free allocated stuff for PTYPE_OTHER
 	for (i = 0; dv[i].name; i++) {
@@ -641,6 +693,7 @@ static int datastore_dataset_write_postgres(struct dataset *ds) {
 
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
 		pom_log(POM_LOG_ERR "Failed to write to dataset \"%s\" : %s", ds->name, PQresultErrorMessage(res));
+		ds->state = postgres_get_ds_state_error(ds, res);
 		PQclear(res);
 		PQexec(dpriv->connection, "ROLLBACK");
 		return POM_ERR;
@@ -651,6 +704,7 @@ static int datastore_dataset_write_postgres(struct dataset *ds) {
 	res = PQexecParams(dpriv->connection, priv->write_query_get_id, 0, NULL, NULL, NULL, NULL, 1);
 	if (PQresultStatus(res) != PGRES_TUPLES_OK) {
 		pom_log(POM_LOG_ERR "Failed to read the last inserted PKID : %s", PQresultErrorMessage(res));
+		ds->state = postgres_get_ds_state_error(ds, res);
 		PQclear(res);
 		PQexec(dpriv->connection, "ROLLBACK");
 		return POM_ERR;
@@ -664,6 +718,7 @@ static int datastore_dataset_write_postgres(struct dataset *ds) {
 	res = PQexec(dpriv->connection, "COMMIT;");
 	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
 		pom_log(POM_LOG_ERR "Failed to commit the write to dataset \"%s\" : %s", ds->name, PQresultErrorMessage(res));
+		ds->state = postgres_get_ds_state_error(ds, res);
 		PQclear(res);
 		return POM_ERR;
 	}
@@ -695,6 +750,9 @@ static int datastore_dataset_cleanup_postgres(struct dataset *ds) {
 static int datastore_close_postgres(struct datastore *d) {
 
 	struct datastore_priv_postgres *priv = d->priv;
+
+	if (priv->conninfo)
+		free(priv->conninfo);
 	if (priv->connection) {
 		PQfinish(priv->connection);
 		priv->connection = NULL;
@@ -721,7 +779,7 @@ static int datastore_cleanup_postgres(struct datastore *d) {
 	return POM_OK;
 }
 
-static int datastore_unregister_postgres(struct datastore_reg *re) {
+static int datastore_unregister_postgres(struct datastore_reg *r) {
 
 	ptype_cleanup(pt_bool);
 	ptype_cleanup(pt_uint8);
@@ -731,6 +789,90 @@ static int datastore_unregister_postgres(struct datastore_reg *re) {
 	ptype_cleanup(pt_string);
 
 	return POM_OK;
+
+}
+
+static int postgres_exec(struct dataset *ds, const char *query) {
+
+	struct datastore_priv_postgres *priv = ds->dstore->priv;
+
+	PGresult *res = PQexec(priv->connection, query);
+
+	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+		if (PQstatus(priv->connection) == CONNECTION_BAD) { // Try to reconnect
+			PQclear(res);
+
+			if (postgres_reconnect(priv) == POM_ERR) {
+				ds->state = DATASET_STATE_DATSTORE_ERR;
+				return POM_ERR;
+			}
+
+			// We should be reconnected now
+			res = PQexec(priv->connection, query);
+			if (PQresultStatus(res) == PGRES_COMMAND_OK) {
+				PQclear(res);
+				ds->state = DATASET_STATE_DONE;
+				return POM_OK;
+			}
+		}
+
+		ds->state = postgres_get_ds_state_error(ds, res);
+		PQclear(res);
+		return POM_ERR;
+
+	}
+
+	PQclear(res);
+	ds->state = DATASET_STATE_DONE;
+	return POM_OK;
+
+}
+
+static int postgres_get_ds_state_error(struct dataset *ds, PGresult *res) {
+
+	char *errcode = PQresultErrorField(res, PG_DIAG_SQLSTATE);
+
+	switch (*errcode) { // Select correct state depending on error class
+		case '2':
+		case '3':
+		case '4':
+			// Likely to be a dataset specific error
+			return DATASET_STATE_ERR;
+	}
+
+	return DATASET_STATE_DATSTORE_ERR;
+
+}
+
+static int postgres_reconnect(struct datastore_priv_postgres *priv) {
+
+	if (PQstatus(priv->connection) == CONNECTION_OK)
+		return POM_OK;
+
+	pom_log(POM_LOG_WARN "Connection to database %s on %s lost. Reconnecting", PTYPE_STRING_GETVAL(priv->dbname), PTYPE_STRING_GETVAL(priv->host));
+	PQfinish(priv->connection);
+
+	priv->connection = PQconnectdb(priv->conninfo);
+
+	if (PQstatus(priv->connection) != CONNECTION_OK) {
+		char *error = PQerrorMessage(priv->connection);
+		char *br = strchr(error, '\n');
+		if (br) *br = 0;
+		pom_log(POM_LOG_ERR "Unable to reconnect : %s", error);
+		PQfinish(priv->connection);
+		priv->connection = NULL;
+
+		return POM_ERR;
+	}
+	PQsetNoticeProcessor(priv->connection, postgres_notice_processor, NULL);
+
+	return POM_OK;
+}
+
+
+static void postgres_notice_processor(void *arg, const char *message) {
+
+	pom_log(POM_LOG_DEBUG "%s", message);
 
 }
 

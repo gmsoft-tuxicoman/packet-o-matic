@@ -653,47 +653,9 @@ struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct frame *
  */
 int conntrack_cleanup_connection(struct conntrack_entry *ce) {
 
-	// Remove the match privs
-	struct conntrack_match_priv *mp, *mptmp;
-	mp = ce->match_privs;
-	while (mp) {
-		if (conntracks[mp->priv_type] && conntracks[mp->priv_type]->cleanup_match_priv)
-			(*conntracks[mp->priv_type]->cleanup_match_priv) (mp->priv);
-		conntracks[mp->priv_type]->refcount--;
-		mptmp = mp;
-		mp = mp->next;
-		free(mptmp);
-	}
-
-	// Free up the helper privs
-	
-	struct conntrack_helper_priv *hp, *hptmp;
-	hp = ce->helper_privs;
-	while (hp) {
-		if (hp->priv && hp->cleanup_handler)
-			(*hp->cleanup_handler) (ce, hp->priv);
-		hptmp = hp;
-		hp = hp->next;
-		free(hptmp);
-	}
-
-	// Free up the target privs
-
-	struct conntrack_target_priv *tp, *tptmp;
-	tp = ce->target_privs;
-	while (tp) {
-		if (tp->priv && tp->cleanup_handler)
-			(*tp->cleanup_handler) (tp->t, ce, tp->priv);
-		tptmp = tp;
-		tp = tp->next;
-		free(tptmp);
-	}
-
 
 	// Free the conntrack lists
-
 	struct conntrack_list *cl;
-	
 	cl = ct_table[ce->full_hash];
 
 	// Find out the right conntrack_list
@@ -746,6 +708,48 @@ int conntrack_cleanup_connection(struct conntrack_entry *ce) {
 	
 	} else
 		pom_log(POM_LOG_WARN "Warning, conntrack_list not found for conntrack 0x%lu", (unsigned long) ce);
+
+
+	// Remove the match privs
+	struct conntrack_match_priv *mp, *mptmp;
+	mp = ce->match_privs;
+	while (mp) {
+		if (conntracks[mp->priv_type] && conntracks[mp->priv_type]->cleanup_match_priv)
+			(*conntracks[mp->priv_type]->cleanup_match_priv) (mp->priv);
+		conntracks[mp->priv_type]->refcount--;
+		mptmp = mp;
+		mp = mp->next;
+		free(mptmp);
+	}
+
+	// Free up the helper privs	
+	struct conntrack_helper_priv *hp, *hptmp;
+	hp = ce->helper_privs;
+	while (hp) {
+		if (hp->priv && hp->cleanup_handler)
+			(*hp->cleanup_handler) (ce, hp->priv);
+		hptmp = hp;
+		hp = hp->next;
+		free(hptmp);
+	}
+
+	// Free up the target privs
+	struct conntrack_target_priv *tp, *tptmp;
+	tp = ce->target_privs;
+	while (tp) {
+		target_lock_instance(tp->t, 0);
+		if (tp->priv && tp->cleanup_handler) {
+			if ((*tp->cleanup_handler) (tp->t, ce, tp->priv) == POM_ERR) {
+				pom_log(POM_LOG_ERR "Target %s's connection cleanup handler returned an error. Stopping it", target_get_name(tp->t->type));
+				target_close(tp->t);
+			}
+		}
+		target_unlock_instance(tp->t);
+		tptmp = tp;
+		tp = tp->next;
+		free(tptmp);
+	}
+
 
 	// Free the conntrack_entry itself
 
