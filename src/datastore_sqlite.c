@@ -117,7 +117,7 @@ static int datastore_dataset_alloc_sqlite(struct dataset *ds) {
 	struct dataset_priv_sqlite *priv = malloc(sizeof(struct dataset_priv_sqlite));
 	memset(priv, 0, sizeof(struct dataset_priv_sqlite));
 
-	int size = strlen("SELECT " SQLITE_PKID_NAME ", ");
+	int size = strlen("SELECT " SQLITE_PKID_NAME ", ") + strlen(" FROM ") + strlen(ds->name);
 	priv->read_query = malloc(size + 1);
 	strcpy(priv->read_query, "SELECT " SQLITE_PKID_NAME ", ");
 	int i;
@@ -139,7 +139,7 @@ static int datastore_dataset_alloc_sqlite(struct dataset *ds) {
 		else
 			dv[i].native_type = SQLITE_PTYPE_OTHER;
 
-		size += strlen (dv[i].name) + strlen(", ");
+		size += strlen(dv[i].name) + strlen(", ");
 		priv->read_query = realloc(priv->read_query, size + 1);
 
 		strcat(priv->read_query, dv[i].name);
@@ -147,8 +147,6 @@ static int datastore_dataset_alloc_sqlite(struct dataset *ds) {
 			strcat(priv->read_query, ", ");
 
 	}
-	size += strlen(" FROM ") + strlen(ds->name);
-	priv->read_query = realloc(priv->read_query, size + 1);
 	strcat(priv->read_query, " FROM ");
 	strcat(priv->read_query, ds->name);
 	pom_log(POM_LOG_TSHOOT "READ QUERY : %s", priv->read_query);
@@ -156,7 +154,7 @@ static int datastore_dataset_alloc_sqlite(struct dataset *ds) {
 	priv->read_query_buff_size = 1;
 	priv->read_query_buff = malloc(2);
 
-	size = strlen("INSERT INTO ") + strlen(ds->name) + strlen(" ( ");
+	size = strlen("INSERT INTO ") + strlen(ds->name) + strlen(" ( ") + strlen(" ) VALUES ( ") + strlen(" )");
 	priv->write_query = malloc(size + 1);
 	strcpy(priv->write_query, "INSERT INTO ");
 	strcat(priv->write_query, ds->name);
@@ -170,9 +168,7 @@ static int datastore_dataset_alloc_sqlite(struct dataset *ds) {
 			strcat(priv->write_query, ", ");
 
 	}
-	size += strlen(" ) VALUES ( ");
-	priv->write_query = realloc(priv->write_query, size + 1);
-	strcat(priv->write_query, " ) values ( ");
+	strcat(priv->write_query, " ) VALUES ( ");
 
 	for (i = 0; dv[i].name; i++) {
 		size += strlen("?, ");
@@ -182,11 +178,9 @@ static int datastore_dataset_alloc_sqlite(struct dataset *ds) {
 			strcat(priv->write_query, ", ");
 	}
 
-	size += strlen(" )");
-	priv->write_query = realloc(priv->write_query, size + 1);
 	strcat(priv->write_query, " )");
 
-	 pom_log(POM_LOG_TSHOOT "WRITE QUERY : %s", priv->write_query);
+	pom_log(POM_LOG_TSHOOT "WRITE QUERY : %s", priv->write_query);
 
 	ds->priv = priv;
 
@@ -324,7 +318,7 @@ static int datastore_dataset_read_sqlite(struct dataset *ds) {
 		if (qro) {
 			struct datavalue *dv = ds->query_data;
 			int new_size;
-			new_size = strlen(" ORDER BY ") + strlen(dv[qro->field_id].name) + 1;
+			new_size = strlen(" ORDER BY ") + strlen(dv[qro->field_id].name);
 			if (qro->direction)
 				new_size += strlen(" DESC");
 

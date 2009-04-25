@@ -1,3 +1,9 @@
+* 2009/04/25 Guy Martin <gmsoft@tuxicoman.be>
+Added datastore_mysql.
+Fix error handling when dataset ptype allocation fails.
+Remove some realloc() from datastore_sqlite.
+Make sure target_pop fails if the dataset cannot be opened.
+
 * 2009/04/22 Guy Martin <gmsoft@tuxicoman.be>
 Improve CLI commands output for datastores.
 Added error notification callback to datasets in case the whole datastore fails.

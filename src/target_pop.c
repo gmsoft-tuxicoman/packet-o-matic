@@ -103,7 +103,17 @@ static int target_open_pop(struct target *t) {
 
 	struct target_priv_pop *priv = t->target_priv;
 
-	priv->dset = target_open_dataset(t, TARGET_POP_DATASET_CREDENTIAL, "Credential founds", PTYPE_STRING_GETVAL(priv->ds_path), dataset_fields);
+	char *ds_path = PTYPE_STRING_GETVAL(priv->ds_path);
+
+	if (ds_path && strlen(ds_path)) {
+		priv->dset = target_open_dataset(t, TARGET_POP_DATASET_CREDENTIAL, "Credential founds", ds_path, dataset_fields);
+
+		if (!priv->dset) {
+			pom_log(POM_LOG_ERR "Unable to open the credential dataset");
+			return POM_ERR;
+		}
+
+	}
 
 	return POM_OK;
 

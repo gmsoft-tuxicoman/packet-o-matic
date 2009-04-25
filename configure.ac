@@ -212,6 +212,13 @@ then
 	DATASTORE_OBJS="$DATASTORE_OBJS datastore_sqlite.la"
 fi
 
+# Check for MySQL
+AC_CHECK_HEADERS([mysql/mysql.h], [want_mysql=yes], [want_mysql=no])
+if test "x$want_mysql" = "xyes"
+then
+	DATASTORE_OBJS="$DATASTORE_OBJS datastore_mysql.la"
+fi
+
 # Check for Zlib
 AC_CHECK_HEADERS([zlib.h], [want_zlib=yes], [want_zlib=no])
 if test "x$want_zlib" = "xyes"
@@ -246,6 +253,7 @@ echo " * Linux DVB headers  : $want_dvb"
 echo " * Linux TUN headers  : $want_tun"
 echo " * PostgreSQL headers : $want_postgres"
 echo " * Sqlite3 headers    : $want_sqlite3"
+echo " * MySQL headers      : $want_mysql"
 echo " * Zlib headers       : $want_zlib"
 echo ""
 echo "Author : Guy Martin <gmsoft@tuxicoman.be>"

@@ -465,6 +465,7 @@ int datastore_open(struct datastore *d) {
 
 			if (!dv[size - 1].value) {
 				pom_log(POM_LOG_ERR "Couldn't allocate ptype \"%s\"", PTYPE_STRING_GETVAL(dsfields->query_data[2].value));
+				tmp->query_data = dv;
 				goto err;
 			}
 			
@@ -499,20 +500,20 @@ err:
 	while (d->datasets) {
 		struct dataset *tmp = d->datasets;
 		d->datasets = tmp->next;
-		if (datastores[d->type]->dataset_cleanup)
-			(*datastores[d->type]->dataset_cleanup) (tmp);
 		struct datavalue *dv = tmp->query_data;
 		if (dv) {
 			int i;
 			for (i = 0; dv[i].name; i++) {
 				free(dv[i].name);
-				ptype_cleanup(dv[i].value);
+				if (dv[i].value)
+					ptype_cleanup(dv[i].value);
 			}
 			free(dv);
 		}
-		free(tmp->query_data);
 		free(tmp->name);
+		free(tmp->descr);
 		free(tmp->type);
+		free(tmp);
 
 	}
 
@@ -606,7 +607,6 @@ struct dataset *datastore_dataset_open(struct datastore *d, char *name, char *ty
 
 		tmp->open = 1;
 		tmp->dstore = d;
-		tmp->error_notify = error_notify;
 
 		if (datastores[d->type]->dataset_alloc) {
 			if ((*datastores[d->type]->dataset_alloc) (tmp) == POM_ERR) {
@@ -699,6 +699,8 @@ struct dataset *datastore_dataset_open(struct datastore *d, char *name, char *ty
 			dsnext->next = tmp;
 		}
 	}
+
+	tmp->error_notify = error_notify;
 
 	pom_log(POM_LOG_DEBUG "Dataset %s opened in datastore %s", tmp->name, d->name);
 
