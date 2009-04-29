@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,12 +27,12 @@
 #include "mgmtcmd.h"
 
 int mgmtcmd_conntrack_register_all();
-int mgmtcmd_show_conntracks(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_set_conntrack_param(struct mgmt_connection *c, int argc, char *argv[]);
-struct mgmt_command_arg* mgmtcmd_set_conntrack_param_completion(int argc, char *argv[]);
-int mgmtcmd_load_conntrack(struct mgmt_connection *c, int argc, char *argv[]);
-struct mgmt_command_arg* mgmtcmd_load_conntrack_completion(int argc, char *argv[]);
-int mgmtcmd_unload_conntrack(struct mgmt_connection *c, int argc, char *argv[]);
-struct mgmt_command_arg* mgmtcmd_unload_conntrack_completion(int argc, char *argv[]);
+int mgmtcmd_conntrack_show(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_conntrack_parameter_set(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_conntrack_parameter_set_completion(int argc, char *argv[]);
+int mgmtcmd_conntrack_load(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_conntrack_load_completion(int argc, char *argv[]);
+int mgmtcmd_conntrack_unload(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_conntrack_unload_completion(int argc, char *argv[]);
 
 #endif

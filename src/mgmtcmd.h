@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,27 +27,27 @@ int mgmtcmd_register_all();
 int mgmtcmd_exit(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_help(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_print_help(struct mgmt_connection *c, struct mgmt_command *commands, int show_all);
-int mgmtcmd_show_license(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_set_password(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_unset_password(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_set_debug_level(struct mgmt_connection *c, int argc, char *argv[]);
-struct mgmt_command_arg *mgmtcmd_set_debug_level_completion(int argc, char *argv[]);
-int mgmtcmd_show_debug_level(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_set_console_debug(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_write_config(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_license_show(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_password_cli_set(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_password_cli_unset(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_debug_cli_set(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg *mgmtcmd_debug_set_completion(int argc, char *argv[]);
+int mgmtcmd_debug_cli_show(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_debug_console_set(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_config_write(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_halt(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_show_core_parameters(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_set_core_parameter(struct mgmt_connection *c, int argc, char *argv[]);
-struct mgmt_command_arg *mgmtcmd_set_core_parameter_completion(int argc, char *argv[]);
-int mgmtcmd_load_match(struct mgmt_connection *c, int argc, char *argv[]);
-struct mgmt_command_arg* mgmtcmd_load_match_completion(int argc, char *argv[]);
-int mgmtcmd_unload_match(struct mgmt_connection *c, int argc, char *argv[]);
-struct mgmt_command_arg* mgmtcmd_unload_match_completion(int argc, char *argv[]);
-int mgmtcmd_load_ptype(struct mgmt_connection *c, int argc, char *argv[]);
-struct mgmt_command_arg* mgmtcmd_load_ptype_completion(int argc, char *argv[]);
-int mgmtcmd_unload_ptype(struct mgmt_connection *c, int argc, char *argv[]);
-struct mgmt_command_arg* mgmtcmd_unload_ptype_completion(int argc, char *argv[]);
-int mgmtcmd_show_version(struct mgmt_connection *c, int argc, char*argv[]);
+int mgmtcmd_core_parameter_show(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_core_parameter_set(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg *mgmtcmd_core_parameter_set_completion(int argc, char *argv[]);
+int mgmtcmd_match_load(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_match_load_completion(int argc, char *argv[]);
+int mgmtcmd_match_unload(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_match_unload_completion(int argc, char *argv[]);
+int mgmtcmd_ptype_load(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_ptype_load_completion(int argc, char *argv[]);
+int mgmtcmd_ptype_unload(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_ptype_unload_completion(int argc, char *argv[]);
+int mgmtcmd_version_show(struct mgmt_connection *c, int argc, char*argv[]);
 
 struct mgmt_command_arg* mgmtcmd_list_modules(char *type);
 struct mgmt_command_arg *mgmtcmd_completion_int_range(int start, int count);

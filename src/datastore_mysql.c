@@ -61,7 +61,7 @@ int datastore_register_mysql(struct datastore_reg *r) {
 
 	datastore_register_param(r, "dbname", "pom", "Database name");
 	datastore_register_param(r, "host", "localhost", "Host to connect to");
-	datastore_register_param(r, "port", "5432", "Port to connect to");
+	datastore_register_param(r, "port", "0", "Port to connect to");
 	datastore_register_param(r, "user", "", "User");
 	datastore_register_param(r, "password", "", "Password");
 	datastore_register_param(r, "unix_socket", "", "Unix socket");

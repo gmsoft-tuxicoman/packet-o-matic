@@ -62,30 +62,30 @@ You have to perform the following tasks to get a running configuration :
 The following example start an input pcap on eth0 (the default) and dump all the images that goes over HTTP on port 80 :
 
 // we use input pcap
-pom> set input type pcap
+pom> input type set pcap
 
 // we want to match everything destinated to the port 80
-pom> add rule ethernet | ipv4 | tcp.dport == 80
+pom> rule add tcp.dport == 80
 Added rule with id 0
 
 // the rule needs to be enabled
-pom> enable rule 0
+pom> rule enable 0
 
 // target_http will dump part of the http traffic into files
-pom> add target 0 http
+pom> target add 0 http
 Added target with id 0 to rule 0
 
 // enable dumping the images
-pom> set target parameter 0 0 dump_img yes
+pom> target parameter set 0 0 dump_img yes
 
 // start the target
-pom> start target 0 0
+pom> target start 0 0
 
 // finaly start the input to capture packets and start dumping
-pom> start input
+pom> input start
 
 // to save our changes we simply write the configuration
-pom> write config 
+pom> config write
 Configuration written in pom.xml.conf
 
 

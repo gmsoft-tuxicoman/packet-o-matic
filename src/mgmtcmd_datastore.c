@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,81 +29,81 @@
 static struct mgmt_command mgmt_datastore_commands[MGMT_DATASTORE_COMMANDS_NUM] = {
 
 	{
-		.words = { "show", "datastores", NULL },
+		.words = { "datastore", "show", NULL },
 		.help = "Display informations about the datastores in every datastore",
-		.callback_func = mgmtcmd_show_datastores,
+		.callback_func = mgmtcmd_datastore_show,
 	},
 
 	{
-		.words = { "start", "datastore", NULL },
+		.words = { "datastore", "start", NULL },
 		.help = "Start a datastore",
-		.callback_func = mgmtcmd_start_datastore,
-		.usage = "start datastore <datastore_name>",
+		.callback_func = mgmtcmd_datastore_start,
+		.usage = "datastore start <name>",
 		.completion = mgmtcmd_datastore_completion_name2,
 	},
 
 	{
-		.words = { "stop", "datastore", NULL },
+		.words = { "datastore", "stop", NULL },
 		.help = "Stop a datastore",
-		.callback_func = mgmtcmd_stop_datastore,
-		.usage = "stop datastore <datastore_name>",
+		.callback_func = mgmtcmd_datastore_stop,
+		.usage = "datastore stop <name>",
 		.completion = mgmtcmd_datastore_completion_name2,
 	},
 
 	{
-		.words = { "add", "datastore", NULL },
+		.words = { "datastore", "add", NULL },
 		.help = "Add a datastore to a datastore",
-		.callback_func = mgmtcmd_add_datastore,
-		.usage = "add datastore <datastore> <datastore_name>",
+		.callback_func = mgmtcmd_datastore_add,
+		.usage = "datastore add <datastore_type> <datastore_name>",
 		.completion = mgmtcmd_datastore_type_completion,
 	},
 
 	{
-		.words = { "remove", "datastore", NULL },
+		.words = { "datastore", "remove", NULL },
 		.help = "Remove a datastore from a datastore",
-		.callback_func = mgmtcmd_remove_datastore,
-		.usage = "remove datastore <datastore_name>",
+		.callback_func = mgmtcmd_datastore_remove,
+		.usage = "datastore remove <datastore_name>",
 		.completion = mgmtcmd_datastore_completion_name2,
 	},
 
 	{
-		.words = { "set", "datastore", "parameter", NULL },
+		.words = { "datastore", "parameter", "set", NULL },
 		.help = "Change the value of a datastore parameter",
-		.callback_func = mgmtcmd_set_datastore_parameter,
-		.usage = "set datastore parameter <datastore_name> <parameter> <value>",
-		.completion = mgmtcmd_set_datastore_parameter_completion,
+		.callback_func = mgmtcmd_datastore_parameter_set,
+		.usage = "datastore parameter set <datastore_name> <parameter> <value>",
+		.completion = mgmtcmd_datastore_parameter_set_completion,
 	},
 
 	{
-		.words = { "set", "datastore", "description",  NULL },
+		.words = { "datastore", "description", "set", NULL },
 		.help = "Set a description on a datastore",
-		.callback_func = mgmtcmd_set_datastore_descr,
+		.callback_func = mgmtcmd_datastore_description_set,
 		.completion = mgmtcmd_datastore_completion_name3,
-		.usage = "set datastore description <datastore_id> <descr>",
+		.usage = "datastore description set <datastore_name> <descr>",
 	},
 
 	{
-		.words = { "unset", "datastore", "description", NULL },
+		.words = { "datastore", "description", "unset", NULL },
 		.help = "Unset the description of a datastore",
-		.callback_func = mgmtcmd_unset_datastore_descr,
+		.callback_func = mgmtcmd_datastore_description_unset,
 		.completion = mgmtcmd_datastore_completion_name3,
-		.usage = "unset datastore description <datastore_name>",
+		.usage = "datastore description unset <datastore_name>",
 	},
 
 	{
-		.words = { "load", "datastore", NULL },
-		.help = "Load a datastore into the system",
-		.usage = "load datastore <datastore>",
-		.callback_func = mgmtcmd_load_datastore,
-		.completion = mgmtcmd_load_datastore_completion,
+		.words = { "datastore", "load", NULL },
+		.help = "Load a datastore module",
+		.usage = "datastore load <datastore_type>",
+		.callback_func = mgmtcmd_datastore_load,
+		.completion = mgmtcmd_datastore_load_completion,
 	},
 
 	{
-		.words = { "unload", "datastore", NULL },
-		.help = "Unload a datastore from the system",
-		.usage = "unload datastore <datastore>",
-		.callback_func = mgmtcmd_unload_datastore,
-		.completion = mgmtcmd_unload_datastore_completion,
+		.words = { "datastore", "unload", NULL },
+		.help = "Unload a datastore module",
+		.usage = "datastore unload <datastore_type>",
+		.callback_func = mgmtcmd_datastore_unload,
+		.completion = mgmtcmd_datastore_unload_completion,
 	},
 };
 
@@ -156,7 +156,7 @@ struct mgmt_command_arg *mgmtcmd_datastore_completion_name3(int argc, char *argv
 	return mgmctcmd_datastore_name_completion(argc, argv, argc - 3);
 
 }
-int mgmtcmd_show_datastores(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_datastore_show(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	main_config_datastores_lock(0);
 	struct datastore *d = main_config->datastores;
@@ -196,7 +196,7 @@ int mgmtcmd_show_datastores(struct mgmt_connection *c, int argc, char *argv[]) {
 	return POM_OK;
 }
 
-int mgmtcmd_start_datastore(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_datastore_start(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc < 1)
 		return MGMT_USAGE;
@@ -225,7 +225,7 @@ int mgmtcmd_start_datastore(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-int mgmtcmd_stop_datastore(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_datastore_stop(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc < 1)
 		return MGMT_USAGE;
@@ -257,7 +257,7 @@ int mgmtcmd_stop_datastore(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-int mgmtcmd_add_datastore(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_datastore_add(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc < 2)
 		return MGMT_USAGE;
@@ -358,7 +358,7 @@ struct datastore *mgmtcmd_get_datastore(char *datastore) {
 
 }
 
-int mgmtcmd_remove_datastore(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_datastore_remove(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc < 1)
 		return MGMT_USAGE;
@@ -396,7 +396,7 @@ int mgmtcmd_remove_datastore(struct mgmt_connection *c, int argc, char *argv[]) 
 
 }
 
-int mgmtcmd_set_datastore_parameter(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_datastore_parameter_set(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc < 2)
 		return MGMT_USAGE;
@@ -443,7 +443,7 @@ int mgmtcmd_set_datastore_parameter(struct mgmt_connection *c, int argc, char *a
 
 }
 
-struct mgmt_command_arg *mgmtcmd_set_datastore_parameter_completion(int argc, char *argv[]) {
+struct mgmt_command_arg *mgmtcmd_datastore_parameter_set_completion(int argc, char *argv[]) {
 
 	struct mgmt_command_arg *res = NULL;
 
@@ -488,7 +488,7 @@ struct mgmt_command_arg *mgmtcmd_set_datastore_parameter_completion(int argc, ch
 	return res;
 }
 
-int mgmtcmd_set_datastore_descr(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_datastore_description_set(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc < 2)
 		return MGMT_USAGE;
@@ -532,7 +532,7 @@ int mgmtcmd_set_datastore_descr(struct mgmt_connection *c, int argc, char *argv[
 
 }
 
-int mgmtcmd_unset_datastore_descr(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_datastore_description_unset(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc < 1)
 		return MGMT_USAGE;
@@ -565,7 +565,7 @@ int mgmtcmd_unset_datastore_descr(struct mgmt_connection *c, int argc, char *arg
 
 }
 
-int mgmtcmd_load_datastore(struct mgmt_connection *c, int argc, char*argv[]) {
+int mgmtcmd_datastore_load(struct mgmt_connection *c, int argc, char*argv[]) {
 
 	if (argc != 1)
 		return MGMT_USAGE;
@@ -587,7 +587,7 @@ int mgmtcmd_load_datastore(struct mgmt_connection *c, int argc, char*argv[]) {
 
 }
 
-struct mgmt_command_arg* mgmtcmd_load_datastore_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_datastore_load_completion(int argc, char *argv[]) {
 
 	if (argc != 2)
 		return NULL;
@@ -597,7 +597,7 @@ struct mgmt_command_arg* mgmtcmd_load_datastore_completion(int argc, char *argv[
 	return res;
 }
 
-int mgmtcmd_unload_datastore(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_datastore_unload(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
 	if (argc != 1)
@@ -622,7 +622,7 @@ int mgmtcmd_unload_datastore(struct mgmt_connection *c, int argc, char *argv[]) 
 
 }
 
-struct mgmt_command_arg* mgmtcmd_unload_datastore_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_datastore_unload_completion(int argc, char *argv[]) {
 
 	struct mgmt_command_arg *res = NULL;
 

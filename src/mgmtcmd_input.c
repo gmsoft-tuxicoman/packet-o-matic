@@ -28,61 +28,61 @@
 static struct mgmt_command mgmt_input_commands[MGMT_INPUT_COMMANDS_NUM] = {
 
 	{
-		.words = { "show", "input", NULL },
+		.words = { "input", "show", NULL },
 		.help = "Display informations about the input in use",
-		.callback_func = mgmtcmd_show_input,
+		.callback_func = mgmtcmd_input_show,
 	},
 
 	{
-		.words = { "start", "input", NULL },
+		.words = { "input", "start", NULL },
 		.help = "Start the input",
-		.callback_func = mgmtcmd_start_input,
+		.callback_func = mgmtcmd_input_start,
 	},
 
 	{
-		.words = { "stop", "input", NULL },
+		.words = { "input", "stop", NULL },
 		.help = "Stop the input",
-		.callback_func = mgmtcmd_stop_input,
+		.callback_func = mgmtcmd_input_stop,
 	},
 
 	{
-		.words = { "set", "input", "type", NULL },
+		.words = { "input", "type", "set", NULL },
 		.help = "Select another type of input",
-		.callback_func = mgmtcmd_set_input_type,
-		.completion = mgmtcmd_set_input_type_completion,
-		.usage = "set input type <type>",
+		.callback_func = mgmtcmd_input_type_set,
+		.completion = mgmtcmd_input_type_set_completion,
+		.usage = "input type set <type>",
 	},
 
 	{
-		.words = { "set", "input", "mode", NULL },
+		.words = { "input", "mode", "set", NULL },
 		.help = "Change the mode of the input",
-		.callback_func = mgmtcmd_set_input_mode,
-		.completion = mgmtcmd_set_input_mode_completion,
-		.usage = "set input mode <mode>",
+		.callback_func = mgmtcmd_input_mode_set,
+		.completion = mgmtcmd_input_mode_set_completion,
+		.usage = "input mode set <mode>",
 	},
 
 	{
-		.words = { "set", "input", "parameter", NULL },
+		.words = { "input", "parameter", "set", NULL },
 		.help = "Change the value of a input parameter",
-		.callback_func = mgmtcmd_set_input_parameter,
-		.completion = mgmtcmd_set_input_parameter_completion,
-		.usage = "set input parameter <parameter> <value>",
+		.callback_func = mgmtcmd_input_parameter_set,
+		.completion = mgmtcmd_input_parameter_set_completion,
+		.usage = "input parameter set <parameter> <value>",
 	},
 
 	{
-		.words = { "load", "input", NULL },
-		.help = "Load an input from the system",
-		.usage = "load input <input>",
-		.callback_func = mgmtcmd_load_input,
-		.completion = mgmtcmd_load_input_completion,
+		.words = { "input", "load", NULL },
+		.help = "Load an input module",
+		.usage = "input load <input>",
+		.callback_func = mgmtcmd_input_load,
+		.completion = mgmtcmd_input_load_completion,
 	},
 
 	{
-		.words = { "unload", "input", NULL },
-		.help = "Unload an input from the system",
-		.usage = "unload input <input>",
-		.callback_func = mgmtcmd_unload_input,
-		.completion = mgmtcmd_unload_input_completion,
+		.words = { "input", "unload", NULL },
+		.help = "Unload an input module",
+		.usage = "input unload <input>",
+		.callback_func = mgmtcmd_input_unload,
+		.completion = mgmtcmd_input_unload_completion,
 	},
 };
 
@@ -99,7 +99,7 @@ int mgmtcmd_input_register_all() {
 }
 
 
-int mgmtcmd_show_input(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_input_show(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	struct input* i = main_config->input;
 	if (!i) {
@@ -134,7 +134,7 @@ int mgmtcmd_show_input(struct mgmt_connection *c, int argc, char *argv[]) {
 	return POM_OK;
 }
 
-int mgmtcmd_start_input(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_input_start(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
 	if (rbuf->state != rb_state_closed) {
@@ -156,7 +156,7 @@ int mgmtcmd_start_input(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-int mgmtcmd_stop_input(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_input_stop(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
 	if (rbuf->state == rb_state_closed) {
@@ -174,7 +174,7 @@ int mgmtcmd_stop_input(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-int mgmtcmd_set_input_type(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_input_type_set(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (argc < 1)
 		return MGMT_USAGE;
@@ -232,7 +232,7 @@ int mgmtcmd_set_input_type(struct mgmt_connection *c, int argc, char *argv[]) {
 	return POM_OK;
 }
 
-struct mgmt_command_arg* mgmtcmd_set_input_type_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_input_type_set_completion(int argc, char *argv[]) {
 
 	if (argc != 3)
 		return NULL;
@@ -242,7 +242,7 @@ struct mgmt_command_arg* mgmtcmd_set_input_type_completion(int argc, char *argv[
 	return res;
 }
 
-int mgmtcmd_set_input_mode(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_input_mode_set(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (argc < 1)
 		return MGMT_USAGE;
@@ -267,7 +267,7 @@ int mgmtcmd_set_input_mode(struct mgmt_connection *c, int argc, char *argv[]) {
 	return POM_OK;
 }
 
-struct mgmt_command_arg* mgmtcmd_set_input_mode_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_input_mode_set_completion(int argc, char *argv[]) {
 	
 	if (argc != 3)
 		return NULL;
@@ -294,7 +294,7 @@ struct mgmt_command_arg* mgmtcmd_set_input_mode_completion(int argc, char *argv[
 	return res;
 }
 
-int mgmtcmd_set_input_parameter(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_input_parameter_set(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc < 1)
 		return MGMT_USAGE;
@@ -355,7 +355,7 @@ int mgmtcmd_set_input_parameter(struct mgmt_connection *c, int argc, char *argv[
 	return POM_OK;
 }
 
-struct mgmt_command_arg* mgmtcmd_set_input_parameter_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_input_parameter_set_completion(int argc, char *argv[]) {
 	
 	if (argc != 3)
 		return NULL;
@@ -381,7 +381,7 @@ struct mgmt_command_arg* mgmtcmd_set_input_parameter_completion(int argc, char *
 
 	return res;
 }
-int mgmtcmd_load_input(struct mgmt_connection *c, int argc, char*argv[]) {
+int mgmtcmd_input_load(struct mgmt_connection *c, int argc, char*argv[]) {
 
 	if (argc != 1)
 		return MGMT_USAGE;
@@ -406,7 +406,7 @@ int mgmtcmd_load_input(struct mgmt_connection *c, int argc, char*argv[]) {
 
 }
 
-struct mgmt_command_arg* mgmtcmd_load_input_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_input_load_completion(int argc, char *argv[]) {
 
 	if (argc != 2)
 		return NULL;
@@ -416,7 +416,7 @@ struct mgmt_command_arg* mgmtcmd_load_input_completion(int argc, char *argv[]) {
 	return res;
 }
 
-int mgmtcmd_unload_input(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_input_unload(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
 	if (argc != 1)
@@ -449,7 +449,7 @@ int mgmtcmd_unload_input(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-struct mgmt_command_arg* mgmtcmd_unload_input_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_input_unload_completion(int argc, char *argv[]) {
 
 	struct mgmt_command_arg *res = NULL;
 

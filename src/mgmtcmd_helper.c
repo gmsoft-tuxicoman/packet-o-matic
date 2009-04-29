@@ -27,33 +27,33 @@
 static struct mgmt_command mgmt_helper_commands[MGMT_HELPER_COMMANDS_NUM] = {
 
 	{
-		.words = { "show", "helpers", NULL },
-		.help = "Display information about the loaded helpers",
-		.callback_func = mgmtcmd_show_helpers,
+		.words = { "helper", "show", NULL },
+		.help = "Display information about loaded helpers",
+		.callback_func = mgmtcmd_helper_show,
 	},
 
 	{
-		.words = { "load", "helper", NULL },
-		.help = "Load an helper into the system",
-		.usage = "load helper <helper>",
-		.callback_func = mgmtcmd_load_helper,
-		.completion = mgmtcmd_load_helper_completion,
+		.words = { "helper", "load", NULL },
+		.help = "Load an helper module",
+		.usage = "helper load <helper>",
+		.callback_func = mgmtcmd_helper_load,
+		.completion = mgmtcmd_helper_load_completion,
 	},
 
 	{
-		.words = { "set", "helper", "parameter", NULL},
+		.words = { "helper", "parameter", "set", NULL},
 		.help = "Change the value of a helper parameter",
-		.usage = "set helper parameter <helper> <parameter> <value>",
-		.callback_func = mgmtcmd_set_helper_param,
-		.completion = mgmtcmd_set_helper_param_completion,
+		.usage = "helper parameter set <helper> <parameter> <value>",
+		.callback_func = mgmtcmd_helper_parameter_set,
+		.completion = mgmtcmd_helper_parameter_set_completion,
 	},
 
 	{
-		.words = { "unload", "helper", NULL },
-		.help = "Unload an helper from the system",
-		.usage = "unload helper <helper>",
-		.callback_func = mgmtcmd_unload_helper,
-		.completion = mgmtcmd_unload_helper_completion,
+		.words = { "helper", "unload", NULL },
+		.help = "Unload an helper module",
+		.usage = "helper unload <helper>",
+		.callback_func = mgmtcmd_helper_unload,
+		.completion = mgmtcmd_helper_unload_completion,
 	},
 
 };
@@ -70,7 +70,7 @@ int mgmtcmd_helper_register_all() {
 }
 
 
-int mgmtcmd_show_helpers(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_helper_show(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	mgmtsrv_send(c, "Loaded helpers : \r\n");
 
@@ -106,7 +106,7 @@ int mgmtcmd_show_helpers(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
 
-int mgmtcmd_load_helper(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_helper_load(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
 	if (argc != 1)
@@ -137,7 +137,7 @@ int mgmtcmd_load_helper(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-struct mgmt_command_arg* mgmtcmd_load_helper_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_helper_load_completion(int argc, char *argv[]) {
 
 	if (argc != 2)
 		return NULL;
@@ -147,7 +147,7 @@ struct mgmt_command_arg* mgmtcmd_load_helper_completion(int argc, char *argv[]) 
 	return res;
 }
 
-int mgmtcmd_set_helper_param(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_helper_parameter_set(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc != 3) 
 		return MGMT_USAGE;
@@ -180,13 +180,13 @@ int mgmtcmd_set_helper_param(struct mgmt_connection *c, int argc, char *argv[]) 
 
 }
 
-struct mgmt_command_arg* mgmtcmd_set_helper_param_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_helper_parameter_set_completion(int argc, char *argv[]) {
 
 	struct mgmt_command_arg *res = NULL;
 
 	switch (argc) {
 		case 3:
-			res = mgmtcmd_unload_helper_completion(2, argv);
+			res = mgmtcmd_helper_unload_completion(2, argv);
 			break;
 
 		case 4: {
@@ -228,7 +228,7 @@ struct mgmt_command_arg* mgmtcmd_set_helper_param_completion(int argc, char *arg
 
 }
 
-int mgmtcmd_unload_helper(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_helper_unload(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
 	if (argc != 1)
@@ -254,7 +254,7 @@ int mgmtcmd_unload_helper(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-struct mgmt_command_arg* mgmtcmd_unload_helper_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_helper_unload_completion(int argc, char *argv[]) {
 
 	struct mgmt_command_arg *res = NULL;
 

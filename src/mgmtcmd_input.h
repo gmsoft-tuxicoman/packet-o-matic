@@ -27,18 +27,18 @@
 #include "mgmtcmd.h"
 
 int mgmtcmd_input_register_all();
-int mgmtcmd_show_input(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_start_input(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_stop_input(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_set_input_type(struct mgmt_connection *c, int argc, char *argv[]);
-struct mgmt_command_arg* mgmtcmd_set_input_type_completion(int argc, char *argv[]);
-int mgmtcmd_set_input_mode(struct mgmt_connection *c, int argc, char *argv[]);
-struct mgmt_command_arg* mgmtcmd_set_input_mode_completion(int argc, char *argv[]);
-int mgmtcmd_set_input_parameter(struct mgmt_connection *c, int argc, char *argv[]);
-struct mgmt_command_arg* mgmtcmd_set_input_parameter_completion(int argc, char *argv[]);
-int mgmtcmd_load_input(struct mgmt_connection *c, int argc, char *argv[]);
-struct mgmt_command_arg* mgmtcmd_load_input_completion(int argc, char *argv[]);
-int mgmtcmd_unload_input(struct mgmt_connection *c, int argc, char *argv[]);
-struct mgmt_command_arg* mgmtcmd_unload_input_completion(int argc, char *argv[]);
+int mgmtcmd_input_show(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_input_start(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_input_stop(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_input_type_set(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_input_type_set_completion(int argc, char *argv[]);
+int mgmtcmd_input_mode_set(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_input_mode_set_completion(int argc, char *argv[]);
+int mgmtcmd_input_parameter_set(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_input_parameter_set_completion(int argc, char *argv[]);
+int mgmtcmd_input_load(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_input_load_completion(int argc, char *argv[]);
+int mgmtcmd_input_unload(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_input_unload_completion(int argc, char *argv[]);
 
 #endif

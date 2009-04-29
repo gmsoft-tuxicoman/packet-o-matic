@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,89 +30,89 @@
 static struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 
 	{
-		.words = { "show", "targets", NULL },
+		.words = { "target", "show", NULL },
 		.help = "Display informations about the targets in every rule",
-		.callback_func = mgmtcmd_show_targets,
+		.callback_func = mgmtcmd_target_show,
 	},
 
 	{
-		.words = { "start", "target", NULL },
+		.words = { "target", "start", NULL },
 		.help = "Start a target",
-		.callback_func = mgmtcmd_start_target,
-		.usage = "start target <rule_id> <target_id>",
+		.callback_func = mgmtcmd_target_start,
+		.usage = "target start <rule_id> <target_id>",
 		.completion = mgmtcmd_target_completion_id2,
 	},
 
 	{
-		.words = { "stop", "target", NULL },
+		.words = { "target", "stop", NULL },
 		.help = "Stop a target",
-		.callback_func = mgmtcmd_stop_target,
-		.usage = "stop target <rule_id> <target_id>",
+		.callback_func = mgmtcmd_target_stop,
+		.usage = "target stop <rule_id> <target_id>",
 		.completion = mgmtcmd_target_completion_id2,
 	},
 
 	{
-		.words = { "add", "target", NULL },
+		.words = { "target", "add", NULL },
 		.help = "Add a target to a rule",
-		.callback_func = mgmtcmd_add_target,
-		.usage = "add target <rule_id> <target>",
+		.callback_func = mgmtcmd_target_add,
+		.usage = "target add <rule_id> <target>",
 		.completion = mgmtcmd_target_name_completion,
 	},
 
 	{
-		.words = { "remove", "target", NULL },
+		.words = { "target", "remove", NULL },
 		.help = "Remove a target from a rule",
-		.callback_func = mgmtcmd_remove_target,
-		.usage = "remove target <rule_id> <target_id>",
+		.callback_func = mgmtcmd_target_remove,
+		.usage = "target remove <rule_id> <target_id>",
 		.completion = mgmtcmd_target_completion_id2,
 	},
 
 	{
-		.words = { "set", "target", "parameter", NULL },
+		.words = { "target", "parameter", "set", NULL },
 		.help = "Change the value of a target parameter",
-		.callback_func = mgmtcmd_set_target_parameter,
-		.usage = "set target parameter <rule_id> <target_id> <parameter> <value>",
-		.completion = mgmtcmd_set_target_parameter_completion,
+		.callback_func = mgmtcmd_target_parameter_set,
+		.usage = "target parameter set <rule_id> <target_id> <parameter> <value>",
+		.completion = mgmtcmd_target_parameter_set_completion,
 	},
 
 	{
-		.words = { "set", "target", "description",  NULL },
+		.words = { "target", "description", "set",  NULL },
 		.help = "Set a description on a target",
-		.callback_func = mgmtcmd_set_target_descr,
+		.callback_func = mgmtcmd_target_description_set,
 		.completion = mgmtcmd_target_completion_id3,
-		.usage = "set target description <rule_id> <target_id> <descr>",
+		.usage = "target description set <rule_id> <target_id> <descr>",
 	},
 
 	{
-		.words = { "unset", "target", "description", NULL },
+		.words = { "target", "description", "unset", NULL },
 		.help = "Unset the description of a target",
-		.callback_func = mgmtcmd_unset_target_descr,
+		.callback_func = mgmtcmd_target_description_unset,
 		.completion = mgmtcmd_target_completion_id3,
-		.usage = "unset target description <rule_id> <target_id>",
+		.usage = "target description unset <rule_id> <target_id>",
 	},
 
 	{
-		.words = { "set", "target", "mode", NULL },
+		.words = { "target", "mode", "set", NULL },
 		.help = "Change the mode of a target",
-		.callback_func = mgmtcmd_set_target_mode,
-		.usage = "set target mode <rule_id> <target_id> <mode>",
-		.completion = mgmtcmd_set_target_mode_completion,
+		.callback_func = mgmtcmd_target_mode_set,
+		.usage = "target mode set <rule_id> <target_id> <mode>",
+		.completion = mgmtcmd_target_mode_set_completion,
 	},
 
 	{
-		.words = { "load", "target", NULL },
-		.help = "Load a target into the system",
-		.usage = "load target <target>",
-		.callback_func = mgmtcmd_load_target,
-		.completion = mgmtcmd_load_target_completion,
+		.words = { "target", "load", NULL },
+		.help = "Load a target module",
+		.usage = "target load <target>",
+		.callback_func = mgmtcmd_target_load,
+		.completion = mgmtcmd_target_load_completion,
 	},
 
 	{
-		.words = { "unload", "target", NULL },
-		.help = "Unload a target from the system",
-		.usage = "unload target <target>",
-		.callback_func = mgmtcmd_unload_target,
-		.completion = mgmtcmd_unload_target_completion,
+		.words = { "target", "unload", NULL },
+		.help = "Unload a target module",
+		.usage = "target unload <target>",
+		.callback_func = mgmtcmd_target_unload,
+		.completion = mgmtcmd_target_unload_completion,
 	},
 };
 
@@ -175,7 +175,7 @@ struct mgmt_command_arg *mgmtcmd_target_completion_id3(int argc, char *argv[]) {
 	return mgmctcmd_target_id_completion(argc, argv, argc - 3);
 
 }
-int mgmtcmd_show_targets(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_target_show(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	main_config_rules_lock(0);
 
@@ -237,7 +237,7 @@ int mgmtcmd_show_targets(struct mgmt_connection *c, int argc, char *argv[]) {
 	return POM_OK;
 }
 
-int mgmtcmd_start_target(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_target_start(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc < 2)
 		return MGMT_USAGE;
@@ -276,7 +276,7 @@ int mgmtcmd_start_target(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-int mgmtcmd_stop_target(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_target_stop(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc < 2)
 		return MGMT_USAGE;
@@ -316,7 +316,7 @@ int mgmtcmd_stop_target(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-int mgmtcmd_add_target(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_target_add(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc < 2)
 		return MGMT_USAGE;
@@ -403,7 +403,7 @@ struct target *mgmtcmd_get_target(struct rule_list *rl, char *target) {
 
 }
 
-int mgmtcmd_remove_target(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_target_remove(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc < 2)
 		return MGMT_USAGE;
@@ -452,7 +452,7 @@ int mgmtcmd_remove_target(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-int mgmtcmd_set_target_parameter(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_target_parameter_set(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc < 4)
 		return MGMT_USAGE;
@@ -497,7 +497,7 @@ int mgmtcmd_set_target_parameter(struct mgmt_connection *c, int argc, char *argv
 
 
 
-	// first, let's reconstruct the whole rule
+	// first, let's reconstruct the whole parameter
 	int i, param_len = 0;
 	for (i = 1; i < argc; i++) {
 		param_len += strlen(argv[i]) + 1;
@@ -527,7 +527,7 @@ int mgmtcmd_set_target_parameter(struct mgmt_connection *c, int argc, char *argv
 
 }
 
-struct mgmt_command_arg *mgmtcmd_set_target_parameter_completion(int argc, char *argv[]) {
+struct mgmt_command_arg *mgmtcmd_target_parameter_set_completion(int argc, char *argv[]) {
 
 	struct mgmt_command_arg *res = NULL;
 
@@ -583,7 +583,7 @@ struct mgmt_command_arg *mgmtcmd_set_target_parameter_completion(int argc, char 
 	return res;
 }
 
-int mgmtcmd_set_target_descr(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_target_description_set(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc < 3)
 		return MGMT_USAGE;
@@ -638,7 +638,7 @@ int mgmtcmd_set_target_descr(struct mgmt_connection *c, int argc, char *argv[]) 
 
 }
 
-int mgmtcmd_unset_target_descr(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_target_description_unset(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc < 2)
 		return MGMT_USAGE;
@@ -682,7 +682,7 @@ int mgmtcmd_unset_target_descr(struct mgmt_connection *c, int argc, char *argv[]
 	return POM_OK;
 
 }
-int mgmtcmd_set_target_mode(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_target_mode_set(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc < 3)
 		return MGMT_USAGE;
@@ -731,7 +731,7 @@ int mgmtcmd_set_target_mode(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-struct mgmt_command_arg *mgmtcmd_set_target_mode_completion(int argc, char *argv[]) {
+struct mgmt_command_arg *mgmtcmd_target_mode_set_completion(int argc, char *argv[]) {
 
 	struct mgmt_command_arg *res = NULL;
 
@@ -786,7 +786,7 @@ struct mgmt_command_arg *mgmtcmd_set_target_mode_completion(int argc, char *argv
 }
 
 
-int mgmtcmd_load_target(struct mgmt_connection *c, int argc, char*argv[]) {
+int mgmtcmd_target_load(struct mgmt_connection *c, int argc, char*argv[]) {
 
 	if (argc != 1)
 		return MGMT_USAGE;
@@ -808,7 +808,7 @@ int mgmtcmd_load_target(struct mgmt_connection *c, int argc, char*argv[]) {
 
 }
 
-struct mgmt_command_arg* mgmtcmd_load_target_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_target_load_completion(int argc, char *argv[]) {
 
 	if (argc != 2)
 		return NULL;
@@ -818,7 +818,7 @@ struct mgmt_command_arg* mgmtcmd_load_target_completion(int argc, char *argv[]) 
 	return res;
 }
 
-int mgmtcmd_unload_target(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_target_unload(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
 	if (argc != 1)
@@ -843,7 +843,7 @@ int mgmtcmd_unload_target(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-struct mgmt_command_arg* mgmtcmd_unload_target_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_target_unload_completion(int argc, char *argv[]) {
 
 	struct mgmt_command_arg *res = NULL;
 

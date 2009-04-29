@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -54,51 +54,51 @@ static struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 	},
 
 	{
-		.words = { "show", "license", NULL },
+		.words = { "license", "show", NULL },
 		.help = "Display the license of this program",
-		.callback_func = mgmtcmd_show_license,
+		.callback_func = mgmtcmd_license_show,
 	},
 
 	{
-		.words = { "set", "password", NULL },
+		.words = { "password", "cli", "set", NULL },
 		.help = "Set the password to access the CLI",
-		.callback_func = mgmtcmd_set_password,
-		.usage = "set password <password>",
+		.callback_func = mgmtcmd_password_cli_set,
+		.usage = "password cli set <password>",
 	},
 
 	{
-		.words = { "unset", "password", NULL },
+		.words = { "password", "cli", "unset", NULL },
 		.help = "Unset the password to access the CLI",
-		.callback_func = mgmtcmd_unset_password,
+		.callback_func = mgmtcmd_password_cli_unset,
 	},
 
 	{
-		.words = { "set", "debug", "level", NULL },
+		.words = { "debug", "cli", "set", NULL },
 		.help = "Change the debug level of the CLI",
-		.callback_func = mgmtcmd_set_debug_level,
-		.usage = "set debug level <off,0-5>",
-		.completion = mgmtcmd_set_debug_level_completion,
+		.callback_func = mgmtcmd_debug_cli_set,
+		.usage = "debug cli set <off,0-5>",
+		.completion = mgmtcmd_debug_set_completion,
 	},
 
 	{
-		.words = { "show", "debug", "level", NULL },
-		.help = "Display the current debug level",
-		.callback_func = mgmtcmd_show_debug_level,
+		.words = { "debug", "cli", "show", NULL },
+		.help = "Display the CLI's current debug level",
+		.callback_func = mgmtcmd_debug_cli_show,
 	},
 
 	{
-		.words = { "set", "console", "debug", NULL },
+		.words = { "debug", "console", "set", NULL },
 		.help = "Change the debug level of the main console",
-		.callback_func = mgmtcmd_set_console_debug,
-		.usage = "set console debug <off,0-5>",
-		.completion = mgmtcmd_set_debug_level_completion,
+		.callback_func = mgmtcmd_debug_console_set,
+		.usage = "debug console set <off,0-5>",
+		.completion = mgmtcmd_debug_set_completion,
 	},
 
 	{
-		.words = { "write", "config", NULL },
+		.words = { "config", "write", NULL },
 		.help = "Write the configuration file",
-		.callback_func = mgmtcmd_write_config,
-		.usage = "write config [filename]",
+		.callback_func = mgmtcmd_config_write,
+		.usage = "config write [filename]",
 	},
 
 	{
@@ -108,55 +108,55 @@ static struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 	},
 
 	{
-		.words = { "show", "core", "parameters", NULL },
+		.words = { "core", "parameter", "show", NULL },
 		.help = "Show the core parameters",
-		.callback_func = mgmtcmd_show_core_parameters,
+		.callback_func = mgmtcmd_core_parameter_show,
 	},
 
 	{
-		.words = { "set", "core", "parameter", NULL },
+		.words = { "core", "parameter", "set", NULL },
 		.help = "Change the value of a core parameter",
-		.callback_func = mgmtcmd_set_core_parameter,
-		.usage = "set core parameter <parameter> <value>",
-		.completion = mgmtcmd_set_core_parameter_completion,
+		.callback_func = mgmtcmd_core_parameter_set,
+		.usage = "core parameter set <parameter> <value>",
+		.completion = mgmtcmd_core_parameter_set_completion,
 	},
 
 	{
-		.words = { "load", "match", NULL },
-		.help = "Load a match into the system",
-		.usage = "load match <match>",
-		.callback_func = mgmtcmd_load_match,
-		.completion = mgmtcmd_load_match_completion,
+		.words = { "match", "load", NULL },
+		.help = "Load a match module",
+		.usage = "match load <type>",
+		.callback_func = mgmtcmd_match_load,
+		.completion = mgmtcmd_match_load_completion,
 	},
 
 	{
-		.words = { "unload", "match", NULL },
-		.help = "Unload a match from the system",
-		.usage = "unload match <match>",
-		.callback_func = mgmtcmd_unload_match,
-		.completion = mgmtcmd_unload_match_completion,
+		.words = { "match", "unload", NULL },
+		.help = "Unload a match module",
+		.usage = "match unload <type>",
+		.callback_func = mgmtcmd_match_unload,
+		.completion = mgmtcmd_match_unload_completion,
 	},
 
 	{
-		.words = { "load", "ptype", NULL },
-		.help = "Load a ptype into the system",
-		.usage = "load ptype <ptype>",
-		.callback_func = mgmtcmd_load_ptype,
-		.completion = mgmtcmd_load_ptype_completion,
+		.words = { "ptype", "load", NULL },
+		.help = "Load a ptype module",
+		.usage = "ptype load <type>",
+		.callback_func = mgmtcmd_ptype_load,
+		.completion = mgmtcmd_ptype_load_completion,
 	},
 
 	{
-		.words = { "unload", "ptype", NULL },
-		.help = "Unload a ptype from the system",
-		.usage = "unload ptype <ptype>",
-		.callback_func = mgmtcmd_unload_ptype,
-		.completion = mgmtcmd_unload_ptype_completion,
+		.words = { "ptype", "unload", NULL },
+		.help = "Unload a ptype module",
+		.usage = "ptype unload <type>",
+		.callback_func = mgmtcmd_ptype_unload,
+		.completion = mgmtcmd_ptype_unload_completion,
 	},
 
 	{
-		.words = { "show", "version", NULL },
+		.words = { "version", "show", NULL },
 		.help = "Show packet-o-matic version",
-		.callback_func = mgmtcmd_show_version,
+		.callback_func = mgmtcmd_version_show,
 	},
 
 };
@@ -265,7 +265,7 @@ int mgmtcmd_exit(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
 
-int mgmtcmd_show_license(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_license_show(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	char *license_msg = 
 		"This program is free software; you can redistribute it and/or modify\r\n" 
@@ -286,7 +286,7 @@ int mgmtcmd_show_license(struct mgmt_connection *c, int argc, char *argv[]) {
 	return POM_OK;
 }
 
-int mgmtcmd_set_password(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_password_cli_set(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (argc != 1)
 		return MGMT_USAGE;
@@ -296,13 +296,13 @@ int mgmtcmd_set_password(struct mgmt_connection *c, int argc, char *argv[]) {
 	return POM_OK;
 }
 
-int mgmtcmd_unset_password(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_password_cli_unset(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	mgmtsrv_set_password(NULL);
 	return POM_OK;
 }
 
-int mgmtcmd_set_debug_level(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_debug_cli_set(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (argc != 1)
 		return MGMT_USAGE;
@@ -323,7 +323,7 @@ int mgmtcmd_set_debug_level(struct mgmt_connection *c, int argc, char *argv[]) {
 	return POM_OK;
 }
 
-int mgmtcmd_set_console_debug(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_debug_console_set(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (argc != 1)
 		return MGMT_USAGE;
@@ -344,7 +344,7 @@ int mgmtcmd_set_console_debug(struct mgmt_connection *c, int argc, char *argv[])
 	return POM_OK;
 }
 
-struct mgmt_command_arg *mgmtcmd_set_debug_level_completion(int argc, char *argv[]) {
+struct mgmt_command_arg *mgmtcmd_debug_set_completion(int argc, char *argv[]) {
 
 	if (argc != 3)
 		return NULL;
@@ -356,7 +356,7 @@ struct mgmt_command_arg *mgmtcmd_set_debug_level_completion(int argc, char *argv
 
 }
 
-int mgmtcmd_show_debug_level(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_debug_cli_show(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	mgmtsrv_send(c, "Debug level is ");
 
@@ -387,7 +387,7 @@ int mgmtcmd_show_debug_level(struct mgmt_connection *c, int argc, char *argv[]) 
 	return POM_OK;
 }
 
-int mgmtcmd_write_config(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_config_write(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	int result;
 
@@ -413,7 +413,7 @@ int mgmtcmd_halt(struct mgmt_connection *c, int argc, char *argv[]) {
 	return POM_OK;
 }
 
-int mgmtcmd_show_core_parameters(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_core_parameter_show(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	struct core_param *p = core_param_get_head();
 
@@ -427,7 +427,7 @@ int mgmtcmd_show_core_parameters(struct mgmt_connection *c, int argc, char *argv
 	return POM_OK;
 }
 
-int mgmtcmd_set_core_parameter(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_core_parameter_set(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (argc < 2)
 		return MGMT_USAGE;
@@ -440,7 +440,7 @@ int mgmtcmd_set_core_parameter(struct mgmt_connection *c, int argc, char *argv[]
 	return POM_OK;
 }
 
-struct mgmt_command_arg *mgmtcmd_set_core_parameter_completion(int argc, char *argv[]) {
+struct mgmt_command_arg *mgmtcmd_core_parameter_set_completion(int argc, char *argv[]) {
 
 
 	if (argc != 3)
@@ -462,7 +462,7 @@ struct mgmt_command_arg *mgmtcmd_set_core_parameter_completion(int argc, char *a
 	return res;
 }
 
-int mgmtcmd_load_match(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_match_load(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
 	if (argc != 1)
@@ -490,7 +490,7 @@ int mgmtcmd_load_match(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-struct mgmt_command_arg* mgmtcmd_load_match_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_match_load_completion(int argc, char *argv[]) {
 
 	if (argc != 2)
 		return NULL;
@@ -501,7 +501,7 @@ struct mgmt_command_arg* mgmtcmd_load_match_completion(int argc, char *argv[]) {
 
 }
 
-int mgmtcmd_unload_match(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_match_unload(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
 	if (argc != 1)
@@ -541,7 +541,7 @@ int mgmtcmd_unload_match(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-struct mgmt_command_arg* mgmtcmd_unload_match_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_match_unload_completion(int argc, char *argv[]) {
 
 	struct mgmt_command_arg *res = NULL;
 
@@ -567,7 +567,7 @@ struct mgmt_command_arg* mgmtcmd_unload_match_completion(int argc, char *argv[])
 	return res;
 }
 
-int mgmtcmd_load_ptype(struct mgmt_connection *c, int argc, char*argv[]) {
+int mgmtcmd_ptype_load(struct mgmt_connection *c, int argc, char*argv[]) {
 
 	if (argc != 1)
 		return MGMT_USAGE;
@@ -592,7 +592,7 @@ int mgmtcmd_load_ptype(struct mgmt_connection *c, int argc, char*argv[]) {
 
 }
 
-struct mgmt_command_arg* mgmtcmd_load_ptype_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_ptype_load_completion(int argc, char *argv[]) {
 
 	if (argc != 2)
 		return NULL;
@@ -603,7 +603,7 @@ struct mgmt_command_arg* mgmtcmd_load_ptype_completion(int argc, char *argv[]) {
 
 }
 
-int mgmtcmd_show_version(struct mgmt_connection *c, int argc, char*argv[]) {
+int mgmtcmd_version_show(struct mgmt_connection *c, int argc, char*argv[]) {
 
 	if (argc != 0)
 		return MGMT_USAGE;
@@ -613,7 +613,7 @@ int mgmtcmd_show_version(struct mgmt_connection *c, int argc, char*argv[]) {
 	return POM_OK;
 }
 
-int mgmtcmd_unload_ptype(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_ptype_unload(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
 	if (argc != 1)
@@ -639,7 +639,7 @@ int mgmtcmd_unload_ptype(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-struct mgmt_command_arg* mgmtcmd_unload_ptype_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_ptype_unload_completion(int argc, char *argv[]) {
 
 	struct mgmt_command_arg *res = NULL;
 

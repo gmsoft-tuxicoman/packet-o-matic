@@ -1,3 +1,7 @@
+* 2009/04/09 Guy Martin <gmsoft@tuxicoman.be>
+Updated management CLI command syntax.
+Fix default port in datastore_mysql.
+
 * 2009/04/25 Guy Martin <gmsoft@tuxicoman.be>
 Added datastore_mysql.
 Fix error handling when dataset ptype allocation fails.

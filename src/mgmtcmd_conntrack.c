@@ -26,33 +26,33 @@
 static struct mgmt_command mgmt_conntrack_commands[MGMT_CONNTRACK_COMMANDS_NUM] = {
 
 	{
-		.words = { "show", "conntracks", NULL },
+		.words = { "conntrack", "show", NULL },
 		.help = "Show information about the loaded connection tracking modules",
-		.callback_func = mgmtcmd_show_conntracks,
+		.callback_func = mgmtcmd_conntrack_show,
 	},
 
 	{
-		.words = { "set", "conntrack", "parameter", NULL},
+		.words = { "conntrack", "parameter", "set", NULL },
 		.help = "Change the value of a conntrack parameter",
-		.usage = "set conntrack parameter <conntrack> <parameter> <value>",
-		.callback_func = mgmtcmd_set_conntrack_param,
-		.completion = mgmtcmd_set_conntrack_param_completion,
+		.usage = "conntrack parameter set <conntrack> <parameter> <value>",
+		.callback_func = mgmtcmd_conntrack_parameter_set,
+		.completion = mgmtcmd_conntrack_parameter_set_completion,
 	},
 
 	{
-		.words = { "load", "conntrack", NULL },
+		.words = { "conntrack", "load", NULL },
 		.help = "Load a conntrack from the system",
-		.usage = "load conntrack <conntrack>",
-		.callback_func = mgmtcmd_load_conntrack,
-		.completion = mgmtcmd_load_conntrack_completion,
+		.usage = "conntrack load <conntrack>",
+		.callback_func = mgmtcmd_conntrack_load,
+		.completion = mgmtcmd_conntrack_load_completion,
 	},
 
 	{
-		.words = { "unload", "conntrack", NULL },
+		.words = { "conntrack", "unload", NULL },
 		.help = "Unload a conntrack from the system",
-		.usage = "unload conntrack <conntrack>",
-		.callback_func = mgmtcmd_unload_conntrack,
-		.completion = mgmtcmd_unload_conntrack_completion,
+		.usage = "conntrack unload <conntrack>",
+		.callback_func = mgmtcmd_conntrack_unload,
+		.completion = mgmtcmd_conntrack_unload_completion,
 	},
 		
 };
@@ -68,7 +68,7 @@ int mgmtcmd_conntrack_register_all() {
 	return POM_OK;
 }
 
-int mgmtcmd_show_conntracks(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_conntrack_show(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	int i;
 	conntrack_lock(0);
@@ -94,7 +94,7 @@ int mgmtcmd_show_conntracks(struct mgmt_connection *c, int argc, char *argv[]) {
 	return POM_OK;
 }
 
-int mgmtcmd_set_conntrack_param(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_conntrack_parameter_set(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc != 3) 
 		return MGMT_USAGE;
@@ -120,13 +120,13 @@ int mgmtcmd_set_conntrack_param(struct mgmt_connection *c, int argc, char *argv[
 
 }
 
-struct mgmt_command_arg* mgmtcmd_set_conntrack_param_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_conntrack_parameter_set_completion(int argc, char *argv[]) {
 
 	struct mgmt_command_arg *res = NULL;
 
 	switch (argc) {
 		case 3:
-			res = mgmtcmd_unload_conntrack_completion(2, argv);
+			res = mgmtcmd_conntrack_unload_completion(2, argv);
 			break;
 
 		case 4: {
@@ -167,7 +167,7 @@ struct mgmt_command_arg* mgmtcmd_set_conntrack_param_completion(int argc, char *
 	return res;
 
 }
-int mgmtcmd_load_conntrack(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_conntrack_load(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
 	if (argc != 1)
@@ -198,7 +198,7 @@ int mgmtcmd_load_conntrack(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-struct mgmt_command_arg* mgmtcmd_load_conntrack_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_conntrack_load_completion(int argc, char *argv[]) {
 
 	if (argc != 2)
 		return NULL;
@@ -209,7 +209,7 @@ struct mgmt_command_arg* mgmtcmd_load_conntrack_completion(int argc, char *argv[
 
 }
 
-int mgmtcmd_unload_conntrack(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_conntrack_unload(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
 	if (argc != 1)
@@ -237,7 +237,7 @@ int mgmtcmd_unload_conntrack(struct mgmt_connection *c, int argc, char *argv[]) 
 
 }
 
-struct mgmt_command_arg* mgmtcmd_unload_conntrack_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_conntrack_unload_completion(int argc, char *argv[]) {
 
 	struct mgmt_command_arg *res = NULL;
 

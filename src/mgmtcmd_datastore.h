@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,22 +30,20 @@ int mgmtcmd_datastore_register_all();
 struct mgmt_command_arg *mgmctcmd_datastore_name_completion(int argc, char *argv[], int pos);
 struct mgmt_command_arg *mgmtcmd_datastore_completion_name2(int argc, char *argv[]);
 struct mgmt_command_arg *mgmtcmd_datastore_completion_name3(int argc, char *argv[]);
-int mgmtcmd_show_datastores(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_start_datastore(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_stop_datastore(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_add_datastore(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_datastore_show(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_datastore_start(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_datastore_stop(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_datastore_add(struct mgmt_connection *c, int argc, char *argv[]);
 struct mgmt_command_arg* mgmtcmd_datastore_type_completion(int argc, char *argv[]);
-int mgmtcmd_remove_datastore(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_set_datastore_parameter(struct mgmt_connection *c, int argc, char *argv[]);
-struct mgmt_command_arg *mgmtcmd_set_datastore_parameter_completion(int argc, char *argv[]);
-int mgmtcmd_set_datastore_descr(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_unset_datastore_descr(struct mgmt_connection *c, int argc, char *argv[]);
-int mgmtcmd_set_datastore_mode(struct mgmt_connection *c, int argc, char *argv[]);
-struct mgmt_command_arg *mgmtcmd_set_datastore_mode_completion(int argc, char *argv[]);
-int mgmtcmd_load_datastore(struct mgmt_connection *c, int argc, char *argv[]);
-struct mgmt_command_arg* mgmtcmd_load_datastore_completion(int argc, char *argv[]);
-int mgmtcmd_unload_datastore(struct mgmt_connection *c, int argc, char *argv[]);
-struct mgmt_command_arg* mgmtcmd_unload_datastore_completion(int argc, char *argv[]);
+int mgmtcmd_datastore_remove(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_datastore_parameter_set(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg *mgmtcmd_datastore_parameter_set_completion(int argc, char *argv[]);
+int mgmtcmd_datastore_description_set(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_datastore_description_unset(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_datastore_load(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_datastore_load_completion(int argc, char *argv[]);
+int mgmtcmd_datastore_unload(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg* mgmtcmd_datastore_unload_completion(int argc, char *argv[]);
 
 struct datastore *mgmtcmd_get_datastore(char *datastore);
 #endif

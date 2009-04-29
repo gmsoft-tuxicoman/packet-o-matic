@@ -28,66 +28,66 @@
 static struct mgmt_command mgmt_rule_commands[MGMT_RULE_COMMANDS_NUM] = {
 
 	{
-		.words = { "show", "rules", NULL },
+		.words = { "rule", "show", NULL },
 		.help = "Display all the configured rules",
-		.callback_func = mgmtcmd_show_rules,
-		.completion = mgmt_show_rules_completion,
-		.usage = "show rules [tree | flat]",
+		.callback_func = mgmtcmd_rule_show,
+		.completion = mgmt_rule_show_completion,
+		.usage = "rule show [tree | flat]",
 	},
 	
 	{
-		.words = { "set", "rule", NULL },
-		.help = "Change a rule",
-		.callback_func = mgmtcmd_set_rule,
+		.words = { "rule", "set", NULL },
+		.help = "Change an existing rule",
+		.callback_func = mgmtcmd_rule_set,
 		.completion = mgmtcmd_rule_id2_completion,
-		.usage = "set rule <rule_id> <rule>",
+		.usage = "rule set <rule_id> <rule>",
 	},
 
 	{
-		.words = { "disable", "rule", NULL },
+		.words = { "rule", "disable", NULL },
 		.help = "Disable a rule",
-		.callback_func = mgmtcmd_disable_rule,
+		.callback_func = mgmtcmd_rule_disable,
 		.completion = mgmtcmd_rule_id2_completion,
-		.usage = "disable rule <rule_id>",
+		.usage = "rule disable <rule_id>",
 	},
 
 	{
-		.words = { "enable", "rule", NULL },
+		.words = { "rule", "enable", NULL },
 		.help = "Enable a rule",
-		.callback_func = mgmtcmd_enable_rule,
+		.callback_func = mgmtcmd_rule_enable,
 		.completion = mgmtcmd_rule_id2_completion,
-		.usage = "enable rule <rule_id>",
+		.usage = "rule enable <rule_id>",
 	},
 
 	{
-		.words = { "add", "rule", NULL },
-		.help = "Add a rule",
-		.callback_func = mgmtcmd_add_rule,
-		.usage = "add rule <rule>",
+		.words = { "rule", "add", NULL },
+		.help = "Add a new rule",
+		.callback_func = mgmtcmd_rule_add,
+		.usage = "rule add <rule>",
 	},
 
 	{
-		.words = { "remove", "rule", NULL },
+		.words = { "rule", "remove", NULL },
 		.help = "Remove a rule",
-		.callback_func = mgmtcmd_remove_rule,
+		.callback_func = mgmtcmd_rule_remove,
 		.completion = mgmtcmd_rule_id2_completion,
-		.usage = "remove rule <rule_id>",
+		.usage = "rule remove <rule_id>",
 	},
 
 	{
-		.words = { "set", "rule", "description", NULL },
-		.help = "set a description on a rule",
-		.callback_func = mgmtcmd_set_rule_descr,
+		.words = { "rule", "description", "set", NULL },
+		.help = "Set a description on a rule",
+		.callback_func = mgmtcmd_rule_description_set,
 		.completion = mgmtcmd_rule_id3_completion,
-		.usage = "set rule description <rule_id> <descr>",
+		.usage = "rule description set <rule_id> <descr>",
 	},
 
 	{
-		.words = { "unset", "rule", "description", NULL },
+		.words = { "rule", "description", "unset", NULL },
 		.help = "Unset the description on a rule",
-		.callback_func = mgmtcmd_unset_rule_descr,
+		.callback_func = mgmtcmd_rule_description_unset,
 		.completion = mgmtcmd_rule_id3_completion,
-		.usage = "unset rule description <rule_id>",
+		.usage = "rule description unset <rule_id>",
 	},
 };
 
@@ -131,7 +131,7 @@ int mgmtcmd_rule_register_all() {
 	return POM_OK;
 }
 
-int mgmtcmd_show_rule_print_node_tree(struct mgmt_connection *c, struct rule_node *n, struct rule_node *last, char *prepend) {
+int mgmtcmd_rule_show_print_node_tree(struct mgmt_connection *c, struct rule_node *n, struct rule_node *last, char *prepend) {
 
 	if (n == last)
 		return 0;
@@ -185,13 +185,13 @@ int mgmtcmd_show_rule_print_node_tree(struct mgmt_connection *c, struct rule_nod
 			char *my_prepend = malloc(strlen(prepend) + strlen(prepend_a) + 1);
 			strcpy(my_prepend, prepend);
 			strcat(my_prepend, prepend_a);
-			mgmtcmd_show_rule_print_node_tree(c, n->a, new_last, my_prepend);
+			mgmtcmd_rule_show_print_node_tree(c, n->a, new_last, my_prepend);
 
 			mgmtsrv_send(c, prepend);
 			mgmtsrv_send(c, " `---- ");
 			strcpy(my_prepend, prepend);
 			strcat(my_prepend, prepend_b);
-			mgmtcmd_show_rule_print_node_tree(c, n->b, new_last, my_prepend);
+			mgmtcmd_rule_show_print_node_tree(c, n->b, new_last, my_prepend);
 			free(my_prepend);
 			n = new_last;
 		}
@@ -203,7 +203,7 @@ int mgmtcmd_show_rule_print_node_tree(struct mgmt_connection *c, struct rule_nod
 	return POM_OK;
 }
 
-int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_rule_show(struct mgmt_connection *c, int argc, char *argv[]) {
 
 
 	main_config_rules_lock(0);
@@ -241,7 +241,7 @@ int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]) {
 		mgmtsrv_send(c, prepend);
 		if (argc > 0) {
 			if (!strcmp(argv[0], "tree")) {
-				mgmtcmd_show_rule_print_node_tree(c, rl->node, NULL, prepend);
+				mgmtcmd_rule_show_print_node_tree(c, rl->node, NULL, prepend);
 			} else if (!strcmp(argv[0], "flat")) {
 				char buffer[4096];
 				memset(buffer, 0, sizeof(buffer));
@@ -268,7 +268,7 @@ int mgmtcmd_show_rules(struct mgmt_connection *c, int argc, char *argv[]) {
 	return POM_OK;
 }
 
-struct mgmt_command_arg* mgmt_show_rules_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmt_rule_show_completion(int argc, char *argv[]) {
 
 	if (argc != 2)
 		return NULL;
@@ -294,7 +294,7 @@ struct mgmt_command_arg* mgmt_show_rules_completion(int argc, char *argv[]) {
 
 }
 
-int mgmtcmd_set_rule(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_rule_set(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (argc < 2)
 		return MGMT_USAGE;
@@ -352,7 +352,7 @@ int mgmtcmd_set_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 	return POM_OK;
 }
 
-int mgmtcmd_disable_rule(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_rule_disable(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (argc < 1)
 		return MGMT_USAGE;
@@ -375,7 +375,7 @@ int mgmtcmd_disable_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-int mgmtcmd_enable_rule(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_rule_enable(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (argc < 1)
 		return MGMT_USAGE;
@@ -398,7 +398,7 @@ int mgmtcmd_enable_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-int mgmtcmd_add_rule(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_rule_add(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (argc < 1)
 		return MGMT_USAGE;
@@ -481,7 +481,7 @@ struct rule_list *mgmtcmd_get_rule(char *rule) {
 
 }
 
-int mgmtcmd_remove_rule(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_rule_remove(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc < 1)
 		return MGMT_USAGE;
@@ -532,7 +532,7 @@ int mgmtcmd_remove_rule(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-int mgmtcmd_set_rule_descr(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_rule_description_set(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (argc < 2)
 		return MGMT_USAGE;
@@ -571,7 +571,7 @@ int mgmtcmd_set_rule_descr(struct mgmt_connection *c, int argc, char *argv[]) {
 }
 
 
-int mgmtcmd_unset_rule_descr(struct mgmt_connection *c, int argc, char *argv[]) {
+int mgmtcmd_rule_description_unset(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	if (argc < 1)
 		return MGMT_USAGE;
