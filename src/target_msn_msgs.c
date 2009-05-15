@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2008-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -49,13 +49,16 @@ char* line_split (struct target_conntrack_priv_msn *cp) {
 
 	char *line = cp->buffer[cp->curdir] + cp->msg[cp->curdir]->cur_pos;
 
-	char *eol = strstr(line, "\r\n");
+	char *eol = memchr(line, '\n', cp->buffer_len[cp->curdir] - cp->msg[cp->curdir]->cur_pos);
 	if (!eol) 
 		return NULL;
-	*eol = 0;
 
-	int len = eol - line + 2;
+	unsigned int len = eol - line + 1;
 	cp->msg[cp->curdir]->cur_pos += len;
+
+	*eol = 0;
+	if ((eol - 1) > cp->buffer[cp->curdir] && *(eol - 1) == '\r')
+		*(eol - 1) = 0;
 
 	return line;
 }
@@ -165,13 +168,14 @@ int target_process_mime_text_plain_msg(struct target *t, struct target_conntrack
 				}
 				break;
 			case msn_text_plain_subtype_payload: {
-				struct target_conv_event_msn evt;
+				struct target_event_msn evt;
+				memset(&evt, 0, sizeof(struct target_event_msn));
 				memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
 				evt.from = m->from;
 				evt.buff = cp->buffer[dir] + m->cur_pos;
-				evt.type = target_conv_event_type_message;
+				evt.type = msn_evt_message;
 
-				int res = target_msn_session_conv_event(cp, &evt);
+				int res = target_msn_session_event(cp, &evt);
 				m->cur_pos = m->tot_len;
 				return res;
 			}
@@ -229,17 +233,17 @@ int target_process_mime_msnmsgrp2p_msg(struct target *t, struct target_conntrack
 			}
 
 			if (offset == 0) {
-				if (file->type == target_file_type_unknown) {
+				if (file->type == msn_file_type_unknown) {
 					// Ok, no idea what this is, let's see if it could be a display image
 					if (msg_size > 3 && !memcmp(cp->buffer[cp->curdir] + m->cur_pos, PNG_SIGNATURE, strlen(PNG_SIGNATURE))) {
 						// Looks like it is
-						file->type = target_file_type_display_image;
+						file->type = msn_file_type_display_image;
 					} else {
-						file->type = target_file_type_unsupported;
+						file->type = msn_file_type_unsupported;
 					}
 				}
 				char fname[NAME_MAX + 1];
-				if (file->type == target_file_type_display_image) {
+				if (file->type == msn_file_type_display_image) {
 					if (m->from) {
 						// File is coming from someone
 						strncpy(fname, m->from, NAME_MAX);
@@ -296,11 +300,15 @@ int target_process_mime_msnmsgrp2p_msg(struct target *t, struct target_conntrack
 
 		switch (m->subtype) {
 			case msn_msnmsgrp2p_subtype_header: // First header that contains P2PDest
-				if (!strlen(line)) {
+				if (!strlen(line)) { // End of the first header
+					if (cp->buffer_len[cp->curdir] - m->cur_pos < sizeof(header)) {
+						pom_log(POM_LOG_DEBUG "Remaining header size too short");
+						return POM_OK;
+					}
 					// End of first header. 48 byte binary header follows
 					// Stupid protocol that mix plain text and binary !
 					memcpy(header, cp->buffer[cp->curdir] + m->cur_pos, sizeof(header));
-					m->cur_pos += 48;
+					m->cur_pos += sizeof(header);
 					// FIXME why little endian ?
 					memcpy(&sess_id, header, sizeof(sess_id));
 					memcpy(&id, header + 4, sizeof(id));
@@ -370,10 +378,10 @@ int target_process_mime_msnmsgrp2p_msg(struct target *t, struct target_conntrack
 					}
 					pom_log(POM_LOG_TSHOOT "P2P SessionID : %u", cp->file->session_id);
 				} else if (!strcasecmp(line, "Context")) {
-					int len = (strlen(arg) * 3 / 4) + 1;
+					int len = (strlen(arg) / 4) * 3 + 1;
 					char *context = malloc(len);
 					memset(context, 0, len);
-					int outlen = base64_decode(context, arg);
+					int outlen = base64_decode(context, arg, len);
 					if (outlen == POM_ERR) {
 						pom_log(POM_LOG_DEBUG "P2P Err while decoding Context : %s", arg);
 					} else {
@@ -389,7 +397,7 @@ int target_process_mime_msnmsgrp2p_msg(struct target *t, struct target_conntrack
 					if (account[strlen(account) - 1] != '>')
 						break;
 					account[strlen(account) - 1] = 0;
-					target_msn_session_found_account(cp, account);
+					target_msn_session_found_account(t, cp, account);
 				} else if (!m->from && !strcasecmp(line, "From")) {
 					char *account = strchr(arg, ':');
 					if (!account) 
@@ -399,10 +407,10 @@ int target_process_mime_msnmsgrp2p_msg(struct target *t, struct target_conntrack
 						break;
 					account[strlen(account) - 1] = 0;
 					// We got a message to the server
-					target_msn_session_found_account(cp, account);
+					target_msn_session_found_account(t, cp, account);
 				} else if (!strcasecmp(line, "EUF-GUID")) {
 					if (!strcasecmp(arg, "{A4268EEC-FEC5-49E5-95C3-F126696BDBF6}")) {
-						cp->file->type = target_file_type_display_image;
+						cp->file->type = msn_file_type_display_image;
 					} else {
 						pom_log(POM_LOG_DEBUG "Unknown file EUF-GUID : %s", arg);
 						return POM_OK;
@@ -490,3 +498,27 @@ int target_process_mime_msnmsgrp2p_msg(struct target *t, struct target_conntrack
 
 	return POM_OK;
 }
+
+int target_process_mail_invite_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
+
+	struct target_msg_msn *m = cp->msg[cp->curdir];
+	int len = m->tot_len - m->cur_pos;
+
+	struct target_event_msn evt;
+	memset(&evt, 0, sizeof(struct target_event_msn));
+	memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
+	evt.buff = malloc(len + 1);
+	memcpy(evt.buff, cp->buffer[cp->curdir] + cp->msg[cp->curdir]->cur_pos, len);
+	*(evt.buff + len) = 0;
+	evt.from = m->from;
+	evt.to = m->to;
+
+	target_msn_session_event(cp, &evt);
+
+	free(evt.buff);
+
+	target_free_msg_msn(cp, cp->curdir);
+
+	return POM_OK;
+}
+

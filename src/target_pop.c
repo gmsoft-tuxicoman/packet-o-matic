@@ -444,7 +444,12 @@ static int pop_process_line(struct target *t, struct target_conntrack_priv_pop *
 			if (cp->logon_info_str) {
 				char *pass = line + strlen("PASS ");
 				char *end = strchr(pass, '\r');
-				*end = 0;
+
+				if (!end)
+					end = strchr(pass, '\n');
+
+				if (end)
+					*end = 0;
 
 
 				// Record some more useful info

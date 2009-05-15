@@ -624,6 +624,7 @@ int config_parse(struct conf *c, char * filename) {
 	if (!doc) {
 		pom_log(POM_LOG_ERR "Parse error when parsing %s!", filename);
 		pom_log(POM_LOG_ERR "To start with an empty configuration run `packet-o-matic -e`");
+		xmlCleanupParser();
 		return POM_ERR;
 	}
 
@@ -632,11 +633,14 @@ int config_parse(struct conf *c, char * filename) {
 	if (!root) {
 		pom_log(POM_LOG_ERR "Hey dude, ya better gimme a non empty config file !");
 		xmlFreeDoc(doc);
+		xmlCleanupParser();
 		return POM_ERR;
 	}
 
 	if (xmlStrcmp(root->name, (const xmlChar *) "config")) {
 		pom_log(POM_LOG_ERR "The first node should be <config> !");
+		xmlFreeDoc(doc);
+		xmlCleanupParser();
 		return POM_ERR;
 	}
 
@@ -651,11 +655,13 @@ int config_parse(struct conf *c, char * filename) {
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "rule")) {
 			if (pthread_rwlock_wrlock(&c->rules_lock)) {
 				pom_log(POM_LOG_ERR "Unable to aquire lock on the rules");
+				abort();
 				return POM_ERR;
 			}
 			struct rule_list *r = parse_rule(doc, cur);
 			if (!r) {
 				pthread_rwlock_unlock(&c->rules_lock);
+				abort();
 				return POM_ERR;
 			}
 
@@ -671,6 +677,8 @@ int config_parse(struct conf *c, char * filename) {
 			}
 			if (pthread_rwlock_unlock(&c->rules_lock)) {
 				pom_log(POM_LOG_ERR "Unable to unlock the rules");
+				abort();
+				return POM_ERR;
 			}
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "param")) {
 			char *name = (char *) xmlGetProp(cur, (const xmlChar*) "name");

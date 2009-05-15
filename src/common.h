@@ -161,7 +161,8 @@ int uid_init();
 
 uint32_t get_uid();
 
-int base64_decode(char *output, char *input);
+size_t base64_decode(char *output, char *input, size_t out_len);
+size_t url_decode(char *output, char *input, size_t out_len);
 
 uint64_t bswap64(uint64_t x);
 

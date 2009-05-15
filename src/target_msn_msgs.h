@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2008-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,5 +30,6 @@ int target_process_msg_msn(struct target *t, struct target_conntrack_priv_msn *c
 int target_process_mime_msmsgscontrol_msg(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_process_mime_text_plain_msg(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_process_mime_msnmsgrp2p_msg(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
+int target_process_mail_invite_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 
 #endif

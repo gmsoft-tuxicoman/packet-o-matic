@@ -29,6 +29,12 @@
 
 #define INITVAL 0xdf92b6eb
 
+#if 0
+#define conntrack_tshoot(x...) pom_log(POM_LOG_TSHOOT x)
+#else
+#define conntrack_tshoot(x...)
+#endif
+
 struct conntrack_reg *conntracks[MAX_CONNTRACK];
 uint32_t conntracks_serial;
 
@@ -276,7 +282,7 @@ int conntrack_create_entry(struct frame *f) {
 	cl_rev->next = ct_table_rev[hash_rev];
 	ct_table_rev[hash_rev] = cl_rev;
 
-	pom_log(POM_LOG_TSHOOT "Conntrack entry 0x%lx created", (unsigned long) ce);
+	conntrack_tshoot( "Conntrack entry 0x%lx created", (unsigned long) ce);
 
 	ce->direction = CE_DIR_FWD;
 	f->ce = ce;
@@ -322,7 +328,7 @@ int conntrack_add_target_priv(void *priv, struct target *t, struct conntrack_ent
 	cp->priv = priv;
 	cp->cleanup_handler = cleanup_handler;
 	
-	pom_log(POM_LOG_TSHOOT "Target priv 0x%lx added to conntrack 0x%lx", (unsigned long) priv, (unsigned long) ce);
+	conntrack_tshoot( "Target priv 0x%lx added to conntrack 0x%lx", (unsigned long) priv, (unsigned long) ce);
 
 	
 	return POM_OK;
@@ -414,7 +420,7 @@ int conntrack_add_helper_priv(void *priv, int type, struct conntrack_entry *ce, 
 	cp->flush_buffer = flush_buffer;
 	cp->cleanup_handler = cleanup_handler;
 
-	pom_log(POM_LOG_TSHOOT "Helper priv 0x%lx added to conntrack 0x%lx", (unsigned long) priv, (unsigned long) ce);
+	conntrack_tshoot( "Helper priv 0x%lx added to conntrack 0x%lx", (unsigned long) priv, (unsigned long) ce);
 
 	
 	return POM_OK;
@@ -641,7 +647,7 @@ struct conntrack_entry *conntrack_find(struct conntrack_list *cl, struct frame *
 		l = l->next;
 	}
 
-	//pom_log(POM_LOG_TSHOOT "Found conntrack 0x%lx, hash 0x%lx", (unsigned long) ce, ce->full_hash);
+	//conntrack_tshoot( "Found conntrack 0x%lx, hash 0x%lx", (unsigned long) ce, ce->full_hash);
 
 	return ce;
 }

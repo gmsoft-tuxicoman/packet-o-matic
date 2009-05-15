@@ -25,6 +25,12 @@
 #include "input.h"
 #include "main.h"
 
+#if 0
+#define timer_tshoot(x...) pom_log(POM_LOG_TSHOOT x)
+#else
+#define timer_tshoot(x...)
+#endif
+
 static struct timer_queue *timer_queues;
 
 
@@ -38,7 +44,7 @@ int timers_process(struct rule_list *list, pthread_rwlock_t *lock) {
 
 	while (tq) {
 		while (tq->head && timercmp(&tq->head->expires, &now, <)) {
-				pom_log(POM_LOG_TSHOOT "Timer 0x%lx reached. Starting handler ...", (unsigned long) tq->head);
+				timer_tshoot( "Timer 0x%lx reached. Starting handler ...", (unsigned long) tq->head);
 				(*tq->head->handler) (tq->head->priv);
 				helper_process_queue(list, lock);
 		}
@@ -223,7 +229,7 @@ int timer_dequeue(struct timer *t) {
 			
 				/* WE SHOULD NOT TRY TO REMOVE QUEUES FROM THE QUEUE LIST
 				if (!tq->head) { // If it is, remove that queue from the queue list
-					pom_log(POM_LOG_TSHOOT "Removing queue 0x%lx from the queue list", (unsigned long) tq);
+					timer_tshoot( "Removing queue 0x%lx from the queue list", (unsigned long) tq);
 					if (tq->prev)
 						tq->prev->next = tq->next;
 					else

@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2008-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,11 +23,14 @@
 
 #include "target_msn.h"
 
-int target_msn_session_found_buddy(struct target_conntrack_priv_msn *cp, char *account, char *nick, char* group_id);
+struct target_connection_party_msn *target_msn_session_add_party(struct target_conntrack_priv_msn *cp, char *account, char *nick);
+int target_msn_session_found_buddy(struct target_conntrack_priv_msn *cp, char *account, char *nick, char* group_list);
 int target_msn_session_found_group(struct target_conntrack_priv_msn *cp, char *name, char *id);
-int target_msn_session_found_account(struct target_conntrack_priv_msn *cp, char *account);
-int target_msn_session_conv_event(struct target_conntrack_priv_msn *cp, struct target_conv_event_msn *evt);
+int target_msn_session_found_account(struct target *t, struct target_conntrack_priv_msn *cp, char *account);
+int target_msn_session_found_friendly_name(struct target_conntrack_priv_msn *cp, char *friendly_name, struct timeval *time);
+struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn *priv, struct target_session_priv_msn *old_sess, struct target_session_priv_msn *new_sess);
+int target_msn_session_event(struct target_conntrack_priv_msn *cp, struct target_event_msn *evt);
+int target_msn_session_process_event(struct target_conntrack_priv_msn *cp, struct target_event_msn *evt);
+int target_msn_session_write(int fd, char *buff);
 
-int target_msn_session_load(struct target *t, struct target_conntrack_priv_msn *cp);
-int target_msn_session_save(struct target *t, struct target_conntrack_priv_msn *cp);
 #endif

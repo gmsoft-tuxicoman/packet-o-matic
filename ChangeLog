@@ -1,3 +1,12 @@
+* 2009/05/15 Guy Martin <gmsoft@tuxicoman.be>
+Fix memory leak when parsing the config file fails.
+Improved target_msn parsing and command handling.
+Abort if rule lock fails while reading the config.
+Created a #define for timer, conntrack and helper_tcp troubleshooting output.
+Fix possible integer overflow with base64_decode.
+Fix possible crash in target_pop when PASS doesn't end with '\r'.
+Fix crash with datastore_postgres on 64bit architectures.
+
 * 2009/04/09 Guy Martin <gmsoft@tuxicoman.be>
 Updated management CLI command syntax.
 Fix default port in datastore_mysql.

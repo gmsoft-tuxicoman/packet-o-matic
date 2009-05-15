@@ -63,7 +63,7 @@ static struct mgmt_command mgmt_input_commands[MGMT_INPUT_COMMANDS_NUM] = {
 
 	{
 		.words = { "input", "parameter", "set", NULL },
-		.help = "Change the value of a input parameter",
+		.help = "Change the value of an input parameter",
 		.callback_func = mgmtcmd_input_parameter_set,
 		.completion = mgmtcmd_input_parameter_set_completion,
 		.usage = "input parameter set <parameter> <value>",
@@ -103,7 +103,7 @@ int mgmtcmd_input_show(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	struct input* i = main_config->input;
 	if (!i) {
-		mgmtsrv_send(c, "No input configured yet. Use \"set input type <type>\" to choose an input\r\n");
+		mgmtsrv_send(c, "No input configured yet. Use \"input type set <type>\" to choose an input\r\n");
 		return POM_OK;
 	}
 
@@ -143,7 +143,7 @@ int mgmtcmd_input_start(struct mgmt_connection *c, int argc, char *argv[]) {
 	}
 
 	if (!main_config->input) {
-		mgmtsrv_send(c, "No input configured yet. Use \"set input type <type>\" to choose an input\r\n");
+		mgmtsrv_send(c, "No input configured yet. Use \"input type set <type>\" to choose an input\r\n");
 		return POM_OK;
 	}
 
@@ -252,7 +252,7 @@ int mgmtcmd_input_mode_set(struct mgmt_connection *c, int argc, char *argv[]) {
 		abort();
 		return POM_ERR;
 	} else 	if (!rbuf->i) {
-		mgmtsrv_send(c, "No input configured yet. Use \"set input type <type>\" to choose an input\r\n");
+		mgmtsrv_send(c, "No input configured yet. Use \"input type set <type>\" to choose an input\r\n");
 	} else if (rbuf->i->running) {
 		mgmtsrv_send(c, "Input is running. You need to stop it before doing any change\r\n");
 	} else if (input_set_mode(rbuf->i, argv[0]) != POM_OK) {
@@ -306,7 +306,7 @@ int mgmtcmd_input_parameter_set(struct mgmt_connection *c, int argc, char *argv[
 
 	if (!rbuf->i) {
 		pthread_mutex_unlock(&rbuf->mutex);
-		mgmtsrv_send(c, "No input configured yet. Use \"set input type <type>\" to choose an input\r\n");
+		mgmtsrv_send(c, "No input configured yet. Use \"input type set <type>\" to choose an input\r\n");
 		return POM_OK;
 	}
 

@@ -330,8 +330,8 @@ static int datastore_dataset_alloc_postgres(struct dataset *ds) {
 	priv->num_fields = i;
 
 	priv->write_data_buff = malloc(sizeof(union datastore_postgres_data) * priv->num_fields);
-	priv->write_query_param_val = malloc(sizeof(int) * priv->num_fields);
-	priv->write_query_param_len = malloc(sizeof(int) * priv->num_fields);
+	priv->write_query_param_val = malloc(sizeof(char *) * priv->num_fields);
+	priv->write_query_param_len = malloc(sizeof(int *) * priv->num_fields);
 
 	priv->write_query_param_format = malloc(sizeof(int) * priv->num_fields);
 

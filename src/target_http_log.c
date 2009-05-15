@@ -339,10 +339,10 @@ int target_write_log_http(struct target_priv_http *priv, struct target_conntrack
 				while (value[strlen(value)] == ' ')
 					value[strlen(value)] = 0;
 
-				int len = (strlen(value) * 3 / 4) + 1;
+				int len = (strlen(value) / 4) * 3 + 1;
 				creds_buff = malloc(len);
 				memset(creds_buff, 0, len);
-				int outlen = base64_decode(creds_buff, value);
+				int outlen = base64_decode(creds_buff, value, len);
 				if (outlen == POM_ERR) {
 					pom_log(POM_LOG_DEBUG "Unable to decode basic auth header value : \"%s\"", cp->info.headers[i].value);
 					break;

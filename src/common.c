@@ -359,16 +359,23 @@ uint32_t get_uid() {
 	return (uint32_t) rand_r(&random_seed);
 }
 
-int base64_decode(char *output, char *input) {
+size_t base64_decode(char *output, char *input, size_t out_len) {
 
-	if (strlen(input) % 4) {
+	size_t len = strlen(input);
+
+	if (len % 4) {
 		pom_log(POM_LOG_WARN "Base64 input length not multiple of 4");
+		return POM_ERR;
+	}
+
+	if (out_len < ((len / 4) * 3 + 1)) {
+		pom_log(POM_LOG_WARN "Base64 output length too short");
 		return POM_ERR;
 	}
 
 	char *block, value[4];
 	
-	int len = POM_ERR;
+	len = POM_ERR;
 
 	block = input;
 	while (block[0]) {
@@ -411,6 +418,58 @@ int base64_decode(char *output, char *input) {
 
 	return len;
 
+}
+
+
+size_t url_decode(char *output, char *input, size_t out_len) {
+
+	*output = 0;
+
+	char *in_pos = input, *out_pos = output;
+	char *pc = NULL;
+	size_t tot_len = 0, len;
+
+
+	while ((pc = strchr(in_pos, '%'))) {
+
+		len = pc - in_pos;
+		if (len > out_len)
+			len = out_len;
+		memcpy(out_pos, in_pos, len);
+
+		out_pos += len;
+		out_len -= len;
+		tot_len += len;
+
+		unsigned int out;
+		if (!*(pc + 1) || !*(pc + 2) || sscanf(pc + 1, "%2X", &out) != 1) {
+			pom_log(POM_LOG_WARN "Invalid URL encoded string");
+			return POM_ERR;
+		}
+
+		if (out_len <= 0)
+			return tot_len;
+
+		*out_pos = (char) out;
+		out_pos++;
+		out_len -= 3;
+		tot_len++;
+
+		in_pos = pc + 3;
+		
+	}
+
+	len = strlen(in_pos);
+	if (len > (out_len - 1)) // keep 1 char for final null
+		len = (out_len - 1);
+	memcpy(out_pos, in_pos, len);
+
+	out_pos += len;
+	*out_pos = 0;
+	out_len -= len + 1;
+	tot_len += len + 1;
+
+	return tot_len;
 }
 
 #ifndef bswap64
