@@ -77,6 +77,10 @@ int config_cleanup(struct conf* c) {
 	}
 
 	free(c);
+
+	// Cleanup XML stuff here
+	xmlCleanupCharEncodingHandlers();
+	xmlCleanupParser();
 	return POM_OK ;
 }
 
@@ -624,7 +628,6 @@ int config_parse(struct conf *c, char * filename) {
 	if (!doc) {
 		pom_log(POM_LOG_ERR "Parse error when parsing %s!", filename);
 		pom_log(POM_LOG_ERR "To start with an empty configuration run `packet-o-matic -e`");
-		xmlCleanupParser();
 		return POM_ERR;
 	}
 
@@ -633,14 +636,12 @@ int config_parse(struct conf *c, char * filename) {
 	if (!root) {
 		pom_log(POM_LOG_ERR "Hey dude, ya better gimme a non empty config file !");
 		xmlFreeDoc(doc);
-		xmlCleanupParser();
 		return POM_ERR;
 	}
 
 	if (xmlStrcmp(root->name, (const xmlChar *) "config")) {
 		pom_log(POM_LOG_ERR "The first node should be <config> !");
 		xmlFreeDoc(doc);
-		xmlCleanupParser();
 		return POM_ERR;
 	}
 
@@ -844,8 +845,6 @@ int config_parse(struct conf *c, char * filename) {
 
 
 	xmlFreeDoc(doc);
-
-	xmlCleanupParser();
 
 	strncpy(c->filename, filename, NAME_MAX);
 
@@ -1280,8 +1279,6 @@ int config_write(struct conf *c, char *filename) {
 	xmlTextWriterWriteFormatString(writer, "\n\n");
 	xmlTextWriterEndDocument(writer);
 	xmlFreeTextWriter(writer);
-	xmlCleanupCharEncodingHandlers();
-	xmlCleanupParser();
 
 	if (c->filename != filename)
 		strncpy(c->filename, filename, NAME_MAX);

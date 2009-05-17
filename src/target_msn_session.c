@@ -24,7 +24,7 @@
 #include <fcntl.h>
 
 
-struct target_connection_party_msn *target_msn_session_add_party(struct target_conntrack_priv_msn *cp, char *account, char *nick) {
+struct target_connection_party_msn *target_msn_session_found_party(struct target_conntrack_priv_msn *cp, char *account, char *nick) {
 
 	if (!strchr(account, '@')) {
 		pom_log(POM_LOG_DEBUG "Invalid account : %s", account);
@@ -35,19 +35,49 @@ struct target_connection_party_msn *target_msn_session_add_party(struct target_c
 	if (sc) // Remove ;{guid} from account name
 		*sc = 0;
 
+
+	if (cp->session->user.account && !strcmp(account, cp->session->user.account)) {
+		// No kidding, we are talking in our own conversation ?
+		return POM_OK;
+	}
+
+
+	// First see if we this buddy already joined the conversation
 	struct target_connection_party_msn *tmp = cp->parts;
 	while (tmp) {
-		if (!strcmp(tmp->account, account)) 
+		if (!strcmp(tmp->buddy->account, account)) 
 			break;
 		tmp = tmp->next;
 	}
 
-	if (!tmp) {
+	if (!tmp) { // If not, see if we already know this guy
+		struct target_buddy_msn *bud = cp->session->buddies;
+		while (bud) {
+			if (!strcmp(bud->account, account))
+				break;
+			bud = bud->next;
+		}
+
+		if (!bud) { // we don't even know this guy. Add him to the buddy list
+			pom_log(POM_LOG_TSHOOT "Got buddy \"%s\" (%s)", nick, account);
+
+			bud = malloc(sizeof(struct target_buddy_msn));
+			memset(bud, 0, sizeof(struct target_buddy_msn));
+			bud->account = malloc(strlen(account) + 1);
+			strcpy(bud->account, account);
+			if (nick) {
+				bud->nick = malloc(strlen(nick) + 1);
+				strcpy(bud->nick, nick);
+			}
+
+			bud->next = cp->session->buddies;
+			cp->session->buddies = bud;
+		}
+
 		pom_log(POM_LOG_TSHOOT "Added user %s to the conversation", account);
 		tmp = malloc(sizeof(struct target_connection_party_msn));
 		memset(tmp, 0, sizeof(struct target_connection_party_msn));
-		tmp->account = malloc(strlen(account) + 1);
-		strcpy(tmp->account, account);
+		tmp->buddy = bud;
 
 		if (cp->parts) {
 			pom_log(POM_LOG_DEBUG "More than one party joined !");
@@ -58,55 +88,61 @@ struct target_connection_party_msn *target_msn_session_add_party(struct target_c
 	}
 
 	
-	if (nick && !tmp->nick) {
-		tmp->nick = malloc(strlen(nick) + 1);
-		strcpy(tmp->nick, nick);
+	if (nick && !tmp->buddy->nick) {
+		tmp->buddy->nick = malloc(strlen(nick) + 1);
+		strcpy(tmp->buddy->nick, nick);
 	}
 
 	return tmp;
 }
 
 
-int target_msn_session_found_buddy(struct target_conntrack_priv_msn *cp, char *account, char *nick, char *group_list) {
+struct target_buddy_msn *target_msn_session_found_buddy(struct target_conntrack_priv_msn *cp, char *account, char *nick, char *group_list) {
 
+
+	char *sc = strchr(account, ';');
+	if (sc) // Remove extra ;{guid}
+		*sc = 0;
+
+	// Make sure the buddy isn't the account
+	if (cp->session->user.account && !strcmp(cp->session->user.account, account))
+		return &cp->session->user;
 
 	struct target_buddy_msn *bud = cp->session->buddies;
 	while (bud) {
-		if (!strcmp(account, bud->account)) {
-			pom_log(POM_LOG_TSHOOT "Buddy already in the list of buddies");
-			return POM_OK;
-		}
+		if (!strcmp(account, bud->account))
+			break;
 		bud = bud->next;
 	}
 
 	// Mr Buddy wasn't found
-	
-	bud = malloc(sizeof(struct target_buddy_msn));
-	memset(bud, 0, sizeof(struct target_buddy_msn));
-	bud->account = malloc(strlen(account) + 1);
-	strcpy(bud->account, account);
-	char *sc = strchr(bud->account, ';');
-	if (sc) // Remove extra ;
-		*sc = 0;
 
+	if (!bud) {
+		bud = malloc(sizeof(struct target_buddy_msn));
+		memset(bud, 0, sizeof(struct target_buddy_msn));
 
-	if (nick) {
+		bud->account = malloc(strlen(account) + 1);
+		strcpy(bud->account, account);
+
+		bud->next = cp->session->buddies;
+		cp->session->buddies = bud;
+		
+		pom_log(POM_LOG_TSHOOT "Got buddy (%s)", account);
+
+	}
+
+	if (nick && !bud->nick) {
 		bud->nick = malloc(strlen(nick) + 1);
 		strcpy(bud->nick, nick);
 	}
-	
 
-	if (group_list) {
+	if (group_list && !bud->group_list) {
 		bud->group_list = malloc(strlen(group_list) + 1);
 		strcpy(bud->group_list, group_list);
 	}
 
-	pom_log(POM_LOG_TSHOOT "Got buddy \"%s\" (%s)", nick, account);
 
-	bud->next = cp->session->buddies;
-	cp->session->buddies = bud;
-
-	return POM_OK;
+	return bud;
 
 }
 
@@ -144,12 +180,12 @@ int target_msn_session_found_friendly_name(struct target_conntrack_priv_msn *cp,
 
 	struct target_session_priv_msn *sess = cp->session;
 
-	if (!sess->friendly_name || strcmp(sess->friendly_name, friendly_name)) {
-		if (sess->friendly_name)
-			free(sess->friendly_name);
+	if (!sess->user.nick || strcmp(sess->user.nick, friendly_name)) {
+		if (sess->user.nick)
+			free(sess->user.nick);
 
-		sess->friendly_name = malloc(strlen(friendly_name) + 1);
-		strcpy(sess->friendly_name, friendly_name);
+		sess->user.nick = malloc(strlen(friendly_name) + 1);
+		strcpy(sess->user.nick, friendly_name);
 
 		struct target_event_msn evt;
 		memset(&evt, 0, sizeof(struct target_event_msn));
@@ -170,35 +206,79 @@ int target_msn_session_found_account(struct target *t, struct target_conntrack_p
 
 	struct target_priv_msn *priv = t->target_priv;
 
-	struct target_session_priv_msn *sess = cp->session;
 
+	// remove extra ;{guid} from account name
 	char *sc = strchr(account, ';');
 	if (sc)
 		*sc = 0;
 
-	if (!sess->account) {
-		// First, try to find another session with the same account
+	if (!cp->session->user.account) {
+		// See if we added ourself as a buddy by mistake
+		struct target_buddy_msn *prevbud = NULL, *bud = cp->session->buddies;
+	
+		while (bud) {
+			if (!strcmp(account, bud->account)) { // It seems so
+				struct target_buddy_msn *user = &cp->session->user;
+				user->account = bud->account;
+
+				if (user->nick)
+					free(user->nick);
+				user->nick = bud->nick;
+
+				if (user->psm)
+					free(user->psm);
+				user->psm = bud->psm;
+
+				user->status = bud->status;
+
+				if (!prevbud)
+					cp->session->buddies = bud->next;
+				else
+					prevbud->next = bud->next;
+
+				struct target_event_msn *tmp_evt = cp->conv_buff;
+				while (tmp_evt) {
+					if (tmp_evt->from == bud)
+						tmp_evt->from = user;
+					if (tmp_evt->to == bud)
+						tmp_evt->to = user;
+					tmp_evt = tmp_evt->next;
+				}
+
+				if (bud->group_list)
+					free(bud->group_list);
+				free(bud);
+				break;
+
+			}
+			prevbud = bud;
+			bud = bud->next;
+		}
+
+		// Try to find another session with the same account
 		
 		struct target_session_priv_msn *tmpsess = priv->sessions;
 		while (tmpsess) {
-			if (tmpsess->account && !strcmp(tmpsess->account, account))
+			if (tmpsess != cp->session && tmpsess->user.account && !strcmp(tmpsess->user.account, account))
 				break;
 			tmpsess = tmpsess->next;
 		}
 		
 		if (tmpsess) {
 			pom_log(POM_LOG_TSHOOT "Existing session found for account %s, merging", account);
-			sess = target_msn_session_merge(priv, tmpsess, sess);
+			target_msn_session_merge(priv, cp, tmpsess);
 
 		} else {
-			sess->account = malloc(strlen(account) + 1);
-			strcpy(sess->account, account);
-			pom_log(POM_LOG_TSHOOT "User account is %s", sess->account);
+			if (!cp->session->user.account) {
+				cp->session->user.account = malloc(strlen(account) + 1);
+				strcpy(cp->session->user.account, account);
+			}
+			pom_log(POM_LOG_TSHOOT "User account is %s", cp->session->user.account);
 
 		}
 	} else {
 
-		if (strcmp(sess->account, account)) {
+		if (strcmp(cp->session->user.account, account)) {
 			pom_log(POM_LOG_DEBUG "Warning, account missmatch for the msn connection");
 			return POM_ERR;
 		}
@@ -215,8 +295,8 @@ int target_msn_session_found_account(struct target *t, struct target_conntrack_p
 
 		target_msn_session_process_event(cp, tmp);
 
-		free(tmp->from);
-		free(tmp->buff);
+		if (tmp->buff)
+			free(tmp->buff);
 		free(tmp);
 
 	}
@@ -225,7 +305,9 @@ int target_msn_session_found_account(struct target *t, struct target_conntrack_p
 }
 
 
-struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn *priv, struct target_session_priv_msn *old_sess, struct target_session_priv_msn *new_sess) {
+struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn *priv, struct target_conntrack_priv_msn *cp, struct target_session_priv_msn *old_sess) {
+
+	struct target_session_priv_msn *new_sess = cp->session;
 
 	// Let's update all the connections which uses this session
 	struct target_conntrack_priv_msn *ct_privs = priv->ct_privs;
@@ -288,12 +370,23 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 			old_sess->buddies = new_bud;
 		} else {
 			// Buddy found, let's discard it
+			
+			// Update events buddy
+
+			struct target_event_msn *tmp_evt = cp->conv_buff;
+			while (tmp_evt) {
+				if (tmp_evt->from == new_bud)
+					tmp_evt->from = old_bud;
+				if (tmp_evt->to == new_bud)
+					tmp_evt->to = old_bud;
+				tmp_evt = tmp_evt->next;
+			}
+
 			if (new_bud->nick) {
 				if (!old_bud->nick)
 					old_bud->nick = new_bud->nick;
 				else
 					free(new_bud->nick);
-
 			}
 
 			if (new_bud->group_list) {
@@ -301,9 +394,16 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 					old_bud->group_list = new_bud->group_list;
 				else
 					free(new_bud->group_list);
-
 			}
-				
+
+			if (new_bud->psm) {
+				if (!old_bud->psm)
+					old_bud->psm = new_bud->psm;
+				else
+					free(new_bud->psm);
+			}
+
+			free(new_bud->account);	
 			free(new_bud);
 		}
 		new_bud = new_sess->buddies;
@@ -311,18 +411,18 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 
 	// Merge the remaining stuff
 	
-	if (new_sess->friendly_name) {
-		if (!old_sess->friendly_name || strcmp(old_sess->friendly_name, new_sess->friendly_name)) {
-			if (old_sess->friendly_name)
-				free(old_sess->friendly_name);
-			old_sess->friendly_name = new_sess->friendly_name;
+	if (new_sess->user.nick) {
+		if (!old_sess->user.nick || strcmp(old_sess->user.nick, new_sess->user.nick)) {
+			if (old_sess->user.nick)
+				free(old_sess->user.nick);
+			old_sess->user.nick = new_sess->user.nick;
 		}
 	}
 
-	if (new_sess->status != msn_status_unknown)
-		old_sess->status = new_sess->status;
+	if (new_sess->user.status != msn_status_unknown)
+		old_sess->user.status = new_sess->user.status;
 
-	free(new_sess->account);
+	free(new_sess->user.account);
 
 	// Remove the session from the sessions list
 	if (new_sess->prev)
@@ -340,7 +440,7 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 
 int target_msn_session_event(struct target_conntrack_priv_msn *cp, struct target_event_msn *evt) {
 
-	char *account = cp->session->account;
+	char *account = cp->session->user.account;
 
 	if (!account) { // We don't know the account, buffer this event
 
@@ -349,15 +449,8 @@ int target_msn_session_event(struct target_conntrack_priv_msn *cp, struct target
 		new_evt = malloc(sizeof(struct target_event_msn));
 		memset(new_evt, 0, sizeof(struct target_event_msn));
 
-		if (evt->from) {
-			new_evt->from = malloc(strlen(evt->from) + 1);
-			strcpy(new_evt->from, evt->from);
-		}
-
-		if (evt->to) {
-			new_evt->to = malloc(strlen(evt->to) + 1);
-			strcpy(new_evt->to, evt->to);
-		}
+		new_evt->from = evt->from;
+		new_evt->to = evt->to;
 
 		if (evt->buff) {
 			new_evt->buff = malloc(strlen(evt->buff) + 1);
@@ -400,13 +493,13 @@ int target_msn_session_process_event(struct target_conntrack_priv_msn *cp, struc
 
 		char filename[NAME_MAX + 1];
 		strcpy(filename, cp->parsed_path);
-		strncat(filename, cp->session->account, NAME_MAX - strlen(filename));
+		strncat(filename, cp->session->user.account, NAME_MAX - strlen(filename));
 		strncat(filename, "/", NAME_MAX - strlen(filename));
 		char *party_account = NULL;
 		if (!cp->parts)
-			party_account = evt->from;
+			party_account = evt->from->account;
 		else
-			party_account = cp->parts->account;
+			party_account = cp->parts->buddy->account;
 		if (!party_account) {
 			pom_log(POM_LOG_DEBUG "Not enough info to open the file !");
 			return POM_OK;
@@ -434,7 +527,7 @@ int target_msn_session_process_event(struct target_conntrack_priv_msn *cp, struc
 
 		char filename[NAME_MAX + 1];
 		strcpy(filename, cp->parsed_path);
-		strncat(filename, sess->account, NAME_MAX - strlen(filename));
+		strncat(filename, sess->user.account, NAME_MAX - strlen(filename));
 		strncat(filename, "/", NAME_MAX - strlen(filename));
 		strncat(filename, outstr, NAME_MAX - strlen(filename));
 
@@ -452,29 +545,33 @@ int target_msn_session_process_event(struct target_conntrack_priv_msn *cp, struc
 	int res = 0;
 
 	switch (evt->type) {
-		case msn_evt_user_join:
+		case msn_evt_buddy_join:
 			res += target_msn_session_write(cp->fd, timestamp);
 			res += target_msn_session_write(cp->fd, "User ");
-			res += target_msn_session_write(cp->fd, evt->from);
+			res += target_msn_session_write(cp->fd, evt->from->account);
 			res += target_msn_session_write(cp->fd, " joined the conversation\n");
 			break;
 		case msn_evt_message:
 			res += target_msn_session_write(cp->fd, timestamp);
 			if (evt->from) {
-				res += target_msn_session_write(cp->fd, evt->from);
+				res += target_msn_session_write(cp->fd, evt->from->account);
 			} else {
-				res += target_msn_session_write(cp->fd, sess->account);
+				res += target_msn_session_write(cp->fd, sess->user.account);
 			}
 			res += target_msn_session_write(cp->fd, ": ");
 			res += target_msn_session_write(cp->fd, evt->buff);
 			res += target_msn_session_write(cp->fd, "\n");
 
 			break;
-		case msn_evt_user_leave:
+		case msn_evt_buddy_leave:
 			res += target_msn_session_write(cp->fd, timestamp);
-			res += target_msn_session_write(cp->fd, "User ");
-			res += target_msn_session_write(cp->fd, evt->from);
-			res += target_msn_session_write(cp->fd, " left the conversation\n");
+			if (evt->from == &sess->user) {
+				res += target_msn_session_write(cp->fd, "Conversation closed by user\n");
+			} else {
+				res += target_msn_session_write(cp->fd, "User ");
+				res += target_msn_session_write(cp->fd, evt->from->account);
+				res += target_msn_session_write(cp->fd, " left the conversation\n");
+			}
 			break;
 		case msn_evt_friendly_name_change: {
 			int len = strlen(evt->buff) + 1;
@@ -495,9 +592,17 @@ int target_msn_session_process_event(struct target_conntrack_priv_msn *cp, struc
 		}
 		case msn_evt_status_change:
 			res += target_msn_session_write(sess->fd, timestamp);
-			res += target_msn_session_write(sess->fd, "Status changed to : ");
-			res += target_msn_session_write(sess->fd, evt->buff);
-			res += target_msn_session_write(sess->fd, "\n");
+			if (evt->from == &sess->user) {
+				res += target_msn_session_write(sess->fd, "Status changed to : ");
+				res += target_msn_session_write(sess->fd, evt->buff);
+				res += target_msn_session_write(sess->fd, "\n");
+			} else {
+				res += target_msn_session_write(sess->fd, "User ");
+				res += target_msn_session_write(sess->fd, evt->from->account);
+				res += target_msn_session_write(sess->fd, " is now ");
+				res += target_msn_session_write(sess->fd, evt->buff);
+				res += target_msn_session_write(sess->fd, "\n");
+			}
 			break;
 		case msn_evt_user_disconnect:
 			res += target_msn_session_write(sess->fd, timestamp);
@@ -507,14 +612,8 @@ int target_msn_session_process_event(struct target_conntrack_priv_msn *cp, struc
 			break;
 		case msn_evt_mail_invite:
 			res += target_msn_session_write(sess->fd, timestamp);
-			res += target_msn_session_write(sess->fd, "User");
-			if (evt->from) {
-				res += target_msn_session_write(sess->fd, " (");
-				res += target_msn_session_write(sess->fd, evt->from);
-				res += target_msn_session_write(sess->fd, ")");
-			}
-			res += target_msn_session_write(sess->fd, " invited ");
-			res += target_msn_session_write(sess->fd, evt->to);
+			res += target_msn_session_write(sess->fd, "User invited ");
+			res += target_msn_session_write(sess->fd, evt->to->account);
 			res += target_msn_session_write(sess->fd, " via email");
 			if (evt->buff) {
 				res += target_msn_session_write(sess->fd, " : \"");
@@ -522,6 +621,28 @@ int target_msn_session_process_event(struct target_conntrack_priv_msn *cp, struc
 				res += target_msn_session_write(sess->fd, "\"");
 			}
 			res += target_msn_session_write(sess->fd, "\n");
+			break;
+		case msn_evt_personal_msg_change:
+			res += target_msn_session_write(sess->fd, timestamp);
+			if (evt->from == &sess->user) {
+				if (evt->buff) {
+					res += target_msn_session_write(sess->fd, "Personal Message set to : \"");
+					res += target_msn_session_write(sess->fd, evt->buff);
+					res += target_msn_session_write(sess->fd, "\"\n");
+				} else {
+					res += target_msn_session_write(sess->fd, "Personal Message unset\n");	
+				}
+			} else {
+				res += target_msn_session_write(sess->fd, "User ");
+				res += target_msn_session_write(sess->fd, evt->from->account);
+				if (evt->buff) {
+					res += target_msn_session_write(sess->fd, " set his personal message to : \"");
+					res += target_msn_session_write(sess->fd, evt->buff);
+					res += target_msn_session_write(sess->fd, "\"\n");
+				} else {
+					res += target_msn_session_write(sess->fd, " removed his personal message\n");
+				}
+			}
 			break;
 	}
 
@@ -542,5 +663,45 @@ int target_msn_session_write(int fd, char *buff) {
 		pos += res;
 	}
 
+	return POM_OK;
+}
+
+
+int target_msn_session_dump_buddy_list(struct target_conntrack_priv_msn *cp) {
+
+
+	struct target_session_priv_msn *sess = cp->session;
+
+	struct target_buddy_msn *bud = sess->buddies;
+
+	if (!bud)
+		return POM_OK;
+
+	int res = POM_OK;
+	res += target_msn_session_write(sess->fd, "--- BUDDY LIST DUMP START ---\n");
+
+	while (bud) {
+		res += target_msn_session_write(sess->fd, "BUDDY : ");
+		res += target_msn_session_write(sess->fd, bud->account);
+		if (bud->nick) {
+			res += target_msn_session_write(sess->fd, " \"");
+			unsigned int len = strlen(bud->nick) + 1;
+			char *decoded_nick = malloc(len);
+			memset(decoded_nick, 0, len);
+			len = url_decode(decoded_nick, bud->nick, len);
+			res += target_msn_session_write(sess->fd, decoded_nick);
+			free(decoded_nick);
+			res += target_msn_session_write(sess->fd, "\"");
+		}
+		res += target_msn_session_write(sess->fd, "\n");
+
+		bud = bud->next;
+	}
+
+	res += target_msn_session_write(sess->fd, "--- BUDDY LIST DUMP END ---\n");
+
+	if (res != POM_OK)
+		return POM_ERR;
+	
 	return POM_OK;
 }

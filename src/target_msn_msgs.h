@@ -31,5 +31,6 @@ int target_process_mime_msmsgscontrol_msg(struct target *t, struct target_conntr
 int target_process_mime_text_plain_msg(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_process_mime_msnmsgrp2p_msg(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_process_mail_invite_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
+int target_process_status_msg_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 
 #endif

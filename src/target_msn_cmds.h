@@ -66,7 +66,10 @@ int target_msn_handler_fqy(struct target *t, struct target_conntrack_priv_msn *c
 int target_msn_handler_sdc(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_msn_handler_snd(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_msn_handler_qry(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
+int target_msn_handler_rea(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
+int target_msn_handler_nfy(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
+int target_msn_handler_put(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 
-
+int target_msn_handler_error(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 
 #endif

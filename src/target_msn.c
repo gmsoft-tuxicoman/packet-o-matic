@@ -76,6 +76,9 @@ struct msn_cmd_handler msn_cmds[] = {
 	{ "SDC", target_msn_handler_sdc },
 	{ "SND", target_msn_handler_snd },
 	{ "QRY", target_msn_handler_qry },
+	{ "REA", target_msn_handler_rea },
+	{ "NFY", target_msn_handler_nfy },
+	{ "PUT", target_msn_handler_put },
 	{ "SBS", target_msn_handler_ignore },
 	{ "SBP", target_msn_handler_ignore },
 	{ "BLP", target_msn_handler_ignore },
@@ -332,6 +335,9 @@ int target_process_msn(struct target *t, struct frame *f) {
 				case msn_payload_type_mail_invite:
 					res = target_process_mail_invite_msn(t, cp, f);
 					break;
+				case msn_payload_type_status_msg:
+					res = target_process_status_msg_msn(t, cp, f);
+					break;
 				case msn_payload_type_ignore:
 					res = target_process_payload_ignore_msn(t, cp, f);
 					break;
@@ -375,7 +381,7 @@ int target_process_line_msn(struct target *t, struct target_conntrack_priv_msn *
 		int error = 0;
 		if (sscanf(cp->buffer[cp->curdir], "%u", &error)) {
 			pom_log(POM_LOG_TSHOOT "Received error %u : %s", error, cp->buffer[cp->curdir]);
-			return POM_OK;
+			return target_msn_handler_error(t, cp, f);
 		}
 
 		// Check if cmd name is at least alphanum
@@ -444,8 +450,10 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 	sess->refcount--;
 	if (!sess->refcount) {
 
-		if (sess->fd != -1)
-			close(sess->fd);;
+		if (sess->fd != -1) {
+			target_msn_session_dump_buddy_list(cp);
+			close(sess->fd);
+		}
 
 		struct target_buddy_msn *bud = sess->buddies;
 		while (bud) {
@@ -454,6 +462,8 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 				free(bud->nick);
 			if (bud->group_list)
 				free(bud->group_list);
+			if (bud->psm)
+				free(bud->psm);
 			sess->buddies = sess->buddies->next;
 			free(bud);
 			bud = sess->buddies;
@@ -467,10 +477,12 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 			free(grp);
 			grp = sess->groups;
 		}
-		if (sess->account)
-			free(sess->account);
-		if (sess->friendly_name)
-			free(sess->friendly_name);
+		if (sess->user.account)
+			free(sess->user.account);
+		if (sess->user.nick)
+			free(sess->user.nick);
+		if (sess->user.psm)
+			free(sess->user.psm);
 
 		if (sess->next)
 			sess->next->prev = sess->prev;
@@ -497,9 +509,6 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 	while (cp->parts) {
 		struct target_connection_party_msn *tmp = cp->parts;
 		cp->parts = tmp->next;
-		free(tmp->account);
-		if (tmp->nick)
-			free(tmp->nick);
 		free(tmp);
 	}
 
@@ -508,8 +517,6 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 		cp->conv_buff = tmp->next;
 		if (tmp->buff)
 			free(tmp->buff);
-		if (tmp->from)
-			free(tmp->from);
 		free(tmp);
 		pom_log(POM_LOG_TSHOOT "Dropped buffered message because account wasn't found");
 	}
@@ -683,12 +690,6 @@ int target_free_msg_msn(struct target_conntrack_priv_msn *cp, int dir) {
 
 	if (!m)
 		return POM_OK;
-
-	if (m->to)
-		free(m->to);
-
-	if (m->from)
-		free(m->from);
 	
 	free(m);
 	cp->msg[dir] = NULL;

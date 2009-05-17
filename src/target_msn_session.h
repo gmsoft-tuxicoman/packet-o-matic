@@ -23,14 +23,27 @@
 
 #include "target_msn.h"
 
-struct target_connection_party_msn *target_msn_session_add_party(struct target_conntrack_priv_msn *cp, char *account, char *nick);
-int target_msn_session_found_buddy(struct target_conntrack_priv_msn *cp, char *account, char *nick, char* group_list);
+
+// Found someone currently talking
+struct target_connection_party_msn *target_msn_session_found_party(struct target_conntrack_priv_msn *cp, char *account, char *nick);
+
+// Found someone in the buddy list
+struct target_buddy_msn *target_msn_session_found_buddy(struct target_conntrack_priv_msn *cp, char *account, char *nick, char* group_list);
+
+// Found a group
 int target_msn_session_found_group(struct target_conntrack_priv_msn *cp, char *name, char *id);
+
+// Found the account of the user
 int target_msn_session_found_account(struct target *t, struct target_conntrack_priv_msn *cp, char *account);
+
+// Found the friendly name of the user
 int target_msn_session_found_friendly_name(struct target_conntrack_priv_msn *cp, char *friendly_name, struct timeval *time);
-struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn *priv, struct target_session_priv_msn *old_sess, struct target_session_priv_msn *new_sess);
+
+
+struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn *priv, struct target_conntrack_priv_msn *cp, struct target_session_priv_msn *old_sess);
 int target_msn_session_event(struct target_conntrack_priv_msn *cp, struct target_event_msn *evt);
 int target_msn_session_process_event(struct target_conntrack_priv_msn *cp, struct target_event_msn *evt);
 int target_msn_session_write(int fd, char *buff);
+int target_msn_session_dump_buddy_list(struct target_conntrack_priv_msn *cp);
 
 #endif

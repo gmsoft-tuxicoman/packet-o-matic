@@ -23,6 +23,7 @@
 #include "target_msn_session.h"
 
 #include <fcntl.h>
+#include <libxml/parser.h>
 
 struct msn_mime_type {
 
@@ -246,10 +247,10 @@ int target_process_mime_msnmsgrp2p_msg(struct target *t, struct target_conntrack
 				if (file->type == msn_file_type_display_image) {
 					if (m->from) {
 						// File is coming from someone
-						strncpy(fname, m->from, NAME_MAX);
+						strncpy(fname, m->from->account, NAME_MAX);
 					} else {
 						// File is sent by us
-						strncpy(fname, cp->session->account, NAME_MAX);
+						strncpy(fname, cp->session->user.account, NAME_MAX);
 					}
 					strncat(fname, "-display-picture.png", NAME_MAX - strlen(fname));
 				} else {
@@ -260,12 +261,12 @@ int target_process_mime_msnmsgrp2p_msg(struct target *t, struct target_conntrack
 				if (!msg_size) // Empty message, discard it
 					return POM_OK;
 
-				if (!cp->session->account) // Account unknown, ignore
+				if (!cp->session->user.account) // Account unknown, ignore
 					return POM_OK;
 
 				char filename[NAME_MAX + 1];
 				strcpy(filename, cp->parsed_path);
-				strncat(filename, cp->session->account, NAME_MAX - strlen(filename));
+				strncat(filename, cp->session->user.account, NAME_MAX - strlen(filename));
 				strncat(filename, "/", NAME_MAX - strlen(filename));
 				strncat(filename, fname, NAME_MAX - strlen(filename));
 				int fd = target_file_open(NULL, filename, O_WRONLY | O_CREAT, 0666);
@@ -522,3 +523,115 @@ int target_process_mail_invite_msn(struct target *t, struct target_conntrack_pri
 	return POM_OK;
 }
 
+
+// Parse status message in UUX
+int target_process_status_msg_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
+
+	struct target_msg_msn *m = cp->msg[cp->curdir];
+	int len = m->tot_len - m->cur_pos;
+
+	xmlDocPtr doc = NULL;
+	xmlNodePtr root, cur;
+
+	doc = xmlReadMemory(cp->buffer[cp->curdir] + cp->msg[cp->curdir]->cur_pos, len, "noname.xml", NULL, 0);
+
+	if (!doc) {
+		pom_log(POM_LOG_DEBUG "Unable to parse the XML formated status message");
+		return POM_OK;
+	}
+
+	root = xmlDocGetRootElement(doc);
+
+	if (!root) {
+		pom_log(POM_LOG_DEBUG "Unexpected empty status message");
+		xmlFreeDoc(doc);
+		return POM_OK;
+	}
+
+	// Possible format :
+	// <Data>
+	// 	<PSM>Personal Status Message</PSM>
+	// 	<CurrentMedia>Playing song</CurrentMedia>
+	// 	<MachineGuid>Guid</MachineGuid>
+	// 	<DDP>?</DDP>
+	// 	<SignatureSound>?</SignatureSound>
+	// 	<Scene>url encoded msnobj</Scene>
+	// 	<ColorScheme>signed int</ColorScheme>
+	// </Data>
+	//
+	// <EndpointData>
+	// 	<Capabilities>numerical value</Capabilities>
+	// </EndpointData>
+	//
+	// <PrivateEndpointData>
+	// 	<EpName>Name of the PC</EpName>
+	// 	<Idle>true/false</Idle>
+	// 	<ClientType>1(numerical value)</ClientType>
+	// 	<State>Status(IDL,NLN,BSY,...)</State>
+	// </PrivateEndpointData>
+
+
+	cur = root->xmlChildrenNode;
+
+	struct target_buddy_msn *buddy = m->from;
+
+	// Let's try to parse the useful info
+	if (!xmlStrcmp(root->name, (const xmlChar*) "Data")) {
+		// MSNP 11->18
+		while (cur) {
+			if (!xmlStrcmp(cur->name, (const xmlChar*) "PSM")) { // Handle personal message
+
+				struct target_event_msn evt;
+				memset(&evt, 0, sizeof(struct target_event_msn));
+				memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
+				evt.type = msn_evt_personal_msg_change;
+				evt.from = buddy;
+
+				char *psm = (char*) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+				if (psm) { // Let's see if it changed since last time
+					if (!buddy->psm || strcmp(buddy->psm, psm)) {
+						pom_log(POM_LOG_TSHOOT "Status message changed : %s", psm);
+						free(buddy->psm);
+						buddy->psm = malloc(strlen(psm) + 1);
+						strcpy(buddy->psm, psm);
+
+						evt.buff = buddy->psm;
+						target_msn_session_event(cp, &evt);
+
+					}
+					xmlFree(psm);
+				} else if (buddy->psm) {
+					free(buddy->psm); // Message was unset
+					buddy->psm = NULL;
+					target_msn_session_event(cp, &evt);
+				}
+
+			} else if (!xmlStrcmp(cur->name, (const xmlChar*) "CurrentMedia")) {
+				char *current_media = (char*) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
+				if (current_media) {
+					pom_log(POM_LOG_TSHOOT "Currently playing song : %s", current_media);
+					xmlFree(current_media);
+				}
+			}
+			
+			cur = cur->next;
+		}
+	} else if (!xmlStrcmp(root->name, (const xmlChar*) "EndpointData")) {
+		// MSNP 17->18
+
+		// do nothing, we don't care about it as there is no useful info
+	} else if (!xmlStrcmp(root->name, (const xmlChar*) "PrivateEndpointData")) {
+		// MSNP 17->18
+
+		// do nothing, we don't care about it as there is no useful info
+	} else {
+		pom_log(POM_LOG_DEBUG "Unknown UUX payload");
+	}
+
+
+	xmlFreeDoc(doc);
+
+	target_free_msg_msn(cp, cp->curdir);
+
+	return POM_OK;
+}

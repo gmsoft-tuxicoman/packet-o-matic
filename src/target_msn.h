@@ -40,6 +40,7 @@ enum msn_payload_type {
 	msn_payload_type_unk = 0, ///< Unknown
 	msn_payload_type_msg, ///< processing a message
 	msn_payload_type_mail_invite, ///< user sent a mail invite
+	msn_payload_type_status_msg, ///< status message and other info
 	msn_payload_type_ignore, ///< Ignore/unhandled payload
 };
 
@@ -53,6 +54,7 @@ enum msn_status_type {
 	msn_status_phone,
 	msn_status_lunch,
 	msn_status_hidden,
+	msn_status_offline,
 };
 
 struct target_buddy_group_msn {
@@ -64,9 +66,11 @@ struct target_buddy_group_msn {
 };
 
 struct target_buddy_msn {
-	char *account;
-	char *nick;
-	char *group_list;
+	char *account; // Account for this user
+	char *nick; // Friendly name of the user
+	char *group_list; // List of group to which this user belongs to
+	enum msn_status_type status; // Status of this user
+	char *psm; // Personal message of the user
 
 	struct target_buddy_msn *next;
 };
@@ -79,9 +83,8 @@ struct target_session_priv_msn {
 	struct target_buddy_group_msn *groups; // Known group of buddies
 
 	unsigned int version; // Protocol version for this connection
-	char *account; // Account name of the user
-	char *friendly_name; // Friendly name
-	enum msn_status_type status; // Status (online, busy etc)
+
+	struct target_buddy_msn user;
 
 	int fd; // Session log file
 
@@ -92,9 +95,8 @@ struct target_session_priv_msn {
 
 struct target_connection_party_msn {
 
-	char *account;
-	char *nick;
 	int joined; // true if user has joined and is still connected
+	struct target_buddy_msn *buddy; // point to the corresponding buddy
 	struct target_connection_party_msn *next;
 };
 
@@ -122,25 +124,26 @@ struct target_msg_msn {
 	int subtype;// used by each mime-type
 	unsigned int cur_len, cur_pos, tot_len;
 
-	char *from;
-	char *to;
+	struct target_buddy_msn *from;
+	struct target_buddy_msn *to;
 };
 
 enum msn_evt_type {
-	msn_evt_user_join = 0x0000,
+	msn_evt_buddy_join = 0x0000,
 	msn_evt_message,
-	msn_evt_user_leave,
+	msn_evt_buddy_leave,
 	msn_evt_friendly_name_change = 0x0100,
 	msn_evt_status_change,
 	msn_evt_user_disconnect,
 	msn_evt_mail_invite,
+	msn_evt_personal_msg_change,
 };
 
 struct target_event_msn {
 	enum msn_evt_type type;
 	struct timeval tv;
-	char *from;
-	char *to;
+	struct target_buddy_msn *from;
+	struct target_buddy_msn *to;
 	char *buff;
 	struct target_event_msn *next;
 };

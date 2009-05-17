@@ -1,3 +1,7 @@
+* 2009/05/17 Guy Martin <gmsoft@tuxicoman.be>
+Improve target_msn some more by supporting additional messages.
+Cleanup libxml2 memory when cleaning up the configuration.
+
 * 2009/05/15 Guy Martin <gmsoft@tuxicoman.be>
 Fix memory leak when parsing the config file fails.
 Improved target_msn parsing and command handling.
