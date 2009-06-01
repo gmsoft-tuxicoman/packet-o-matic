@@ -212,22 +212,15 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 			payload += strlen(conn->filename) + 1;
 
 			// Compute an expectation for the new data connection
-			struct expectation_list *expt  = expectation_alloc(f, t, ce, EXPT_DIR_REV);
+			struct expectation_list *expt  = expectation_alloc_from(f, t, ce, EXPT_DIR_REV);
 
 			// Now look for last layer
 			struct expectation_node *n = expt->n;
 			while (n->next)
 				n = n->next;
 
-			// Make sure we ignore the source
-			struct expectation_field *fld = n->fields;
-			while (fld) {
-				if (!strcmp(fld->name, "dport")) {
-					fld->op = EXPT_OP_IGNORE;
-					break;
-				}
-				fld = fld->next;
-			}
+			// Make sure we ignore the reverse source port (dport)
+			expectation_layer_set_field(n, "dport", NULL, EXPT_OP_IGNORE);
 
 			// Associate conntrack entry to the expectation and add the expectation to the list
 			expectation_set_target_priv(expt, new_cp, target_close_connection_tftp);

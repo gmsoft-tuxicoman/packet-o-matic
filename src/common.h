@@ -31,7 +31,9 @@
 
 #include <stdio.h>
 #include <stdarg.h>
+#ifdef HAVE_STDINT_H
 #include <stdint.h>
+#endif
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
@@ -179,11 +181,13 @@ uint64_t bswap64(uint64_t x);
 #if BYTE_ORDER == BIG_ENDIAN
 #define le16(x)		bswap16(x)
 #define le32(x)		bswap32(x)
+#define le64(x)		bswap64(x)
 #define ntohll(x)	(x)
 #define htonll(x)	(x)
 #elif BYTE_ORDER == LITTLE_ENDIAN
 #define le16(x)		(x)
 #define le32(x)		(x)
+#define le64(x)		(x)
 #define ntohll(x)	bswap64(x)
 #define htonll(x)	bswap64(x)
 #else

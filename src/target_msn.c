@@ -110,6 +110,10 @@ int target_register_msn(struct target_reg *r) {
 		return POM_ERR;
 
 	target_register_param(mode_default, "path", "/tmp", "Path were to dump files");
+	target_register_param(mode_default, "dump_session", "yes", "Dump session information");
+	target_register_param(mode_default, "dump_avatar", "yes", "Dump users avatar");
+	target_register_param(mode_default, "dump_file_transfer", "no", "Dump transfered files");
+
 
 	return POM_OK;
 
@@ -123,6 +127,9 @@ int target_init_msn(struct target *t) {
 	t->target_priv = priv;
 
 	priv->path = ptype_alloc("string", NULL);
+	priv->dump_session = ptype_alloc("bool", NULL);
+	priv->dump_avatar = ptype_alloc("bool", NULL);
+	priv->dump_file_transfer = ptype_alloc("bool", NULL);
 
 	if (!priv->path) {
 		target_cleanup_msn(t);
@@ -130,6 +137,9 @@ int target_init_msn(struct target *t) {
 	}
 
 	target_register_param_value(t, mode_default, "path", priv->path);
+	target_register_param_value(t, mode_default, "dump_session", priv->dump_session);
+	target_register_param_value(t, mode_default, "dump_avatar", priv->dump_avatar);
+	target_register_param_value(t, mode_default, "dump_file_transfer", priv->dump_file_transfer);
 
 	return POM_OK;
 }
@@ -153,6 +163,9 @@ int target_cleanup_msn(struct target *t) {
 	if (priv) {
 			
 		ptype_cleanup(priv->path);
+		ptype_cleanup(priv->dump_session);
+		ptype_cleanup(priv->dump_avatar);
+		ptype_cleanup(priv->dump_file_transfer);
 		free(priv);
 
 	}
@@ -228,7 +241,7 @@ int target_process_msn(struct target *t, struct frame *f) {
 	if (!cp->ce)
 		cp->ce = f->ce;
 
-	if (cp->is_invalid) // Ignore packets from invalid connections
+	if (cp->flags & MSN_CONN_FLAG_INVALID) // Ignore packets from invalid connections
 		return POM_OK;
 
 	// Split in lines
@@ -236,9 +249,6 @@ int target_process_msn(struct target *t, struct frame *f) {
 	unsigned int plen = lastl->payload_size;
 
 	while (plen > 0) {
-
-		if (cp->is_invalid) // Don't continue to process if it was marked invalid
-			return POM_OK;
 
 		if (plen > f->bufflen) {
 			pom_log(POM_LOG_ERR "Internal error, payload length greater than buffer length");
@@ -255,6 +265,98 @@ int target_process_msn(struct target *t, struct frame *f) {
 		
 		struct target_msg_msn *msg = cp->msg[dir];
 
+		if ((cp->flags & MSN_CONN_FLAG_P2P) && !msg) {
+			uint32_t len = 0;
+			if (cp->flags & MSN_CONN_FLAG_UDP) {
+				if (plen < sizeof(struct msn_udp_frame_layer_hdr)) {
+					pom_log(POM_LOG_DEBUG "UDP frame too shor to contain a valid header");
+					return POM_OK;
+				}
+				//struct msn_udp_frame_layer_hdr *frame_hdr = (struct msn_udp_frame_layer_hdr*)(payload);
+				payload += sizeof(struct msn_udp_frame_layer_hdr);
+				plen -= sizeof(struct msn_udp_frame_layer_hdr);
+				len = plen;
+
+				pom_log(POM_LOG_TSHOOT "P2P binary message : len : %u", len);
+
+
+			} else {
+				if (plen < sizeof(struct msn_tcp_frame_layer_hdr)) {
+					pom_log(POM_LOG_DEBUG "Frame too short to contain a valid header");
+					return POM_OK;
+				}
+				struct msn_tcp_frame_layer_hdr *frame_hdr = (struct msn_tcp_frame_layer_hdr*)(payload);
+				len = le32(frame_hdr->len);
+				payload += sizeof(struct msn_tcp_frame_layer_hdr);
+				plen -= sizeof(struct msn_tcp_frame_layer_hdr);
+
+				pom_log(POM_LOG_TSHOOT "P2P binary message : len : %u", len);
+				if (len > 2048) { // The limit seems to be 1400 actually
+					pom_log(POM_LOG_DEBUG "Data length too big in P2P message : %u", len);
+					return POM_OK;
+				}
+
+			}
+			if (len == 0)
+				continue;
+
+			cp->msg[cp->curdir] = msn_cmd_alloc_msg(len, msn_payload_type_p2p);
+			msg = cp->msg[cp->curdir];
+			msg->payload_type = msn_payload_type_p2p;
+
+		}
+		if ((cp->flags & MSN_CONN_FLAG_STUN) && !msg) {
+			// Check for SSL messages (actually initial handshake only)
+			char ssl_hdr[3] = { 0x16, 0x03, 0x01 };// handshake, tls v1
+			if (plen > 5 && !memcmp(payload, ssl_hdr, 3)) {
+				uint16_t len = ntohs(*((uint16_t*) (payload + 3)));
+
+				if (len <= plen - 5) {
+					plen -= (len + 5);
+					payload += (len + 5);
+				}
+				if (!plen)
+					return POM_OK;
+			}
+
+			// Check for the STUN allocate/deallocate message
+			// STUN packet is code(2), length(2), transaction(16), attributes (TLV)
+
+			// code is either 0x0003, 0x0103 in TURN or 0x0001, 0x0101 in STUN
+			if (plen > 20 // Minimum length
+				&& ((payload[0] & 0x7f) == 0x0 || (payload[0] & 0x7f) == 0x01) // Client/server
+				&& ((payload[1] == 0x3) || payload[1] == 0x1)) { // TURN draft/ STUN RFC allocation
+				uint16_t stun_len = ntohs(*((uint16_t*) (payload + 2)));
+				if (stun_len <= plen - 20)
+					return POM_OK; // Ignore STUN message
+			}
+
+			if (payload[0] == 0x18 && payload[1] == 0x00)
+				return POM_OK; // Ignore this for now
+
+			if (plen < sizeof(struct msn_stun_frame_layer_hdr)) {
+				pom_log(POM_LOG_DEBUG "Frame too short to contain a valid header");
+				return POM_OK;
+			}
+			struct msn_stun_frame_layer_hdr *frame_hdr = (struct msn_stun_frame_layer_hdr*)(payload);
+			uint32_t len = le32(frame_hdr->len);
+			payload += sizeof(struct msn_stun_frame_layer_hdr);
+			plen -= sizeof(struct msn_stun_frame_layer_hdr);
+
+			pom_log(POM_LOG_TSHOOT "P2P binary message : len : %u", len);
+			if (len > 2048) { // The limit seems to be 1400 actually
+				pom_log(POM_LOG_DEBUG "Data length too big in P2P message : %u", len);
+				return POM_OK;
+			}
+
+			if (len == 0)
+				continue;
+
+			cp->msg[cp->curdir] = msn_cmd_alloc_msg(len, msn_payload_type_p2p);
+			msg = cp->msg[cp->curdir];
+			msg->payload_type = msn_payload_type_p2p;
+
+		}
 		if (msg) { // It's a message, get the full payload in the buffer
 			if (cp->buffer_len[dir] < msg->tot_len + 1) {
 				cp->buffer[dir] = realloc(cp->buffer[dir], msg->tot_len + 1);
@@ -338,6 +440,14 @@ int target_process_msn(struct target *t, struct frame *f) {
 				case msn_payload_type_status_msg:
 					res = target_process_status_msg_msn(t, cp, f);
 					break;
+				case msn_payload_type_sip_msg:
+					res = target_process_sip_msn(t, cp, f, NULL, NULL);
+					target_free_msg_msn(cp, cp->curdir);
+					break;
+				case msn_payload_type_p2p:
+					res = target_process_bin_p2p_msg(t, cp, f, NULL, NULL);
+					target_free_msg_msn(cp, cp->curdir);
+					break;
 				case msn_payload_type_ignore:
 					res = target_process_payload_ignore_msn(t, cp, f);
 					break;
@@ -396,7 +506,7 @@ int target_process_line_msn(struct target *t, struct target_conntrack_priv_msn *
 
 		if (!is_alnum) {
 			pom_log(POM_LOG_DEBUG "Invalid command given. Ignoring connection");
-			cp->is_invalid = 1;
+			cp->flags |= MSN_CONN_FLAG_INVALID;
 			return POM_OK;
 		}
 
@@ -477,6 +587,11 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 			free(grp);
 			grp = sess->groups;
 		}
+
+		while (sess->file) {
+			target_session_close_file_msn(sess->file);
+		}
+
 		if (sess->user.account)
 			free(sess->user.account);
 		if (sess->user.nick)
@@ -499,11 +614,6 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 		free(cp->parsed_path);
 
 
-	while (cp->file) {
-		struct target_file_transfer_msn *file = cp->file;
-		cp->file = cp->file->next;
-		free(file);
-	}
 
 	
 	while (cp->parts) {
@@ -608,78 +718,54 @@ struct target_conntrack_priv_msn* target_msn_conntrack_priv_fork(struct target *
 	return new_cp;
 }
 
-int target_msn_add_expectation(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f, char *address) {
+int target_add_expectation_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f, char *address, char *port, unsigned int flags) {
 
-
-	char * port = NULL;
-	port = strchr(address, ':');
-	if (!port) {
-		pom_log(POM_LOG_INFO "Invalid address given : %s", address);
-		return POM_ERR;
-	}
-	*port = 0;
-	port++;
-
-	int p = 0;
-	if (sscanf(port, "%u", &p) != 1) {
-		pom_log(POM_LOG_INFO "Invalid port given : %s", port);
-		return POM_ERR;
-	}
-
-	struct in_addr addr;
-	if (!inet_aton(address, &addr)) {
-		pom_log(POM_LOG_INFO "Invalid address given : %s", address);
-		return POM_ERR;
-	}
-
-
-
-	// Compute an expectation for the new connection
-	struct expectation_list *expt  = expectation_alloc(f, t, f->ce, EXPT_DIR_BOTH);
-
-	// We got a copy of our current packet
-	// Source port should be same (1863) or changed to given value
-	// Destination port should be ignored
-	// Source ip should be changed to address
-	// Destination ip should be ignored
+	// Create an expectation for the new connection
+	struct expectation_list *expt  = expectation_alloc(t, f->ce, f->input, EXPT_DIR_BOTH);
 	
-	int ipv4_type = match_get_type("ipv4");
-	int tcp_type = match_get_type("tcp");
+	struct expectation_node *l3 = NULL, *l4 = NULL;
 
-	struct expectation_node *n = expt->n;
-	while (n) {
-		struct expectation_field *fld = n->fields;
-
-		if (n->layer == ipv4_type) {
-			while (fld) {
-				if (!strcmp(fld->name, "src")) {
-					PTYPE_IPV4_SETADDR(fld->value, addr);
-				} 
-				fld = fld->next;
-			}
-		} else if (n->layer == tcp_type) {
-			while (fld) {
-				if (!strcmp(fld->name, "sport")) {
-					PTYPE_UINT16_SETVAL(fld->value, p);
-				} else if (!strcmp(fld->name, "dport")) {
-					fld->op = EXPT_OP_IGNORE;
-				}
-				fld = fld->next;
-			}
-		}
-
-		n = n->next;
+	if (strchr(address, ':')) { // Check for IPv6 or IPv4
+		l3 = expectation_add_layer(expt, match_get_type("ipv6"));
+	} else {
+		l3 = expectation_add_layer(expt, match_get_type("ipv4"));
 	}
 
-	expectation_set_target_priv(expt, cp, target_close_connection_msn);
-	if (expectation_add(expt, MSN_EXPECTATION_TIMER) == POM_ERR) {
-		cp->session->refcount--;
-		free(cp->parsed_path);
-		free(cp);
+	if (flags & MSN_CONN_FLAG_UDP) { // Check for UDP or TCP
+		l4 = expectation_add_layer(expt, match_get_type("udp"));
+	} else {
+		l4 = expectation_add_layer(expt, match_get_type("tcp"));
+	}
+
+	if (!l3 || !l4) {
+		pom_log(POM_LOG_WARN "Unable to create expectation");
+		expectation_cleanup(expt);
 		return POM_ERR;
 	}
 
-	pom_log(POM_LOG_TSHOOT "Expectation added for address %s:%s", address, port);
+	if (expectation_layer_set_field(l3, "dst", address, PTYPE_OP_EQ) != POM_OK) {
+		pom_log(POM_LOG_DEBUG "Invalid address given to create an expectaion : %s", address);
+		expectation_cleanup(expt);
+		return POM_ERR;
+	}
+	if (expectation_layer_set_field(l4, "dport", port, PTYPE_OP_EQ) != POM_OK) {
+		pom_log(POM_LOG_DEBUG "Invalid port given to create an expectation : %s", port);
+		expectation_cleanup(expt);
+		return POM_ERR;
+	}
+
+	struct target_conntrack_priv_msn *new_cp = target_msn_conntrack_priv_fork(t, cp, f);
+	new_cp->flags = flags;
+
+	expectation_set_target_priv(expt, new_cp, target_close_connection_msn);
+	if (expectation_add(expt, MSN_EXPECTATION_TIMER) == POM_ERR) {
+		new_cp->session->refcount--;
+		free(new_cp->parsed_path);
+		free(new_cp);
+		return POM_ERR;
+	}
+
+	pom_log(POM_LOG_TSHOOT "Expectation added for destination %s:%s", address, port);
 	return POM_OK;
 }
 

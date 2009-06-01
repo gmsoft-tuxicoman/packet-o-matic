@@ -1,3 +1,9 @@
+* 2009/06/01 Guy Martin <gmsoft@tuxicoman.be>
+Added support for P2P connection and file transfer in target_msn.
+Changed expectation behavior not to replace a connection if it maches and already exists.
+Improved expectation API to make expectation creation easier.
+Add compilation fix for OpenBSD 3.8.
+
 * 2009/05/17 Guy Martin <gmsoft@tuxicoman.be>
 Improve target_msn some more by supporting additional messages.
 Cleanup libxml2 memory when cleaning up the configuration.

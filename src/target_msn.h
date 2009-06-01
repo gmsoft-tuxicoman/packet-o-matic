@@ -41,6 +41,8 @@ enum msn_payload_type {
 	msn_payload_type_msg, ///< processing a message
 	msn_payload_type_mail_invite, ///< user sent a mail invite
 	msn_payload_type_status_msg, ///< status message and other info
+	msn_payload_type_sip_msg, ///< Raw SIP message
+	msn_payload_type_p2p, ///< Message is from a P2P connection
 	msn_payload_type_ignore, ///< Ignore/unhandled payload
 };
 
@@ -88,6 +90,9 @@ struct target_session_priv_msn {
 
 	int fd; // Session log file
 
+	// Use when a file transfer occurs
+	struct target_file_transfer_msn *file;
+
 	struct target_session_priv_msn *next;
 	struct target_session_priv_msn *prev;
 
@@ -95,7 +100,6 @@ struct target_session_priv_msn {
 
 struct target_connection_party_msn {
 
-	int joined; // true if user has joined and is still connected
 	struct target_buddy_msn *buddy; // point to the corresponding buddy
 	struct target_connection_party_msn *next;
 };
@@ -104,25 +108,51 @@ enum msn_file_type {
 	msn_file_type_unknown = 0,
 	msn_file_type_unsupported,
 	msn_file_type_display_image,
+	msn_file_type_transfer,
 
+};
+
+
+struct target_bin_msg_buff_msn {
+
+	char *buffer;
+	unsigned int total_size, cur_pos;
 };
 
 struct target_file_transfer_msn {
 
-	size_t len;
-	size_t pos;
+	size_t len; // Total file length
+	size_t pos; // Current writing position (can go backward when chunks are received out of order)
+	size_t written_len; // Number of bytes written to the file
 	enum msn_file_type type;
 	uint32_t session_id;
 	int fd;
+	struct target_buddy_msn *buddy; // User who we are exchanging the file with
+	char *buddy_guid;
+	char *filename;
+	struct timer* timer;
 
+	struct target_session_priv_msn *session; // User session to which this file belongs
 	struct target_file_transfer_msn *next;
+	struct target_file_transfer_msn *prev;
+};
+
+enum msn_sip_cmd_type {
+	msn_msnmsgrp2p_sip_type_unknown = 0,
+	msn_msnmsgrp2p_sip_type_invite,
+	msn_msnmsgrp2p_sip_type_200_ok,
+	msn_msnmsgrp2p_sip_type_ack,
+	msn_msnmsgrp2p_sip_type_bye,
+	msn_msnmsgrp2p_sip_type_error,
+	msn_msnmsgrp2p_sip_type_payload,
 };
 
 struct target_msg_msn {
 
 	int payload_type, mime_type;
-	int subtype;// used by each mime-type
-	unsigned int cur_len, cur_pos, tot_len;
+	enum msn_sip_cmd_type sip_cmd;
+	unsigned int cur_len, tot_len; // Current write position and total length
+	unsigned int cur_pos; // Current read position
 
 	struct target_buddy_msn *from;
 	struct target_buddy_msn *to;
@@ -148,9 +178,16 @@ struct target_event_msn {
 	struct target_event_msn *next;
 };
 
+#define MSN_CONN_FLAG_INVALID		0x01 // Set if the connection has been marked as invalid
+#define MSN_CONN_FLAG_P2P		0x02 // Set if this is a direct P2P connection
+#define MSN_CONN_FLAG_STUN		0x04 // Set if this is a STUN connection to a relay server
+#define MSN_CONN_FLAG_WLM2009_BIN	0x08 // Set if the connection will use the WLM2009 binary header format
+#define MSN_CONN_FLAG_UDP		0x10 // Set if the connection needs UDP expectations
+
+
 struct target_conntrack_priv_msn {
 
-	int is_invalid; // Set to 1 when invalid payload was detected
+	unsigned int flags;
 
 	struct target_session_priv_msn *session; // Datas of the session
 	struct target_connection_party_msn *parts; // Parties in the conversation
@@ -161,14 +198,14 @@ struct target_conntrack_priv_msn {
 	char *buffer[2];
 	unsigned int buffer_len[2];
 
-	// Use when a file transfer occurs
-	struct target_file_transfer_msn *file;
-
 	// The following is only used when processing messages
 	struct target_msg_msn *msg[2]; // Info about the message being processed
 
 	// Buffer of conversation events while we still don't know the account
 	struct target_event_msn *conv_buff;
+
+	// Buffer for splitted SIP messages
+	struct target_bin_msg_buff_msn *sip_msg_buff[2];
 
 	struct target_conntrack_priv_msn *next;
 	struct target_conntrack_priv_msn *prev;
@@ -183,6 +220,10 @@ struct target_conntrack_priv_msn {
 struct target_priv_msn {
 
 	struct ptype *path;
+	struct ptype *dump_session;
+	struct ptype *dump_avatar;
+	struct ptype *dump_file_transfer;
+
 	struct target_conntrack_priv_msn *ct_privs;
 
 	struct target_session_priv_msn *sessions; // Sessions for each users
@@ -209,7 +250,7 @@ int target_cleanup_msn(struct target *t);
 
 int target_msn_chk_conn_dir(struct target_conntrack_priv_msn *cp, unsigned int pkt_dr, int msn_dir);
 struct target_conntrack_priv_msn* target_msn_conntrack_priv_fork(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
-int target_msn_add_expectation(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f, char *address);
+int target_add_expectation_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f, char *address, char *port, unsigned int flags);
 int target_free_msg_msn(struct target_conntrack_priv_msn *cp, int dir);
 
 

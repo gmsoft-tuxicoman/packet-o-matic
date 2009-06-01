@@ -28,7 +28,9 @@
 // Common stuff used in modules
 #include <stdlib.h>
 #include <stdio.h>
+#ifdef HAVE_STDINT_H
 #include <stdint.h>
+#endif
 #include <string.h>
 #include <strings.h>
 #include <dlfcn.h>

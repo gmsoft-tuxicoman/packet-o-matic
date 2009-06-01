@@ -150,7 +150,7 @@ struct match_field_reg *match_get_field(int match_type, int field_id);
 /// Identify the next layer
 int match_identify(struct frame *f, struct layer *l, unsigned int start, unsigned int len);
 
-/// Get the field id for the epxectation
+/// Get the field id for the expectation
 int match_get_expectation(int match_type, int field_id, int direction);
 
 /// Evalute a match field against a later

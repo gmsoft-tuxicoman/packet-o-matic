@@ -69,7 +69,10 @@ struct expectation_list {
 
 
 int expectation_init();
-struct expectation_list *expectation_alloc(struct frame *f, struct target *t, struct conntrack_entry *ce, int direction);
+struct expectation_list *expectation_alloc(struct target *t, struct conntrack_entry *ce, struct input *i, int direction);
+struct expectation_node *expectation_add_layer(struct expectation_list *expt, int match_type);
+int expectation_layer_set_field(struct expectation_node *n, char *fld_name, char *fld_value, int op);
+struct expectation_list *expectation_alloc_from(struct frame *f, struct target *t, struct conntrack_entry *ce, int direction);
 int expectation_set_target_priv(struct expectation_list *l, void *target_priv, int (*cleanup_handler) (struct target *t, struct conntrack_entry *ce, void *priv));
 int expectation_add(struct expectation_list *l, unsigned int expiry);
 int expectation_process (struct frame *f);

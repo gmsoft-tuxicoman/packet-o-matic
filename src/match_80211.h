@@ -27,7 +27,7 @@
 #include "modules_common.h"
 #include "match.h"
 
-#include <ieee80211.h>
+#include "include/ieee80211.h"
 
 int match_register_80211(struct match_reg *r);
 static int match_identify_80211(struct frame *f, struct layer* l, unsigned int start, unsigned int len);

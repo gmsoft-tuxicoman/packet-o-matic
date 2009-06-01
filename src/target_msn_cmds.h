@@ -27,6 +27,8 @@
 
 #define MSN_CMD_MAX_TOKEN 10
 
+struct target_msg_msn *msn_cmd_alloc_msg(unsigned int size, enum msn_payload_type type);
+
 
 int target_msn_handler_ignore(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_msn_handler_ver(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);

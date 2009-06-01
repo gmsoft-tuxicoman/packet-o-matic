@@ -24,7 +24,9 @@
 
 #include "config.h"
 
+#ifdef HAVE_STDINT_H
 #include <stdint.h>
+#endif
 #include <time.h>
 #ifdef TIME_WITH_SYS_TIME
 #include <sys/time.h>
