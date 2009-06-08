@@ -56,6 +56,8 @@
 #include <sys/time.h>
 #endif
 
+#include <libxml/xmlerror.h>
+
 #define INPUTSIG SIGUSR1
 
 struct conf *main_config;
@@ -578,6 +580,9 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	// Set libxml2 error handler
+	xmlSetGenericErrorFunc(NULL, libxml_error_handler);
+
 
 	// Init the stuff
 	ptype_init();
@@ -1006,4 +1011,17 @@ int main_config_datastores_unlock() {
 
 	return POM_OK;
 
+}
+
+void libxml_error_handler(void *ctx, const char *msg, ...) {
+
+	va_list arg_list;
+	char buff[2048];
+	va_start(arg_list, msg);
+	vsnprintf(buff, sizeof(buff) - 1, msg, arg_list);
+	va_end(arg_list);
+
+	pom_log_internal("libxml2", POM_LOG_TSHOOT "%s", buff);
+
+	return;
 }

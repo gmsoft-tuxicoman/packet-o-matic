@@ -22,7 +22,10 @@
 #ifndef __DOCSIS_H__
 #define __DOCSIS_H__
 
+#include "config.h"
+#ifdef HAVE_STDINT_H
 #include <stdint.h>
+#endif
 
 struct docsis_hdr {
 

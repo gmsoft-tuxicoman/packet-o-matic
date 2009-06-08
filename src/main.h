@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -85,5 +85,7 @@ int main_config_rules_lock(int write);
 int main_config_rules_unlock();
 int main_config_datastores_lock(int write);
 int main_config_datastores_unlock();
+
+void libxml_error_handler(void *ctx, const char *msg, ...);
 
 #endif

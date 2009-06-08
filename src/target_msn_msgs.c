@@ -40,10 +40,12 @@ static struct msn_mime_type msn_mime_types[] = {
 	{ "text/x-msmsgsoimnotification", NULL }, // User received an offline message
 	{ "text/x-msmsgscontrol", target_process_mime_msmsgscontrol_msg }, // User is typing
 	{ "application/x-msnmsgrp2p", target_process_mime_msnmsgrp2p_msg }, // File transfer
-	{ "text/x-msnmsgr-datacast" , NULL }, // Plugin action TODO (needs some more handling)
+	{ "text/x-msnmsgr-datacast" , target_process_mime_datacast_msg }, // Plugin action (nudge/winks/etc)
 	{ "text/x-mms-emoticon", NULL }, // Custom emoticon message sent right before the emoticon is being used
 	{ "text/x-mms-animemoticon", NULL }, // Animated custom emoticon (who the hell needs emoticon anyway ?)
 	{ "text/x-clientcaps", NULL }, // Sent by opensource clients to indicate if client is logging and the client name
+	{ "text/x-keepalive", NULL }, // Some clients uses keepalive
+	{ "text/x-msmsgsinitialemailnotification", NULL }, // Initial mail count
 	{ 0, 0},
 };
 
@@ -129,7 +131,7 @@ int target_process_msg_msn(struct target *t, struct target_conntrack_priv_msn *c
 					if (msn_mime_types[id].handler) {
 						res = (*msn_mime_types[id].handler) (t, cp, f, &hdrs[hdr_num + 1]);
 					} else {
-						pom_log(POM_LOG_DEBUG "Unhandled mime-type : %s", hdrs[hdr_num].value);
+						pom_log(POM_LOG_TSHOOT "Unhandled mime-type : %s", hdrs[hdr_num].value);
 					}
 					// Done with the message
 					target_free_msg_msn(cp, cp->curdir);
@@ -139,6 +141,10 @@ int target_process_msg_msn(struct target *t, struct target_conntrack_priv_msn *c
 			}
 			if (!msg->mime_type)
 				pom_log(POM_LOG_DEBUG "Header Content-Type unknown : %s", hdrs[hdr_num].value);
+		} else if (!strcasecmp(hdrs[hdr_num].name, "Chunk") || !strcasecmp(hdrs[hdr_num].name, "Message-ID")) {
+			// Headers found in winks message
+			// Do nothHeaders found in winks message
+			// Do nothing for now
 		} else {
 			pom_log(POM_LOG_DEBUG "Unhandled header : %s : %s", hdrs[hdr_num].name, hdrs[hdr_num].value);
 		}
@@ -181,6 +187,7 @@ int target_process_mime_text_plain_msg(struct target *t, struct target_conntrack
 	memset(&evt, 0, sizeof(struct target_event_msn));
 	memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
 	evt.from = m->from;
+	evt.to = m->to;
 	evt.buff = cp->buffer[cp->curdir] + m->cur_pos;
 	evt.type = msn_evt_message;
 
@@ -190,6 +197,67 @@ int target_process_mime_text_plain_msg(struct target *t, struct target_conntrack
 	return res;
 }
 
+int target_process_mime_datacast_msg(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f, struct msn_header *hdrs) {
+
+	unsigned int hdr_num = 0;
+	while (hdrs[hdr_num].name) {
+		if (!strcasecmp(hdrs[hdr_num].name, "Chunk")) {
+			// We only care about the first chunk which has the header "Chunks"
+			// Subsequent packets have the header "Chunks"
+			return POM_OK;
+		}
+		hdr_num++;
+	}
+
+	struct msn_header *action_hdrs = header_split(cp);
+	unsigned int action_id = 0;
+	for (hdr_num = 0; action_hdrs[hdr_num].name; hdr_num++) {
+		if (!strcasecmp(action_hdrs[hdr_num].name, "ID")) {
+			if (sscanf(action_hdrs[hdr_num].value, "%u", &action_id) != 1) {
+				pom_log(POM_LOG_DEBUG "Unable to parse action id in datacast message : %s", action_hdrs[hdr_num].value);
+				free(action_hdrs);
+				return POM_OK;
+			}
+			break;
+
+		}
+	}
+	free(action_hdrs);
+
+	if (!action_id) {
+		pom_log(POM_LOG_DEBUG "No action id found in datacast message");
+		return POM_OK;
+	}
+
+	struct target_msg_msn *m = cp->msg[cp->curdir];
+
+	struct target_event_msn evt;
+	memset(&evt, 0, sizeof(struct target_event_msn));
+	memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
+	evt.from = m->from;
+	evt.to = m->to;
+	evt.buff = cp->buffer[cp->curdir] + m->cur_pos;
+
+	switch (action_id) {
+		case 1: // nudge
+			evt.type = msn_evt_nudge;
+			break;
+		case 2: // winks
+			evt.type = msn_evt_wink;
+			break;
+		case 3: // voice clip
+		case 4: // action message
+		default:
+			pom_log(POM_LOG_DEBUG "Unsupported action %u in datacast message", action_id);
+			return POM_OK;
+	}
+
+	int res = target_msn_session_event(t, cp, &evt);
+
+	m->cur_pos = m->tot_len;
+
+	return res;
+}
 
 int target_process_mime_msnmsgrp2p_msg(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f, struct msn_header *hdrs) {
 
@@ -388,7 +456,7 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 	
 		if (cp->sip_msg_buff[cp->curdir]) {
 			struct target_bin_msg_buff_msn *sip_msg = cp->sip_msg_buff[cp->curdir];
-			if (msg_size > sip_msg->total_size + sip_msg->cur_pos) {
+			if (msg_size + sip_msg->cur_pos > sip_msg->total_size) {
 				pom_log(POM_LOG_DEBUG "Buffer overflow in segmented SIP message handling. Dropping");
 				free(sip_msg->buffer);
 				free(sip_msg);
@@ -458,6 +526,7 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 	}
 
 	// Process the payload
+	
 
 	// We got a session id, this must be some payload
 	int found = 0;
@@ -471,10 +540,10 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 					break;
 				}
 			} else {
-				if (cp->parts) {
-					if (!cp->parts->next) {
-						if (cp->parts->buddy == file->buddy) {
-							buddy_dest = cp->parts->buddy;
+				if (cp->conv && cp->conv->parts) {
+					if (!cp->conv->parts->next) {
+						if (cp->conv->parts->buddy == file->buddy) {
+							buddy_dest = cp->conv->parts->buddy;
 							found = 1;
 							break;
 						}
@@ -482,7 +551,7 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 						pom_log(POM_LOG_DEBUG "More than one party in this conversation, cannot match file");
 					}
 				} else {
-					pom_log(POM_LOG_DEBUG "No participant in this connection, matching on the session ID only");
+					pom_log(POM_LOG_TSHOOT "No participant in this connection, matching on the session ID only");
 					found = 1;
 					break;
 				}
@@ -493,11 +562,24 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 	if (!found) {
 		pom_log(POM_LOG_DEBUG "P2P File transfer with session SessionID %u was not found !", sess_id);
 		return POM_OK;
-	} else {
-		// Have the session last longer
-		timer_dequeue(file->timer);
-		timer_queue(file->timer, MSN_SESSION_TIMEOUT);
+	} 
+	
+	// Have the session last longer
+	timer_dequeue(file->timer);
+	timer_queue(file->timer, MSN_SESSION_TIMEOUT);
+
+	// Check if we know what file type we are dealing with
+	// If not, try to guess
+	if (flags && file->type == msn_file_type_unknown) {
+		if (flags & 0x10 && file->type != msn_file_type_transfer) {
+			pom_log(POM_LOG_DEBUG "Flags 0x%X and file type unknown for session %u. It's probably a file transfer", flags, file->session_id);
+			file->type = msn_file_type_transfer;
+		} else if (flags & 0x20 && !(flags & 0x10) && file->type != msn_file_type_display_image) {
+			pom_log(POM_LOG_DEBUG "Flags 0x%X and file type unknown for session %u. It's probably a file transfer", flags, file->session_id);
+			file->type = msn_file_type_display_image;
+		}
 	}
+
 
 
 	if (file->fd == -1) {
@@ -535,6 +617,9 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 				strftime(fname + strlen(fname), NAME_MAX - strlen(fname), format, &tmp);
 
 			}
+		} else if (file->type == msn_file_type_unknown) {
+			pom_log(POM_LOG_DEBUG "File type for session %u is unknown", file->session_id);
+			return POM_OK;
 		} else {
 			pom_log(POM_LOG_DEBUG "Unsupported file type, dropping");
 			return POM_OK;
@@ -576,8 +661,15 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 		}
 		file->pos = offset;
 	}
+	
+	size_t res = 0, len = msg_size;
+	while ((res = write(file->fd, cp->buffer[cp->curdir] + m->cur_pos, len))) {
+		if (res == -1)
+			return POM_ERR;
+		m->cur_pos += res;
+		len -= res;
+	}
 
-	write(file->fd, cp->buffer[cp->curdir] + m->cur_pos, msg_size);
 	file->pos += msg_size;
 	file->written_len += msg_size;
 
@@ -625,7 +717,7 @@ int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *c
 	} else if (!strncasecmp(first_line, "BYE", strlen("BYE"))) {
 		pom_log(POM_LOG_TSHOOT "P2P, Client sent bye");
 		m->sip_cmd = msn_msnmsgrp2p_sip_type_bye;
-
+	
 	} else {
 		pom_log(POM_LOG_DEBUG "Unknown SIP command : %s", first_line);
 		return POM_OK;
@@ -643,7 +735,7 @@ int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *c
 
 
 	char *msn_p2p_mime_types[] = {
-		"dummy/unknown",
+		"null",
 		"application/x-msnmsgr-sessionreqbody",
 		"application/x-msnmsgr-transdestaddrupdate",
 		"application/x-msnmsgr-transreqbody",
@@ -651,6 +743,7 @@ int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *c
 		"application/x-msnmsgr-transudpswitch",
 		"application/x-msnmsgr-turnsetup",
 		"application/x-msnmsgr-sessionclosebody",
+		"application/x-msnmsgr-session-failure-respbody",
 		NULL,
 	};
 
@@ -671,6 +764,7 @@ int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *c
 		}
 
 		if (!buddy_dest) { // Try to find the buddy from the "To" and "From" headers
+			// We don't reuse the msg->from since it doesn't contain the buddy_guid
 			if (!strcasecmp(sip_hdrs[hdr_num].name, "To") 
 				|| !strcasecmp(sip_hdrs[hdr_num].name, "From")) {
 				// Format is "<msnmsgr:account;guid>"
@@ -685,9 +779,12 @@ int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *c
 					*buddy_guid = 0;
 					buddy_guid++;
 				}
-				struct target_connection_party_msn *party = target_msn_session_found_party(t, cp, sip_hdrs[hdr_num].value, NULL, &f->tv);
-				if (party) { // The account we found wasn't the user
-					buddy_dest = party->buddy;
+				buddy_dest = target_msn_session_found_buddy(cp, sip_hdrs[hdr_num].value, NULL, NULL);
+				if (buddy_dest == &sess->user)
+					buddy_dest = NULL;
+				if (m->from && buddy_dest && m->from != buddy_dest)
+					pom_log(POM_LOG_DEBUG "Warning, destination buddy missmatch");
+				if (buddy_dest) { // The account we found wasn't the user
 					if (buddy_guid)
 						cp->flags |= MSN_CONN_FLAG_WLM2009_BIN;
 				} else { // This was probably the account
@@ -721,6 +818,13 @@ int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *c
 		}
 	}
 
+	if (sess_id == 0) {
+		// Session ID = 0 seems to be probe but not exchange of data
+		pom_log(POM_LOG_TSHOOT "Session ID in SIP message is 0. Ignoring");
+		free(hdrs);
+		return POM_OK;
+
+	}
 
 
 	struct target_file_transfer_msn *tmp_file = NULL;
@@ -820,11 +924,13 @@ int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *c
 
 		} else if (!strcasecmp(hdrs[hdr_num].name, "EUF-GUID")) {
 			if (!strcasecmp(hdrs[hdr_num].value, "{A4268EEC-FEC5-49E5-95C3-F126696BDBF6}")) { // Avatar
+				pom_log(POM_LOG_TSHOOT "Session %u will transfer an avatar", sess_id);
 				file_type = msn_file_type_display_image;
 			} else if (!strcasecmp(hdrs[hdr_num].value, "{5D3E02AB-6190-11D3-BBBB-00C04F795683}")) { // File transfer
+				pom_log(POM_LOG_TSHOOT "Session %u will transfer a file", sess_id);
 				file_type = msn_file_type_transfer;
 			} else {
-				pom_log(POM_LOG_DEBUG "Unknown file EUF-GUID : %s", hdrs[hdr_num].value);
+				pom_log(POM_LOG_DEBUG "Unknown file EUF-GUID : %s for session %u", hdrs[hdr_num].value, sess_id);
 			}
 
 		} else if (!strcasecmp(hdrs[hdr_num].name, "Nat-Trav-Msg-Type")) {
@@ -977,7 +1083,7 @@ int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *c
 		memset(context, 0, len);
 		int outlen = base64_decode(context, b64_context, len);
 		if (outlen == POM_ERR) {
-			pom_log(POM_LOG_DEBUG "P2P Err while decoding Context : %s", hdrs[hdr_num].value);
+			pom_log(POM_LOG_DEBUG "P2P Err while decoding Context : %s", b64_context);
 		} else {
 
 			if (!file->filename && file->type == msn_file_type_transfer && outlen >= sizeof(struct msn_file_transfer_context)) {
@@ -1023,6 +1129,34 @@ int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *c
 	return POM_OK;
 }
 
+int target_process_uun_ubn_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
+
+	struct target_msg_msn *msg = cp->msg[cp->curdir];
+
+	char *payload = cp->buffer[cp->curdir] + msg->cur_pos;
+
+	int res = POM_OK;
+
+	if (msg->tot_len - msg->cur_pos < 5) {
+		pom_log(POM_LOG_DEBUG "UUN/UBN payload too short to contain valid data");
+		target_free_msg_msn(cp, cp->curdir);
+		return POM_OK;
+	}
+
+	if (!strncasecmp(payload, "<SNM", strlen("<SNM"))) {
+		pom_log(POM_LOG_TSHOOT "P2P, Ignoring Shared New Media payload");
+	} else if (!strncasecmp(payload, "<sip", strlen("<sip"))) {
+		pom_log(POM_LOG_TSHOOT "P2P, Ignoring base64 encoded SIP payload"); 
+	} else {
+		res = target_process_sip_msn(t, cp, f, NULL, NULL);
+	}
+
+
+	target_free_msg_msn(cp, cp->curdir);
+
+	return res;
+}
+
 int target_process_mail_invite_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
 
 	struct target_msg_msn *m = cp->msg[cp->curdir];
@@ -1036,14 +1170,15 @@ int target_process_mail_invite_msn(struct target *t, struct target_conntrack_pri
 	*(evt.buff + len) = 0;
 	evt.from = m->from;
 	evt.to = m->to;
+	evt.type = msn_evt_mail_invite;
 
-	target_msn_session_event(t, cp, &evt);
+	int res = target_msn_session_event(t, cp, &evt);
 
 	free(evt.buff);
 
 	target_free_msg_msn(cp, cp->curdir);
 
-	return POM_OK;
+	return res;
 }
 
 
@@ -1060,6 +1195,7 @@ int target_process_status_msg_msn(struct target *t, struct target_conntrack_priv
 
 	if (!doc) {
 		pom_log(POM_LOG_DEBUG "Unable to parse the XML formated status message");
+		target_free_msg_msn(cp, cp->curdir);
 		return POM_OK;
 	}
 
@@ -1068,6 +1204,7 @@ int target_process_status_msg_msn(struct target *t, struct target_conntrack_priv
 	if (!root) {
 		pom_log(POM_LOG_DEBUG "Unexpected empty status message");
 		xmlFreeDoc(doc);
+		target_free_msg_msn(cp, cp->curdir);
 		return POM_OK;
 	}
 
@@ -1093,6 +1230,7 @@ int target_process_status_msg_msn(struct target *t, struct target_conntrack_priv
 	// 	<State>Status(IDL,NLN,BSY,...)</State>
 	// </PrivateEndpointData>
 
+	int res = POM_OK;
 
 	cur = root->xmlChildrenNode;
 
@@ -1119,14 +1257,14 @@ int target_process_status_msg_msn(struct target *t, struct target_conntrack_priv
 						strcpy(buddy->psm, psm);
 
 						evt.buff = buddy->psm;
-						target_msn_session_event(t, cp, &evt);
+						res = target_msn_session_event(t, cp, &evt);
 
 					}
 					xmlFree(psm);
 				} else if (buddy->psm) {
 					free(buddy->psm); // Message was unset
 					buddy->psm = NULL;
-					target_msn_session_event(t, cp, &evt);
+					res = target_msn_session_event(t, cp, &evt);
 				}
 
 			} else if (!xmlStrcmp(cur->name, (const xmlChar*) "CurrentMedia")) {
@@ -1156,9 +1294,131 @@ int target_process_status_msg_msn(struct target *t, struct target_conntrack_priv
 
 	target_free_msg_msn(cp, cp->curdir);
 
-	return POM_OK;
+	return res;
 }
 
+// Parse status message in ADL
+int target_process_adl_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
+
+	struct target_msg_msn *m = cp->msg[cp->curdir];
+	int len = m->tot_len - m->cur_pos;
+
+	xmlDocPtr doc = NULL;
+	xmlNodePtr root;
+
+	doc = xmlReadMemory(cp->buffer[cp->curdir] + cp->msg[cp->curdir]->cur_pos, len, "noname.xml", NULL, 0);
+
+	if (!doc) {
+		pom_log(POM_LOG_DEBUG "Unable to parse the XML formated status message");
+		target_free_msg_msn(cp, cp->curdir);
+		return POM_OK;
+	}
+
+	root = xmlDocGetRootElement(doc);
+
+	if (!root) {
+		pom_log(POM_LOG_DEBUG "Unexpected empty status message");
+		xmlFreeDoc(doc);
+		target_free_msg_msn(cp, cp->curdir);
+		return POM_OK;
+	}
+
+	// Format :
+	// <ml>
+	// 	<d n="domain1">
+	// 		<c n="account" l="list_id" t="type" />
+	// 		...
+	// 	</d>
+	// 	....
+	// 	<t><c n="tel number"/></t>
+	// </ml>
+
+
+	if (xmlStrcmp(root->name, (const xmlChar*) "ml")) {
+		pom_log(POM_LOG_DEBUG "Unexpected root tag : %s", root->name);
+		xmlFreeDoc(doc);
+		target_free_msg_msn(cp, cp->curdir);
+		return POM_OK;
+	}
+
+	xmlNodePtr domainPtr = root->xmlChildrenNode;
+
+	while (domainPtr) {
+		if (!xmlStrcmp(domainPtr->name, (const xmlChar*) "d")) {
+	
+			char *domain = (char *) xmlGetProp(domainPtr, (const xmlChar*) "n");
+			if (!domain) {
+				pom_log(POM_LOG_DEBUG "No domain given in <d> tag");
+				domainPtr = domainPtr->next;
+				continue;
+			}
+		
+			xmlNodePtr contactPtr = domainPtr->xmlChildrenNode;
+
+			while (contactPtr) {
+				if (!xmlStrcmp(contactPtr->name, (const xmlChar*) "c")) {
+
+					char *account = (char *) xmlGetProp(contactPtr, (const xmlChar*) "n");
+					if (!account) {
+						pom_log(POM_LOG_DEBUG "No account given in <c> tag");
+						contactPtr = contactPtr->next;
+						continue;
+					}
+
+					char *list_id_str = (char *) xmlGetProp(contactPtr, (const xmlChar*) "l");
+					if (!list_id_str) {
+						pom_log(POM_LOG_DEBUG "No list id given in <c> tag");
+						xmlFree(account);
+						contactPtr = contactPtr->next;
+						continue;
+					}
+					
+					unsigned int list_id;
+					if (sscanf(list_id_str, "%u", &list_id) != 1) {
+						pom_log(POM_LOG_DEBUG "Unable to parse the list id : %s", list_id_str);
+						xmlFree(account);
+						xmlFree(list_id_str);
+						contactPtr = contactPtr->next;
+						continue;
+					}
+
+					char *full_account = malloc(strlen(account) + strlen("@") + strlen(domain) + 1);
+					strcpy(full_account, account);
+					strcat(full_account, "@");
+					strcat(full_account, domain);
+
+					xmlFree(account);
+					xmlFree(list_id_str);
+
+					struct target_buddy_msn *buddy = target_msn_session_found_buddy(cp, full_account, NULL, NULL);
+					free(full_account);
+
+					if (buddy && (list_id & 0x4)) // blocked ?
+						buddy->blocked = 1;
+
+				} else {
+					pom_log(POM_LOG_DEBUG "Unexpected tag %s in <d> tag", contactPtr->name);
+				}
+				contactPtr = contactPtr->next;
+			}
+
+			xmlFree(domain);
+		} else if(!xmlStrcmp(domainPtr->name, (const xmlChar*) "t")) {
+			// Not handled yet
+		} else {
+			pom_log(POM_LOG_DEBUG "Unexpected tag %s in <ml> tag", domainPtr->name);
+		}
+		
+		domainPtr = domainPtr->next;
+	}
+
+
+	xmlFreeDoc(doc);
+
+	target_free_msg_msn(cp, cp->curdir);
+
+	return POM_OK;
+}
 int target_process_mail_notification_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f, struct msn_header *hdrs) {
 
 	struct msn_header *hdrs2 = header_split(cp);
@@ -1196,11 +1456,12 @@ int target_process_msg_profile_msn(struct target *t, struct target_conntrack_pri
 	unsigned int hdr_num = 0;
 	while (hdrs[hdr_num].name) {
 		if (!strcasecmp(hdrs[hdr_num].name, "Nickname"))
-			target_msn_session_found_friendly_name(t, cp, hdrs[hdr_num].value, &f->tv);
+			if (target_msn_session_found_friendly_name(t, cp, hdrs[hdr_num].value, &f->tv) == POM_ERR)
+				return POM_ERR;
+
 
 		hdr_num++;
 	}
-
 
 	return POM_OK;
 }

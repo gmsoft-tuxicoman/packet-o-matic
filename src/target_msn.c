@@ -79,6 +79,9 @@ struct msn_cmd_handler msn_cmds[] = {
 	{ "REA", target_msn_handler_rea },
 	{ "NFY", target_msn_handler_nfy },
 	{ "PUT", target_msn_handler_put },
+	{ "ADD", target_msn_handler_add },
+	{ "ADC", target_msn_handler_adc },
+	{ "REM", target_msn_handler_rem },
 	{ "SBS", target_msn_handler_ignore },
 	{ "SBP", target_msn_handler_ignore },
 	{ "BLP", target_msn_handler_ignore },
@@ -227,8 +230,6 @@ int target_process_msn(struct target *t, struct frame *f) {
 		if (priv->sessions)
 			priv->sessions->prev = sess;
 		priv->sessions = sess;
-
-		cp->fd = -1;
 
 		cp->next = priv->ct_privs;
 		if (priv->ct_privs)
@@ -440,9 +441,15 @@ int target_process_msn(struct target *t, struct frame *f) {
 				case msn_payload_type_status_msg:
 					res = target_process_status_msg_msn(t, cp, f);
 					break;
+				case msn_payload_type_adl:
+					res = target_process_adl_msn(t, cp, f);
+					break;
 				case msn_payload_type_sip_msg:
 					res = target_process_sip_msn(t, cp, f, NULL, NULL);
 					target_free_msg_msn(cp, cp->curdir);
+					break;
+				case msn_payload_type_uun_ubn:
+					res = target_process_uun_ubn_msn(t, cp, f);
 					break;
 				case msn_payload_type_p2p:
 					res = target_process_bin_p2p_msg(t, cp, f, NULL, NULL);
@@ -550,12 +557,55 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 	struct target_conntrack_priv_msn *cp;
 	cp = conntrack_priv;
 
-	if (cp->buffer[0])
-		free(cp->buffer[0]);
-	if (cp->buffer[1])
-		free(cp->buffer[1]);
+	int i;
+	for (i = 0; i <= 1; i++) {
+		if (cp->buffer[i])
+			free(cp->buffer[i]);
+		target_free_msg_msn(cp, i);
+		if (cp->sip_msg_buff[i]) {
+			if (cp->sip_msg_buff[i]->buffer)
+				free(cp->sip_msg_buff[i]->buffer);
+			free(cp->sip_msg_buff[i]);
+		}
+	}
+
 
 	struct target_session_priv_msn *sess = cp->session;
+	struct target_conversation_msn *conv = cp->conv;
+
+	if (conv) {
+		conv->refcount--;
+		if (!conv->refcount) {
+			while (conv->parts) {
+				struct target_connection_party_msn *tmp = conv->parts;
+				conv->parts = tmp->next;
+				free(tmp);
+			}
+
+			while (conv->evt_buff) {
+				struct target_event_msn *tmp = conv->evt_buff;
+				conv->evt_buff = tmp->next;
+				if (tmp->buff)
+					free(tmp->buff);
+				free(tmp);
+				pom_log(POM_LOG_TSHOOT "Dropped buffered message because account wasn't found");
+			}
+
+			if (conv->fd != -1)
+				close(conv->fd);
+
+			if (conv->next)
+				conv->next->prev = conv->prev;
+			
+			if (conv->prev)
+				conv->prev->next = conv->next;
+			else
+				sess->conv = conv->next;
+
+			free(conv);
+		}
+
+	}
 
 	sess->refcount--;
 	if (!sess->refcount) {
@@ -588,8 +638,47 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 			grp = sess->groups;
 		}
 
+		while (sess->conv) {
+			conv = sess->conv;
+			if (!conv->refcount) {
+				pom_log(POM_LOG_DEBUG "Warning, conversation refcount is not 0");
+				sess->conv = conv->next;
+				continue;
+			}
+
+			while (conv->parts) {
+				struct target_connection_party_msn *tmp = conv->parts;
+				conv->parts = tmp->next;
+				free(tmp);
+			}
+
+			while (conv->evt_buff) {
+				struct target_event_msn *tmp = conv->evt_buff;
+				conv->evt_buff = tmp->next;
+				if (tmp->buff)
+					free(tmp->buff);
+				free(tmp);
+				pom_log(POM_LOG_TSHOOT "Dropped buffered message because account wasn't found");
+			}
+
+			if (conv->fd != -1)
+				close(conv->fd);
+
+			sess->conv = conv->next;
+			free(conv);
+
+		}
+
 		while (sess->file) {
 			target_session_close_file_msn(sess->file);
+		}
+		while (sess->evt_buff) {
+			struct target_event_msn *tmp = sess->evt_buff;
+			sess->evt_buff = tmp->next;
+			if (tmp->buff)
+				free(tmp->buff);
+			free(tmp);
+			pom_log(POM_LOG_TSHOOT "Dropped buffered event because account wasn't found");
 		}
 
 		if (sess->user.account)
@@ -613,29 +702,6 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 	if (cp->parsed_path)
 		free(cp->parsed_path);
 
-
-
-	
-	while (cp->parts) {
-		struct target_connection_party_msn *tmp = cp->parts;
-		cp->parts = tmp->next;
-		free(tmp);
-	}
-
-	while (cp->conv_buff) {
-		struct target_event_msn *tmp = cp->conv_buff;
-		cp->conv_buff = tmp->next;
-		if (tmp->buff)
-			free(tmp->buff);
-		free(tmp);
-		pom_log(POM_LOG_TSHOOT "Dropped buffered message because account wasn't found");
-	}
-
-	target_free_msg_msn(cp, 0);
-	target_free_msg_msn(cp, 1);
-
-	if (cp->fd != -1)
-		close(cp->fd);
 
 	if (cp->prev)
 		cp->prev->next = cp->next;
@@ -686,29 +752,23 @@ struct target_conntrack_priv_msn* target_msn_conntrack_priv_fork(struct target *
 
 	// New connection
 
-	char tmp[NAME_MAX + 1];
-	memset(tmp, 0, sizeof(tmp));
-
 	struct target_priv_msn *priv = t->target_priv;
 
-	if (layer_field_parse(f->l, PTYPE_STRING_GETVAL(priv->path), tmp, NAME_MAX) == POM_ERR) {
-		pom_log(POM_LOG_WARN "Error while parsing the path");
-		return NULL;
-	}
 	struct target_conntrack_priv_msn *new_cp = NULL;
 	new_cp = malloc(sizeof(struct target_conntrack_priv_msn));
 	memset(new_cp, 0, sizeof(struct target_conntrack_priv_msn));
-	new_cp->parsed_path = malloc(strlen(tmp) + 3);
-	strcpy(new_cp->parsed_path, tmp);
-	if (*(new_cp->parsed_path + strlen(new_cp->parsed_path) - 1) != '/')
-		strcat(new_cp->parsed_path, "/");
+	new_cp->parsed_path = malloc(strlen(cp->parsed_path) + 1);
+	strcpy(new_cp->parsed_path, cp->parsed_path);
 
 	new_cp->server_dir = CE_DIR_UNK;
 
 	cp->session->refcount++;
 	new_cp->session = cp->session;
 
-	new_cp->fd = -1;
+	if (cp->conv) {
+		cp->conv->refcount++;
+		new_cp->conv = cp->conv;
+	}
 
 	new_cp->next = priv->ct_privs;
 	if (priv->ct_privs)

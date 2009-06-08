@@ -367,10 +367,10 @@ int target_write_log_http(struct target_priv_http *priv, struct target_conntrack
 			
 			int i;
 
-			int size = pc - log_format;
-			if (size > 0) {
-				write(priv->log_fd, log_format, size);
-				log_format += size;
+			size_t size = pc - log_format, res;
+			while ((res = write(priv->log_fd, log_format, size))) {
+				log_format += res;
+				size -= res;
 			}
 
 			char *output = NULL;
@@ -533,9 +533,11 @@ int target_write_log_http(struct target_priv_http *priv, struct target_conntrack
 
 		}
 
-		int size = strlen(log_format);
-		if (size > 0)
-			write(priv->log_fd, log_format, size);
+		size_t size = strlen(log_format), res;
+		while ((res = write(priv->log_fd, log_format, size))) {
+			log_format += res;
+			size -= res;
+		}
 		write(priv->log_fd, "\n", strlen("\n"));
 	}
 

@@ -41,7 +41,9 @@ enum msn_payload_type {
 	msn_payload_type_msg, ///< processing a message
 	msn_payload_type_mail_invite, ///< user sent a mail invite
 	msn_payload_type_status_msg, ///< status message and other info
+	msn_payload_type_adl, ///< Payload from the ADL command, contains the contact list
 	msn_payload_type_sip_msg, ///< Raw SIP message
+	msn_payload_type_uun_ubn, ///< Message from a UUN or UBN command
 	msn_payload_type_p2p, ///< Message is from a P2P connection
 	msn_payload_type_ignore, ///< Ignore/unhandled payload
 };
@@ -73,6 +75,7 @@ struct target_buddy_msn {
 	char *group_list; // List of group to which this user belongs to
 	enum msn_status_type status; // Status of this user
 	char *psm; // Personal message of the user
+	int blocked; // True if user is blocked
 
 	struct target_buddy_msn *next;
 };
@@ -86,7 +89,12 @@ struct target_session_priv_msn {
 
 	unsigned int version; // Protocol version for this connection
 
-	struct target_buddy_msn user;
+	struct target_buddy_msn user; // User who logged in
+
+	// Buffer of conversation events while we still don't know the account
+	struct target_event_msn *evt_buff;
+
+	struct target_conversation_msn *conv; // All the conversations from this session
 
 	int fd; // Session log file
 
@@ -101,6 +109,7 @@ struct target_session_priv_msn {
 struct target_connection_party_msn {
 
 	struct target_buddy_msn *buddy; // point to the corresponding buddy
+	int joined; // true if user has joined
 	struct target_connection_party_msn *next;
 };
 
@@ -162,11 +171,16 @@ enum msn_evt_type {
 	msn_evt_buddy_join = 0x0000,
 	msn_evt_message,
 	msn_evt_buddy_leave,
+	msn_evt_nudge,
+	msn_evt_wink,
 	msn_evt_friendly_name_change = 0x0100,
 	msn_evt_status_change,
 	msn_evt_user_disconnect,
 	msn_evt_mail_invite,
 	msn_evt_personal_msg_change,
+	msn_evt_user_added,
+	msn_evt_user_blocked,
+	msn_evt_user_unblocked,
 };
 
 struct target_event_msn {
@@ -184,13 +198,28 @@ struct target_event_msn {
 #define MSN_CONN_FLAG_WLM2009_BIN	0x08 // Set if the connection will use the WLM2009 binary header format
 #define MSN_CONN_FLAG_UDP		0x10 // Set if the connection needs UDP expectations
 
+struct target_conversation_msn {
+	
+	int fd; // File of the conversation if opened
+
+	struct target_connection_party_msn *parts; // Parties in the conversation
+
+	// Buffer of conversation events while we still don't know the account
+	struct target_event_msn *evt_buff;
+
+	unsigned int refcount;
+
+	struct target_conversation_msn *next;
+	struct target_conversation_msn *prev;
+
+};
 
 struct target_conntrack_priv_msn {
 
 	unsigned int flags;
+	char *parsed_path; // Path were the files will be saved
 
 	struct target_session_priv_msn *session; // Datas of the session
-	struct target_connection_party_msn *parts; // Parties in the conversation
 
 	unsigned int server_dir; // Direction of the messages sent by the server
 	int curdir; // Id of current direction being processed
@@ -201,19 +230,17 @@ struct target_conntrack_priv_msn {
 	// The following is only used when processing messages
 	struct target_msg_msn *msg[2]; // Info about the message being processed
 
-	// Buffer of conversation events while we still don't know the account
-	struct target_event_msn *conv_buff;
-
 	// Buffer for splitted SIP messages
 	struct target_bin_msg_buff_msn *sip_msg_buff[2];
+
+	// Conversation associated with this connection
+	struct target_conversation_msn *conv;
 
 	struct target_conntrack_priv_msn *next;
 	struct target_conntrack_priv_msn *prev;
 
 	struct conntrack_entry *ce; // Associated conntrack entry
 
-	char *parsed_path; // Path were the files will be saved
-	int fd; // File of the conversation if opened
 
 };
 

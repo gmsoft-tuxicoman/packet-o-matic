@@ -26,7 +26,7 @@ unsigned int msn_cmd_tokenize(char *cmd, char *tokens[]) {
 
 	unsigned int tok_num = 0;
 	char *str, *tok, *saveptr = NULL;
-	for (str = cmd; ; str = NULL) {
+	for (str = cmd; tok_num < MSN_CMD_MAX_TOKEN; str = NULL) {
 		tok = strtok_r(str, " ", &saveptr);
 		if (!tok)
 			break;
@@ -88,6 +88,8 @@ int target_msn_handler_cvr(struct target *t, struct target_conntrack_priv_msn *c
 	// (locale_id is in hexa -> starts by 0x...)
 	// server : CVR TrID recommended_version recommended_version server_version? url_dl_client url_more_info
 
+	int res = POM_OK;
+
 	char *tokens[MSN_CMD_MAX_TOKEN];
 	unsigned int tok_num = msn_cmd_tokenize(cp->buffer[cp->curdir], tokens);
 
@@ -99,12 +101,12 @@ int target_msn_handler_cvr(struct target *t, struct target_conntrack_priv_msn *c
 	if (!memcmp(tokens[2], "0x", strlen("0x"))) {
 		target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_CLIENT);
 		if (tok_num > 9)
-			target_msn_session_found_account(t, cp, tokens[9]);
+			res = target_msn_session_found_account(t, cp, tokens[9]);
 	} else {
 		target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_SERVER);
 	}
 
-	return POM_OK;
+	return res;
 }
 
 // Authentication
@@ -128,6 +130,8 @@ int target_msn_handler_usr(struct target *t, struct target_conntrack_priv_msn *c
 	// Switchboard server :
 	// client : USR TrID account ticket
 	// server : USR TrID OK account friendly_name
+	
+	int res = POM_OK;
 
 	char *tokens[MSN_CMD_MAX_TOKEN];
 	unsigned int tok_num = msn_cmd_tokenize(cp->buffer[cp->curdir], tokens);
@@ -142,14 +146,14 @@ int target_msn_handler_usr(struct target *t, struct target_conntrack_priv_msn *c
 	if (at) { // switchboard from client
 
 		target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_CLIENT);
-		target_msn_session_found_account(t, cp, tokens[2]);
+		res = target_msn_session_found_account(t, cp, tokens[2]);
 
 	} else if (!strcmp(tokens[2], "OK")) { // server replies OK
 
 		target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_SERVER);
-		target_msn_session_found_account(t, cp, tokens[3]);
+		res = target_msn_session_found_account(t, cp, tokens[3]);
 		if (*tokens[4] != '0' && *tokens[4] != '1')
-			target_msn_session_found_friendly_name(t, cp, tokens[4], &f->tv);
+			res = target_msn_session_found_friendly_name(t, cp, tokens[4], &f->tv);
 
 	} else if (!strcmp(tokens[2], "TWN") || !memcmp(tokens[2], "SSO", 3)) {
 
@@ -157,7 +161,7 @@ int target_msn_handler_usr(struct target *t, struct target_conntrack_priv_msn *c
 		if (*tokens[3] == 'I') { // client initial message
 			if (tok_num >= 5) {
 				target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_CLIENT);
-				target_msn_session_found_account(t, cp, tokens[4]);
+				res = target_msn_session_found_account(t, cp, tokens[4]);
 			}
 
 		}
@@ -168,7 +172,7 @@ int target_msn_handler_usr(struct target *t, struct target_conntrack_priv_msn *c
 		return POM_OK;
 	}
 
-	return POM_OK;
+	return res;
 }
 
 // Transfer to another server
@@ -265,6 +269,8 @@ int target_msn_handler_prp(struct target *t, struct target_conntrack_priv_msn *c
 	// MSNP11->above
 	// client/server : PRP TrID MFN friendly_name
 
+	int res = POM_OK;
+
 	char *tokens[MSN_CMD_MAX_TOKEN];
 	unsigned int tok_num = msn_cmd_tokenize(cp->buffer[cp->curdir], tokens);
 
@@ -278,7 +284,7 @@ int target_msn_handler_prp(struct target *t, struct target_conntrack_priv_msn *c
 		// MSNP11 and above
 		if (!strcmp(tokens[2], "MFN")) {
 			pom_log(POM_LOG_TSHOOT "My friendly name : \"%s\"", tokens[3]);
-			target_msn_session_found_friendly_name(t, cp, tokens[3], &f->tv);
+			res = target_msn_session_found_friendly_name(t, cp, tokens[3], &f->tv);
 		} else {
 			pom_log(POM_LOG_DEBUG "Unknown PRP type : %s", tokens[2]);
 		}
@@ -299,13 +305,13 @@ int target_msn_handler_prp(struct target *t, struct target_conntrack_priv_msn *c
 			pom_log(POM_LOG_TSHOOT "Direct paging ? : %s", tokens[2]);
 		} else if (!strcmp(tokens[1], "MFN")) {
 			pom_log(POM_LOG_TSHOOT "My friendly name : \"%s\"", tokens[2]);
-			target_msn_session_found_friendly_name(t, cp, tokens[2], &f->tv);
+			res = target_msn_session_found_friendly_name(t, cp, tokens[2], &f->tv);
 		} else {
 			pom_log(POM_LOG_DEBUG "Unknown PRP type : %s", tokens[1]);
 		}
 	}
 
-	return POM_OK;
+	return res;
 }
 
 
@@ -361,7 +367,7 @@ int target_msn_handler_lst(struct target *t, struct target_conntrack_priv_msn *c
 	// server : LST account friendly_name list_id group_list(optional)
 	
 	// MSNP 11 and above
-	// server : LST N=account F=friendly_name(optional) C=guid list_id group_list(optional)
+	// server : LST N=account F=friendly_name(optional) C=guid(optional) list_id group_list(optional)
 	
 	if (f->ce->direction != cp->server_dir) {
 		pom_log(POM_LOG_TSHOOT "LST not comming from server (or server dir unknown), ignoring.");
@@ -383,29 +389,56 @@ int target_msn_handler_lst(struct target *t, struct target_conntrack_priv_msn *c
 	// They are probably too st00pid to get it right
 
 	int new_syntax = 0;
-	if (!strcmp(tokens[1], "N=")) // New syntax alway give account prepended with N=
+	if (!strncmp(tokens[1], "N=", strlen("N="))) // New syntax alway give account prepended with N=
 		new_syntax = 1;
 
-	char *account = NULL, *nick = NULL, *group = NULL;
+	char *account = NULL, *nick = NULL, *group = NULL, *list_id = NULL;
 	if (new_syntax) {
 		account = tokens[1] + 2;
-		if (tok_num > 4)
-			group = tokens[4]; // group can be null
-		if (!strcmp(tokens[2], "F=")) {
-			nick = tokens[2] + 2;
-			if (tok_num > 5)
-				group = tokens[5];
+		int cur_tok = 2;
+		if (!strncmp(tokens[cur_tok], "F=", strlen("F="))) {
+			nick = tokens[cur_tok] + strlen("F=");
+			cur_tok++;
 		}
+		if (cur_tok < tok_num && !strncmp(tokens[cur_tok], "C=", strlen("C="))) {
+			group = tokens[cur_tok] + strlen("C=");
+			cur_tok++;
+		}
+		
+		if (cur_tok >= tok_num) {
+			pom_log(POM_LOG_DEBUG "LST command imcomplete");
+			return POM_OK;
+		}
+		list_id = tokens[cur_tok];
+
 	} else {
 		account = tokens[1];
 		nick = tokens[2];
+		list_id = tokens[3];
 		if (tok_num > 4)
 			group = tokens[4];
 	}
-	
-	if (nick && account) {
+
+	if (account) {
 		pom_log(POM_LOG_TSHOOT "Account in the list : \"%s\" (%s)", nick, account);
-		target_msn_session_found_buddy(cp, account, nick, group);
+		struct target_buddy_msn *buddy = target_msn_session_found_buddy(cp, account, nick, group);
+		if (!buddy) {
+			pom_log(POM_LOG_DEBUG "Invalid buddy provided in LST command : %s", account);
+			return POM_OK;
+		}
+		unsigned int list_mask = 0;
+		if (list_id && sscanf(list_id, "%u", &list_mask) == 1) {	
+			// Forward list : 0x1
+			// Allow list : 0x2
+			// Block list : 0x4
+			// Reverse list : 0x8
+			if (list_mask & 0x4)
+				buddy->blocked = 1;
+
+		} else {
+			pom_log(POM_LOG_DEBUG "Invalid list ID provided in LST command : %s", list_id);
+			return POM_OK;
+		}
 	}
 
 	return POM_OK;
@@ -416,6 +449,8 @@ int target_msn_handler_lst(struct target *t, struct target_conntrack_priv_msn *c
 int target_msn_handler_chg(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
 
 	// client/server : CHG TrID status capabilities(optional) object_descriptor(optional)
+
+	int res = POM_OK;
 
 	char *tokens[MSN_CMD_MAX_TOKEN];
 	unsigned int tok_num = msn_cmd_tokenize(cp->buffer[cp->curdir], tokens);
@@ -470,11 +505,11 @@ int target_msn_handler_chg(struct target *t, struct target_conntrack_priv_msn *c
 		
 		sess->user.status = new_status;
 
-		target_msn_session_event(t, cp, &evt);
+		res = target_msn_session_event(t, cp, &evt);
 	}
 
 
-	return POM_OK;
+	return res;
 }
 
 // PING
@@ -568,7 +603,7 @@ int target_msn_handler_ubn(struct target *t, struct target_conntrack_priv_msn *c
 	target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_SERVER);
 
 	if (length > 0 && buddy) {
-		cp->msg[cp->curdir] = msn_cmd_alloc_msg(length, msn_payload_type_sip_msg);
+		cp->msg[cp->curdir] = msn_cmd_alloc_msg(length, msn_payload_type_uun_ubn);
 		cp->msg[cp->curdir]->from = buddy;
 	}
 
@@ -659,6 +694,8 @@ int target_msn_handler_ans(struct target *t, struct target_conntrack_priv_msn *c
 	// client : ANS TrID account ticket session_id
 	// server : ANS TrID OK
 
+	int res = POM_OK;
+
 	char *tokens[MSN_CMD_MAX_TOKEN];
 	unsigned int tok_num = msn_cmd_tokenize(cp->buffer[cp->curdir], tokens);
 
@@ -674,9 +711,9 @@ int target_msn_handler_ans(struct target *t, struct target_conntrack_priv_msn *c
 	} else {
 		char *at = strchr(tokens[2], '@'); // Basic verification
 		if (at) {
-			target_msn_session_found_account(t, cp, tokens[2]);
+			res = target_msn_session_found_account(t, cp, tokens[2]);
 			target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_CLIENT);
-			return POM_OK;
+			return res;
 		}
 	}
 
@@ -708,6 +745,8 @@ int target_msn_handler_bye(struct target *t, struct target_conntrack_priv_msn *c
 
 	// server : BYE account reason_id(optional)
 
+	int res = POM_OK;
+
 	char *tokens[MSN_CMD_MAX_TOKEN];
 	unsigned int tok_num = msn_cmd_tokenize(cp->buffer[cp->curdir], tokens);
 
@@ -724,25 +763,33 @@ int target_msn_handler_bye(struct target *t, struct target_conntrack_priv_msn *c
 		if (sc)
 			*sc = 0;
 
-		struct target_connection_party_msn *tmp = cp->parts;
-		while (tmp) {
-			if (!strcmp(tmp->buddy->account, tokens[1])) {
+		struct target_connection_party_msn *party = NULL, *party_prev = NULL;
+		if (cp->conv && cp->conv->parts)
+			party = cp->conv->parts;
+		while (party) {
+			if (!strcmp(party->buddy->account, tokens[1])) {
 				break;
 			}
-			tmp = tmp->next;
+			party_prev = party;
+			party = party->next;
 		}
-		if (!tmp) {
+		if (!party) {
 			pom_log(POM_LOG_DEBUG "BYE: User %s not found in the list", tokens[1]);
 		} else {
-			pom_log(POM_LOG_TSHOOT "BYE: User %s left the conversation", tokens[1]);
+			if (!party->joined) {
+				pom_log(POM_LOG_TSHOOT "BYE: User %s already left the conversation", tokens[1]);
+			} else {
+				pom_log(POM_LOG_TSHOOT "BYE: User %s left the conversation", tokens[1]);
+				struct target_event_msn evt;
+				memset(&evt, 0, sizeof(struct target_event_msn));
+				memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
+				evt.from = party->buddy;
+				evt.type = msn_evt_buddy_leave;
 
-			struct target_event_msn evt;
-			memset(&evt, 0, sizeof(struct target_event_msn));
-			memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
-			evt.from = tmp->buddy;
-			evt.type = msn_evt_buddy_leave;
+				res = target_msn_session_event(t, cp, &evt);
 
-			target_msn_session_event(t, cp, &evt);
+				party->joined = 0;
+			}
 		}
 
 	} else {
@@ -750,7 +797,7 @@ int target_msn_handler_bye(struct target *t, struct target_conntrack_priv_msn *c
 	}
 
 
-	return POM_OK;
+	return res;
 }
 
 // Notification
@@ -800,9 +847,7 @@ int target_msn_handler_rng(struct target *t, struct target_conntrack_priv_msn *c
 		return POM_OK;
 	}
 
-	struct target_connection_party_msn *party = NULL;
-	party = target_msn_session_found_party(t, cp, tokens[5], tokens[6], &f->tv);
-
+	target_msn_session_found_buddy(cp, tokens[5], tokens[6], NULL);
 
 	char *port = strchr(tokens[2], ':');
 	if (!port) {
@@ -822,7 +867,9 @@ int target_msn_handler_out(struct target *t, struct target_conntrack_priv_msn *c
 
 	// client : OUT
 	// server : OUT OTH|SSD
-	
+
+	int res = POM_OK;
+
 	char *tokens[MSN_CMD_MAX_TOKEN];
 	unsigned int tok_num = msn_cmd_tokenize(cp->buffer[cp->curdir], tokens);
 
@@ -836,36 +883,44 @@ int target_msn_handler_out(struct target *t, struct target_conntrack_priv_msn *c
 	memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
 	evt.from = &sess->user;
 
-	if (cp->fd != -1) // let's try to see if it's a NS or SB 
+	if (cp->conv) {// let's try to see if it's a NS or SB 
+		// SB connection
 		evt.type = msn_evt_buddy_leave;
-	else
-		evt.type = msn_evt_user_disconnect;
-
-	if (tok_num > 1) {
-		char *msg = "Unknown reason";
-		if (!strcmp(tokens[1], "OTH"))
-			msg = "Logged in from another location";
-
-		if (!strcmp(tokens[1], "SSD"))
-			msg = "Server shutting down";
-
-		pom_log(POM_LOG_TSHOOT "OUT : User %s disconnected by server : %s", account, msg);
-		target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_SERVER);
-		evt.buff = msg;
-
+		evt.buff =  "User closed the conversation";
+		int process = 0;
+		struct target_connection_party_msn *party = cp->conv->parts;
+		while (party) {
+			if (party->joined) {
+				process = 1;
+				break;
+			}
+			party = party->next;
+		}
+		if (process) {
+			for (party = cp->conv->parts; party; party = party->next)
+				party->joined = 0;
+			res = target_msn_session_event(t, cp, &evt);
+		}
 	} else {
-		char *msg = "User closed the conversation";
-		if (cp->fd == -1)
-			msg = "Signed out";
-
-		pom_log(POM_LOG_TSHOOT "OUT: %s", msg);
-		target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_CLIENT);
-		evt.buff = msg;
+		evt.type = msn_evt_user_disconnect;
+		if (tok_num > 1) {
+			char *msg = "Unknown reason";
+			if (!strcmp(tokens[1], "OTH"))
+				msg = "Logged in from another location";
+			else if (!strcmp(tokens[1], "SSD"))
+				msg = "Server shutting down";
+			evt.buff = msg;
+			pom_log(POM_LOG_TSHOOT "OUT : User %s disconnected by server : %s", account, msg);
+			target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_SERVER);
+		} else {
+			evt.buff = "Signed out";
+			pom_log(POM_LOG_TSHOOT "OUT: %s", evt.buff);
+		}
+		res = target_msn_session_event(t, cp, &evt);
 	}
 
-	target_msn_session_event(t, cp, &evt);
 
-	return POM_OK;
+	return res;
 }
 
 // Change of presence
@@ -876,7 +931,8 @@ int target_msn_handler_nln(struct target *t, struct target_conntrack_priv_msn *c
 	
 	// MSNP 14 -> above
 	// server : NLN status account network_id friendly_name capabilities msn_obj(optional)
-	
+
+	int res = POM_OK;
 
 	char *tokens[MSN_CMD_MAX_TOKEN];
 	unsigned int tok_num = msn_cmd_tokenize(cp->buffer[cp->curdir], tokens);
@@ -950,21 +1006,22 @@ int target_msn_handler_nln(struct target *t, struct target_conntrack_priv_msn *c
 		evt.from = buddy;
 		evt.type = msn_evt_status_change;
 		
-		target_msn_session_event(t, cp, &evt);
+		res = target_msn_session_event(t, cp, &evt);
 
 		buddy->status = new_status;
 	}
 
 	pom_log(POM_LOG_TSHOOT "User \"%s\" (%s) is now %s", buddy->nick, buddy->account, status_msg);
 
-
-	return POM_OK;
+	return res;
 }
 
 // Initial presence
 int target_msn_handler_iln(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
 
 	// server : ILN TrID status account type friendly_name capabilities
+
+	int res = POM_OK;
 
 	char *tokens[MSN_CMD_MAX_TOKEN];
 	unsigned int tok_num = msn_cmd_tokenize(cp->buffer[cp->curdir], tokens);
@@ -1030,20 +1087,22 @@ int target_msn_handler_iln(struct target *t, struct target_conntrack_priv_msn *c
 		evt.from = buddy;
 		evt.type = msn_evt_status_change;
 		
-		target_msn_session_event(t, cp, &evt);
+		res = target_msn_session_event(t, cp, &evt);
 
 		buddy->status = new_status;
 	}
 
 	pom_log(POM_LOG_TSHOOT "User \"%s\" (%s) is now %s", tokens[5], tokens[3], tokens[2]);
 
-	return POM_OK;
+	return res;
 }
 
 // Someone signed off
 int target_msn_handler_fln(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
 	
 	// server : FLN account capabilities(optional)
+
+	int res = POM_OK;
 
 	char *tokens[MSN_CMD_MAX_TOKEN];
 	unsigned int tok_num = msn_cmd_tokenize(cp->buffer[cp->curdir], tokens);
@@ -1083,13 +1142,13 @@ int target_msn_handler_fln(struct target *t, struct target_conntrack_priv_msn *c
 		evt.from = buddy;
 		evt.type = msn_evt_status_change;
 		
-		target_msn_session_event(t, cp, &evt);
+		res = target_msn_session_event(t, cp, &evt);
 
 		buddy->status = msn_status_offline;
 	}
 
 	pom_log(POM_LOG_TSHOOT "User \"%s\" signed out", account);
-	return POM_OK;
+	return res;
 }
 
 // Out of band file transfer negociation
@@ -1126,7 +1185,7 @@ int target_msn_handler_uun(struct target *t, struct target_conntrack_priv_msn *c
 	struct target_buddy_msn *to = target_msn_session_found_buddy(cp, tokens[2], NULL, NULL);
 
 	if (length > 0 && to) {
-		cp->msg[cp->curdir] = msn_cmd_alloc_msg(length, msn_payload_type_sip_msg);
+		cp->msg[cp->curdir] = msn_cmd_alloc_msg(length, msn_payload_type_uun_ubn);
 		cp->msg[cp->curdir]->to = to;
 	}
 
@@ -1240,7 +1299,7 @@ int target_msn_handler_adl(struct target *t, struct target_conntrack_priv_msn *c
 			target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_SERVER);
 
 		if (length > 0)
-			cp->msg[cp->curdir] = msn_cmd_alloc_msg(length, msn_payload_type_ignore);
+			cp->msg[cp->curdir] = msn_cmd_alloc_msg(length, msn_payload_type_adl);
 	}
 	return POM_OK;
 }
@@ -1323,17 +1382,18 @@ int target_msn_handler_uum(struct target *t, struct target_conntrack_priv_msn *c
 
 	if (strchr(tokens[2], '@') != NULL) { // We found an account 
 		target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_CLIENT);
+		// We should not use found_party() as this is an out of band msg
 		to = target_msn_session_found_buddy(cp, tokens[2], NULL, NULL);
-		if (length > 0)
-			cp->msg[cp->curdir] = msn_cmd_alloc_msg(length, msn_payload_type_msg);
 
+		if (!to) {
+			pom_log(POM_LOG_DEBUG "Invalid destination account in UUM : %s", tokens[2]);
+			return POM_OK;
+		}
 	}
 
 	if (length > 0) {
-		if (to) {
-			struct target_msg_msn *msg = cp->msg[cp->curdir];
-			msg->to = to;
-		}
+		cp->msg[cp->curdir] = msn_cmd_alloc_msg(length, msn_payload_type_msg);
+		cp->msg[cp->curdir]->to = to;
 	}
 
 	return POM_OK;
@@ -1342,8 +1402,7 @@ int target_msn_handler_uum(struct target *t, struct target_conntrack_priv_msn *c
 // Message received out of band
 int target_msn_handler_ubm(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
 
-	// server : 
-	// cp->msg[cp->curdir]->to = to;UBM account networkid type length
+	// server : UBM account networkid type length
 
 	char *tokens[MSN_CMD_MAX_TOKEN];
 	unsigned int tok_num = msn_cmd_tokenize(cp->buffer[cp->curdir], tokens);
@@ -1364,15 +1423,17 @@ int target_msn_handler_ubm(struct target *t, struct target_conntrack_priv_msn *c
 	if (strchr(tokens[1], '@') != NULL) { // We found an account 
 		target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_SERVER);
 		from = target_msn_session_found_buddy(cp, tokens[1], NULL, 0);
-		if (length > 0)
-			cp->msg[cp->curdir] = msn_cmd_alloc_msg(length, msn_payload_type_msg);
+
+		if (!from) {
+			pom_log(POM_LOG_DEBUG "Invalid destination account in UBM : %s", tokens[2]);
+			return POM_OK;
+		}
+
 	}
 
 	if (length > 0) {
-		if (from) {
-			struct target_msg_msn *msg = cp->msg[cp->curdir];
-			msg->from = from;
-		}
+		cp->msg[cp->curdir] = msn_cmd_alloc_msg(length, msn_payload_type_msg);
+		cp->msg[cp->curdir]->from = from;
 	}
 
 	return POM_OK;
@@ -1411,9 +1472,6 @@ int target_msn_handler_sdc(struct target *t, struct target_conntrack_priv_msn *c
 
 		if (length > 0) {
 			cp->msg[cp->curdir] = msn_cmd_alloc_msg(length, msn_payload_type_mail_invite);
-
-			//target_msn_session_found_friendly_name(t, cp, tokens[8]);
-			
 			cp->msg[cp->curdir]->to = target_msn_session_found_buddy(cp, tokens[2], NULL, NULL);
 
 		}
@@ -1430,6 +1488,8 @@ int target_msn_handler_snd(struct target *t, struct target_conntrack_priv_msn *c
 
 	// client : SND TrID account locale_id? MSMSGS msmsgs
 	// server : SND TrID OK
+
+	int res = POM_OK;
 
 	char *tokens[MSN_CMD_MAX_TOKEN];
 	unsigned int tok_num = msn_cmd_tokenize(cp->buffer[cp->curdir], tokens);
@@ -1456,13 +1516,13 @@ int target_msn_handler_snd(struct target *t, struct target_conntrack_priv_msn *c
 		evt.to = target_msn_session_found_buddy(cp, tokens[2], NULL, NULL);
 		evt.type = msn_evt_mail_invite;
 
-		target_msn_session_event(t, cp, &evt);
+		res = target_msn_session_event(t, cp, &evt);
 
 		pom_log(POM_LOG_TSHOOT "SND : invites %s", tokens[2]);
 	}
 	
 	
-	return POM_OK;
+	return res;
 }
 
 int target_msn_handler_qry(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
@@ -1500,7 +1560,9 @@ int target_msn_handler_rea(struct target *t, struct target_conntrack_priv_msn *c
 
 	// client : REA TrID account friendly_name
 	// server : REA TrID version account friendly_name
-	
+
+	int res = POM_OK;
+
 	char *tokens[MSN_CMD_MAX_TOKEN];
 	unsigned int tok_num = msn_cmd_tokenize(cp->buffer[cp->curdir], tokens);
 
@@ -1533,14 +1595,14 @@ int target_msn_handler_rea(struct target *t, struct target_conntrack_priv_msn *c
 	if (sess->user.account) {
 		if (!strcmp(sess->user.account, account)) { // We're updating our own nick
 			pom_log(POM_LOG_TSHOOT "User changed his nick to \"%s\"", friendly_name);
-			target_msn_session_found_friendly_name(t, cp, friendly_name, &f->tv);
+			res = target_msn_session_found_friendly_name(t, cp, friendly_name, &f->tv);
 		} else { // Updating someone's nick
 			target_msn_session_found_buddy(cp, account, friendly_name, NULL);
 			pom_log(POM_LOG_TSHOOT "Buddy %s is now known as \"%s\"", account, friendly_name);
 		}
 	}
 
-	return POM_OK;
+	return res;
 }
 
 // Not sure what this one does
@@ -1562,7 +1624,7 @@ int target_msn_handler_nfy(struct target *t, struct target_conntrack_priv_msn *c
 		return POM_OK;
 	}
 
-	if (strcmp(tokens[1], "PUT")) {
+	if (strcmp(tokens[1], "PUT") && strcmp(tokens[1], "DEL")) {
 		pom_log(POM_LOG_DEBUG "Unknown NFY command : %s", tokens[1]);
 		// no return since we parsed the length
 	}
@@ -1614,6 +1676,215 @@ int target_msn_handler_put(struct target *t, struct target_conntrack_priv_msn *c
 	return POM_OK;
 }
 
+// Add a contact to a list
+int target_msn_handler_add(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
+	
+	// MSNP8
+	// client : ADD TrID list account nick group_id(optional)
+	// server : ADD TrID list id account nick group_id(optional)
+
+	int res = POM_OK;
+
+	char *tokens[MSN_CMD_MAX_TOKEN];
+	unsigned int tok_num = msn_cmd_tokenize(cp->buffer[cp->curdir], tokens);
+
+	if (tok_num < 5) {
+		pom_log(POM_LOG_DEBUG "Not enough tokens to parse ADD command");
+		return POM_OK;
+	}
+
+	int id = 0;
+	char *nick = NULL, *account = NULL, *group = NULL;
+	if (sscanf(tokens[3], "%u", &id) == 1) {
+		if (tok_num < 6) {
+			pom_log(POM_LOG_DEBUG "Not enough tokens to parse ADD command");
+			return POM_OK;
+		}
+		account = tokens[4];
+		nick = tokens[5];
+		if (tok_num > 6)
+			group = tokens[6];
+		target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_SERVER);
+	} else {
+		account = tokens[3];
+		nick = tokens[4];
+		if (tok_num > 5)
+			group = tokens[5];
+		target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_CLIENT);
+	}
+
+	struct target_buddy_msn *tmp_bud = NULL, *buddy = NULL;
+
+	// Find out if that buddy already exists or not
+	for (tmp_bud = cp->session->buddies; tmp_bud && strcmp(tmp_bud->account, account); tmp_bud = tmp_bud->next);
+
+	buddy = target_msn_session_found_buddy(cp, account, nick, group);
+	if (!buddy) {
+		pom_log(POM_LOG_DEBUG "Invalid buddy provided in ADD command");
+		return POM_OK;
+	}
+
+	struct target_event_msn evt;
+	memset(&evt, 0, sizeof(struct target_event_msn));
+	memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
+	evt.from = &cp->session->user;
+	evt.to = buddy;
+
+	if (!tmp_bud) { // Buddy not found
+		
+		evt.type = msn_evt_user_added;
+		res = target_msn_session_event(t, cp, &evt);
+
+	} else if (!strcmp(tokens[2], "BL") && !buddy->blocked) {
+		
+		// User added to the block list
+		buddy->blocked = 1;
+		evt.type = msn_evt_user_blocked;
+		res = target_msn_session_event(t, cp, &evt);
+
+	} else if (!strcmp(tokens[2], "AL") && buddy->blocked) {
+	
+		// User added to the allow list
+		buddy->blocked = 0;
+		evt.type = msn_evt_user_blocked;
+		res = target_msn_session_event(t, cp, &evt);
+	}
+
+	return res;
+}
+
+// Add a contact to a list
+int target_msn_handler_adc(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
+	
+	// client/server : ADC TrID list N=account F=nick(optional) C=group(optional)
+
+	int res = POM_OK;
+
+	char *tokens[MSN_CMD_MAX_TOKEN];
+	unsigned int tok_num = msn_cmd_tokenize(cp->buffer[cp->curdir], tokens);
+
+	if (tok_num < 4) {
+		pom_log(POM_LOG_DEBUG "Not enough tokens to parse ADC command");
+		return POM_OK;
+	}
+
+	char *nick = NULL, *account = NULL, *group = NULL;
+	if (strncmp(tokens[3], "N=", strlen("N="))) {
+		pom_log(POM_LOG_DEBUG "Invalid account format in ADC : %s", tokens[3]);
+		return POM_OK;
+	}
+	account = tokens[3] + strlen("N=");
+
+	if (tok_num > 4) {
+		if (strncmp(tokens[4], "F=", strlen("F="))) {
+			pom_log(POM_LOG_DEBUG "Invalid nick format in ADC : %s", tokens[4]);
+			return POM_OK;
+		}
+		nick = tokens[4] + strlen("F=");
+	}
+
+	if (tok_num > 5 && !strncmp(tokens[5], "C=", strlen("C=")))
+			group = tokens[5] + strlen("C=");
+
+	struct target_buddy_msn *tmp_bud = NULL, *buddy = NULL;
+
+	// Find out if that buddy already exists or not
+	for (tmp_bud = cp->session->buddies; tmp_bud && strcmp(tmp_bud->account, account); tmp_bud = tmp_bud->next);
+
+	buddy = target_msn_session_found_buddy(cp, account, nick, group);
+	if (!buddy) {
+		pom_log(POM_LOG_DEBUG "Invalid buddy provided in ADC command");
+		return POM_OK;
+	}
+
+	struct target_event_msn evt;
+	memset(&evt, 0, sizeof(struct target_event_msn));
+	memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
+	evt.from = &cp->session->user;
+	evt.to = buddy;
+
+	if (!tmp_bud) { // Buddy not found
+		
+		evt.type = msn_evt_user_added;
+		res = target_msn_session_event(t, cp, &evt);
+
+	} else if (!strcmp(tokens[2], "BL") && !buddy->blocked) {
+	
+		// User added to the block list
+		buddy->blocked = 1;
+		evt.type = msn_evt_user_blocked;
+		res = target_msn_session_event(t, cp, &evt);
+
+	} else if (!strcmp(tokens[2], "AL") && buddy->blocked) {
+		
+		// User added to the allow list
+		buddy->blocked = 0;
+		evt.type = msn_evt_user_unblocked;
+		res = target_msn_session_event(t, cp, &evt);
+
+	}
+
+	return res;
+}
+
+// Remove a contact from a list
+int target_msn_handler_rem(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
+	
+	// client : REM TrID list account
+	// server : REM TrID list id account
+
+	int res = POM_OK;
+
+	char *tokens[MSN_CMD_MAX_TOKEN];
+	unsigned int tok_num = msn_cmd_tokenize(cp->buffer[cp->curdir], tokens);
+
+	if (tok_num < 4) {
+		pom_log(POM_LOG_DEBUG "Not enough tokens to parse REM command");
+		return POM_OK;
+	}
+
+	int id = 0;
+	char *account = NULL;
+	if (sscanf(tokens[3], "%u", &id) == 1) {
+		if (tok_num < 5) {
+			pom_log(POM_LOG_DEBUG "Not enough tokens to parse REM command");
+			return POM_OK;
+		}
+		account = tokens[4];
+		target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_SERVER);
+	} else {
+		account = tokens[3];
+		target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_CLIENT);
+	}
+
+	struct target_buddy_msn *buddy = target_msn_session_found_buddy(cp, account, NULL, NULL);
+
+	if (!buddy) {
+		pom_log(POM_LOG_DEBUG "Invalid buddy provided in REM command");
+		return POM_OK;
+	}
+
+	struct target_event_msn evt;
+	memset(&evt, 0, sizeof(struct target_event_msn));
+	memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
+	evt.from = &cp->session->user;
+	evt.to = buddy;
+
+	if (!strcmp(tokens[2], "BL") && buddy->blocked) { // User is removed from the blocked list
+		
+		buddy->blocked = 0;
+		evt.type = msn_evt_user_unblocked;
+		res = target_msn_session_event(t, cp, &evt);
+
+	} else if (!strcmp(tokens[2], "AL") && !buddy->blocked) { // User is removed from the allowed list
+		
+		buddy->blocked = 1;
+		evt.type = msn_evt_user_blocked;
+		res = target_msn_session_event(t, cp, &evt);
+	}
+
+	return res;
+}
 // Error handling
 int target_msn_handler_error(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
 
@@ -1644,4 +1915,4 @@ int target_msn_handler_error(struct target *t, struct target_conntrack_priv_msn 
 	return POM_OK;
 }
 
-// missing commands : ADC CVQ REM RMG
+// missing commands : CVQ REM RMG

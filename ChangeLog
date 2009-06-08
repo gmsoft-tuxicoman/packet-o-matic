@@ -1,3 +1,7 @@
+* 2009/06/08 Guy Martin <gmsoft@tuxicoman.be>
+Added some additional improvement to target_msn.
+Added an error handler for libxml2.
+
 * 2009/06/01 Guy Martin <gmsoft@tuxicoman.be>
 Added support for P2P connection and file transfer in target_msn.
 Changed expectation behavior not to replace a connection if it maches and already exists.
