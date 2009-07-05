@@ -190,8 +190,10 @@ int target_process_mime_text_plain_msg(struct target *t, struct target_conntrack
 	evt.to = m->to;
 	evt.buff = cp->buffer[cp->curdir] + m->cur_pos;
 	evt.type = msn_evt_message;
+	evt.conv = cp->conv;
+	evt.sess = cp->session;
 
-	int res = target_msn_session_event(t, cp, &evt);
+	int res = target_msn_session_event(&evt);
 	m->cur_pos = m->tot_len;
 	
 	return res;
@@ -237,6 +239,8 @@ int target_process_mime_datacast_msg(struct target *t, struct target_conntrack_p
 	evt.from = m->from;
 	evt.to = m->to;
 	evt.buff = cp->buffer[cp->curdir] + m->cur_pos;
+	evt.conv = cp->conv;
+	evt.sess = cp->session;
 
 	switch (action_id) {
 		case 1: // nudge
@@ -252,7 +256,7 @@ int target_process_mime_datacast_msg(struct target *t, struct target_conntrack_p
 			return POM_OK;
 	}
 
-	int res = target_msn_session_event(t, cp, &evt);
+	int res = target_msn_session_event(&evt);
 
 	m->cur_pos = m->tot_len;
 
@@ -626,7 +630,7 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 		}
 
 		char filename[NAME_MAX + 1];
-		strcpy(filename, cp->parsed_path);
+		strcpy(filename, cp->session->parsed_path);
 		strncat(filename, cp->session->user.account, NAME_MAX - strlen(filename));
 		strncat(filename, "/", NAME_MAX - strlen(filename));
 		strncat(filename, fname, NAME_MAX - strlen(filename));
@@ -643,6 +647,18 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 		file->fd = fd;
 		if (!file->len)
 			file->len = total_size;
+	
+		struct target_event_msn evt;
+		memset(&evt, 0, sizeof(struct target_event_msn));
+		memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
+		evt.buff = file->filename;
+		evt.from = file->buddy;
+		evt.type = msn_evt_file_transfer_start;
+		evt.conv = cp->conv;
+		evt.sess = cp->session;
+
+		if (target_msn_session_event(&evt) == POM_ERR)
+			return POM_ERR;
 
 	}
 
@@ -857,7 +873,7 @@ int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *c
 					sess->file->prev = file;
 
 				sess->file = file;
-				file->session = sess;
+				file->conv = cp->conv;
 
 
 				pom_log(POM_LOG_TSHOOT "New file transfer session : %u", sess_id);
@@ -1171,8 +1187,10 @@ int target_process_mail_invite_msn(struct target *t, struct target_conntrack_pri
 	evt.from = m->from;
 	evt.to = m->to;
 	evt.type = msn_evt_mail_invite;
+	evt.conv = cp->conv;
+	evt.sess = cp->session;
 
-	int res = target_msn_session_event(t, cp, &evt);
+	int res = target_msn_session_event(&evt);
 
 	free(evt.buff);
 
@@ -1247,6 +1265,8 @@ int target_process_status_msg_msn(struct target *t, struct target_conntrack_priv
 				memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
 				evt.type = msn_evt_personal_msg_change;
 				evt.from = buddy;
+				evt.conv = cp->conv;
+				evt.sess = cp->session;
 
 				char *psm = (char*) xmlNodeListGetString(doc, cur->xmlChildrenNode, 1);
 				if (psm) { // Let's see if it changed since last time
@@ -1257,14 +1277,14 @@ int target_process_status_msg_msn(struct target *t, struct target_conntrack_priv
 						strcpy(buddy->psm, psm);
 
 						evt.buff = buddy->psm;
-						res = target_msn_session_event(t, cp, &evt);
+						res = target_msn_session_event(&evt);
 
 					}
 					xmlFree(psm);
 				} else if (buddy->psm) {
 					free(buddy->psm); // Message was unset
 					buddy->psm = NULL;
-					res = target_msn_session_event(t, cp, &evt);
+					res = target_msn_session_event(&evt);
 				}
 
 			} else if (!xmlStrcmp(cur->name, (const xmlChar*) "CurrentMedia")) {
@@ -1491,7 +1511,7 @@ int target_session_timeout_msn(void *priv) {
 
 int target_session_close_file_msn(struct target_file_transfer_msn *file) {
 
-
+	int res = POM_OK;
 
 	pom_log(POM_LOG_TSHOOT "P2P file of SessionID %u closed", file->session_id);
 	
@@ -1499,12 +1519,26 @@ int target_session_close_file_msn(struct target_file_transfer_msn *file) {
 		close(file->fd);
 		if (file->written_len < file->len)
 			pom_log(POM_LOG_DEBUG "File for session %u is not complete");
+
+		struct target_event_msn evt;
+		memset(&evt, 0, sizeof(struct target_event_msn));
+
+		// Use the time directly from the input
+		get_current_time(&evt.tv);
+		evt.buff = file->filename;
+		evt.from = file->buddy;
+		evt.type = msn_evt_file_transfer_end;
+		evt.conv = file->conv;
+		evt.sess = file->conv->sess;
+
+
+		res = target_msn_session_event(&evt);
 	}
 
 	if (file->prev)
 		file->prev->next = file->next;
 	else
-		file->session->file = file->next;
+		file->conv->sess->file = file->next;
 
 	if (file->next)
 		file->next->prev = file->prev;
@@ -1519,5 +1553,5 @@ int target_session_close_file_msn(struct target_file_transfer_msn *file) {
 
 	free(file);
 	
-	return POM_OK;
+	return res;
 }

@@ -23,7 +23,7 @@
 
 #include "timers.h"
 #include "input.h"
-#include "main.h"
+#include "common.h"
 
 #if 0
 #define timer_tshoot(x...) pom_log(POM_LOG_TSHOOT x)
@@ -37,7 +37,7 @@ static struct timer_queue *timer_queues;
 int timers_process(struct rule_list *list, pthread_rwlock_t *lock) {
 
 	struct timeval now;
-	get_current_input_time(&now);
+	get_current_time(&now);
 
 	struct timer_queue *tq;
 	tq = timer_queues;
@@ -204,7 +204,7 @@ int timer_queue(struct timer *t, unsigned int expiry) {
 	// Update the expiry time
 
 	struct timeval tv;
-	get_current_input_time(&tv);
+	get_current_time(&tv);
 	memcpy(&t->expires, &tv, sizeof(struct timeval));
 	t->expires.tv_sec += expiry;
 

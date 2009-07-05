@@ -69,8 +69,6 @@ static pthread_t input_thread;
 
 static int finish = 0;
 
-static struct timeval now; ///< Used to get the current time from the input perspective
-
 void signal_handler(int signal) {
 	
 	// Use printf and not pom_log
@@ -703,12 +701,13 @@ int main(int argc, char *argv[]) {
 			pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording");
 			goto finish;
 		}
-	
+		struct timeval *now = get_curent_time_p();
 		if (rbuf->ic.is_live)
-			gettimeofday(&now, NULL);
+			gettimeofday(now, NULL);
 		else {
-			memcpy(&now, &rbuf->buffer[rbuf->read_pos]->tv, sizeof(struct timeval));
-			now.tv_usec += 1;
+			
+			memcpy(now, &rbuf->buffer[rbuf->read_pos]->tv, sizeof(struct timeval));
+			now->tv_usec += 1;
 		}
 
 		if (pthread_mutex_lock(&reader_mutex)) {
@@ -933,12 +932,6 @@ int reader_process_lock() {
 
 int reader_process_unlock() {
 	return pthread_mutex_unlock(&reader_mutex);
-}
-
-int get_current_input_time(struct timeval *cur_time) {
-
-	memcpy(cur_time, &now, sizeof(struct timeval));
-	return 0;
 }
 
 int halt() {

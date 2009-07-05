@@ -36,6 +36,8 @@ static unsigned int log_buffer_size = 0;
 static pthread_rwlock_t log_buffer_lock = PTHREAD_RWLOCK_INITIALIZER;
 static uint32_t log_buffer_entry_id = 0;
 
+static struct timeval now; ///< Used to get the current time from the input perspective
+
 void pom_log_internal(char *file, const char *format, ...) {
 
 	int level = *POM_LOG_INFO;
@@ -357,6 +359,17 @@ int uid_init() {
 uint32_t get_uid() {
 
 	return (uint32_t) rand_r(&random_seed);
+}
+
+int get_current_time(struct timeval *cur_time) {
+
+	memcpy(cur_time, &now, sizeof(struct timeval));
+	return POM_OK;
+}
+
+struct timeval *get_curent_time_p() {
+
+	return &now;
 }
 
 size_t base64_decode(char *output, char *input, size_t out_len) {

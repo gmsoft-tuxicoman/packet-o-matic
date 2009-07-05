@@ -72,8 +72,6 @@ int ringbuffer_core_param_callback(char *new_value, char *msg, size_t size);
 int start_input(struct ringbuffer *r);
 int stop_input(struct ringbuffer *r);
 
-int get_current_input_time(struct timeval *cur_time);
-
 int reader_process_lock();
 int reader_process_unlock();
 

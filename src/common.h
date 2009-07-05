@@ -163,6 +163,9 @@ int uid_init();
 
 uint32_t get_uid();
 
+int get_current_time(struct timeval *cur_time);
+struct timeval *get_curent_time_p();
+
 size_t base64_decode(char *output, char *input, size_t out_len);
 size_t url_decode(char *output, char *input, size_t out_len);
 

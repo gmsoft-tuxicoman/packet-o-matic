@@ -200,20 +200,9 @@ int target_process_msn(struct target *t, struct frame *f) {
 
 
 		// New connection
-		char tmp[NAME_MAX + 1];
-		memset(tmp, 0, sizeof(tmp));
-		if (layer_field_parse(f->l, PTYPE_STRING_GETVAL(priv->path), tmp, NAME_MAX) == POM_ERR) {
-			pom_log(POM_LOG_WARN "Error while parsing the path");
-			return POM_ERR;
-		}
 
 		cp = malloc(sizeof(struct target_conntrack_priv_msn));
 		memset(cp, 0, sizeof(struct target_conntrack_priv_msn));
-
-		cp->parsed_path = malloc(strlen(tmp) + 3);
-		strcpy(cp->parsed_path, tmp);
-		if (*(cp->parsed_path + strlen(cp->parsed_path) - 1) != '/')
-			strcat(cp->parsed_path, "/");
 
 		cp->server_dir = CE_DIR_UNK;
 		conntrack_add_target_priv(cp, t, f->ce, target_close_connection_msn);
@@ -224,6 +213,19 @@ int target_process_msn(struct target *t, struct frame *f) {
 		memset(sess, 0, sizeof(struct target_session_priv_msn));
 		sess->fd = -1;
 		sess->refcount++;
+		sess->target_priv = priv;
+
+		char tmp[NAME_MAX + 1];
+		memset(tmp, 0, sizeof(tmp));
+		if (layer_field_parse(f->l, PTYPE_STRING_GETVAL(priv->path), tmp, NAME_MAX) == POM_ERR) {
+			pom_log(POM_LOG_WARN "Error while parsing the path");
+			return POM_ERR;
+		}
+		sess->parsed_path = malloc(strlen(tmp) + 3);
+		strcpy(sess->parsed_path, tmp);
+		if (*(sess->parsed_path + strlen(sess->parsed_path) - 1) != '/')
+			strcat(sess->parsed_path, "/");
+
 		cp->session = sess;
 		
 		sess->next = priv->sessions;
@@ -573,9 +575,28 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 	struct target_session_priv_msn *sess = cp->session;
 	struct target_conversation_msn *conv = cp->conv;
 
+	sess->refcount--;
+
+	// Close files before the conversation gets closed
+	if (!sess->refcount) {
+		while (sess->file) {
+			target_session_close_file_msn(sess->file);
+		}
+	}
+
 	if (conv) {
 		conv->refcount--;
 		if (!conv->refcount) {
+			struct target_file_transfer_msn *file = sess->file;
+			while (file) {
+				if (file->conv == conv) {
+					struct target_file_transfer_msn *tmp_file = file;
+					file = file->next;
+					target_session_close_file_msn(tmp_file);
+					continue;
+				}
+				file = file->next;
+			}
 			while (conv->parts) {
 				struct target_connection_party_msn *tmp = conv->parts;
 				conv->parts = tmp->next;
@@ -607,7 +628,6 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 
 	}
 
-	sess->refcount--;
 	if (!sess->refcount) {
 
 		if (sess->fd != -1) {
@@ -669,9 +689,6 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 
 		}
 
-		while (sess->file) {
-			target_session_close_file_msn(sess->file);
-		}
 		while (sess->evt_buff) {
 			struct target_event_msn *tmp = sess->evt_buff;
 			sess->evt_buff = tmp->next;
@@ -687,6 +704,8 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 			free(sess->user.nick);
 		if (sess->user.psm)
 			free(sess->user.psm);
+		if (sess->parsed_path)
+			free(sess->parsed_path);
 
 		if (sess->next)
 			sess->next->prev = sess->prev;
@@ -699,8 +718,6 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 		free(sess);
 	}
 
-	if (cp->parsed_path)
-		free(cp->parsed_path);
 
 
 	if (cp->prev)
@@ -757,8 +774,6 @@ struct target_conntrack_priv_msn* target_msn_conntrack_priv_fork(struct target *
 	struct target_conntrack_priv_msn *new_cp = NULL;
 	new_cp = malloc(sizeof(struct target_conntrack_priv_msn));
 	memset(new_cp, 0, sizeof(struct target_conntrack_priv_msn));
-	new_cp->parsed_path = malloc(strlen(cp->parsed_path) + 1);
-	strcpy(new_cp->parsed_path, cp->parsed_path);
 
 	new_cp->server_dir = CE_DIR_UNK;
 
@@ -804,7 +819,7 @@ int target_add_expectation_msn(struct target *t, struct target_conntrack_priv_ms
 	}
 
 	if (expectation_layer_set_field(l3, "dst", address, PTYPE_OP_EQ) != POM_OK) {
-		pom_log(POM_LOG_DEBUG "Invalid address given to create an expectaion : %s", address);
+		pom_log(POM_LOG_DEBUG "Invalid address given to create an expectation : %s", address);
 		expectation_cleanup(expt);
 		return POM_ERR;
 	}
@@ -820,7 +835,6 @@ int target_add_expectation_msn(struct target *t, struct target_conntrack_priv_ms
 	expectation_set_target_priv(expt, new_cp, target_close_connection_msn);
 	if (expectation_add(expt, MSN_EXPECTATION_TIMER) == POM_ERR) {
 		new_cp->session->refcount--;
-		free(new_cp->parsed_path);
 		free(new_cp);
 		return POM_ERR;
 	}

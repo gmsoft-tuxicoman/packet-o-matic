@@ -502,10 +502,12 @@ int target_msn_handler_chg(struct target *t, struct target_conntrack_priv_msn *c
 		evt.buff = status_msg;
 		evt.from = &sess->user;
 		evt.type = msn_evt_status_change;
+		evt.conv = cp->conv;
+		evt.sess = cp->session;
 		
 		sess->user.status = new_status;
 
-		res = target_msn_session_event(t, cp, &evt);
+		res = target_msn_session_event(&evt);
 	}
 
 
@@ -785,8 +787,10 @@ int target_msn_handler_bye(struct target *t, struct target_conntrack_priv_msn *c
 				memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
 				evt.from = party->buddy;
 				evt.type = msn_evt_buddy_leave;
+				evt.conv = cp->conv;
+				evt.sess = cp->session;
 
-				res = target_msn_session_event(t, cp, &evt);
+				res = target_msn_session_event(&evt);
 
 				party->joined = 0;
 			}
@@ -882,11 +886,13 @@ int target_msn_handler_out(struct target *t, struct target_conntrack_priv_msn *c
 	memset(&evt, 0, sizeof(struct target_event_msn));
 	memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
 	evt.from = &sess->user;
+	evt.sess = sess;
 
 	if (cp->conv) {// let's try to see if it's a NS or SB 
 		// SB connection
 		evt.type = msn_evt_buddy_leave;
 		evt.buff =  "User closed the conversation";
+		evt.conv = cp->conv;
 		int process = 0;
 		struct target_connection_party_msn *party = cp->conv->parts;
 		while (party) {
@@ -899,7 +905,7 @@ int target_msn_handler_out(struct target *t, struct target_conntrack_priv_msn *c
 		if (process) {
 			for (party = cp->conv->parts; party; party = party->next)
 				party->joined = 0;
-			res = target_msn_session_event(t, cp, &evt);
+			res = target_msn_session_event(&evt);
 		}
 	} else {
 		evt.type = msn_evt_user_disconnect;
@@ -916,7 +922,7 @@ int target_msn_handler_out(struct target *t, struct target_conntrack_priv_msn *c
 			evt.buff = "Signed out";
 			pom_log(POM_LOG_TSHOOT "OUT: %s", evt.buff);
 		}
-		res = target_msn_session_event(t, cp, &evt);
+		res = target_msn_session_event(&evt);
 	}
 
 
@@ -1005,8 +1011,10 @@ int target_msn_handler_nln(struct target *t, struct target_conntrack_priv_msn *c
 		evt.buff = status_msg;
 		evt.from = buddy;
 		evt.type = msn_evt_status_change;
+		evt.conv = cp->conv;
+		evt.sess = cp->session;
 		
-		res = target_msn_session_event(t, cp, &evt);
+		res = target_msn_session_event(&evt);
 
 		buddy->status = new_status;
 	}
@@ -1086,8 +1094,10 @@ int target_msn_handler_iln(struct target *t, struct target_conntrack_priv_msn *c
 		evt.buff = status_msg;
 		evt.from = buddy;
 		evt.type = msn_evt_status_change;
+		evt.conv = cp->conv;
+		evt.sess = cp->session;
 		
-		res = target_msn_session_event(t, cp, &evt);
+		res = target_msn_session_event(&evt);
 
 		buddy->status = new_status;
 	}
@@ -1141,8 +1151,10 @@ int target_msn_handler_fln(struct target *t, struct target_conntrack_priv_msn *c
 		evt.buff = "Offline";
 		evt.from = buddy;
 		evt.type = msn_evt_status_change;
+		evt.conv = cp->conv;
+		evt.sess = cp->session;
 		
-		res = target_msn_session_event(t, cp, &evt);
+		res = target_msn_session_event(&evt);
 
 		buddy->status = msn_status_offline;
 	}
@@ -1515,8 +1527,10 @@ int target_msn_handler_snd(struct target *t, struct target_conntrack_priv_msn *c
 		memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
 		evt.to = target_msn_session_found_buddy(cp, tokens[2], NULL, NULL);
 		evt.type = msn_evt_mail_invite;
+		evt.conv = cp->conv;
+		evt.sess = cp->session;
 
-		res = target_msn_session_event(t, cp, &evt);
+		res = target_msn_session_event(&evt);
 
 		pom_log(POM_LOG_TSHOOT "SND : invites %s", tokens[2]);
 	}
@@ -1729,25 +1743,27 @@ int target_msn_handler_add(struct target *t, struct target_conntrack_priv_msn *c
 	memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
 	evt.from = &cp->session->user;
 	evt.to = buddy;
+	evt.conv = cp->conv;
+	evt.sess = cp->session;
 
 	if (!tmp_bud) { // Buddy not found
 		
 		evt.type = msn_evt_user_added;
-		res = target_msn_session_event(t, cp, &evt);
+		res = target_msn_session_event(&evt);
 
 	} else if (!strcmp(tokens[2], "BL") && !buddy->blocked) {
 		
 		// User added to the block list
 		buddy->blocked = 1;
 		evt.type = msn_evt_user_blocked;
-		res = target_msn_session_event(t, cp, &evt);
+		res = target_msn_session_event(&evt);
 
 	} else if (!strcmp(tokens[2], "AL") && buddy->blocked) {
 	
 		// User added to the allow list
 		buddy->blocked = 0;
 		evt.type = msn_evt_user_blocked;
-		res = target_msn_session_event(t, cp, &evt);
+		res = target_msn_session_event(&evt);
 	}
 
 	return res;
@@ -1802,25 +1818,27 @@ int target_msn_handler_adc(struct target *t, struct target_conntrack_priv_msn *c
 	memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
 	evt.from = &cp->session->user;
 	evt.to = buddy;
+	evt.conv = cp->conv;
+	evt.sess = cp->session;
 
 	if (!tmp_bud) { // Buddy not found
 		
 		evt.type = msn_evt_user_added;
-		res = target_msn_session_event(t, cp, &evt);
+		res = target_msn_session_event(&evt);
 
 	} else if (!strcmp(tokens[2], "BL") && !buddy->blocked) {
 	
 		// User added to the block list
 		buddy->blocked = 1;
 		evt.type = msn_evt_user_blocked;
-		res = target_msn_session_event(t, cp, &evt);
+		res = target_msn_session_event(&evt);
 
 	} else if (!strcmp(tokens[2], "AL") && buddy->blocked) {
 		
 		// User added to the allow list
 		buddy->blocked = 0;
 		evt.type = msn_evt_user_unblocked;
-		res = target_msn_session_event(t, cp, &evt);
+		res = target_msn_session_event(&evt);
 
 	}
 
@@ -1869,18 +1887,20 @@ int target_msn_handler_rem(struct target *t, struct target_conntrack_priv_msn *c
 	memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
 	evt.from = &cp->session->user;
 	evt.to = buddy;
+	evt.conv = cp->conv;
+	evt.sess = cp->session;
 
 	if (!strcmp(tokens[2], "BL") && buddy->blocked) { // User is removed from the blocked list
 		
 		buddy->blocked = 0;
 		evt.type = msn_evt_user_unblocked;
-		res = target_msn_session_event(t, cp, &evt);
+		res = target_msn_session_event(&evt);
 
 	} else if (!strcmp(tokens[2], "AL") && !buddy->blocked) { // User is removed from the allowed list
 		
 		buddy->blocked = 1;
 		evt.type = msn_evt_user_blocked;
-		res = target_msn_session_event(t, cp, &evt);
+		res = target_msn_session_event(&evt);
 	}
 
 	return res;

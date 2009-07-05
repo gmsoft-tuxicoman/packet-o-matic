@@ -41,8 +41,8 @@ int target_msn_session_found_friendly_name(struct target *t, struct target_connt
 
 
 struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn *priv, struct target_conntrack_priv_msn *cp, struct target_session_priv_msn *old_sess);
-int target_msn_session_event(struct target *t, struct target_conntrack_priv_msn *cp, struct target_event_msn *evt);
-int target_msn_session_process_event(struct target *t, struct target_conntrack_priv_msn *cp, struct target_event_msn *evt);
+int target_msn_session_event(struct target_event_msn *evt);
+int target_msn_session_process_event(struct target_event_msn *evt);
 int target_msn_session_write(int fd, char *buff);
 int target_msn_session_dump_buddy_list(struct target_conntrack_priv_msn *cp);
 

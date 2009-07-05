@@ -101,6 +101,9 @@ struct target_session_priv_msn {
 	// Use when a file transfer occurs
 	struct target_file_transfer_msn *file;
 
+	char *parsed_path; // Path were the files will be saved
+	struct target_priv_msn *target_priv;
+
 	struct target_session_priv_msn *next;
 	struct target_session_priv_msn *prev;
 
@@ -141,7 +144,7 @@ struct target_file_transfer_msn {
 	char *filename;
 	struct timer* timer;
 
-	struct target_session_priv_msn *session; // User session to which this file belongs
+	struct target_conversation_msn *conv; // Conversation to which this file belongs
 	struct target_file_transfer_msn *next;
 	struct target_file_transfer_msn *prev;
 };
@@ -173,6 +176,8 @@ enum msn_evt_type {
 	msn_evt_buddy_leave,
 	msn_evt_nudge,
 	msn_evt_wink,
+	msn_evt_file_transfer_start,
+	msn_evt_file_transfer_end,
 	msn_evt_friendly_name_change = 0x0100,
 	msn_evt_status_change,
 	msn_evt_user_disconnect,
@@ -185,6 +190,8 @@ enum msn_evt_type {
 
 struct target_event_msn {
 	enum msn_evt_type type;
+	struct target_session_priv_msn *sess;
+	struct target_conversation_msn *conv;
 	struct timeval tv;
 	struct target_buddy_msn *from;
 	struct target_buddy_msn *to;
@@ -208,6 +215,8 @@ struct target_conversation_msn {
 	struct target_event_msn *evt_buff;
 
 	unsigned int refcount;
+	
+	struct target_session_priv_msn *sess; // Session to which this conversation belongs
 
 	struct target_conversation_msn *next;
 	struct target_conversation_msn *prev;
@@ -217,7 +226,6 @@ struct target_conversation_msn {
 struct target_conntrack_priv_msn {
 
 	unsigned int flags;
-	char *parsed_path; // Path were the files will be saved
 
 	struct target_session_priv_msn *session; // Datas of the session
 

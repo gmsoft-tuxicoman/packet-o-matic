@@ -96,6 +96,7 @@ struct target_connection_party_msn *target_msn_session_found_party(struct target
 				conv = malloc(sizeof(struct target_conversation_msn));
 				memset(conv, 0, sizeof(struct target_conversation_msn));
 				conv->fd = -1;
+				conv->sess = cp->session;
 
 				conv->next = cp->session->conv;
 
@@ -140,9 +141,11 @@ struct target_connection_party_msn *target_msn_session_found_party(struct target
 		memcpy(&evt.tv, time, sizeof(struct timeval));
 		evt.from = tmp->buddy;
 		evt.type = msn_evt_buddy_join;
+		evt.sess = cp->session;
+		evt.conv = cp->conv;
 
 		// We can't really do error checking here but it's gonna be caught elsewhere
-		target_msn_session_event(t, cp, &evt);
+		target_msn_session_event(&evt);
 	}
 	
 	if (nick && !tmp->buddy->nick) {
@@ -250,8 +253,10 @@ int target_msn_session_found_friendly_name(struct target *t, struct target_connt
 		memcpy(&evt.tv, time, sizeof(struct timeval));
 		evt.buff = friendly_name;
 		evt.type = msn_evt_friendly_name_change;
+		evt.sess = cp->session;
+		evt.conv = cp->conv;
 
-		res = target_msn_session_event(t, cp, &evt);
+		res = target_msn_session_event(&evt);
 
 	}
 
@@ -371,7 +376,7 @@ int target_msn_session_found_account(struct target *t, struct target_conntrack_p
 				to = tmp->to->account;
 			pom_log(POM_LOG_TSHOOT "Buffered event from %s to %s, session of : %s", from, to, account);
 
-			res += target_msn_session_process_event(t, cp, tmp);
+			res += target_msn_session_process_event(tmp);
 
 			if (tmp->buff)
 				free(tmp->buff);
@@ -394,7 +399,7 @@ int target_msn_session_found_account(struct target *t, struct target_conntrack_p
 				to = tmp->to->account;
 			pom_log(POM_LOG_TSHOOT "Buffered event from %s to %s, session of : %s", from, to, account);
 
-			res += target_msn_session_process_event(t, cp, tmp);
+			res += target_msn_session_process_event(tmp);
 
 			if (tmp->buff)
 				free(tmp->buff);
@@ -565,6 +570,7 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 			old_conv = old_conv->next;
 		}
 
+
 		if (old_conv) {
 			// Conversations are the same, we can discard the new one
 			while (new_conv->parts) { // Free up participants
@@ -574,13 +580,27 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 			}
 			
 			// Attach conversation events to existing conversation
-			struct target_event_msn *tmp_evt = old_conv->evt_buff;
+			struct target_event_msn *tmp_evt = new_conv->evt_buff;
+			while (tmp_evt) {
+				tmp_evt->sess = old_sess;
+				tmp_evt->conv = old_conv;
+				tmp_evt = tmp_evt->next;
+			}
+			tmp_evt = old_conv->evt_buff;
 			while (tmp_evt && tmp_evt->next)
 				tmp_evt = tmp_evt->next;
 			if (!tmp_evt)
 				old_conv->evt_buff = new_conv->evt_buff;
 			else
 				tmp_evt->next = new_conv->evt_buff;
+
+			// Replace conversation in the files
+			struct target_file_transfer_msn *file = new_sess->file;
+			while (file) {
+				if (file->conv == new_conv)
+					file->conv = old_conv;
+				file = file->next;
+			}
 
 			// Replace the conversation in the contrack_privs
 			ct_privs = priv->ct_privs;
@@ -600,7 +620,13 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 			new_conv->prev = NULL;
 			old_sess->conv = new_conv;
 
+			// Update conversation events
+			struct target_event_msn *tmp_evt = new_conv->evt_buff;
+			while (tmp_evt) {
+				tmp_evt->sess = old_sess;
+			}
 		}
+
 
 		new_conv = tmp_conv;		
 	}
@@ -613,6 +639,16 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 		old_sess->evt_buff = new_sess->evt_buff;
 	else
 		tmp_evt->next = new_sess->evt_buff;
+
+	// Merge files
+	struct target_file_transfer_msn *file = old_sess->file;
+	if (!file) {
+		old_sess->file = new_sess->file;
+	} else {
+		while (file->next)
+			file = file->next;
+		file->next = new_sess->file;
+	}
 
 
 	// Merge the remaining stuff
@@ -638,15 +674,22 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 		
 	if (new_sess->next)
 		new_sess->next->prev = new_sess->prev;
-
+	
+	free(new_sess->parsed_path);
 	free(new_sess);
 
 	return old_sess;
 }
 
-int target_msn_session_event(struct target *t, struct target_conntrack_priv_msn *cp, struct target_event_msn *evt) {
+int target_msn_session_event(struct target_event_msn *evt) {
 
-	char *account = cp->session->user.account;
+
+	if (!evt->sess) {
+		pom_log(POM_LOG_DEBUG "Missing session for event");
+		return POM_OK;
+	}
+
+	char *account = evt->sess->user.account;
 
 	if (!account) { // We don't know the account, buffer this event
 
@@ -655,6 +698,8 @@ int target_msn_session_event(struct target *t, struct target_conntrack_priv_msn 
 		new_evt = malloc(sizeof(struct target_event_msn));
 		memset(new_evt, 0, sizeof(struct target_event_msn));
 
+		new_evt->sess = evt->sess;
+		new_evt->conv = evt->conv;
 		new_evt->from = evt->from;
 		new_evt->to = evt->to;
 
@@ -668,26 +713,27 @@ int target_msn_session_event(struct target *t, struct target_conntrack_priv_msn 
 
 
 		if (evt->type & MSN_EVT_SESSION_MASK) {
-			if (!cp->session->evt_buff) {
-				cp->session->evt_buff = new_evt;
+			evt->conv = NULL; // discard conv as it won't be used
+			if (!evt->sess->evt_buff) {
+				evt->sess->evt_buff = new_evt;
 			} else {
-				struct target_event_msn *tmp = cp->session->evt_buff;
+				struct target_event_msn *tmp = evt->sess->evt_buff;
 				while (tmp->next)
 					tmp = tmp->next;
 				tmp->next = new_evt;
 			}
 
 		} else {
-			if (!cp->conv) {
+			if (!evt->conv) {
 				pom_log(POM_LOG_WARN "No conversation found");
 				return POM_OK;
 			}
 
 			// Add it at the end
-			if (!cp->conv->evt_buff) {
-				cp->conv->evt_buff = new_evt;
+			if (!evt->conv->evt_buff) {
+				evt->conv->evt_buff = new_evt;
 			} else {
-				struct target_event_msn *tmp = cp->conv->evt_buff;
+				struct target_event_msn *tmp = evt->conv->evt_buff;
 				while (tmp->next)
 					tmp = tmp->next;
 				tmp->next = new_evt;
@@ -698,17 +744,17 @@ int target_msn_session_event(struct target *t, struct target_conntrack_priv_msn 
 	}
 
 
-	return target_msn_session_process_event(t, cp, evt);
+	return target_msn_session_process_event(evt);
 
 }
 
-int target_msn_session_process_event(struct target *t, struct target_conntrack_priv_msn *cp, struct target_event_msn *evt) {
+int target_msn_session_process_event(struct target_event_msn *evt) {
 
-	struct target_priv_msn *priv = t->target_priv;
+	struct target_priv_msn *priv = evt->sess->target_priv;
 
 
-	struct target_session_priv_msn *sess = cp->session;
-	struct target_conversation_msn *conv = cp->conv;
+	struct target_conversation_msn *conv = evt->conv;
+	struct target_session_priv_msn *sess = evt->sess;
 
 	if (!(evt->type & MSN_EVT_SESSION_MASK) && !conv) {
 		struct target_buddy_msn *buddy = NULL;
@@ -735,6 +781,7 @@ int target_msn_session_process_event(struct target *t, struct target_conntrack_p
 			conv = malloc(sizeof(struct target_conversation_msn));
 			memset(conv, 0, sizeof(struct target_conversation_msn));
 			conv->fd = -1;
+			conv->sess = sess;
 			conv->refcount++;
 
 			conv->next = sess->conv;
@@ -762,10 +809,13 @@ int target_msn_session_process_event(struct target *t, struct target_conntrack_p
 			memcpy(&join_evt.tv, &evt->tv, sizeof(struct timeval));
 			join_evt.from = buddy;
 			join_evt.type = msn_evt_buddy_join;
-			if (target_msn_session_process_event(t, cp, &join_evt) != POM_OK)
+			join_evt.sess = sess;
+			join_evt.conv = conv;
+			if (target_msn_session_process_event(&join_evt) != POM_OK)
 				return POM_ERR;
 		}
 	}
+
 
 	struct tm tmp_time;
 	localtime_r((time_t*)&evt->tv.tv_sec, &tmp_time);
@@ -779,8 +829,8 @@ int target_msn_session_process_event(struct target *t, struct target_conntrack_p
 		strftime(outstr, sizeof(outstr), format, &tmp_time);
 
 		char filename[NAME_MAX + 1];
-		strcpy(filename, cp->parsed_path);
-		strncat(filename, cp->session->user.account, NAME_MAX - strlen(filename));
+		strcpy(filename, sess->parsed_path);
+		strncat(filename, sess->user.account, NAME_MAX - strlen(filename));
 		strncat(filename, "/", NAME_MAX - strlen(filename));
 		char *party_account = NULL;
 		if (conv->parts) {
@@ -813,7 +863,7 @@ int target_msn_session_process_event(struct target *t, struct target_conntrack_p
 		strftime(outstr, sizeof(outstr), format, &tmp_time);
 
 		char filename[NAME_MAX + 1];
-		strcpy(filename, cp->parsed_path);
+		strcpy(filename, sess->parsed_path);
 		strncat(filename, sess->user.account, NAME_MAX - strlen(filename));
 		strncat(filename, "/", NAME_MAX - strlen(filename));
 		strncat(filename, outstr, NAME_MAX - strlen(filename));
@@ -890,6 +940,31 @@ int target_msn_session_process_event(struct target *t, struct target_conntrack_p
 			free(decoded_friendly_name);
 			break;
 		}
+		case msn_evt_file_transfer_start: 
+			res += target_msn_session_write(conv->fd, timestamp);
+			res += target_msn_session_write(conv->fd, "File transfer started with user ");
+			res += target_msn_session_write(conv->fd, evt->from->account);
+			if (evt->buff) {
+				res += target_msn_session_write(conv->fd, " : \"");
+				res += target_msn_session_write(conv->fd, evt->buff);
+				res += target_msn_session_write(conv->fd, "\"");
+			}
+			res += target_msn_session_write(conv->fd, "\n");
+			break;
+		case msn_evt_file_transfer_end: 
+			res += target_msn_session_write(conv->fd, timestamp);
+			res += target_msn_session_write(conv->fd, "File transfer ended with user ");
+			res += target_msn_session_write(conv->fd, evt->from->account);
+			if (evt->buff) {
+				res += target_msn_session_write(conv->fd, " : \"");
+				res += target_msn_session_write(conv->fd, evt->buff);
+				res += target_msn_session_write(conv->fd, "\"");
+			}
+			res += target_msn_session_write(conv->fd, "\n");
+			break;
+
+
+		// Session events
 		case msn_evt_status_change:
 			res += target_msn_session_write(sess->fd, timestamp);
 			if (evt->from == &sess->user) {
