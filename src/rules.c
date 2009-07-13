@@ -125,8 +125,8 @@ int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct ru
 					helper_lock(0);
 					int res = helper_need_help(f, (*l)->prev->payload_start, (*l)->prev->payload_size, *l);
 					helper_unlock();
-					if (res == H_NEED_HELP)// If it needs help, we don't process it
-						return 0;
+					if (res == H_NEED_HELP) // If it needs help, we don't process it
+						return -2;
 				
 					// check the calculated size and adjust the max len of the packet
 					// the initial size may be too long as some padding could have been introduced by the input
@@ -198,13 +198,13 @@ int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct ru
 					// last layer matched is different, branching
 					if (result_a)  {
 						result_a = node_match(f, &layer_a, new_last, last);
-						if (result_a == -1)
-							return -1; // Invalid packet
+						if (result_a < 0)
+							return result_a; // Invalid packet
 					}
 					if (result_b) {
 						result_b = node_match(f, &layer_b, new_last, last);
-						if (result_b == -1)
-							return -1; //Invalid packet
+						if (result_b < 0)
+							return result_b; //Invalid packet
 					}
 					if (n->op & RULE_OP_OR)
 						result = result_a || result_b;
@@ -318,8 +318,10 @@ int do_rules(struct frame *f, struct rule_list *rules, pthread_rwlock_t *rule_lo
 			// If there is a conntrack_entry, it means one of the target added it's priv, so the packet needs to be processed
 			struct layer *start_l = f->l;
 			r->result = node_match(f, &start_l, r->node, NULL); // Get the result to fully populate layers
-			if (r->result == -1) // Invalid packet
+			if (r->result < 0) { // Invalid packet or packet needs help
+				pthread_rwlock_unlock(rule_lock);
 				return POM_OK;
+			}
 			if (r->result) {
 			//	pom_log(POM_LOG_TSHOOT "Rule matched");
 				PTYPE_UINT64_INC(r->pkt_cnt, 1);

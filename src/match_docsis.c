@@ -20,12 +20,13 @@
 
 #include "match_docsis.h"
 #include "ptype_uint8.h"
+#include "ptype_bool.h"
 
 static struct match_dep *match_undefined, *match_atm, *match_ethernet;
 
-static int field_fc_type, field_fc_parm;
+static int field_fc_type, field_fc_parm, field_ehdr_on;
 
-static struct ptype *ptype_uint8;
+static struct ptype *ptype_uint8, *ptype_bool;
 
 int match_register_docsis(struct match_reg *r) {
 
@@ -37,11 +38,13 @@ int match_register_docsis(struct match_reg *r) {
 	match_ethernet = match_add_dependency(r->type, "ethernet");
 
 	ptype_uint8 = ptype_alloc("uint8", NULL);
-	if (!ptype_uint8) 
+	ptype_bool = ptype_alloc("bool", NULL);
+	if (!ptype_uint8 || ! ptype_bool) 
 		return POM_ERR;
 
 	field_fc_type = match_register_field(r->type, "fc_type", ptype_uint8, "Frame control type");
 	field_fc_parm = match_register_field(r->type, "fc_parm", ptype_uint8, "Frame parameters");
+	field_ehdr_on = match_register_field(r->type, "ehdr_on", ptype_uint8, "Extended header");
 
 	return POM_OK;
 }
@@ -59,6 +62,7 @@ static int match_identify_docsis(struct frame *f, struct layer* l, unsigned int 
 
 	PTYPE_UINT8_SETVAL(l->fields[field_fc_type], dhdr->fc_type);
 	PTYPE_UINT8_SETVAL(l->fields[field_fc_parm], dhdr->fc_parm);
+	PTYPE_BOOL_SETVAL(l->fields[field_ehdr_on], dhdr->ehdr_on);
 
 	if (dhdr->ehdr_on) {
 		// fc_parm is len of ehdr if ehdr_on == 1
@@ -102,6 +106,7 @@ static int match_identify_docsis(struct frame *f, struct layer* l, unsigned int 
 static int match_unregister_docsis(struct match_reg *r) {
 
 	ptype_cleanup(ptype_uint8);
+	ptype_cleanup(ptype_bool);
 	return POM_OK;
 
 }

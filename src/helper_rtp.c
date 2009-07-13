@@ -192,7 +192,7 @@ static int helper_process_timer_rtp(void *priv) {
 
 	struct helper_timer_priv_rtp *p = priv;
 	if (!p->priv->pkts[p->dir]) {
-		pom_log(POM_LOG_WARN "helper_rtp.c: wtf, timer poped up and there is no packet to dequeue");
+		pom_log(POM_LOG_WARN "wtf, timer poped up and there is no packet to dequeue");
 		timer_dequeue(p->priv->t[p->dir]);
 		return POM_OK;
 	}

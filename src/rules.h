@@ -47,7 +47,7 @@ struct rule_node {
 struct rule_list {
 	struct rule_node *node; ///< rule node to see if we can match the packet
 	struct target *target; ///< what to do if we match
-	unsigned int result; ///< true if the packet has to be processed
+	int result; ///< true if the packet has to be processed
 	int enabled; ///< true if rule is enabled and has to be proccessed
 	uint32_t uid; ///< unique id of the rule which changes each time it's modified
 	uint32_t serial; ///< Number of changes for this rule
