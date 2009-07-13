@@ -590,6 +590,28 @@ int target_cleanup() {
 
 /**
  * @ingroup target_core
+ * This function will process the SIGHUP event for a target
+ * @param t Target to process
+ * @return POM_OK on sucess, POM_ERR on failure.
+ */
+int target_sighup(struct target *t) {
+
+	target_lock_instance(t, 0);
+	if (t->started) {
+		if (targets[t->type]->sighup && (*targets[t->type]->sighup) (t) == POM_ERR) {
+			pom_log(POM_LOG_ERR "Target %s returned an error while sending SIGHUP. Stopping it", target_get_name(t->type));
+			target_close(t);
+			target_unlock_instance(t);
+			return POM_ERR;
+		}
+	}
+	target_unlock_instance(t);
+	return POM_OK;
+
+}
+
+/**
+ * @ingroup target_core
  */
 void target_print_help() {
 

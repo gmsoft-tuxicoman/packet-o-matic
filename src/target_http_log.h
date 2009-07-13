@@ -62,6 +62,7 @@ struct http_log_info {
 int target_init_log_http(struct target *t);
 int target_initial_log_http(struct target_conntrack_priv_http *cp, struct frame *f, struct layer *lastl);
 int target_write_log_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp);
+int target_reopen_log_http(struct target *t);
 int target_cleanup_log_http(struct target_conntrack_priv_http *cp);
 
 #endif

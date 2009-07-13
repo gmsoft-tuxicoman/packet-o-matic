@@ -48,6 +48,7 @@ int target_register_http(struct target_reg *r) {
 	r->process = target_process_http;
 	r->close = target_close_http;
 	r->cleanup = target_cleanup_http;
+	r->sighup = target_reopen_log_http;
 
 	match_undefined_id = match_register("undefined");
 

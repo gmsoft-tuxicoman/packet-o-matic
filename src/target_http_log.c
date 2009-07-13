@@ -718,6 +718,25 @@ int target_write_log_http(struct target_priv_http *priv, struct target_conntrack
 
 }
 
+int target_reopen_log_http(struct target *t) {
+
+	struct target_priv_http *priv = t->target_priv;
+
+	if (priv->log_fd != -1) {
+		char *log_filename = PTYPE_STRING_GETVAL(priv->log_file);
+		pom_log(POM_LOG_DEBUG "Reopening log file %s");
+		close(priv->log_fd);
+		priv->log_fd = open(log_filename, O_WRONLY | O_APPEND | O_CREAT, S_IRUSR | S_IWUSR | S_IRGRP);
+		if (priv->log_fd == -1) {
+			pom_log(POM_LOG_ERR "Unable to reopen file %s", log_filename);
+			return POM_ERR;
+		}
+
+	}
+
+	return POM_OK;
+}
+
 int target_cleanup_log_http(struct target_conntrack_priv_http *cp) {
 
 	struct http_log_info *info = cp->log_info;

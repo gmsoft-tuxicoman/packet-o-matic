@@ -67,26 +67,31 @@ struct ringbuffer *rbuf;
 static pthread_mutex_t reader_mutex = PTHREAD_MUTEX_INITIALIZER; ///< Mutex used to lock the reader thread if changes are made or modules are loaded/unloaded
 static pthread_t input_thread;
 
-static int finish = 0;
+static int finish = 0, sighup = 0;
 
 void signal_handler(int signal) {
-	
-	// Use printf and not pom_log
-	printf("Received signal. Finishing ... !\n");
-	finish = 1;
-	if (rbuf && rbuf->state != rb_state_closed)
-		rbuf->state = rb_state_stopping;
 
-}
+	switch (signal) {
 
-void input_signal_handler(int signal) {
+		case SIGHUP:
+			sighup = 1;
+			break;
 
-	if (!rbuf || !rbuf->i)
-		return;
+		case INPUTSIG: // SIGUSR1
+			
+			if (!rbuf || !rbuf->i)
+				return;
+			input_interrupt(rbuf->i);
+			break;
 
-	pom_log(POM_LOG_TSHOOT "Interrupting input syscall ...");
-
-	input_interrupt(rbuf->i);
+		default: // Should be only SIGINT
+			// Use printf and not pom_log
+			printf("Received signal. Finishing ... !\n");
+			finish = 1;
+			if (rbuf && rbuf->state != rb_state_closed)
+				rbuf->state = rb_state_stopping;
+			break;
+	}
 
 }
 
@@ -108,6 +113,7 @@ void print_usage() {
 		" -P, --xmlrpc-port=PORT     specify the XML-RPC port (default 8080)\n"
 		" -W, --xmlrpc-password=PASS specify the password for XML-RPC calls\n"
 #endif
+		"     --pid-file             specify the file where to write the PID\n"
 		"\n"
 		);
 	
@@ -333,11 +339,11 @@ void *input_thread_func(void *params) {
 	pthread_sigmask(SIG_UNBLOCK, &sigmask, NULL);
 	siginterrupt(INPUTSIG, 1);
 
-	// set handler input_signal_handler() for the INPUTSIG
+	// set handler signal_handler() for the INPUTSIG
 	struct sigaction mysigaction;
 	sigemptyset(&mysigaction.sa_mask);
 	mysigaction.sa_flags = 0;
-	mysigaction.sa_handler = input_signal_handler;
+	mysigaction.sa_handler = signal_handler;
 	sigaction(INPUTSIG, &mysigaction, NULL);
 
 	pom_log(POM_LOG_DEBUG "Input thead started");
@@ -466,6 +472,7 @@ int main(int argc, char *argv[]) {
 	int disable_xmlrpcsrv = 1;
 	char *xmlrpc_port = "8080";
 #endif
+	char *pidfile = NULL;
 
 	int c;
 
@@ -484,6 +491,7 @@ int main(int argc, char *argv[]) {
 			{ "xmlrpc-port", 1, 0, 'P'},
 			{ "xmlrcp-password", 1, 0, 'W'},
 #endif
+			{ "pid-file", 1, 0, 2},
 			{ 0, 0, 0, 0}
 		};
 
@@ -501,6 +509,10 @@ int main(int argc, char *argv[]) {
 			case 1:
 				disable_mgmtsrv = 1;
 				pom_log("Not starting CLI console because of --no-cli flag");
+				break;
+			case 2:
+				pidfile = optarg;
+				pom_log("PID file is %s", optarg);
 				break;
 			case 'h':
 				ptype_init();
@@ -577,6 +589,18 @@ int main(int argc, char *argv[]) {
 
 		}
 	}
+
+	// Write to the pidfile
+	if (pidfile) {
+		FILE* pid_fd = fopen(pidfile, "w");
+		if (!pid_fd) {
+			pom_log(POM_LOG_ERR "Unable to open PID file %s");
+			return -1;
+		}
+		fprintf(pid_fd, "%u\n", (unsigned) getpid());
+		fclose(pid_fd);
+	}
+
 
 	// Set libxml2 error handler
 	xmlSetGenericErrorFunc(NULL, libxml_error_handler);
@@ -676,6 +700,12 @@ int main(int argc, char *argv[]) {
 			pthread_mutex_unlock(&rbuf->mutex);
 			goto finish;
 		}
+
+		if (sighup) { // Process SIGHUP actions
+			main_process_sighup(main_config->rules, &main_config->rules_lock);
+			sighup = 0;
+		}
+
 		//pom_log(POM_LOG_TSHOOT "Buffer empty (%u). Waiting", rbuf->usage);
 		struct timeval tv;
 		gettimeofday(&tv, NULL);
@@ -721,6 +751,11 @@ int main(int argc, char *argv[]) {
 			helper_process_queue(main_config->rules, &main_config->rules_lock); // Process frames that needed some help
 		}
 
+		if (sighup) { // Process SIGHUP actions
+			main_process_sighup(main_config->rules, &main_config->rules_lock);
+			sighup = 0;
+		}
+
 
 		if (pthread_mutex_unlock(&reader_mutex)) {
 			pom_log(POM_LOG_ERR "Error while locking the reader mutex. Abording");
@@ -751,6 +786,11 @@ int main(int argc, char *argv[]) {
 			if (finish && rbuf->state == rb_state_closed) {
 				pthread_mutex_unlock(&rbuf->mutex);
 				goto finish;
+			}
+
+			if (sighup) { // Process SIGHUP actions
+				main_process_sighup(main_config->rules, &main_config->rules_lock);
+				sighup = 0;
 			}
 
 			struct timeval tv;
@@ -1017,4 +1057,31 @@ void libxml_error_handler(void *ctx, const char *msg, ...) {
 	pom_log_internal("libxml2", POM_LOG_TSHOOT "%s", buff);
 
 	return;
+}
+
+int main_process_sighup(struct rule_list *r, pthread_rwlock_t *rule_lock) {
+
+	if (pthread_rwlock_rdlock(rule_lock)) {
+		pom_log(POM_LOG_ERR "Unable to lock the given rules");
+		abort();
+		return POM_ERR;
+	}
+
+	while (r) {
+		struct target *t = r->target;
+		while (t) {
+			target_sighup(t);
+			t = t->next;
+		}
+		r = r->next;
+	}
+
+	if (pthread_rwlock_unlock(rule_lock)) {
+		pom_log(POM_LOG_ERR "Unable to lock the given rules");
+		abort();
+		return POM_ERR;
+	}
+
+
+	return POM_OK;
 }

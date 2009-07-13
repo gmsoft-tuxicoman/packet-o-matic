@@ -135,6 +135,14 @@ struct target_reg {
 	 * @return POM_OK on success, POM_ERR on failure.
 	 */
 	int (*unregister) (struct target_reg *r);
+
+	/// Pointer to the sighup function
+	/**
+	 * Called out of the sighandler when SIHUP was received.
+	 * @param t The target
+	 * @return POM_OK on success, POM_ERR on failure.
+	 */
+	int (*sighup) (struct target *t);
 };
 
 /// This structure describe an instance of a target
@@ -229,6 +237,9 @@ void target_print_help();
 
 /// Cleanup the target subsystem
 int target_cleanup();
+
+/// Process the SIGHUP event
+int target_sighup(struct target *t);
 
 /// Open a file for a target
 int target_file_open(struct layer *l, char *filename, int flags, mode_t mode);

@@ -2,6 +2,9 @@
 Added field ehdr_on to match_docsis.
 Fix double processing of packets in rare conditions.
 Fix deadlock on rules when processing an invalid packet.
+Added support for pid file using --pid-file.
+Added SIGHUP handling API.
+Made target_http reopen the logs on SIGHUP.
 
 * 2009/07/05 Guy Martin <gmsoft@tuxicoman.be>
 Reworked target_msn events to remove dependency on conntrack_priv.

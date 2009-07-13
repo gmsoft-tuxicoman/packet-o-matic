@@ -86,4 +86,6 @@ int main_config_datastores_unlock();
 
 void libxml_error_handler(void *ctx, const char *msg, ...);
 
+int main_process_sighup(struct rule_list *r, pthread_rwlock_t *rule_lock);
+
 #endif

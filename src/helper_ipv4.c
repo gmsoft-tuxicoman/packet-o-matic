@@ -89,7 +89,7 @@ static int helper_ipv4_process_frags(struct helper_priv_ipv4 *p) {
 	hdr->ip_len = htons(f->bufflen - p->hdr_offset);
 
 
-	pom_log(POM_LOG_TSHOOT "Helper ipv4 : sending packet to rule processor. len %u, first_layer %u", f->bufflen, f->first_layer);
+	pom_log(POM_LOG_TSHOOT "sending packet to rule processor. len %u, first_layer %u", f->bufflen, f->first_layer);
 
 	helper_queue_frame(f);
 
@@ -182,7 +182,7 @@ static int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned i
 		tmp->f->len = frag_start;
 		tmp->hdr_offset = start;
 
-		pom_log(POM_LOG_TSHOOT "Helper ipv4 : allocated buffer for new packet id %u", ntohs(hdr->ip_id));
+		pom_log(POM_LOG_TSHOOT "allocated buffer for new packet id %u", ntohs(hdr->ip_id));
 		tmp->t = timer_alloc(tmp, f->input, helper_cleanup_ipv4_frag);
 
 
@@ -214,7 +214,7 @@ static int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned i
 
 	// At this point we don't have the fragment in memory yet. Let's add it
 	
-	pom_log(POM_LOG_TSHOOT "Helper ipv4 : adding fragment %u for id %u in memory (start %u, len %u)", offset, ntohs(hdr->ip_id), frag_start, (unsigned int) frag_size);
+	pom_log(POM_LOG_TSHOOT "adding fragment %u for id %u in memory (start %u, len %u)", offset, ntohs(hdr->ip_id), frag_start, (unsigned int) frag_size);
 
 	struct helper_priv_ipv4_frag *ftmp = malloc(sizeof(struct helper_priv_ipv4_frag));
 	memset(ftmp, 0, sizeof(struct helper_priv_ipv4_frag));
@@ -264,12 +264,12 @@ static int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned i
 	fp = tmp->frags;
 
 	if (fp->offset != 0) {
-		pom_log(POM_LOG_TSHOOT "Helper ipv4 : missing first fragment");
+		pom_log(POM_LOG_TSHOOT "missing first fragment");
 		return H_NEED_HELP; // We miss the first fragment
 	}
 
 	while (fp->next) {
-		pom_log(POM_LOG_TSHOOT "Helper ipv4 : fragment offset %u, len %u", fp->next->offset, fp->next->len);
+		pom_log(POM_LOG_TSHOOT "fragment offset %u, len %u", fp->next->offset, fp->next->len);
 		if (fp->next->offset != (fp->len + fp->offset))
 			return H_NEED_HELP; // Return if we miss a fragment
 		fp = fp->next;
@@ -277,7 +277,7 @@ static int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned i
 
 	if (fp->last) {
 		// We have the last fragment. Process the packet
-		pom_log(POM_LOG_TSHOOT "Helper ipv4 : processing packet");
+		pom_log(POM_LOG_TSHOOT "processing packet");
 		helper_ipv4_process_frags(tmp);
 		return H_NEED_HELP;
 
