@@ -24,7 +24,7 @@
 #include "datastore.h"
 
 
-#define MGMT_DATASTORE_COMMANDS_NUM 10
+#define MGMT_DATASTORE_COMMANDS_NUM 11
 
 static struct mgmt_command mgmt_datastore_commands[MGMT_DATASTORE_COMMANDS_NUM] = {
 
@@ -95,7 +95,15 @@ static struct mgmt_command mgmt_datastore_commands[MGMT_DATASTORE_COMMANDS_NUM] 
 		.help = "Load a datastore module",
 		.usage = "datastore load <datastore_type>",
 		.callback_func = mgmtcmd_datastore_load,
-		.completion = mgmtcmd_datastore_load_completion,
+		.completion = mgmtcmd_datastore_avail_completion,
+	},
+
+	{
+		.words = { "datastore", "help", NULL },
+		.help = "Get help for datastores",
+		.usage = "datastore help [datastore_type]",
+		.callback_func = mgmtcmd_datastore_help,
+		.completion = mgmtcmd_datastore_avail_completion,
 	},
 
 	{
@@ -587,7 +595,7 @@ int mgmtcmd_datastore_load(struct mgmt_connection *c, int argc, char*argv[]) {
 
 }
 
-struct mgmt_command_arg* mgmtcmd_datastore_load_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_datastore_avail_completion(int argc, char *argv[]) {
 
 	if (argc != 2)
 		return NULL;
@@ -595,6 +603,54 @@ struct mgmt_command_arg* mgmtcmd_datastore_load_completion(int argc, char *argv[
 	struct mgmt_command_arg *res = NULL;
 	res = mgmtcmd_list_modules("datastore");
 	return res;
+}
+
+int mgmtcmd_datastore_help(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	int single = 0, id = 0, displayed = 0;
+	if (argc >= 1) {
+		single = 1;
+		datastore_lock(1);
+		id = datastore_register(argv[0]);
+		datastore_unlock();
+		if (id == POM_ERR) {
+			mgmtsrv_send(c, "Non exisiting datastore %s\r\n", argv[0]);
+			return POM_OK;
+		}
+	}
+
+	datastore_lock(0);
+	for (; id < MAX_DATASTORE; id++) {
+		char *name = datastore_get_name(id);
+		if (!name)
+			continue;
+
+		displayed++;
+
+		mgmtsrv_send(c, "Datastore %s :\r\n", name);
+
+		struct datastore_param_reg *dp = datastores[id]->params;
+		if (!dp) {
+			mgmtsrv_send(c, "  no parameter for this datastore\r\n");
+		} else {
+			while (dp) {
+				mgmtsrv_send(c, "  %s : %s (default : '%s')\r\n", dp->name, dp->descr, dp->defval);
+				dp = dp->next;
+			}
+		}
+
+		mgmtsrv_send(c, "\r\n");
+
+		if (single)
+			break;
+	}
+
+	datastore_unlock();
+
+	if (!displayed)
+		mgmtsrv_send(c, "No datastore loaded\r\n");
+
+	return POM_OK;
 }
 
 int mgmtcmd_datastore_unload(struct mgmt_connection *c, int argc, char *argv[]) {

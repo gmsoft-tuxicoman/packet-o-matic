@@ -25,7 +25,7 @@
 #include "target.h"
 
 
-#define MGMT_TARGET_COMMANDS_NUM 11
+#define MGMT_TARGET_COMMANDS_NUM 12
 
 static struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 
@@ -100,11 +100,19 @@ static struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 	},
 
 	{
+		.words = { "target", "help", NULL },
+		.help = "Get help for targets",
+		.usage = "target help [target]",
+		.callback_func = mgmtcmd_target_help,
+		.completion = mgmtcmd_target_avail_completion,
+	},
+
+	{
 		.words = { "target", "load", NULL },
 		.help = "Load a target module",
 		.usage = "target load <target>",
 		.callback_func = mgmtcmd_target_load,
-		.completion = mgmtcmd_target_load_completion,
+		.completion = mgmtcmd_target_avail_completion,
 	},
 
 	{
@@ -175,6 +183,7 @@ struct mgmt_command_arg *mgmtcmd_target_completion_id3(int argc, char *argv[]) {
 	return mgmctcmd_target_id_completion(argc, argv, argc - 3);
 
 }
+
 int mgmtcmd_target_show(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	main_config_rules_lock(0);
@@ -785,6 +794,64 @@ struct mgmt_command_arg *mgmtcmd_target_mode_set_completion(int argc, char *argv
 	return res;
 }
 
+int mgmtcmd_target_help(struct mgmt_connection *c, int argc, char *argv[]) {
+
+
+	int single = 0, id = 0, displayed = 0;
+	if (argc >= 1) {
+		single = 1;
+		target_lock(1);
+		id = target_register(argv[0]);
+		if (id == POM_ERR) {
+			target_unlock();
+			mgmtsrv_send(c, "Non existing target %s\r\n", argv[0]);
+			return POM_OK;
+		}
+		target_unlock();
+	}
+
+	target_lock(0);
+	for (; id < MAX_TARGET; id++) {
+		char *name = target_get_name(id);
+		if (!name)
+			continue;
+
+		displayed++;
+
+		mgmtsrv_send(c, "Target %s :\r\n", name);
+
+		struct target_mode *tm = targets[id]->modes;
+
+		while (tm) {
+
+			mgmtsrv_send(c, "  mode %s : %s\r\n", tm->name, tm->descr);
+
+			struct target_param_reg* tp = tm->params;
+			if (!tp) {
+				mgmtsrv_send(c, "    no parameter for this mode\r\n");
+			} else {
+				while (tp) {
+					mgmtsrv_send(c, "    %s : %s (default : '%s')\r\n", tp->name, tp->descr, tp->defval);
+					
+					tp = tp->next;
+				}
+			}
+			tm = tm->next;
+		}
+
+		mgmtsrv_send(c, "\r\n");
+
+		if (single)
+			break;
+	}
+
+	target_unlock();
+
+	if (!displayed)
+		mgmtsrv_send(c, "No target loaded\r\n");
+
+	return POM_OK;
+}
 
 int mgmtcmd_target_load(struct mgmt_connection *c, int argc, char*argv[]) {
 
@@ -808,7 +875,7 @@ int mgmtcmd_target_load(struct mgmt_connection *c, int argc, char*argv[]) {
 
 }
 
-struct mgmt_command_arg* mgmtcmd_target_load_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_target_avail_completion(int argc, char *argv[]) {
 
 	if (argc != 2)
 		return NULL;

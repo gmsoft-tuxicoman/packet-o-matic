@@ -395,7 +395,7 @@ int mgmtvty_completion(struct mgmt_connection *c, unsigned char key) {
 
 	if (key == '?') {
 		mgmtsrv_send(c, "\r\n");
-		mgmtcmd_print_help(c, cmds, 0);
+		mgmtcmd_print_help(c, cmds);
 		mgmtsrv_send(c, "%s%s", MGMT_CMD_PROMPT, c->curcmd);
 
 	} else if (key == '\t') {

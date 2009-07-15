@@ -37,7 +37,7 @@
 
 #include "ptype_uint64.h"
 
-#define MGMT_COMMANDS_NUM 17
+#define MGMT_COMMANDS_NUM 18
 
 static struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 
@@ -47,12 +47,6 @@ static struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.callback_func = mgmtcmd_exit,
 	},
 	
-	{
-		.words = { "help", NULL },
-		.help = "Display the help",
-		.callback_func = mgmtcmd_help,
-	},
-
 	{
 		.words = { "license", "show", NULL },
 		.help = "Display the license of this program",
@@ -95,6 +89,12 @@ static struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 	},
 
 	{
+		.words = { "debug", "console", "show", NULL },
+		.help = "Display the main console current debug level",
+		.callback_func = mgmtcmd_debug_console_show,
+	},
+
+	{
 		.words = { "config", "write", NULL },
 		.help = "Write the configuration file",
 		.callback_func = mgmtcmd_config_write,
@@ -126,7 +126,16 @@ static struct mgmt_command mgmt_commands[MGMT_COMMANDS_NUM] = {
 		.help = "Load a match module",
 		.usage = "match load <type>",
 		.callback_func = mgmtcmd_match_load,
-		.completion = mgmtcmd_match_load_completion,
+		.completion = mgmtcmd_match_avail_completion,
+	},
+
+	{
+		.words = { "match", "help", NULL },
+		.help = "Get help for matchs",
+		.usage = "match help [type]",
+		.callback_func = mgmtcmd_match_help,
+		.completion = mgmtcmd_match_avail_completion,
+
 	},
 
 	{
@@ -181,18 +190,13 @@ int mgmtcmd_register_all() {
 }
 
 
-int mgmtcmd_help(struct mgmt_connection *c, int argc, char *argv[]) {
-	
-	return mgmtcmd_print_help(c, cmds, 1);
-}
-
-int mgmtcmd_print_help(struct mgmt_connection *c, struct mgmt_command *commands, int show_all) {
+int mgmtcmd_print_help(struct mgmt_connection *c, struct mgmt_command *commands) {
 
 	int i, wordslen, wordslenmax = 0, helplenmax = 0;
 	struct mgmt_command *tmp = commands;
 	// calculate max length of first part
 	while (tmp) {
-		if (!show_all && !tmp->matched) {
+		if (tmp->matched) {
 			tmp = tmp->next;
 			continue;
 		}
@@ -220,7 +224,7 @@ int mgmtcmd_print_help(struct mgmt_connection *c, struct mgmt_command *commands,
 	tmp = commands;
 
 	while (tmp) {
-		if (!show_all && !tmp->matched) {
+		if (!tmp->matched) {
 			tmp = tmp->next;
 			continue;
 		}
@@ -358,9 +362,19 @@ struct mgmt_command_arg *mgmtcmd_debug_set_completion(int argc, char *argv[]) {
 
 int mgmtcmd_debug_cli_show(struct mgmt_connection *c, int argc, char *argv[]) {
 
-	mgmtsrv_send(c, "Debug level is ");
+	mgmtsrv_send(c, "CLI debug level is ");
+	return mgmtcmd_debug_show(c, c->debug_level);
+}
 
-	switch (c->debug_level) {
+int mgmtcmd_debug_console_show(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	mgmtsrv_send(c, "Main console debug level is ");
+	return mgmtcmd_debug_show(c, console_debug_level);
+}
+
+int mgmtcmd_debug_show(struct mgmt_connection *c, int level) {
+
+	switch (level) {
 		case 0:
 			mgmtsrv_send(c, "off\r\n");
 			break;
@@ -483,14 +497,66 @@ int mgmtcmd_match_load(struct mgmt_connection *c, int argc, char *argv[]) {
 	} else {
 		mgmtsrv_send(c, "Error while loading match %s\r\n", argv[0]);
 	}
-	match_unlock(0);
+	match_unlock();
 	reader_process_unlock();
 	
 	return POM_OK;
 
 }
 
-struct mgmt_command_arg* mgmtcmd_match_load_completion(int argc, char *argv[]) {
+int mgmtcmd_match_help(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	int single = 0, id = 0;
+
+	if (argc >= 1) {
+		single = 1;
+		reader_process_lock(); // we need to lock the process lock because match dependencies will be updated
+		match_lock(1);
+		id = match_register(argv[0]);
+		match_unlock();
+		reader_process_unlock();
+		if (id == POM_ERR) {
+			mgmtsrv_send(c, "Non existing match %s\r\n", argv[0]);
+			return POM_OK;
+		}
+	}
+
+	for (; id < MAX_MATCH; id++) {
+		char *name = match_get_name(id);
+		if (!name)
+			continue;
+
+		int i;
+		struct match_field_reg *f = NULL;
+
+		mgmtsrv_send(c, "Match %s :\r\n", name);
+
+		for (i = 0; i < MAX_LAYER_FIELDS; i++) {
+
+			f = match_get_field(id, i);
+			if (!f)
+				break;
+
+			char *ptype_name = ptype_get_name(f->type->type);
+			if (!ptype_name)
+				ptype_name = "unknown";
+
+			mgmtsrv_send(c, "  %s (%s) : %s\r\n", f->name, ptype_name, f->descr);
+		}
+
+		if (i == 0)
+			mgmtsrv_send(c, "  no field for this match\r\n");
+
+		mgmtsrv_send(c, "\r\n");
+
+		if (single)
+			break;
+	}
+
+	return POM_OK;
+}
+
+struct mgmt_command_arg* mgmtcmd_match_avail_completion(int argc, char *argv[]) {
 
 	if (argc != 2)
 		return NULL;

@@ -21,7 +21,7 @@
 #include "mgmtcmd_conntrack.h"
 #include "conntrack.h"
 
-#define MGMT_CONNTRACK_COMMANDS_NUM 4
+#define MGMT_CONNTRACK_COMMANDS_NUM 5
 
 static struct mgmt_command mgmt_conntrack_commands[MGMT_CONNTRACK_COMMANDS_NUM] = {
 
@@ -41,18 +41,26 @@ static struct mgmt_command mgmt_conntrack_commands[MGMT_CONNTRACK_COMMANDS_NUM] 
 
 	{
 		.words = { "conntrack", "load", NULL },
-		.help = "Load a conntrack from the system",
+		.help = "Load a conntrack module",
 		.usage = "conntrack load <conntrack>",
 		.callback_func = mgmtcmd_conntrack_load,
 		.completion = mgmtcmd_conntrack_load_completion,
 	},
 
 	{
+		.words = { "conntrack", "help", NULL },
+		.help = "Get help for conntracks",
+		.usage = "conntrack help [type]",
+		.callback_func = mgmtcmd_conntrack_help,
+		.completion = mgmtcmd_conntrack_loaded_completion,
+	},
+
+	{
 		.words = { "conntrack", "unload", NULL },
-		.help = "Unload a conntrack from the system",
+		.help = "Unload a conntrack module",
 		.usage = "conntrack unload <conntrack>",
 		.callback_func = mgmtcmd_conntrack_unload,
-		.completion = mgmtcmd_conntrack_unload_completion,
+		.completion = mgmtcmd_conntrack_loaded_completion,
 	},
 		
 };
@@ -94,6 +102,58 @@ int mgmtcmd_conntrack_show(struct mgmt_connection *c, int argc, char *argv[]) {
 	return POM_OK;
 }
 
+int mgmtcmd_conntrack_help(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	conntrack_lock(0);
+
+	int single = 0, id = 0, displayed = 0;
+	if (argc >= 1) {
+		single = 1;
+		id = match_get_type(argv[0]); // Do not try to register the conntrack
+		if (id == POM_ERR || !conntracks[id]) {
+			conntrack_unlock();
+			mgmtsrv_send(c, "No conntrack %s registered\r\n", argv[0]);
+			return POM_OK;
+		}
+	}
+
+	for (; id < MAX_CONNTRACK; id++) {
+		char *name = match_get_name(id);
+		if (!name || !conntracks[id])
+			continue;
+
+		displayed++;
+
+		mgmtsrv_send(c, "Conntrack %s :\r\n", name);
+
+		struct conntrack_param* cp = conntracks[id]->params;
+		if (!cp) {
+			mgmtsrv_send(c, "  no parameter for this conntrack\r\n");
+		} else {
+			while (cp) {
+				char *ptype_name = ptype_get_name(cp->value->type);
+				if (!ptype_name)
+					ptype_name = "unknown";
+				mgmtsrv_send(c, "  %s (%s) : %s (default : '%s')\r\n", cp->name, ptype_name, cp->descr, cp->defval);
+				
+				cp = cp->next;
+			}
+		}
+
+		mgmtsrv_send(c, "\r\n");
+
+		if (single)
+			break;
+	}
+
+	conntrack_unlock();
+
+	if (!displayed)
+		mgmtsrv_send(c, "No conntrack loaded\r\n");
+
+	return POM_OK;
+}
+
 int mgmtcmd_conntrack_parameter_set(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc != 3) 
@@ -126,7 +186,7 @@ struct mgmt_command_arg* mgmtcmd_conntrack_parameter_set_completion(int argc, ch
 
 	switch (argc) {
 		case 3:
-			res = mgmtcmd_conntrack_unload_completion(2, argv);
+			res = mgmtcmd_conntrack_loaded_completion(2, argv);
 			break;
 
 		case 4: {
@@ -237,7 +297,7 @@ int mgmtcmd_conntrack_unload(struct mgmt_connection *c, int argc, char *argv[]) 
 
 }
 
-struct mgmt_command_arg* mgmtcmd_conntrack_unload_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_conntrack_loaded_completion(int argc, char *argv[]) {
 
 	struct mgmt_command_arg *res = NULL;
 

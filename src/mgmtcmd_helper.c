@@ -22,7 +22,7 @@
 #include "mgmtcmd_helper.h"
 
 
-#define MGMT_HELPER_COMMANDS_NUM 4
+#define MGMT_HELPER_COMMANDS_NUM 5
 
 static struct mgmt_command mgmt_helper_commands[MGMT_HELPER_COMMANDS_NUM] = {
 
@@ -41,6 +41,14 @@ static struct mgmt_command mgmt_helper_commands[MGMT_HELPER_COMMANDS_NUM] = {
 	},
 
 	{
+		.words = { "helper", "help", NULL },
+		.help = "Get help for helpers",
+		.usage = "helper help [helper]",
+		.callback_func = mgmtcmd_helper_help,
+		.completion = mgmtcmd_helper_loaded_completion,
+	},
+
+	{
 		.words = { "helper", "parameter", "set", NULL},
 		.help = "Change the value of a helper parameter",
 		.usage = "helper parameter set <helper> <parameter> <value>",
@@ -53,7 +61,7 @@ static struct mgmt_command mgmt_helper_commands[MGMT_HELPER_COMMANDS_NUM] = {
 		.help = "Unload an helper module",
 		.usage = "helper unload <helper>",
 		.callback_func = mgmtcmd_helper_unload,
-		.completion = mgmtcmd_helper_unload_completion,
+		.completion = mgmtcmd_helper_loaded_completion,
 	},
 
 };
@@ -147,6 +155,58 @@ struct mgmt_command_arg* mgmtcmd_helper_load_completion(int argc, char *argv[]) 
 	return res;
 }
 
+int mgmtcmd_helper_help(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	helper_lock(0);
+
+	int single = 0, id = 0, displayed = 0;
+	if (argc >= 1) {
+		single = 1;
+		id = match_get_type(argv[0]); // Do not try to register the conntrack
+		if (id == POM_ERR || !helpers[id]) {
+			helper_unlock();
+			mgmtsrv_send(c, "No conntrack %s registered\r\n", argv[0]);
+			return POM_OK;
+		}
+	}
+
+	for (; id < MAX_HELPER; id++) {
+		char *name = match_get_name(id);
+		if (!name || !helpers[id])
+			continue;
+
+		displayed++;
+
+		mgmtsrv_send(c, "Helper %s :\r\n", name);
+
+		struct helper_param* hp = helpers[id]->params;
+		if (!hp) {
+			mgmtsrv_send(c, "  no parameter for this helper\r\n");
+		} else {
+			while (hp) {
+				char *ptype_name = ptype_get_name(hp->value->type);
+				if (!ptype_name)
+					ptype_name = "unknown";
+				mgmtsrv_send(c, "  %s (%s) : %s (default : '%s')\r\n", hp->name, ptype_name, hp->descr, hp->defval);
+				
+				hp = hp->next;
+			}
+		}
+
+		mgmtsrv_send(c, "\r\n");
+
+		if (single)
+			break;
+		
+	}
+	helper_unlock();
+
+	if (!displayed)
+		mgmtsrv_send(c, "No helper loaded\r\n");
+
+	return POM_OK;
+}
+
 int mgmtcmd_helper_parameter_set(struct mgmt_connection *c, int argc, char *argv[]) {
 	
 	if (argc != 3) 
@@ -186,7 +246,7 @@ struct mgmt_command_arg* mgmtcmd_helper_parameter_set_completion(int argc, char 
 
 	switch (argc) {
 		case 3:
-			res = mgmtcmd_helper_unload_completion(2, argv);
+			res = mgmtcmd_helper_loaded_completion(2, argv);
 			break;
 
 		case 4: {
@@ -254,7 +314,7 @@ int mgmtcmd_helper_unload(struct mgmt_connection *c, int argc, char *argv[]) {
 
 }
 
-struct mgmt_command_arg* mgmtcmd_helper_unload_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_helper_loaded_completion(int argc, char *argv[]) {
 
 	struct mgmt_command_arg *res = NULL;
 

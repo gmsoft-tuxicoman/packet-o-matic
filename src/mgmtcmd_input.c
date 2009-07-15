@@ -23,7 +23,7 @@
 
 #include <pthread.h>
 
-#define MGMT_INPUT_COMMANDS_NUM 8
+#define MGMT_INPUT_COMMANDS_NUM 9
 
 static struct mgmt_command mgmt_input_commands[MGMT_INPUT_COMMANDS_NUM] = {
 
@@ -74,7 +74,15 @@ static struct mgmt_command mgmt_input_commands[MGMT_INPUT_COMMANDS_NUM] = {
 		.help = "Load an input module",
 		.usage = "input load <input>",
 		.callback_func = mgmtcmd_input_load,
-		.completion = mgmtcmd_input_load_completion,
+		.completion = mgmtcmd_input_avail_completion,
+	},
+
+	{
+		.words = { "input", "help", NULL },
+		.help = "Get help for inputs",
+		.usage = "input help [input]",
+		.callback_func = mgmtcmd_input_help,
+		.completion = mgmtcmd_input_avail_completion,
 	},
 
 	{
@@ -381,6 +389,69 @@ struct mgmt_command_arg* mgmtcmd_input_parameter_set_completion(int argc, char *
 
 	return res;
 }
+
+int mgmtcmd_input_help(struct mgmt_connection *c, int argc, char *argv[]) {
+
+
+	int single = 0, id = 0, displayed = 0;
+	if (argc >= 1) {
+		single = 1;
+		input_lock(1);
+		id = input_register(argv[0]);
+		if (id == POM_ERR) {
+			input_unlock();
+			mgmtsrv_send(c, "Non existing input %s\r\n", argv[0]);
+			return POM_OK;
+		}
+		input_unlock();
+	}
+
+	input_lock(0);
+	for (; id < MAX_INPUT; id++) {
+		char *name = input_get_name(id);
+		if (!name)
+			continue;
+
+		displayed++;
+
+		mgmtsrv_send(c, "Input %s :\r\n", name);
+
+		struct input_mode *im = inputs[id]->modes;
+
+		while (im) {
+
+			mgmtsrv_send(c, "  mode %s : %s\r\n", im->name, im->descr);
+
+			struct input_param* ip = im->params;
+			if (!ip) {
+				mgmtsrv_send(c, "    no parameter for this mode\r\n");
+			} else {
+				while (ip) {
+					char *ptype_name = ptype_get_name(ip->value->type);
+					if (!ptype_name)
+						ptype_name = "unknown";
+					mgmtsrv_send(c, "    %s (%s) : %s (default : '%s')\r\n", ip->name, ptype_name, ip->descr, ip->defval);
+					
+					ip = ip->next;
+				}
+			}
+			im = im->next;
+		}
+
+		mgmtsrv_send(c, "\r\n");
+
+		if (single)
+			break;
+	}
+
+	input_unlock();
+
+	if (!displayed)
+		mgmtsrv_send(c, "No input loaded\r\n");
+
+	return POM_OK;
+}
+
 int mgmtcmd_input_load(struct mgmt_connection *c, int argc, char*argv[]) {
 
 	if (argc != 1)
@@ -406,7 +477,7 @@ int mgmtcmd_input_load(struct mgmt_connection *c, int argc, char*argv[]) {
 
 }
 
-struct mgmt_command_arg* mgmtcmd_input_load_completion(int argc, char *argv[]) {
+struct mgmt_command_arg* mgmtcmd_input_avail_completion(int argc, char *argv[]) {
 
 	if (argc != 2)
 		return NULL;
