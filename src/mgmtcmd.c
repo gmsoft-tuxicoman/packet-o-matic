@@ -196,7 +196,7 @@ int mgmtcmd_print_help(struct mgmt_connection *c, struct mgmt_command *commands)
 	struct mgmt_command *tmp = commands;
 	// calculate max length of first part
 	while (tmp) {
-		if (tmp->matched) {
+		if (!tmp->matched) {
 			tmp = tmp->next;
 			continue;
 		}

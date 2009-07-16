@@ -59,12 +59,15 @@ static int datastore_dataset_alloc_sqlite(struct dataset *ds);
 static int datastore_dataset_create_sqlite(struct dataset *ds);
 static int datastore_dataset_read_sqlite(struct dataset *ds);
 static int datastore_dataset_write_sqlite(struct dataset *ds);
+static int datastore_dataset_delete_sqlite(struct dataset *ds);
+static int datastore_dataset_destroy_sqlite(struct dataset *ds);
 static int datastore_dataset_cleanup_sqlite(struct dataset *ds);
 static int datastore_close_sqlite(struct datastore *d);
 static int datastore_cleanup_sqlite(struct datastore *d);
 static int datastore_unregister_sqlite(struct datastore_reg *r);
 
 static int sqlite_get_ds_state_error(int res);
+static size_t sqlite_escape_string(char *to, char *from, size_t len);
 
 
 #endif

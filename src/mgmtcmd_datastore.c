@@ -24,7 +24,7 @@
 #include "datastore.h"
 
 
-#define MGMT_DATASTORE_COMMANDS_NUM 11
+#define MGMT_DATASTORE_COMMANDS_NUM 13
 
 static struct mgmt_command mgmt_datastore_commands[MGMT_DATASTORE_COMMANDS_NUM] = {
 
@@ -112,6 +112,22 @@ static struct mgmt_command mgmt_datastore_commands[MGMT_DATASTORE_COMMANDS_NUM] 
 		.usage = "datastore unload <datastore_type>",
 		.callback_func = mgmtcmd_datastore_unload,
 		.completion = mgmtcmd_datastore_unload_completion,
+	},
+
+	{
+		.words = { "datastore", "dataset", "show", NULL },
+		.help = "Shows the datasets of datastores",
+		.usage = "datastore dataset show [datastore_name]",
+		.callback_func = mgmtcmd_datastore_dataset_show,
+		.completion = mgmtcmd_datastore_completion_name3,
+	},
+
+	{
+		.words = { "datastore", "dataset", "destroy", NULL },
+		.help = "Destroy a dataset",
+		.usage = "datastore dataset destroy <datastore_name> <dataset>",
+		.callback_func = mgmtcmd_datastore_dataset_destroy,
+		.completion = mgmtcmd_datastore_dataset_destroy_completion,
 	},
 };
 
@@ -209,15 +225,18 @@ int mgmtcmd_datastore_start(struct mgmt_connection *c, int argc, char *argv[]) {
 	if (argc < 1)
 		return MGMT_USAGE;
 
-
+	main_config_datastores_lock(0);
 	struct datastore *d = mgmtcmd_get_datastore(argv[0]);
 
 	if (!d) {
 		mgmtsrv_send(c, "Datastore not found\r\n");
+		main_config_datastores_unlock();
 		return POM_OK;
 	}
 
-	datastore_lock_instance(d, 0);
+	datastore_lock_instance(d, 1);
+	main_config_datastores_unlock();
+
 	if (d->started) {
 		datastore_unlock_instance(d);
 		mgmtsrv_send(c, "Datastore already started\r\n");
@@ -242,14 +261,15 @@ int mgmtcmd_datastore_stop(struct mgmt_connection *c, int argc, char *argv[]) {
 
 	struct datastore *d = mgmtcmd_get_datastore(argv[0]);
 
-	main_config_datastores_unlock();
-
 	if (!d) {
+		main_config_datastores_unlock();
 		mgmtsrv_send(c, "Datastore not found\r\n");
 		return POM_OK;
 	}
-	
+
 	datastore_lock_instance(d, 0);
+	main_config_datastores_unlock();
+
 	if (!d->started) {
 		datastore_unlock_instance(d);
 		mgmtsrv_send(c, "Datastore already stopped\r\n");
@@ -550,7 +570,7 @@ int mgmtcmd_datastore_description_unset(struct mgmt_connection *c, int argc, cha
 	struct datastore *d = mgmtcmd_get_datastore(argv[0]);
 
 	if (!d) {
-		datastore_unlock();
+		main_config_datastores_unlock();
 		mgmtsrv_send(c, "Datastore not found\r\n");
 		return POM_OK;
 	}
@@ -685,6 +705,8 @@ struct mgmt_command_arg* mgmtcmd_datastore_unload_completion(int argc, char *arg
 	if (argc != 2)
 		return NULL;
 
+	datastore_lock(0);
+
 	int i;
 	for (i = 0; i < MAX_DATASTORE; i++) {
 		if (datastores[i]) {
@@ -699,5 +721,142 @@ struct mgmt_command_arg* mgmtcmd_datastore_unload_completion(int argc, char *arg
 
 	}
 
+	datastore_unlock();
+
+	return res;
+}
+
+int mgmtcmd_datastore_dataset_show(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	int single = 0;
+	struct datastore *d;
+
+	if (argc == 1)
+		single = 1;
+	else if (argc > 1)
+		return MGMT_USAGE;
+
+
+	main_config_datastores_lock(0);
+
+	if (single)
+		d = mgmtcmd_get_datastore(argv[0]);
+	else
+		d = main_config->datastores;
+
+	while (d) {
+		datastore_lock_instance(d, 0);
+
+		mgmtsrv_send(c, "Datasets in datastore %s (%s) :\r\n", d->name, datastores[d->type]->name);
+		
+		struct dataset *ds = d->datasets;
+		if (!d->started) {
+			mgmtsrv_send(c, "  cannot show datasets because the datastore is stopped\r\n");
+		} else if (!ds) {
+			mgmtsrv_send(c, "  no dataset in this datastore\r\n");
+		} else {
+			while (ds) {
+				
+				mgmtsrv_send(c, "  %s (%s) : %s\r\n", ds->name, ds->type, ds->descr);
+				ds = ds->next;
+			}
+		}
+
+		datastore_unlock_instance(d);
+
+		mgmtsrv_send(c, "\r\n");
+
+		if (single)
+			break;
+
+		d = d->next;
+
+	}
+	main_config_datastores_unlock();
+
+	return POM_OK;
+}
+
+int mgmtcmd_datastore_dataset_destroy(struct mgmt_connection *c, int argc, char *argv[]) {
+
+	if (argc != 2)
+		return MGMT_USAGE;
+
+	main_config_datastores_lock(0);
+
+	struct datastore *d = mgmtcmd_get_datastore(argv[0]);
+
+	if (!d) {
+		main_config_datastores_unlock();
+		mgmtsrv_send(c, "Datastore not found\r\n");
+		return POM_OK;
+	}
+
+	datastore_lock_instance(d, 1);
+	main_config_datastores_unlock();
+
+	struct dataset *ds = d->datasets;
+	while (ds && strcmp(ds->name, argv[1]))
+		ds = ds->next;
+	if (!ds) {
+		datastore_unlock_instance(d);
+		mgmtsrv_send(c, "Dataset not found in datastore %s\r\n", d->name);
+		return POM_OK;
+
+	}
+
+	if (datastore_dataset_destroy(ds) == POM_ERR)
+		mgmtsrv_send(c, "Error while destroying the dataset\r\n");
+
+	datastore_unlock_instance(d);
+	return POM_OK;
+}
+
+struct mgmt_command_arg *mgmtcmd_datastore_dataset_destroy_completion(int argc, char *argv[]) {
+
+	struct mgmt_command_arg *res = NULL;
+
+	if (argc == 3) {
+
+		res = mgmctcmd_datastore_name_completion(argc, argv, argc - 3);
+
+	} else if (argc == 4) {
+
+		main_config_datastores_lock(0);
+
+		struct datastore *d = main_config->datastores;
+
+		while (d) {
+			if (!strcmp(d->name, argv[argc - 1]))
+				break;
+			d = d->next;
+		}
+		
+		if (!d) {
+			main_config_datastores_unlock();
+			return NULL;
+		}
+
+		datastore_lock_instance(d, 0);
+		main_config_datastores_unlock();
+
+		struct dataset *ds = d->datasets;
+
+		while (ds) {
+			struct mgmt_command_arg *item = malloc(sizeof(struct mgmt_command_arg));
+			memset(item, 0, sizeof(struct mgmt_command_arg));
+			char *name = ds->name;
+			item->word = malloc(strlen(name) + 1);
+			strcpy(item->word, name);
+			item->next = res;
+			res = item;
+
+			ds = ds->next;
+		}
+
+		datastore_unlock_instance(d);
+
+
+	}
 	return res;
 }

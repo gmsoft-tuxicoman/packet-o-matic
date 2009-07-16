@@ -808,18 +808,26 @@ struct target_dataset *target_open_dataset(struct target *t, char *name, char *d
 	}
 
 	// Open the datastore
+	
+
+	main_config_datastores_lock(0);
 
 	struct datastore *dstore = main_config->datastores;
 	while (dstore) {
 		if (!strcmp(dstore->name, datastore_name)) {
+			datastore_lock_instance(dstore, 1);
 			if (!dstore->started) {
 				if (PTYPE_BOOL_GETVAL(param_autostart_datastore)) {
 					if (datastore_open(dstore) == POM_ERR) {
+						datastore_unlock_instance(dstore);
+						main_config_datastores_unlock();
 						free(datastore_name);
 						return NULL;
 					}
 				} else {
 					pom_log(POM_LOG_WARN "Datastore %s not started and target_autostart_datastore is set to no. Nothing will be saved", dstore->name);
+					datastore_unlock_instance(dstore);
+					main_config_datastores_unlock();
 					free(datastore_name);
 					return NULL;
 				}
@@ -829,6 +837,7 @@ struct target_dataset *target_open_dataset(struct target *t, char *name, char *d
 
 		dstore = dstore->next;
 	}
+	main_config_datastores_unlock();
 
 	// Found the right datastore. Open the dataset now
 	
@@ -841,6 +850,7 @@ struct target_dataset *target_open_dataset(struct target *t, char *name, char *d
 	struct target_dataset *res = malloc(sizeof(struct target_dataset));
 	memset(res, 0, sizeof(struct target_dataset));
 	res->dset = datastore_dataset_open(dstore, dataset_name, dataset_type, descr, fields, target_dataset_error);
+	datastore_unlock_instance(dstore);
 
 	free(dataset_type);
 	free(datastore_name);

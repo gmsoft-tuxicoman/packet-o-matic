@@ -1,3 +1,11 @@
+* 2009/07/16 Guy Martin <gmsoft@tuxicoman.be>
+Added CLI command to show and destroy datasets.
+Added support to delete and drop datasets in datastores.
+Improve locking algorithm in datastore CLI commands.
+Escape string when provided in query conditions for datastores.
+Assign the correct dataset_id to the datasets upon creation.
+Update README file with datastore requirements.
+
 * 2009/07/14 Guy Martin <gmsoft@tuxicoman.be>
 Added help commands in the CLI for each type of modules.
 

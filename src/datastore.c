@@ -368,11 +368,11 @@ int datastore_open(struct datastore *d) {
 		qv[i].value = ptype_alloc(datasetfieldsdescr[i][1], NULL);
 	}
 
-	dsfields->query_read_cond = malloc(sizeof(struct datavalue_read_condition));
-	memset(dsfields->query_read_cond, 0, sizeof(struct datavalue_read_condition));
-	dsfields->query_read_cond->field_id = 0;
-	dsfields->query_read_cond->op = PTYPE_OP_EQ;
-	dsfields->query_read_cond->value = ptype_alloc("uint64", NULL);
+	dsfields->query_cond = malloc(sizeof(struct datavalue_condition));
+	memset(dsfields->query_cond, 0, sizeof(struct datavalue_condition));
+	dsfields->query_cond->field_id = 0;
+	dsfields->query_cond->op = PTYPE_OP_EQ;
+	dsfields->query_cond->value = ptype_alloc("uint64", NULL);
 
 	dsfields->query_read_order = malloc(sizeof(struct datavalue_read_order));
 	memset(dsfields->query_read_order, 0, sizeof(struct datavalue_read_order));
@@ -439,13 +439,12 @@ int datastore_open(struct datastore *d) {
 	// Retrieve the fields of each dataset
 	while (tmp) {
 
-		// TODO, retrieve the structure of the dataset
 		struct datavalue *dv = NULL;
 		int size = 0;
 
 		while (1) {
 
-			PTYPE_UINT64_SETVAL(dsfields->query_read_cond->value, tmp->dataset_id);
+			PTYPE_UINT64_SETVAL(dsfields->query_cond->value, tmp->dataset_id);
 
 			int res = datastore_dataset_read(dsfields);
 			if (res == POM_ERR)
@@ -545,9 +544,9 @@ err:
 			}
 			free(dv);
 		}
-		if (dsfields->query_read_cond) {
-			ptype_cleanup(dsfields->query_read_cond->value);
-			free(dsfields->query_read_cond);
+		if (dsfields->query_cond) {
+			ptype_cleanup(dsfields->query_cond->value);
+			free(dsfields->query_cond);
 		}
 		if (dsfields->query_read_order)
 			free(dsfields->query_read_order);
@@ -678,6 +677,8 @@ struct dataset *datastore_dataset_open(struct datastore *d, char *name, char *ty
 			goto err;
 		}
 
+		tmp->dataset_id = d->datasetdb->data_id;
+
 		query = d->datasetfieldsdb->query_data;
 		for (i = 0; dv[i].name; i++) {
 			PTYPE_UINT64_SETVAL(query[0].value, d->datasetdb->data_id);
@@ -736,7 +737,7 @@ int datastore_dataset_create(struct dataset *query) {
 	if (datastores[d->type] && datastores[d->type]->dataset_create)
 		res = (*datastores[d->type]->dataset_create) (query);
 
-	if (res != POM_OK && query->state == DATASET_STATE_DATSTORE_ERR) 
+	if (res != POM_OK && query->state == DATASET_STATE_DATASTORE_ERR) 
 		datastore_error_notify(d);
 
 	return res;
@@ -756,7 +757,7 @@ int datastore_dataset_read(struct dataset *query) {
 	if (datastores[d->type] && datastores[d->type]->dataset_read)
 		res = (*datastores[d->type]->dataset_read) (query);
 
-	if (res != POM_OK && query->state == DATASET_STATE_DATSTORE_ERR) 
+	if (res != POM_OK && query->state == DATASET_STATE_DATASTORE_ERR) 
 		datastore_error_notify(d);
 
 	return res;
@@ -777,7 +778,7 @@ int datastore_dataset_write(struct dataset *query) {
 	if (datastores[d->type] && datastores[d->type]->dataset_write)
 		res = (*datastores[d->type]->dataset_write) (query);
 
-	if (res != POM_OK && query->state == DATASET_STATE_DATSTORE_ERR) 
+	if (res != POM_OK && query->state == DATASET_STATE_DATASTORE_ERR) 
 		datastore_error_notify(d);
 
 	return res;
@@ -802,6 +803,98 @@ int datastore_dataset_close(struct dataset *ds) {
 	ds->error_notify = NULL;
 
 	return POM_OK;
+}
+
+int datastore_dataset_destroy(struct dataset *ds) {
+
+	struct datastore *d = ds->dstore;
+
+	if (ds->open) {
+		pom_log(POM_LOG_ERR "Cannot destroy the dataset as it's still in use");
+		return POM_ERR;
+	}
+
+	int res = POM_ERR;
+
+
+	// First remove the dataset from the datasetdb
+	struct dataset *datasets = d->datasetdb;
+
+	struct datavalue_condition *del_cond = malloc(sizeof(struct datavalue_condition));
+	memset(del_cond, 0, sizeof(struct datavalue_condition));
+	del_cond->field_id = 0;
+	del_cond->op = PTYPE_OP_EQ;
+	del_cond->value = ptype_alloc("string", NULL);
+	PTYPE_STRING_SETVAL(del_cond->value, ds->name);
+
+	datasets->query_cond = del_cond;
+
+	if (datastores[d->type] && datastores[d->type]->dataset_delete)
+		res = (*datastores[d->type]->dataset_delete) (datasets);
+	
+	datasets->query_cond = NULL;
+	ptype_cleanup(del_cond->value);
+	free(del_cond);
+
+	if (res == POM_ERR) {
+		pom_log(POM_LOG_ERR "Unable to remove the dataset reference in the dataset database");
+		return POM_ERR;
+	}
+	res = POM_ERR;
+
+	// At this point we can unlink it
+	if (d->datasets== ds) {
+		d->datasets = ds->next;
+	} else {
+		struct dataset *tmp = d->datasets;
+		while (tmp->next) {
+			if (tmp->next == ds) {
+				tmp->next = ds->next;
+				break;
+			}
+			tmp = tmp->next;
+		}
+	}
+	ds->next = NULL;
+
+	// Remove fields of that dataset
+	struct dataset *dsfields = d->datasetfieldsdb;
+	
+	PTYPE_UINT64_SETVAL(dsfields->query_cond->value, ds->dataset_id);
+
+	if (datastores[d->type] && datastores[d->type]->dataset_delete)
+		res = (*datastores[d->type]->dataset_delete) (dsfields);
+
+	if (res == POM_ERR) {
+		pom_log(POM_LOG_ERR "Unable to remove the dataset fields from the database");
+		goto err;
+	}
+	res = POM_ERR;
+
+	// Destroy the dataset
+	if (datastores[d->type] && datastores[d->type]->dataset_destroy)
+		res = (*datastores[d->type]->dataset_destroy) (ds);
+
+	if (res == POM_ERR)
+		pom_log(POM_LOG_ERR "Unable to destroy the dataset");
+
+	struct datavalue *dv = NULL;
+	int i;
+err:
+	
+	// Free the dataset structure
+	dv = ds->query_data;
+	for (i = 0; dv[i].name; i++) {
+		free(dv[i].name);
+		ptype_cleanup(dv[i].value);
+	}
+	free(ds->query_data);
+	free(ds->name);
+	free(ds->type);
+	free(ds->descr);
+	free(ds);
+	
+	return res;
 }
 
 /**
@@ -877,9 +970,9 @@ int datastore_close(struct datastore *d) {
 		free(dv[i].name);
 		ptype_cleanup(dv[i].value);
 	}
-	if (tmp->query_read_cond) {
-		ptype_cleanup(tmp->query_read_cond->value);
-		free(tmp->query_read_cond);
+	if (tmp->query_cond) {
+		ptype_cleanup(tmp->query_cond->value);
+		free(tmp->query_cond);
 	}
 	if (tmp->query_read_order)
 		free(tmp->query_read_order);

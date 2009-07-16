@@ -60,6 +60,8 @@ int datastore_register_sqlite(struct datastore_reg *r) {
 	r->dataset_create = datastore_dataset_create_sqlite;
 	r->dataset_read = datastore_dataset_read_sqlite;
 	r->dataset_write = datastore_dataset_write_sqlite;
+	r->dataset_delete = datastore_dataset_delete_sqlite;
+	r->dataset_destroy = datastore_dataset_destroy_sqlite;
 	r->dataset_cleanup = datastore_dataset_cleanup_sqlite;
 	r->close = datastore_close_sqlite;
 	r->cleanup = datastore_cleanup_sqlite;
@@ -256,42 +258,49 @@ static int datastore_dataset_read_sqlite(struct dataset *ds) {
 	if (ds->state != DATASET_STATE_MORE) {
 		char *read_query = priv->read_query;
 
-		struct datavalue_read_condition *qrc = ds->query_read_cond;
-		if (qrc) {
+		struct datavalue_condition *qc = ds->query_cond;
+		if (qc) {
 			struct datavalue *dv = ds->query_data;
 			int size, new_size = priv->read_query_buff_size;
 
 			read_query = priv->read_query_buff;
 
+			char *string_val = NULL;
+			if (dv[qc->field_id].native_type == SQLITE_PTYPE_STRING) {
+				size_t len = strlen(PTYPE_STRING_GETVAL(qc->value));
+				string_val = malloc((len * 2) + 1);
+				sqlite_escape_string(string_val, PTYPE_STRING_GETVAL(qc->value), len);
+			}
+
 			while (1) {
 				size = new_size;
 				char *op = NULL;
-				switch (qrc->op) {
+				switch (qc->op) {
 					case PTYPE_OP_EQ:
 						op = "=";
 						break;
 					default:
-						op = ptype_get_op_sign(qrc->op);
+						op = ptype_get_op_sign(qc->op);
 				}
 
-				switch (dv[qrc->field_id].native_type) {
+				switch (dv[qc->field_id].native_type) {
 					case SQLITE_PTYPE_BOOL:
-						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query, dv[qrc->field_id].name, op, PTYPE_UINT8_GETVAL(qrc->value));
+						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query, dv[qc->field_id].name, op, PTYPE_UINT8_GETVAL(qc->value));
 						break;
 					case SQLITE_PTYPE_UINT8:
-						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query, dv[qrc->field_id].name, op, PTYPE_UINT8_GETVAL(qrc->value));
+						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query, dv[qc->field_id].name, op, PTYPE_UINT8_GETVAL(qc->value));
 						break;
 					case SQLITE_PTYPE_UINT16:
-						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query, dv[qrc->field_id].name, op, PTYPE_UINT16_GETVAL(qrc->value));
+						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query, dv[qc->field_id].name, op, PTYPE_UINT16_GETVAL(qc->value));
 						break;
 					case SQLITE_PTYPE_UINT32:
-						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query, dv[qrc->field_id].name, op, PTYPE_UINT32_GETVAL(qrc->value));
+						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query, dv[qc->field_id].name, op, PTYPE_UINT32_GETVAL(qc->value));
 						break;
 					case SQLITE_PTYPE_UINT64:
-						new_size = snprintf(read_query, size, "%s WHERE %s %s %llu", priv->read_query, dv[qrc->field_id].name, op, (unsigned long long) PTYPE_UINT64_GETVAL(qrc->value));
+						new_size = snprintf(read_query, size, "%s WHERE %s %s %llu", priv->read_query, dv[qc->field_id].name, op, (unsigned long long) PTYPE_UINT64_GETVAL(qc->value));
 						break;
 					case SQLITE_PTYPE_STRING:
-						new_size = snprintf(read_query, size, "%s WHERE %s %s '%s'", priv->read_query, dv[qrc->field_id].name, op, PTYPE_STRING_GETVAL(qrc->value));
+						new_size = snprintf(read_query, size, "%s WHERE %s %s '%s'", priv->read_query, dv[qc->field_id].name, op, string_val);
 						break;
 					default:
 						pom_log(POM_LOG_ERR "Unsupported ptype in read condition");
@@ -309,7 +318,9 @@ static int datastore_dataset_read_sqlite(struct dataset *ds) {
 			}
 			priv->read_query_buff = read_query;
 			priv->read_query_buff_size = size;
-					
+			
+			if (string_val)
+				free(string_val);
 
 		}
 
@@ -497,6 +508,119 @@ static int datastore_dataset_write_sqlite(struct dataset *ds) {
 	return POM_OK;
 }
 
+static int datastore_dataset_delete_sqlite(struct dataset* ds) {
+
+	struct datastore_priv_sqlite *priv = ds->dstore->priv;
+	int size, new_size = 64;
+	char *query = malloc(new_size + 1);
+	struct datavalue_condition *qc = ds->query_cond;
+	if (qc) {
+		struct datavalue *dv = ds->query_data;
+
+		char *string_val = NULL;
+		if (dv[qc->field_id].native_type == SQLITE_PTYPE_STRING) {
+			size_t len = strlen(PTYPE_STRING_GETVAL(qc->value));
+			string_val = malloc((len * 2) + 1);
+			sqlite_escape_string(string_val, PTYPE_STRING_GETVAL(qc->value), len);
+		}
+
+		while (1) {
+			size = new_size;
+			char *op = NULL;
+			switch (qc->op) {
+				case PTYPE_OP_EQ:
+					op = "=";
+					break;
+				default:
+					op = ptype_get_op_sign(qc->op);
+					break;
+
+			}
+			switch (dv[qc->field_id].native_type) {
+				case SQLITE_PTYPE_BOOL:
+					new_size = snprintf(query, size, "DELETE FROM %s WHERE %s %s %u", ds->name, dv[qc->field_id].name, op, PTYPE_UINT8_GETVAL(qc->value));
+					break;
+				case SQLITE_PTYPE_UINT8:
+					new_size = snprintf(query, size, "DELETE FROM %s WHERE %s %s %u", ds->name, dv[qc->field_id].name, op, PTYPE_UINT8_GETVAL(qc->value));
+					break;
+				case SQLITE_PTYPE_UINT16:
+					new_size = snprintf(query, size, "DELETE FROM %s WHERE %s %s %u", ds->name, dv[qc->field_id].name, op, PTYPE_UINT16_GETVAL(qc->value));
+					break;
+				case SQLITE_PTYPE_UINT32:
+					new_size = snprintf(query, size, "DELETE FROM %s WHERE %s %s %u", ds->name, dv[qc->field_id].name, op, PTYPE_UINT32_GETVAL(qc->value));
+					break;
+				case SQLITE_PTYPE_UINT64:
+					new_size = snprintf(query, size, "DELETE FROM %s WHERE %s %s %llu", ds->name, dv[qc->field_id].name, op, (unsigned long long) PTYPE_UINT64_GETVAL(qc->value));
+					break;
+				case SQLITE_PTYPE_STRING:
+					new_size = snprintf(query, size, "DELETE FROM %s WHERE %s %s '%s'", ds->name, dv[qc->field_id].name, op, string_val);
+					break;
+				default:
+					pom_log(POM_LOG_ERR "Unsupported ptype in query condition");
+					return POM_ERR;
+			}
+			if (new_size >= -1 && new_size < size)
+				break;
+			
+			new_size = ((new_size <= -1) ? size * 2 : new_size + 1);
+			query = realloc(query, new_size + 1);
+
+		}
+		
+		if (string_val)
+			free(string_val);
+
+	} else {
+
+		do {
+			size = new_size;
+			new_size = snprintf(query, size, "DELETE FROM %s", ds->name);
+			new_size = ((new_size <= -1) ? size * 2 : new_size + 1);
+			query = realloc(query, new_size + 1);
+		} while (new_size > size);
+
+	}
+
+	int res = sqlite3_exec(priv->db, query, NULL, NULL, NULL);
+	free(query);
+
+	if (res != SQLITE_OK) {
+		ds->state = sqlite_get_ds_state_error(res);
+		pom_log(POM_LOG_ERR "Failed to delete entries from dataset \"%s\"", ds->name);
+		return POM_ERR;
+	}
+
+	ds->state = DATASET_STATE_DONE;
+
+	return res;
+}
+
+static int datastore_dataset_destroy_sqlite(struct dataset *ds) {
+
+	struct datastore_priv_sqlite *priv = ds->dstore->priv;
+	int size = 0, new_size = 32;
+	char *query = malloc(new_size + 1);
+	do {
+		size = new_size;
+		new_size = snprintf(query, size, "DROP TABLE %s", ds->name);
+		new_size = ((new_size <= -1) ? size * 2 : new_size + 1);
+		query = realloc(query, new_size + 1);
+	} while (new_size > size);
+
+	int res = sqlite3_exec(priv->db, query, NULL, NULL, NULL);
+	free(query);
+
+	if (res != SQLITE_OK) {
+		ds->state = sqlite_get_ds_state_error(res);
+		pom_log(POM_LOG_ERR "Failed to create destroy \"%s\"", ds->name);
+		return POM_ERR;
+	}
+
+	ds->state = DATASET_STATE_DONE;
+
+	return res;
+}
+
 static int datastore_dataset_cleanup_sqlite(struct dataset *ds) {
 
 	struct dataset_priv_sqlite *priv = ds->priv;
@@ -560,6 +684,32 @@ static int sqlite_get_ds_state_error(int res) {
 			return DATASET_STATE_ERR;
 	}
 	
-	return DATASET_STATE_DATSTORE_ERR;
+	return DATASET_STATE_DATASTORE_ERR;
+}
 
+static size_t sqlite_escape_string(char *to, char *from, size_t len) {
+
+	size_t out_len = 0, i;
+
+	for (i = 0; i < len; i++) {
+
+		switch (from[i]) {
+			case '\'':
+			case '\\':
+				to[out_len] = '\\';
+				to[out_len + 1] = from[i];
+				out_len += 2;
+				break;
+
+			default:
+				to[out_len] = from[i];
+				out_len++;
+				break;
+
+		}
+	}
+	to[out_len] = 0;
+	out_len++;
+
+	return out_len;
 }

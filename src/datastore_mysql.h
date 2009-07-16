@@ -70,6 +70,8 @@ static int datastore_dataset_alloc_mysql(struct dataset *ds);
 static int datastore_dataset_create_mysql(struct dataset *ds);
 static int datastore_dataset_read_mysql(struct dataset *ds);
 static int datastore_dataset_write_mysql( struct dataset *ds);
+static int datastore_dataset_delete_mysql(struct dataset *ds);
+static int datastore_dataset_destroy_mysql(struct dataset *ds);
 static int datastore_dataset_cleanup_mysql(struct dataset *ds);
 static int datastore_close_mysql(struct datastore *d);
 static int datastore_cleanup_mysql(struct datastore *d);

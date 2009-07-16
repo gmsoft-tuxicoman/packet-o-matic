@@ -41,7 +41,7 @@
 #define DATASET_STATE_DONE 0
 #define DATASET_STATE_MORE 1
 #define DATASET_STATE_ERR -1
-#define DATASET_STATE_DATSTORE_ERR -2 // Error occured at datastore level
+#define DATASET_STATE_DATASTORE_ERR -2 // Error occured at datastore level
 
 /// Possible read directions
 #define DATASET_READ_ORDER_ASC 0
@@ -67,14 +67,16 @@ struct datavalue {
 	struct ptype *value;
 };
 
-struct datavalue_read_condition {
-	uint16_t field_id; ///< Field to compare against
+
+/// Condition used in read and delete query
+struct datavalue_condition {
+	short field_id; ///< Field to compare against
 	int op; ///< Ptype operation
 	struct ptype *value; ///< Value to compare with
 };
 
 struct datavalue_read_order {
-	uint16_t field_id; ///< Field to sort
+	short field_id; ///< Field to sort
 	int direction; ///< False for ascending, true for descending
 };
 
@@ -92,7 +94,8 @@ struct dataset {
 	struct datavalue *query_data;
 	uint64_t data_id; ///< id of the data in the dataset
 
-	struct datavalue_read_condition *query_read_cond;
+	struct datavalue_condition *query_cond; // Condition for read and delete query
+
 	struct datavalue_read_order *query_read_order;
 
 	void *priv; ///< Private data of the dataset
@@ -168,7 +171,7 @@ struct datastore_reg {
 
 	/// Pointer to the dataset_alloc function
 	/**
-	 * The dataste_alloc function will allocate private data for the dataset
+	 * The dataset_alloc function will allocate private data for the dataset
 	 * @param ds The dataset to allocate private data to
 	 * @return POM_OK on success, POM_ERR on failure.
 	 */
@@ -176,7 +179,7 @@ struct datastore_reg {
 
 	/// Pointer to the dataset_create function
 	/**
-	 * The dataste_create function will create a new dataset in the database.
+	 * The dataset_create function will create a new dataset in the database.
 	 * @param query The full description of the dataset
 	 * @return POM_OK on success, POM_ERR on failure.
 	 */
@@ -184,7 +187,7 @@ struct datastore_reg {
 
 	/// Pointer to the dataset_read function
 	/**
-	 * The dataste_read function will read data from the dataset
+	 * The dataset_read function will read data from the dataset
 	 * @param query Query
 	 * @return POM_OK on success, POM_ERR on failure.
 	 */
@@ -192,14 +195,29 @@ struct datastore_reg {
 
 	/// Pointer to the dataset_write function
 	/**
-	 * The dataste_write function will read write to the dataset
+	 * The dataset_write function will read write to the dataset
 	 * @param query Query
 	 * @return POM_OK on success, POM_ERR on failure.
 	 */
 	int (*dataset_write) (struct dataset *query);
 
+	/// Pointer to the dataset_delete function
+	/*
+	 * The dataset_delete function will erase entries from the dataset
+	 * @param query Query
+	 * @return POM_OK on success, POM_ERR on failure.
+	 */
+	int (*dataset_delete) (struct dataset *query);
+
 	/**
-	 * The dataste_cleanup function will free the private data of the dataset
+	 * The dataset_destroy function will remove the dataset from the datastore
+	 * @param ds The dataset to remove
+	 * @return POM_OK on success, POM_ERR on failure.
+	 **/
+	 int (*dataset_destroy) (struct dataset *ds);
+
+	/**
+	 * The dataset_cleanup function will free the private data of the dataset
 	 * @param query The dataset to free the private data from
 	 * @return POM_OK on success, POM_ERR on failure.
 	 */
@@ -271,6 +289,9 @@ int datastore_dataset_read(struct dataset *query);
 
 /// Write an entry to a dataset in a datastore
 int datastore_dataset_write(struct dataset *query);
+
+// Destroy a dataset
+int datastore_dataset_destroy(struct dataset *ds);
 
 // Close a dataset
 int datastore_dataset_close(struct dataset *ds);

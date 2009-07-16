@@ -65,6 +65,8 @@ int datastore_register_postgres(struct datastore_reg *r) {
 	r->dataset_create = datastore_dataset_create_postgres;
 	r->dataset_read = datastore_dataset_read_postgres;
 	r->dataset_write = datastore_dataset_write_postgres;
+	r->dataset_delete = datastore_dataset_delete_postgres;
+	r->dataset_destroy = datastore_dataset_destroy_postgres;
 	r->dataset_cleanup = datastore_dataset_cleanup_postgres;
 	r->close = datastore_close_postgres;
 	r->cleanup = datastore_cleanup_postgres;
@@ -425,45 +427,54 @@ static int datastore_dataset_read_postgres(struct dataset *ds) {
 		}
 
 		char *read_query = priv->read_query_start;
-		struct datavalue_read_condition *qrc = ds->query_read_cond;
-		if (qrc) {
+		struct datavalue_condition *qc = ds->query_cond;
+		if (qc) {
 			struct datavalue *dv = ds->query_data;
 			int size, new_size = priv->read_query_buff_size;
 
 			read_query = priv->read_query_buff;
+
+			char *string_val = NULL;
+			if (dv[qc->field_id].native_type == POSTGRES_PTYPE_STRING) {
+				size_t len = strlen(PTYPE_STRING_GETVAL(qc->value));
+				string_val = malloc((len * 2) + 1);
+				PQescapeString(string_val, PTYPE_STRING_GETVAL(qc->value), len);
+			}
+
+
 			while (1) {
 				size = new_size;
 				char *op = NULL;
-				switch (qrc->op) {
+				switch (qc->op) {
 					case PTYPE_OP_EQ:
 						op = "=";
 						break;
 					default:
-						op = ptype_get_op_sign(qrc->op);
+						op = ptype_get_op_sign(qc->op);
 						break;
 
 				}
-				switch (dv[qrc->field_id].native_type) {
+				switch (dv[qc->field_id].native_type) {
 					case POSTGRES_PTYPE_BOOL:
-						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query_start, dv[qrc->field_id].name, op, PTYPE_UINT8_GETVAL(qrc->value));
+						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query_start, dv[qc->field_id].name, op, PTYPE_UINT8_GETVAL(qc->value));
 						break;
 					case POSTGRES_PTYPE_UINT8:
-						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query_start, dv[qrc->field_id].name, op, PTYPE_UINT8_GETVAL(qrc->value));
+						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query_start, dv[qc->field_id].name, op, PTYPE_UINT8_GETVAL(qc->value));
 						break;
 					case POSTGRES_PTYPE_UINT16:
-						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query_start, dv[qrc->field_id].name, op, PTYPE_UINT16_GETVAL(qrc->value));
+						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query_start, dv[qc->field_id].name, op, PTYPE_UINT16_GETVAL(qc->value));
 						break;
 					case POSTGRES_PTYPE_UINT32:
-						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query_start, dv[qrc->field_id].name, op, PTYPE_UINT32_GETVAL(qrc->value));
+						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query_start, dv[qc->field_id].name, op, PTYPE_UINT32_GETVAL(qc->value));
 						break;
 					case POSTGRES_PTYPE_UINT64:
-						new_size = snprintf(read_query, size, "%s WHERE %s %s %llu", priv->read_query_start, dv[qrc->field_id].name, op, (unsigned long long) PTYPE_UINT64_GETVAL(qrc->value));
+						new_size = snprintf(read_query, size, "%s WHERE %s %s %llu", priv->read_query_start, dv[qc->field_id].name, op, (unsigned long long) PTYPE_UINT64_GETVAL(qc->value));
 						break;
 					case POSTGRES_PTYPE_STRING:
-						new_size = snprintf(read_query, size, "%s WHERE %s %s '%s'", priv->read_query_start, dv[qrc->field_id].name, op, PTYPE_STRING_GETVAL(qrc->value));
+						new_size = snprintf(read_query, size, "%s WHERE %s %s '%s'", priv->read_query_start, dv[qc->field_id].name, op, string_val);
 						break;
 					default:
-						pom_log(POM_LOG_ERR "Unsupported ptype in read condition");
+						pom_log(POM_LOG_ERR "Unsupported ptype in query condition");
 						priv->read_query_buff = read_query;
 						priv->read_query_buff_size = size;
 						return POM_ERR;
@@ -477,6 +488,9 @@ static int datastore_dataset_read_postgres(struct dataset *ds) {
 			}
 			priv->read_query_buff = read_query;
 			priv->read_query_buff_size = size;
+
+			if (string_val)
+				free(string_val);
 
 
 		}
@@ -727,6 +741,101 @@ static int datastore_dataset_write_postgres(struct dataset *ds) {
 	return POM_OK;
 }
 
+static int datastore_dataset_delete_postgres(struct dataset* ds) {
+
+	int size, new_size = 64;
+	char *query = malloc(new_size + 1);
+	struct datavalue_condition *qc = ds->query_cond;
+	if (qc) {
+		struct datavalue *dv = ds->query_data;
+
+		char *string_val = NULL;
+		if (dv[qc->field_id].native_type == POSTGRES_PTYPE_STRING) {
+			size_t len = strlen(PTYPE_STRING_GETVAL(qc->value));
+			string_val = malloc((len * 2) + 1);
+			PQescapeString(string_val, PTYPE_STRING_GETVAL(qc->value), len);
+		}
+
+		while (1) {
+			size = new_size;
+			char *op = NULL;
+			switch (qc->op) {
+				case PTYPE_OP_EQ:
+					op = "=";
+					break;
+				default:
+					op = ptype_get_op_sign(qc->op);
+					break;
+
+			}
+			switch (dv[qc->field_id].native_type) {
+				case POSTGRES_PTYPE_BOOL:
+					new_size = snprintf(query, size, "DELETE FROM %s WHERE %s %s %u", ds->name, dv[qc->field_id].name, op, PTYPE_UINT8_GETVAL(qc->value));
+					break;
+				case POSTGRES_PTYPE_UINT8:
+					new_size = snprintf(query, size, "DELETE FROM %s WHERE %s %s %u", ds->name, dv[qc->field_id].name, op, PTYPE_UINT8_GETVAL(qc->value));
+					break;
+				case POSTGRES_PTYPE_UINT16:
+					new_size = snprintf(query, size, "DELETE FROM %s WHERE %s %s %u", ds->name, dv[qc->field_id].name, op, PTYPE_UINT16_GETVAL(qc->value));
+					break;
+				case POSTGRES_PTYPE_UINT32:
+					new_size = snprintf(query, size, "DELETE FROM %s WHERE %s %s %u", ds->name, dv[qc->field_id].name, op, PTYPE_UINT32_GETVAL(qc->value));
+					break;
+				case POSTGRES_PTYPE_UINT64:
+					new_size = snprintf(query, size, "DELETE FROM %s WHERE %s %s %llu", ds->name, dv[qc->field_id].name, op, (unsigned long long) PTYPE_UINT64_GETVAL(qc->value));
+					break;
+				case POSTGRES_PTYPE_STRING:
+					new_size = snprintf(query, size, "DELETE FROM %s WHERE %s %s '%s'", ds->name, dv[qc->field_id].name, op, string_val);
+					break;
+				default:
+					pom_log(POM_LOG_ERR "Unsupported ptype in query condition");
+					return POM_ERR;
+			}
+			if (new_size >= -1 && new_size < size)
+				break;
+			
+			new_size = ((new_size <= -1) ? size * 2 : new_size + 1);
+			query = realloc(query, new_size + 1);
+
+		}
+
+		if (string_val)
+			free(string_val);
+
+	} else {
+
+		do {
+			size = new_size;
+			new_size = snprintf(query, size, "DELETE FROM %s", ds->name);
+			new_size = ((new_size <= -1) ? size * 2 : new_size + 1);
+			query = realloc(query, new_size + 1);
+		} while (new_size > size);
+
+	}
+
+	int res = postgres_exec(ds, query);
+	free(query);
+
+	return res;
+}
+
+static int datastore_dataset_destroy_postgres(struct dataset *ds) {
+
+	int size = 0, new_size = 64;
+	char *query = malloc(new_size + 1);
+	do {
+		size = new_size;
+		new_size = snprintf(query, size, "DROP TABLE %s; DROP SEQUENCE %s_seq;", ds->name, ds->name);
+		new_size = ((new_size <= -1) ? size * 2 : new_size + 1);
+		query = realloc(query, new_size + 1);
+	} while (new_size > size);
+
+	int res = postgres_exec(ds, query);
+	free(query);
+
+	return res;
+}
+
 static int datastore_dataset_cleanup_postgres(struct dataset *ds) {
 
 	struct dataset_priv_postgres *priv = ds->priv;
@@ -803,7 +912,7 @@ static int postgres_exec(struct dataset *ds, const char *query) {
 			PQclear(res);
 
 			if (postgres_reconnect(priv) == POM_ERR) {
-				ds->state = DATASET_STATE_DATSTORE_ERR;
+				ds->state = DATASET_STATE_DATASTORE_ERR;
 				return POM_ERR;
 			}
 
@@ -840,7 +949,7 @@ static int postgres_get_ds_state_error(struct dataset *ds, PGresult *res) {
 			return DATASET_STATE_ERR;
 	}
 
-	return DATASET_STATE_DATSTORE_ERR;
+	return DATASET_STATE_DATASTORE_ERR;
 
 }
 

@@ -45,6 +45,9 @@ struct mgmt_command_arg* mgmtcmd_datastore_avail_completion(int argc, char *argv
 int mgmtcmd_datastore_help(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_datastore_unload(struct mgmt_connection *c, int argc, char *argv[]);
 struct mgmt_command_arg* mgmtcmd_datastore_unload_completion(int argc, char *argv[]);
+int mgmtcmd_datastore_dataset_show(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_datastore_dataset_destroy(struct mgmt_connection *c, int argc, char *argv[]);
+struct mgmt_command_arg *mgmtcmd_datastore_dataset_destroy_completion(int argc, char *argv[]);
 
 struct datastore *mgmtcmd_get_datastore(char *datastore);
 #endif

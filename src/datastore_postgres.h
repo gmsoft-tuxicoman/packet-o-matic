@@ -86,6 +86,8 @@ static int datastore_dataset_alloc_postgres(struct dataset *ds);
 static int datastore_dataset_create_postgres(struct dataset *ds);
 static int datastore_dataset_read_postgres(struct dataset *ds);
 static int datastore_dataset_write_postgres( struct dataset *ds);
+static int datastore_dataset_delete_postgres( struct dataset *ds);
+static int datastore_dataset_destroy_postgres(struct dataset *ds);
 static int datastore_dataset_cleanup_postgres(struct dataset *ds);
 static int datastore_close_postgres(struct datastore *d);
 static int datastore_cleanup_postgres(struct datastore *d);

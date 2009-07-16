@@ -72,6 +72,8 @@ int datastore_register_mysql(struct datastore_reg *r) {
 	r->dataset_create = datastore_dataset_create_mysql;
 	r->dataset_read = datastore_dataset_read_mysql;
 	r->dataset_write = datastore_dataset_write_mysql;
+	r->dataset_delete = datastore_dataset_delete_mysql;
+	r->dataset_destroy = datastore_dataset_destroy_mysql;
 	r->dataset_cleanup = datastore_dataset_cleanup_mysql;
 	r->close = datastore_close_mysql;
 	r->cleanup = datastore_cleanup_mysql;
@@ -359,41 +361,48 @@ static int datastore_dataset_read_mysql(struct dataset *ds) {
 	if (ds->state != DATASET_STATE_MORE) {
 		char *read_query = priv->read_query;
 
-		struct datavalue_read_condition *qrc = ds->query_read_cond;
-		if (qrc) {
+		struct datavalue_condition *qc = ds->query_cond;
+		if (qc) {
 			int size, new_size = priv->read_query_buff_size;
 
 			read_query = priv->read_query_buff;
 
+			char *string_val = NULL;
+			if (dv[qc->field_id].native_type == MYSQL_PTYPE_STRING) {
+				size_t len = strlen(PTYPE_STRING_GETVAL(qc->value));
+				string_val = malloc((len * 2) + 1);
+				mysql_real_escape_string(dpriv->connection, string_val, PTYPE_STRING_GETVAL(qc->value), len);
+			}
+
 			while (1) {
 				size = new_size;
 				char *op = NULL;
-				switch (qrc->op) {
+				switch (qc->op) {
 					case PTYPE_OP_EQ:
 						op = "=";
 						break;
 					default:
-						op = ptype_get_op_sign(qrc->op);
+						op = ptype_get_op_sign(qc->op);
 				}
 
-				switch (dv[qrc->field_id].native_type) {
+				switch (dv[qc->field_id].native_type) {
 					case MYSQL_PTYPE_BOOL:
-						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query, dv[qrc->field_id].name, op, PTYPE_BOOL_GETVAL(qrc->value));
+						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query, dv[qc->field_id].name, op, PTYPE_BOOL_GETVAL(qc->value));
 						break;
 					case MYSQL_PTYPE_UINT8:
-						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query, dv[qrc->field_id].name, op, PTYPE_UINT8_GETVAL(qrc->value));
+						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query, dv[qc->field_id].name, op, PTYPE_UINT8_GETVAL(qc->value));
 						break;
 					case MYSQL_PTYPE_UINT16:
-						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query, dv[qrc->field_id].name, op, PTYPE_UINT16_GETVAL(qrc->value));
+						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query, dv[qc->field_id].name, op, PTYPE_UINT16_GETVAL(qc->value));
 						break;
 					case MYSQL_PTYPE_UINT32:
-						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query, dv[qrc->field_id].name, op, PTYPE_UINT32_GETVAL(qrc->value));
+						new_size = snprintf(read_query, size, "%s WHERE %s %s %u", priv->read_query, dv[qc->field_id].name, op, PTYPE_UINT32_GETVAL(qc->value));
 						break;
 					case MYSQL_PTYPE_UINT64:
-						new_size = snprintf(read_query, size, "%s WHERE %s %s %llu", priv->read_query, dv[qrc->field_id].name, op, (unsigned long long) PTYPE_UINT64_GETVAL(qrc->value));
+						new_size = snprintf(read_query, size, "%s WHERE %s %s %llu", priv->read_query, dv[qc->field_id].name, op, (unsigned long long) PTYPE_UINT64_GETVAL(qc->value));
 						break;
 					case MYSQL_PTYPE_STRING:
-						new_size = snprintf(read_query, size, "%s WHERE %s %s '%s'", priv->read_query, dv[qrc->field_id].name, op, PTYPE_STRING_GETVAL(qrc->value));
+						new_size = snprintf(read_query, size, "%s WHERE %s %s '%s'", priv->read_query, dv[qc->field_id].name, op, string_val);
 						break;
 					default:
 						pom_log(POM_LOG_ERR "Unsupported ptype in read condition");
@@ -411,7 +420,9 @@ static int datastore_dataset_read_mysql(struct dataset *ds) {
 			}
 			priv->read_query_buff = read_query;
 			priv->read_query_buff_size = size;
-					
+			
+			if (string_val)
+				free(string_val);
 
 		}
 
@@ -656,6 +667,120 @@ static int datastore_dataset_write_mysql(struct dataset *ds) {
 	return POM_OK;
 }
 
+static int datastore_dataset_delete_mysql(struct dataset* ds) {
+
+	struct datastore_priv_mysql *priv = ds->dstore->priv;
+	int size, new_size = 64;
+	char *query = malloc(new_size + 1);
+	struct datavalue_condition *qc = ds->query_cond;
+	if (qc) {
+		struct datavalue *dv = ds->query_data;
+
+		char *string_val = NULL;
+		if (dv[qc->field_id].native_type == MYSQL_PTYPE_STRING) {
+			size_t len = strlen(PTYPE_STRING_GETVAL(qc->value));
+			string_val = malloc((len * 2) + 1);
+			mysql_real_escape_string(priv->connection, string_val, PTYPE_STRING_GETVAL(qc->value), len);
+		}
+
+		while (1) {
+			size = new_size;
+			char *op = NULL;
+			switch (qc->op) {
+				case PTYPE_OP_EQ:
+					op = "=";
+					break;
+				default:
+					op = ptype_get_op_sign(qc->op);
+					break;
+
+			}
+			switch (dv[qc->field_id].native_type) {
+				case MYSQL_PTYPE_BOOL:
+					new_size = snprintf(query, size, "DELETE FROM %s WHERE %s %s %u", ds->name, dv[qc->field_id].name, op, PTYPE_UINT8_GETVAL(qc->value));
+					break;
+				case MYSQL_PTYPE_UINT8:
+					new_size = snprintf(query, size, "DELETE FROM %s WHERE %s %s %u", ds->name, dv[qc->field_id].name, op, PTYPE_UINT8_GETVAL(qc->value));
+					break;
+				case MYSQL_PTYPE_UINT16:
+					new_size = snprintf(query, size, "DELETE FROM %s WHERE %s %s %u", ds->name, dv[qc->field_id].name, op, PTYPE_UINT16_GETVAL(qc->value));
+					break;
+				case MYSQL_PTYPE_UINT32:
+					new_size = snprintf(query, size, "DELETE FROM %s WHERE %s %s %u", ds->name, dv[qc->field_id].name, op, PTYPE_UINT32_GETVAL(qc->value));
+					break;
+				case MYSQL_PTYPE_UINT64:
+					new_size = snprintf(query, size, "DELETE FROM %s WHERE %s %s %llu", ds->name, dv[qc->field_id].name, op, (unsigned long long) PTYPE_UINT64_GETVAL(qc->value));
+					break;
+				case MYSQL_PTYPE_STRING:
+					new_size = snprintf(query, size, "DELETE FROM %s WHERE %s %s '%s'", ds->name, dv[qc->field_id].name, op, string_val);
+					break;
+				default:
+					pom_log(POM_LOG_ERR "Unsupported ptype in query condition");
+					return POM_ERR;
+			}
+			if (new_size >= -1 && new_size < size)
+				break;
+			
+			new_size = ((new_size <= -1) ? size * 2 : new_size + 1);
+			query = realloc(query, new_size + 1);
+
+		}
+		
+		if (string_val)
+			free(string_val);
+
+	} else {
+
+		do {
+			size = new_size;
+			new_size = snprintf(query, size, "DELETE FROM %s", ds->name);
+			new_size = ((new_size <= -1) ? size * 2 : new_size + 1);
+			query = realloc(query, new_size + 1);
+		} while (new_size > size);
+
+	}
+
+	int res = mysql_query(priv->connection, query);
+	free(query);
+
+	if (res) {
+		pom_log(POM_LOG_ERR "Failed to delete from dataset \"%s\" in datastore %s : %s", ds->name, ds->dstore->name, mysql_error(priv->connection));
+		ds->state = mysql_get_ds_state_error(priv->connection);
+		return POM_ERR;
+	}
+
+	ds->state = DATASET_STATE_DONE;
+
+
+	return res;
+}
+
+static int datastore_dataset_destroy_mysql(struct dataset *ds) {
+
+	struct datastore_priv_mysql *priv = ds->dstore->priv;
+	int size = 0, new_size = 32;
+	char *query = malloc(new_size + 1);
+	do {
+		size = new_size;
+		new_size = snprintf(query, size, "DROP TABLE %s", ds->name);
+		new_size = ((new_size <= -1) ? size * 2 : new_size + 1);
+		query = realloc(query, new_size + 1);
+	} while (new_size > size);
+
+	int res = mysql_query(priv->connection, query);
+	free(query);
+
+	if (res) {
+		pom_log(POM_LOG_ERR "Failed to destroy the dataset \"%s\" in datastore %s : %s", ds->name, ds->dstore->name, mysql_error(priv->connection));
+		ds->state = mysql_get_ds_state_error(priv->connection);
+		return POM_ERR;
+	}
+
+	ds->state = DATASET_STATE_DONE;
+
+	return res;
+}
+
 static int datastore_dataset_cleanup_mysql(struct dataset *ds) {
 
 	struct dataset_priv_mysql *priv = ds->priv;
@@ -731,7 +856,7 @@ static int mysql_get_ds_state_error(MYSQL *connection) {
 			return DATASET_STATE_ERR;
 	}
 
-	return DATASET_STATE_DATSTORE_ERR;
+	return DATASET_STATE_DATASTORE_ERR;
 
 }
 

@@ -34,9 +34,12 @@ Some modules such as input_pcap requires root privileges in order to perform the
 
 Dependencies :
 --------------
- - libpcap : optional to build input_pcap, target_pcap, target_inject and target_tcpkill
+ - libpcap : required to build input_pcap, target_pcap, target_inject and target_tcpkill
  - libxml2 : mandatory to parse the configuration
- - xmlrpc-c : optional to build XML-RPC interface and web interface
+ - xmlrpc-c : required to build XML-RPC interface and web interface
+ - MySQL : required to build datastore_mysql
+ - PostgreSQL : required to build datastore_postgres
+ - SQLite3 : required to build datastore_sqlite
 
 
 How it works :
