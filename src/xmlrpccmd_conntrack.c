@@ -169,6 +169,7 @@ xmlrpc_value *xmlrpccmd_set_conntrack_parameter(xmlrpc_env * const envP, xmlrpc_
 		free(value);
 		return NULL;
 	}
+	conntracks_serial++;
 	conntrack_unlock();
 
 	free(value);
@@ -210,7 +211,6 @@ xmlrpc_value *xmlrpccmd_load_conntrack(xmlrpc_env * const envP, xmlrpc_value * c
 		return NULL;
 	}
 
-	conntracks_serial++;
 	conntrack_unlock();
 
 	free(name);

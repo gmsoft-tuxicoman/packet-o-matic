@@ -843,7 +843,6 @@ int conntrack_cleanup() {
 		}
 	}
 
-	conntracks_serial++;
 
 	return POM_OK;
 
@@ -875,6 +874,8 @@ int conntrack_unregister(int conntrack_type) {
 			pom_log(POM_LOG_WARN "Error while closing library of conntrack %s", match_get_name(conntrack_type));
 		free(conntracks[conntrack_type]);
 		conntracks[conntrack_type] = NULL;
+
+		conntracks_serial++;
 		pom_log(POM_LOG_DEBUG "Conntrack %s unregistered", match_get_name(conntrack_type));
 	}
 

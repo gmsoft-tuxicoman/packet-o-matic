@@ -21,7 +21,7 @@
 #include "mgmtcmd_conntrack.h"
 #include "conntrack.h"
 
-#define MGMT_CONNTRACK_COMMANDS_NUM 5
+#define MGMT_CONNTRACK_COMMANDS_NUM 6
 
 static struct mgmt_command mgmt_conntrack_commands[MGMT_CONNTRACK_COMMANDS_NUM] = {
 
@@ -36,6 +36,14 @@ static struct mgmt_command mgmt_conntrack_commands[MGMT_CONNTRACK_COMMANDS_NUM] 
 		.help = "Change the value of a conntrack parameter",
 		.usage = "conntrack parameter set <conntrack> <parameter> <value>",
 		.callback_func = mgmtcmd_conntrack_parameter_set,
+		.completion = mgmtcmd_conntrack_parameter_set_completion,
+	},
+
+	{
+		.words = { "conntrack", "parameter", "reset", NULL },
+		.help = "Reset a conntrack parameter to its default value",
+		.usage = "conntrack parameter reset <conntrack> <parameter>",
+		.callback_func = mgmtcmd_conntrack_parameter_reset,
 		.completion = mgmtcmd_conntrack_parameter_set_completion,
 	},
 
@@ -174,6 +182,34 @@ int mgmtcmd_conntrack_parameter_set(struct mgmt_connection *c, int argc, char *a
 	else if (ptype_parse_val(p->value, argv[2]) != POM_OK) 
 		mgmtsrv_send(c, "Invalid value given\r\n");
 
+	conntracks_serial++;
+	conntrack_unlock();
+
+	return POM_OK;
+
+}
+
+int mgmtcmd_conntrack_parameter_reset(struct mgmt_connection *c, int argc, char *argv[]) {
+	
+	if (argc != 2) 
+		return MGMT_USAGE;
+
+	int id = match_get_type(argv[0]);
+	conntrack_lock(1);
+	if (!conntracks[id]) {
+		mgmtsrv_send(c, "No conntrack with that name loaded\r\n");
+		conntrack_unlock();
+		return POM_OK;
+	}
+
+	struct conntrack_param *p = conntrack_get_param(id, argv[1]);
+
+	if (!p)
+		mgmtsrv_send(c, "This parameter does not exists\r\n");
+	else if (ptype_parse_val(p->value, p->defval) != POM_OK) 
+		mgmtsrv_send(c, "Unable to parse \"%s\"\r\n", p->defval);
+
+	conntracks_serial++;
 	conntrack_unlock();
 
 	return POM_OK;

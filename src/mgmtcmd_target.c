@@ -25,7 +25,7 @@
 #include "target.h"
 
 
-#define MGMT_TARGET_COMMANDS_NUM 12
+#define MGMT_TARGET_COMMANDS_NUM 13
 
 static struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 
@@ -72,6 +72,14 @@ static struct mgmt_command mgmt_target_commands[MGMT_TARGET_COMMANDS_NUM] = {
 		.help = "Change the value of a target parameter",
 		.callback_func = mgmtcmd_target_parameter_set,
 		.usage = "target parameter set <rule_id> <target_id> <parameter> <value>",
+		.completion = mgmtcmd_target_parameter_set_completion,
+	},
+
+	{
+		.words = { "target", "parameter", "reset", NULL },
+		.help = "Reset a target parameter to its default value",
+		.callback_func = mgmtcmd_target_parameter_reset,
+		.usage = "target parameter reset <rule_id> <target_id> <parameter>",
 		.completion = mgmtcmd_target_parameter_set_completion,
 	},
 
@@ -526,6 +534,83 @@ int mgmtcmd_target_parameter_set(struct mgmt_connection *c, int argc, char *argv
 		return POM_OK;
 	}
 	free(param_str);
+
+	main_config->target_serial++;
+	rl->target_serial++;
+	t->serial++;
+	target_unlock_instance(t);
+
+	return POM_OK;
+
+}
+
+int mgmtcmd_target_parameter_reset(struct mgmt_connection *c, int argc, char *argv[]) {
+	
+	if (argc != 3)
+		return MGMT_USAGE;
+
+	main_config_rules_lock(0);
+
+	struct rule_list *rl = mgmtcmd_get_rule(argv[0]);
+
+	if (!rl) {
+		main_config_rules_unlock();
+		mgmtsrv_send(c, "Rule not found\r\n");
+		return POM_OK;
+	}
+
+	target_lock(0);
+	struct target *t = mgmtcmd_get_target(rl, argv[1]);
+
+	main_config_rules_unlock();
+
+	if (!t) {
+		target_unlock();
+		mgmtsrv_send(c, "Target not found\r\n");
+		return POM_OK;
+	}
+
+	target_lock_instance(t, 1);
+	target_unlock();
+
+	if (t->started) {
+		target_unlock_instance(t);
+		mgmtsrv_send(c, "Target must be stopped to change a parameter\r\n");
+		return POM_OK;
+	}
+	
+
+	struct target_param_reg *pr = t->mode->params;
+	while (pr) {
+		if (!strcmp(pr->name, argv[2]))
+			break;
+		pr = pr->next;
+	}
+
+	if (!pr) {
+		target_unlock_instance(t);
+		mgmtsrv_send(c, "No parameter %s for target %s\r\n", argv[2], target_get_name(t->type));
+		return POM_OK;
+	}
+
+	struct target_param *p = t->params;
+	while (p) {
+		if (p->type == pr)
+			break;
+		p = p->next;
+	}
+
+	if (!p) {
+		target_unlock_instance(t);
+		mgmtsrv_send(c, "Could not find parameter %s for target %s\r\n", argv[2], target_get_name(t->type));
+		return POM_OK;
+	}
+
+	if (ptype_parse_val(p->value, pr->defval) == POM_ERR) {
+		target_unlock_instance(t);
+		mgmtsrv_send(c, "Unable to parse \"%s\" for parameter %s\r\n", pr->defval, argv[2]);
+		return POM_OK;
+	}
 
 	main_config->target_serial++;
 	rl->target_serial++;

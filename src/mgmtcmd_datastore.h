@@ -37,6 +37,7 @@ int mgmtcmd_datastore_add(struct mgmt_connection *c, int argc, char *argv[]);
 struct mgmt_command_arg* mgmtcmd_datastore_type_completion(int argc, char *argv[]);
 int mgmtcmd_datastore_remove(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_datastore_parameter_set(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_datastore_parameter_reset(struct mgmt_connection *c, int argc, char *argv[]);
 struct mgmt_command_arg *mgmtcmd_datastore_parameter_set_completion(int argc, char *argv[]);
 int mgmtcmd_datastore_description_set(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_datastore_description_unset(struct mgmt_connection *c, int argc, char *argv[]);

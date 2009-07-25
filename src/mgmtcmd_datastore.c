@@ -24,7 +24,7 @@
 #include "datastore.h"
 
 
-#define MGMT_DATASTORE_COMMANDS_NUM 13
+#define MGMT_DATASTORE_COMMANDS_NUM 14
 
 static struct mgmt_command mgmt_datastore_commands[MGMT_DATASTORE_COMMANDS_NUM] = {
 
@@ -71,6 +71,14 @@ static struct mgmt_command mgmt_datastore_commands[MGMT_DATASTORE_COMMANDS_NUM] 
 		.help = "Change the value of a datastore parameter",
 		.callback_func = mgmtcmd_datastore_parameter_set,
 		.usage = "datastore parameter set <datastore_name> <parameter> <value>",
+		.completion = mgmtcmd_datastore_parameter_set_completion,
+	},
+
+	{
+		.words = { "datastore", "parameter", "reset", NULL },
+		.help = "Reset a datastore parameter to its default value",
+		.callback_func = mgmtcmd_datastore_parameter_reset,
+		.usage = "datastore parameter reset <datastore_name> <parameter>",
 		.completion = mgmtcmd_datastore_parameter_set_completion,
 	},
 
@@ -460,6 +468,58 @@ int mgmtcmd_datastore_parameter_set(struct mgmt_connection *c, int argc, char *a
 	if (ptype_parse_val(value, argv[2]) == POM_ERR) {
 		datastore_unlock_instance(d);
 		mgmtsrv_send(c, "Unable to parse \"%s\" for parameter %s\r\n", argv[2], argv[1]);
+		return POM_OK;
+	}
+
+	main_config->datastores_serial++;
+	d->serial++;
+	datastore_unlock_instance(d);
+
+	return POM_OK;
+
+}
+
+int mgmtcmd_datastore_parameter_reset(struct mgmt_connection *c, int argc, char *argv[]) {
+	
+	if (argc < 1)
+		return MGMT_USAGE;
+
+	main_config_datastores_lock(0);
+
+	struct datastore *d = mgmtcmd_get_datastore(argv[0]);
+
+
+	if (!d) {
+		main_config_datastores_unlock();
+		mgmtsrv_send(c, "Datastore not found\r\n");
+		return POM_OK;
+	}
+
+	datastore_lock_instance(d, 1);
+	main_config_datastores_unlock();
+
+	if (d->started) {
+		datastore_unlock_instance(d);
+		mgmtsrv_send(c, "Datastore must be stopped to change a parameter\r\n");
+		return POM_OK;
+	}
+
+	struct datastore_param *p = d->params;
+	while (p) {
+		if (!strcmp(p->type->name, argv[1]))
+			break;
+		p = p->next;
+	}
+
+	if (!p) {
+		datastore_unlock_instance(d);
+		mgmtsrv_send(c, "No parameter %s for datastore %s\r\n", argv[1], datastore_get_name(d->type));
+		return POM_OK;
+	}
+
+	if (ptype_parse_val(p->value, p->type->defval) == POM_ERR) {
+		datastore_unlock_instance(d);
+		mgmtsrv_send(c, "Unable to parse \"%s\" for parameter %s\r\n", p->type->defval, argv[1]);
 		return POM_OK;
 	}
 

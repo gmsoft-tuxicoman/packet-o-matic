@@ -23,7 +23,7 @@
 
 #include <pthread.h>
 
-#define MGMT_INPUT_COMMANDS_NUM 9
+#define MGMT_INPUT_COMMANDS_NUM 10
 
 static struct mgmt_command mgmt_input_commands[MGMT_INPUT_COMMANDS_NUM] = {
 
@@ -68,6 +68,15 @@ static struct mgmt_command mgmt_input_commands[MGMT_INPUT_COMMANDS_NUM] = {
 		.completion = mgmtcmd_input_parameter_set_completion,
 		.usage = "input parameter set <parameter> <value>",
 	},
+
+	{
+		.words = { "input", "parameter", "reset", NULL },
+		.help = "Reset an input parameter to its default value",
+		.callback_func = mgmtcmd_input_parameter_reset,
+		.completion = mgmtcmd_input_parameter_set_completion,
+		.usage = "input parameter reset <parameter>",
+	},
+
 
 	{
 		.words = { "input", "load", NULL },
@@ -354,12 +363,60 @@ int mgmtcmd_input_parameter_set(struct mgmt_connection *c, int argc, char *argv[
 	
 	if (ptype_parse_val(p->value, param) != POM_OK) {
 		mgmtsrv_send(c, "Could not parse \"%s\"\r\n", param);
+	} else {
+		main_config->input_serial++;
 	}
 
 	pthread_mutex_unlock(&rbuf->mutex);
-	main_config->input_serial++;
 
 	free(param);
+	return POM_OK;
+}
+
+int mgmtcmd_input_parameter_reset(struct mgmt_connection *c, int argc, char *argv[]) {
+	
+	if (argc < 1)
+		return MGMT_USAGE;
+
+	if (pthread_mutex_lock(&rbuf->mutex)) {
+		pom_log(POM_LOG_ERR "Error while locking the buffer mutex");
+		return POM_ERR;
+	}
+
+	if (!rbuf->i) {
+		pthread_mutex_unlock(&rbuf->mutex);
+		mgmtsrv_send(c, "No input configured yet. Use \"input type set <type>\" to choose an input\r\n");
+		return POM_OK;
+	}
+
+	if (rbuf->i->running) {
+		pthread_mutex_unlock(&rbuf->mutex);
+		mgmtsrv_send(c, "Input is running. You need to stop it before doing any change\r\n");
+		return POM_OK;
+	}
+
+	struct input_param *p = rbuf->i->mode->params;
+
+	while (p) {
+		if (!strcmp(p->name, argv[0]))
+			break;
+		p = p->next;
+	}
+
+	if (!p) {
+		pthread_mutex_unlock(&rbuf->mutex);
+		mgmtsrv_send(c, "Parameter %s does not exists\r\n", argv[0]);
+		return POM_OK;
+	}
+
+	if (ptype_parse_val(p->value, p->defval) != POM_OK) {
+		mgmtsrv_send(c, "Could not parse \"%s\"\r\n", p->defval);
+	} else {
+		main_config->input_serial++;
+	}
+
+	pthread_mutex_unlock(&rbuf->mutex);
+
 	return POM_OK;
 }
 

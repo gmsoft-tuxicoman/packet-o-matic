@@ -37,6 +37,7 @@ int mgmtcmd_target_add(struct mgmt_connection *c, int argc, char *argv[]);
 struct mgmt_command_arg* mgmtcmd_target_name_completion(int argc, char *argv[]);
 int mgmtcmd_target_remove(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_target_parameter_set(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_target_parameter_reset(struct mgmt_connection *c, int argc, char *argv[]);
 struct mgmt_command_arg *mgmtcmd_target_parameter_set_completion(int argc, char *argv[]);
 int mgmtcmd_target_description_set(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_target_description_unset(struct mgmt_connection *c, int argc, char *argv[]);

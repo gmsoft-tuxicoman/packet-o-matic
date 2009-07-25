@@ -22,7 +22,7 @@
 #include "mgmtcmd_helper.h"
 
 
-#define MGMT_HELPER_COMMANDS_NUM 5
+#define MGMT_HELPER_COMMANDS_NUM 6
 
 static struct mgmt_command mgmt_helper_commands[MGMT_HELPER_COMMANDS_NUM] = {
 
@@ -53,6 +53,14 @@ static struct mgmt_command mgmt_helper_commands[MGMT_HELPER_COMMANDS_NUM] = {
 		.help = "Change the value of a helper parameter",
 		.usage = "helper parameter set <helper> <parameter> <value>",
 		.callback_func = mgmtcmd_helper_parameter_set,
+		.completion = mgmtcmd_helper_parameter_set_completion,
+	},
+
+	{
+		.words = { "helper", "parameter", "reset", NULL},
+		.help = "Reset a helper parameter to its default value",
+		.usage = "helper parameter reset <helper> <parameter>",
+		.callback_func = mgmtcmd_helper_parameter_reset,
 		.completion = mgmtcmd_helper_parameter_set_completion,
 	},
 
@@ -231,6 +239,39 @@ int mgmtcmd_helper_parameter_set(struct mgmt_connection *c, int argc, char *argv
 	if (ptype_parse_val(p->value, argv[2]) != POM_OK) {
 		helper_unlock();
 		mgmtsrv_send(c, "Invalid value given\r\n");
+		return POM_OK;
+	}
+	helpers_serial++;
+	helper_unlock();
+
+	return POM_OK;
+
+}
+
+int mgmtcmd_helper_parameter_reset(struct mgmt_connection *c, int argc, char *argv[]) {
+	
+	if (argc != 2) 
+		return MGMT_USAGE;
+
+	int id = match_get_type(argv[0]);
+
+	helper_lock(1);
+	if (!helpers[id]) {
+		helper_unlock();
+		mgmtsrv_send(c, "No helper with that name loaded\r\n");
+		return POM_OK;
+	}
+
+	struct helper_param *p = helper_get_param(id, argv[1]);
+	if (!p) {
+		helper_unlock();
+		mgmtsrv_send(c, "This parameter does not exists\r\n");
+		return POM_OK;
+	}
+
+	if (ptype_parse_val(p->value, p->defval) != POM_OK) {
+		helper_unlock();
+		mgmtsrv_send(c, "Unable to parse \"%s\"\r\n");
 		return POM_OK;
 	}
 	helpers_serial++;

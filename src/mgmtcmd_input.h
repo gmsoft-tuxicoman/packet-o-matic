@@ -35,6 +35,7 @@ struct mgmt_command_arg* mgmtcmd_input_type_set_completion(int argc, char *argv[
 int mgmtcmd_input_mode_set(struct mgmt_connection *c, int argc, char *argv[]);
 struct mgmt_command_arg* mgmtcmd_input_mode_set_completion(int argc, char *argv[]);
 int mgmtcmd_input_parameter_set(struct mgmt_connection *c, int argc, char *argv[]);
+int mgmtcmd_input_parameter_reset(struct mgmt_connection *c, int argc, char *argv[]);
 struct mgmt_command_arg* mgmtcmd_input_parameter_set_completion(int argc, char *argv[]);
 int mgmtcmd_input_load(struct mgmt_connection *c, int argc, char *argv[]);
 int mgmtcmd_input_help(struct mgmt_connection *c, int argc, char *argv[]);
