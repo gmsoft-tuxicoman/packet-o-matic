@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2008-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,7 +32,7 @@ struct target_connection_priv_tftp {
 
 	int fd; ///< Must be -1 if no file is open
 
-	char filename[NAME_MAX]; ///< Filename known for this data connection
+	char filename[NAME_MAX + 1]; ///< Filename known for this data connection
 	int last_block; ///< Last recevied block
 
 	struct conntrack_entry *ce;

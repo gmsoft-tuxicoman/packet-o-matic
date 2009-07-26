@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2008-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -175,7 +175,7 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 	payload += sizeof(uint16_t);
 	size -= sizeof(uint16_t);
 
-	if (size < 7) { // 2 bytes for filename and 5 bytes for "mail"
+	if (size < 2) { // block id in ack packet
 		cp->is_invalid = 1;
 		return POM_OK;
 	}
@@ -183,6 +183,11 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 	switch (opcode) {
 		case tftp_rrq: 
 		case tftp_wrq: { // Read or write request
+
+			if (size < 7) { // filename at least 2 bytes, type at least 5 bytes ("mail")
+				cp->is_invalid = 1;
+				return POM_OK;
+			}
 
 			// Create a new conntrack priv entry for the data connection
 			struct target_conntrack_priv_tftp *new_cp;
@@ -205,11 +210,18 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 
 			conn->fd = -1;
 
-			int max = NAME_MAX;
-			if (size - 2 < max)
-				max = size - 2;
-			strncpy(conn->filename, payload, max - 2);
-			payload += strlen(conn->filename) + 1;
+			char *time_format = "-%Y%m%d-%H%M%S";
+			struct tm tmp;
+			localtime_r((time_t*)&f->tv.tv_sec, &tmp);
+			char time_str[NAME_MAX + 1];
+			strftime(time_str, NAME_MAX, time_format, &tmp);
+			
+
+			int max = NAME_MAX - strlen(time_str);
+			if (size < max)
+				max = size;
+			strncpy(conn->filename, payload, max);
+			strcat(conn->filename, time_str);
 
 			// Compute an expectation for the new data connection
 			struct expectation_list *expt  = expectation_alloc_from(f, t, ce, EXPT_DIR_REV);
@@ -225,11 +237,9 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 			// Associate conntrack entry to the expectation and add the expectation to the list
 			expectation_set_target_priv(expt, new_cp, target_close_connection_tftp);
 
-			if (expectation_add(expt, TFTP_CONNECTION_TIMER) == POM_ERR) {
-				free(new_cp->parsed_path);
-				free(new_cp);
+			if (expectation_add(expt, TFTP_CONNECTION_TIMER) == POM_ERR)
 				return POM_ERR;
-			}
+			
 
 			break;
 		}
@@ -241,8 +251,6 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 				cp->conn = malloc(sizeof(struct target_connection_priv_tftp));
 				memset(cp->conn, 0, sizeof(struct target_connection_priv_tftp));
 				cp->conn->fd = -1;
-
-
 			}
 
 			struct target_connection_priv_tftp *conn;
@@ -259,9 +267,11 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 			payload += sizeof(uint16_t);
 			size -= sizeof(uint16_t);
 
-			if (conn->fd == -1 && conn->last_block == 0 && tftp_file_open(cp, &f->tv) == POM_ERR)
-						return POM_ERR;
+			if (conn->fd == -1 && tftp_file_open(cp, &f->tv) == POM_ERR)
+				return POM_ERR;
 
+			// Simply discard packets we were supposed to receive before
+			// Out of order isn't supposed to occur since each packet must be acked
 			if (block_id <= conn->last_block)
 				break;
 
@@ -281,15 +291,15 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 				tftp_file_close(cp);
 			break;
 		}
-		case tftp_ack:
+		case tftp_ack: 
+			if (cp->conn && cp->conn->fd == -1 && cp->conn->last_block > 0) { // Ack for the last block
+				conntrack_remove_target_priv(cp, ce);
+				target_close_connection_tftp(t, ce, cp);
+			}
 			break;
 		case tftp_error:
-			if (cp->conn) {
-				if (cp->conn->fd)
-					tftp_file_close(cp);
-				if (*cp->conn->filename)
-					*cp->conn->filename = 0;
-			}
+			conntrack_remove_target_priv(cp, ce);
+			target_close_connection_tftp(t, ce, cp);
 			break;
 		default:
 			cp->is_invalid = 1;
