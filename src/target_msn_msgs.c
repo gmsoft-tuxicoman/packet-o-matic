@@ -801,6 +801,8 @@ int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *c
 				if (m->from && buddy_dest && m->from != buddy_dest)
 					pom_log(POM_LOG_DEBUG "Warning, destination buddy missmatch");
 				if (buddy_dest) { // The account we found wasn't the user
+					if (!cp->conv) // No conversation yet, adding this participant to create one
+						target_msn_session_found_party(t, cp, sip_hdrs[hdr_num].value, NULL, &f->tv);
 					if (buddy_guid)
 						cp->flags |= MSN_CONN_FLAG_WLM2009_BIN;
 				} else { // This was probably the account

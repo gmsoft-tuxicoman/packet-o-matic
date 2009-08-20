@@ -1,5 +1,14 @@
+* 2009/08/20 Guy Martin <gmsoft@tuxicoman.be>
+Fix unwanted PID detection in input_docsis.
+Don't error out in target_pcap if layer wasn't found in packet but simply issue a warning and continue.
+Fix small memory leak in xmlrpccmd_list_loaded_target().
+Make sure we use ssize_t and not size_t for read()s.
+Disable nasty XMLRPC_IPV6 hack.
+Fix multiple bugs in target_msn_session_merge().
+Make sure conntrack privs have a conversation created when receiving SIP messages in target_msn.
+
 * 2009/07/26 Guy Martin <gmsoft@tuxicoman.be>
-Improved and fix target_tftp when both way of the connections are captured.
+Improved and fix target_tftp when both ways of the connection are captured.
 
 * 2009/07/25 Guy Martin <gmsoft@tuxicoman.be>
 Added CLI commands to reset parameters to their default values.

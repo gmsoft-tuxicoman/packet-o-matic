@@ -267,7 +267,7 @@ int mgmtsrv_accept_connection(struct mgmt_connection *c) {
 int mgmtsrv_read_socket(struct mgmt_connection *c) {
 
 	
-	int res = 0;
+	ssize_t res = 0;
 	unsigned int len = 0;
 	unsigned char buffer[READ_BUFF_LEN];
 

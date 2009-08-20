@@ -50,6 +50,8 @@ struct target_priv_pcap {
 	unsigned long split_index, split_files_num;
 
 	struct target_conntrack_priv_pcap *ct_privs;
+
+	int issued_warning; ///< Make sure we warn users only once about some possible issue
 };
 
 struct target_conntrack_priv_pcap {

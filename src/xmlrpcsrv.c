@@ -474,7 +474,7 @@ abyss_bool xmlrpcsrv_default_handler(TSession * const sessionP) {
 
 	char buff[XMLRPC_READ_BLOCK_SIZE];
 	char *response = NULL;
-	size_t size = 0;
+	ssize_t size = 0;
 	do {
 		size_t read_size = read(fd, buff, XMLRPC_READ_BLOCK_SIZE);
 		if (read_size == -1) {

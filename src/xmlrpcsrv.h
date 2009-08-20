@@ -45,9 +45,12 @@
 /*
  * Enable IPv6 for XML-RPC, right now it's just a hack.
  * If you do so, only request made using host name will work, no raw IPv6 address.
- * Abyss can't parse connection port if there are more than one semicolon.
+ * Abyss can't parse connection port if there are more than one colon.
  */
-#define XMLRPC_IPV6
+
+// Disabled because it's not compatible with all versions of xmlrpc
+
+#undef XMLRPC_IPV6
 
 
 #ifdef XMLRPC_IPV6

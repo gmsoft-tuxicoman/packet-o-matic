@@ -609,7 +609,7 @@ static int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_d
 	
 
 		// Fill the mpeg buffer
-		size_t len = 0, r = 0;
+		ssize_t len = 0, r = 0;
 
 		do {
 			r = read(p->dvr_fd, buff + len, MPEG_TS_LEN - len);
@@ -645,8 +645,9 @@ static int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_d
 		}
 
 		// Check for the right PID, normaly the demux handle this
-		if ( ((buff[1] & 0x1F) != 0x1F) && (buff[2] != 0xFE)) {
-			p->invalid_packets++;
+		if ( ((buff[1] & 0x1F) != 0x1F) || (buff[2] != 0xFE)) {
+			// Don't count packets for other PID as invalid
+			//p->invalid_packets++;
 			return -1;
 		}
 
@@ -815,6 +816,10 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 
 		int res = input_docsis_read_mpeg_frame(mpeg_buff, p);
 
+		if (res == -1) { // Invalid MPEG packet. Discard it
+			continue;
+		}
+
 		if (i->mode == mode_file && res == -3) { // EOF
 			input_close(i);
 			return POM_OK;
@@ -861,7 +866,6 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 			}
 		}
 
-
 		// Check if we missed some packets. If so, fill the gap with 0xff
 		p->last_seq = (p->last_seq + 1) & 0xF;
 		while (p->last_seq != (mpeg_buff[3] & 0xF)) {
@@ -897,11 +901,6 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 
 
 		switch (res) {
-			case -1: // Invalid MPEG packet
-				pom_log(POM_LOG_TSHOOT "Invalid packet received, filling with stuff bytes");
-				memset(f->buff + packet_pos, 0xff, MPEG_TS_LEN - 4); // Fill buffer with stuff byte
-				packet_pos += MPEG_TS_LEN - 4;
-				continue;
 
 			case 0: // Packet is valid and does not contain the start of a PDU
 				memcpy(f->buff + packet_pos, mpeg_buff + 4, MPEG_TS_LEN - 4);

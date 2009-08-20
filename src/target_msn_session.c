@@ -322,6 +322,26 @@ int target_msn_session_found_account(struct target *t, struct target_conntrack_p
 					tmp_evt = tmp_evt->next;
 				}
 
+				// Update conversation participants
+				if (cp->conv) {
+					struct target_connection_party_msn *prev_part = NULL, *parts = cp->conv->parts;
+					while (parts) {
+						if (parts->buddy == bud) { // Delete this participant
+							if (prev_part)
+								prev_part->next = parts->next;
+							else
+								cp->conv->parts = parts->next;
+							free(parts);
+							break;
+						}
+						prev_part = parts;
+						parts = parts->next;
+					}
+
+					if (!cp->conv->parts) 
+						pom_log(POM_LOG_DEBUG "Conversation without participant after account found !");
+				}
+
 				if (bud->group_list)
 					free(bud->group_list);
 				free(bud);
@@ -475,7 +495,7 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 		
 		new_sess->buddies = new_bud->next;
 
-		if (!old_bud) { // Buddy wasn't found. Assign to existion session
+		if (!old_bud) { // Buddy wasn't found. Assign to existing session
 			new_bud->next = old_sess->buddies;
 			old_sess->buddies = new_bud;
 		} else {
@@ -583,6 +603,10 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 			struct target_event_msn *tmp_evt = new_conv->evt_buff;
 			while (tmp_evt) {
 				tmp_evt->sess = old_sess;
+				if (tmp_evt->from == &new_sess->user)
+					tmp_evt->from = &old_sess->user;
+				if (tmp_evt->to == &new_sess->user)
+					tmp_evt->to = &old_sess->user;
 				tmp_evt->conv = old_conv;
 				tmp_evt = tmp_evt->next;
 			}
@@ -597,8 +621,9 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 			// Replace conversation in the files
 			struct target_file_transfer_msn *file = new_sess->file;
 			while (file) {
-				if (file->conv == new_conv)
+				if (file->conv == new_conv) {
 					file->conv = old_conv;
+				}
 				file = file->next;
 			}
 
@@ -615,15 +640,24 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 			free(new_conv);
 		} else {
 			// Conversations are not the same, attach it to the old session
-			old_sess->conv->prev = new_conv;
+			if (old_sess->conv)
+				old_sess->conv->prev = new_conv;
+
 			new_conv->next = old_sess->conv;
 			new_conv->prev = NULL;
 			old_sess->conv = new_conv;
+
+			new_conv->sess = old_sess;
 
 			// Update conversation events
 			struct target_event_msn *tmp_evt = new_conv->evt_buff;
 			while (tmp_evt) {
 				tmp_evt->sess = old_sess;
+				if (tmp_evt->from == &new_sess->user)
+					tmp_evt->from = &old_sess->user;
+				if (tmp_evt->to == &new_sess->user)
+					tmp_evt->to = &old_sess->user;
+				tmp_evt = tmp_evt->next;
 			}
 		}
 
@@ -632,7 +666,20 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 	}
 
 	// Merge session events
-	struct target_event_msn *tmp_evt = old_sess->evt_buff;
+	
+	// Update session events
+	struct target_event_msn *tmp_evt = new_sess->evt_buff;
+	while (tmp_evt) {
+		tmp_evt->sess = old_sess;
+		if (tmp_evt->from == &new_sess->user)
+			tmp_evt->from = &old_sess->user;
+		if (tmp_evt->to == &new_sess->user)
+			tmp_evt->to = &old_sess->user;
+		tmp_evt = tmp_evt->next;
+	}
+
+	// Add them at the end of the buffer
+	tmp_evt = old_sess->evt_buff;
 	while (tmp_evt && tmp_evt->next)
 		tmp_evt = tmp_evt->next;
 	if (!tmp_evt)
@@ -658,6 +705,18 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 			if (old_sess->user.nick)
 				free(old_sess->user.nick);
 			old_sess->user.nick = new_sess->user.nick;
+		} else {
+			free(new_sess->user.nick);
+		}
+	}
+
+	if (new_sess->user.psm) {
+		if (!old_sess->user.psm || strcmp(old_sess->user.psm, new_sess->user.psm)) {
+			if (old_sess->user.psm)
+				free(old_sess->user.psm);
+			old_sess->user.psm = new_sess->user.psm;
+		} else {
+			free(new_sess->user.psm);
 		}
 	}
 

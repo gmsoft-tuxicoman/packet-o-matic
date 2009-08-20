@@ -200,7 +200,7 @@ int target_register_param_value(struct target *t, struct target_mode *mode, cons
 		p = p->next;
 	}
 	if (!p) {
-		pom_log(POM_LOG_ERR "Error while registering parameter value for param %s. This parameter isn't registered yet");
+		pom_log(POM_LOG_ERR "Error while registering parameter value for param %s. This parameter isn't registered yet", name);
 		return POM_ERR;
 	}
 

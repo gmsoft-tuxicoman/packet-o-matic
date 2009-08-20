@@ -234,8 +234,11 @@ static int target_process_pcap(struct target *t, struct frame *f) {
 
 	if (start == POM_ERR) {
 
-		pom_log(POM_LOG_WARN "target_pcap: Unable to find the start of the packet. You probably need to set the parameter \"layer\" to \"%s\"", match_get_name(f->l->type));
-		return POM_ERR;
+		if (!priv->issued_warning) {
+			pom_log(POM_LOG_WARN "Unable to find the start of the packet. You probably need to set the parameter \"layer\" to \"%s\"", match_get_name(f->l->type));
+			priv->issued_warning = 1;
+		}
+		return POM_OK;
 
 	}
 	
