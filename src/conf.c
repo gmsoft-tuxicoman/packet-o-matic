@@ -72,6 +72,7 @@ int config_cleanup(struct conf* c) {
 	while (c->datastores) {
 		struct datastore* tmp = c->datastores;
 		c->datastores = tmp->next;
+		datastore_lock_instance(tmp, 1); // unlocked by datastore_cleanup()
 		datastore_close(tmp);
 		datastore_cleanup(tmp);
 	}

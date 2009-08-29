@@ -25,6 +25,7 @@
 #include "ptype_uint16.h"
 #include "ptype_uint32.h"
 #include "ptype_uint64.h"
+#include "ptype_timestamp.h"
 
 #define SQLITE_PKID_NAME	"pkid"
 
@@ -35,8 +36,9 @@
 #define SQLITE_PTYPE_UINT32	4
 #define SQLITE_PTYPE_UINT64	5
 #define SQLITE_PTYPE_STRING	6
+#define SQLITE_PTYPE_TIMESTAMP	7
 
-static struct ptype *pt_bool, *pt_uint8, *pt_uint16, *pt_uint32, *pt_uint64, *pt_string;
+static struct ptype *pt_bool, *pt_uint8, *pt_uint16, *pt_uint32, *pt_uint64, *pt_string, *pt_timestamp;
 
 int datastore_register_sqlite(struct datastore_reg *r) {
 
@@ -48,8 +50,9 @@ int datastore_register_sqlite(struct datastore_reg *r) {
 	pt_uint32 = ptype_alloc("uint32", NULL);
 	pt_uint64 = ptype_alloc("uint64", NULL);
 	pt_string = ptype_alloc("string", NULL);
+	pt_timestamp = ptype_alloc("timestamp", NULL);
 
-	if (!pt_bool || !pt_uint8 || !pt_uint16 || !pt_uint32 || !pt_uint64 || !pt_string) {
+	if (!pt_bool || !pt_uint8 || !pt_uint16 || !pt_uint32 || !pt_uint64 || !pt_string || !pt_timestamp) {
 		datastore_unregister_sqlite(r);
 		return POM_ERR;
 	}
@@ -107,6 +110,8 @@ static int datastore_open_sqlite(struct datastore *d) {
 		return POM_ERR;
 	}
 
+	sqlite3_busy_handler(priv->db, sqlite_busy_callback, NULL);
+
 	pom_log(POM_LOG_INFO "Connected on database %s", dbfile);
 
 	return POM_OK;
@@ -138,6 +143,8 @@ static int datastore_dataset_alloc_sqlite(struct dataset *ds) {
 			dv[i].native_type = SQLITE_PTYPE_UINT64;
 		else if (dv[i].value->type == pt_string->type)
 			dv[i].native_type = SQLITE_PTYPE_STRING;
+		else if (dv[i].value->type == pt_timestamp->type)
+			dv[i].native_type = SQLITE_PTYPE_TIMESTAMP;
 		else
 			dv[i].native_type = SQLITE_PTYPE_OTHER;
 
@@ -413,6 +420,11 @@ static int datastore_dataset_read_sqlite(struct dataset *ds) {
 				PTYPE_UINT64_SETVAL(dv[i].value, res);
 				break;
 			}
+			case SQLITE_PTYPE_TIMESTAMP: {
+				time_t res = sqlite3_column_int64(priv->read_stmt, i + 1);
+				PTYPE_TIMESTAMP_SETVAL(dv[i].value, res);
+				break;
+			}
 			default: {
 				const unsigned char *res = sqlite3_column_text(priv->read_stmt, i + 1);
 				if (ptype_parse_val(dv[i].value, (char*) res) != POM_OK) {
@@ -474,6 +486,11 @@ static int datastore_dataset_write_sqlite(struct dataset *ds) {
 			case SQLITE_PTYPE_STRING:
 				res = sqlite3_bind_text(priv->write_stmt, i + 1, PTYPE_STRING_GETVAL(dv[i].value), -1, SQLITE_STATIC);
 				break;
+			case SQLITE_PTYPE_TIMESTAMP: {
+				int64_t t = PTYPE_TIMESTAMP_GETVAL(dv[i].value);
+				res = sqlite3_bind_int64(priv->write_stmt, i + 1, t);
+				break;
+			}
 			default: {
 				int size, new_size = DATASTORE_SQLITE_TEMP_BUFFER_SIZE;
 				char *value = NULL;
@@ -671,6 +688,7 @@ static int datastore_unregister_sqlite(struct datastore_reg *r) {
 	ptype_cleanup(pt_uint32);
 	ptype_cleanup(pt_uint64);
 	ptype_cleanup(pt_string);
+	ptype_cleanup(pt_timestamp);
 
 	return POM_OK;
 }
@@ -713,3 +731,12 @@ static size_t sqlite_escape_string(char *to, char *from, size_t len) {
 
 	return out_len;
 }
+
+static int sqlite_busy_callback(void *priv, int retries) {
+	pom_log(POM_LOG_DEBUG "Database is busy. Retry #%i ...", retries);
+
+	usleep(10000);
+
+	return 1;
+
+};

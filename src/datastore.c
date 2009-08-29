@@ -1039,7 +1039,6 @@ int datastore_refcount_dec(int datastore_type) {
 int datastore_cleanup(struct datastore *d) {
 
 	if (!d || !datastores[d->type]) {
-		datastore_unlock_instance(d);
 		return POM_ERR;
 	}
 

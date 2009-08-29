@@ -25,6 +25,7 @@
 #include "ptype_uint16.h"
 #include "ptype_uint32.h"
 #include "ptype_uint64.h"
+#include "ptype_timestamp.h"
 
 #define MYSQL_PKID_NAME	"pkid"
 
@@ -35,8 +36,9 @@
 #define MYSQL_PTYPE_UINT32	4
 #define MYSQL_PTYPE_UINT64	5
 #define MYSQL_PTYPE_STRING	6
+#define MYSQL_PTYPE_TIMESTAMP	7
 
-static struct ptype *pt_bool, *pt_uint8, *pt_uint16, *pt_uint32, *pt_uint64, *pt_string;
+static struct ptype *pt_bool, *pt_uint8, *pt_uint16, *pt_uint32, *pt_uint64, *pt_string, *pt_timestamp;
 
 int datastore_register_mysql(struct datastore_reg *r) {
 
@@ -53,8 +55,9 @@ int datastore_register_mysql(struct datastore_reg *r) {
 	pt_uint32 = ptype_alloc("uint32", NULL);
 	pt_uint64 = ptype_alloc("uint64", NULL);
 	pt_string = ptype_alloc("string", NULL);
+	pt_timestamp = ptype_alloc("timestamp", NULL);
 	
-	if (!pt_bool || !pt_uint8 || !pt_uint16 || !pt_uint32 || !pt_uint64 || !pt_string) {
+	if (!pt_bool || !pt_uint8 || !pt_uint16 || !pt_uint32 || !pt_uint64 || !pt_string || !pt_timestamp) {
 		datastore_unregister_mysql(r);
 		return POM_ERR;
 	}
@@ -172,6 +175,8 @@ static int datastore_dataset_alloc_mysql(struct dataset *ds) {
 			dv[i].native_type = MYSQL_PTYPE_UINT64;
 		else if (dv[i].value->type == pt_string->type)
 			dv[i].native_type = MYSQL_PTYPE_STRING;
+		else if (dv[i].value->type == pt_timestamp->type)
+			 dv[i].native_type = MYSQL_PTYPE_TIMESTAMP;
 		else
 			dv[i].native_type = MYSQL_PTYPE_OTHER;
 
@@ -264,6 +269,11 @@ static int datastore_dataset_alloc_mysql(struct dataset *ds) {
 				b[i + 1].buffer = dv[i].value->value;
 				b[i + 1].buffer_length = sizeof(uint64_t);
 				break;
+			case MYSQL_PTYPE_TIMESTAMP:
+				b[i + 1].buffer_type = MYSQL_TYPE_TIMESTAMP;
+				b[i + 1].buffer = malloc(sizeof(MYSQL_TIME));
+				b[i + 1].buffer_length = sizeof(MYSQL_TIME);
+				break;
 			case MYSQL_PTYPE_STRING:
 			case MYSQL_PTYPE_OTHER:
 				// Do not allocate value but handle that later on
@@ -315,6 +325,9 @@ static int datastore_dataset_create_mysql(struct dataset *ds) {
 				break;
 			case MYSQL_PTYPE_UINT64:
 				type = " BIGINT UNSIGNED";
+				break;
+			case MYSQL_PTYPE_TIMESTAMP:
+				type = " TIMESTAMP";
 				break;
 		}
 
@@ -612,15 +625,35 @@ static int datastore_dataset_write_mysql(struct dataset *ds) {
 	struct datavalue *dv = ds->query_data;
 	int i;
 	for (i = 0; dv[i].name; i++) {
-		if (dv[i].native_type != MYSQL_PTYPE_STRING &&
-			dv[i].native_type != MYSQL_PTYPE_OTHER)
-			continue;
 
+		// Handle timestamps
+		if (dv[i].native_type == MYSQL_PTYPE_TIMESTAMP) {
+			MYSQL_TIME *ts = b[i].buffer;
+			time_t my_time = PTYPE_TIMESTAMP_GETVAL(dv[i].value);
+			struct tm split_time;
+			
+			localtime_r(&my_time, &split_time);
+
+			ts->year = split_time.tm_year + 1900;
+			ts->month = split_time.tm_mon;
+			ts->day = split_time.tm_mday;
+
+			ts->hour = split_time.tm_hour;
+			ts->minute = split_time.tm_min;
+			ts->second = split_time.tm_sec;
+			continue;
+		}
+
+
+		// Handle type string and other
 		char *value = NULL;
-		if (dv[i].native_type == MYSQL_PTYPE_STRING)
+		if (dv[i].native_type == MYSQL_PTYPE_STRING) {
 			value = PTYPE_STRING_GETVAL(dv[i].value);
-		else
+		} else if (dv[i].native_type == MYSQL_PTYPE_OTHER) {
 			value = ptype_print_val_alloc(dv[i].value);
+		} else {
+			continue;
+		}
 
 		b[i].buffer = value;
 		unsigned long len = 0;
@@ -839,6 +872,7 @@ static int datastore_unregister_mysql(struct datastore_reg *r) {
 	ptype_cleanup(pt_uint32);
 	ptype_cleanup(pt_uint64);
 	ptype_cleanup(pt_string);
+	ptype_cleanup(pt_timestamp);
 
 	return POM_OK;
 

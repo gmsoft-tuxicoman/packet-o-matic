@@ -167,7 +167,10 @@ struct ptype* ptype_alloc_from(struct ptype *pt) {
  */
 int ptype_parse_val(struct ptype *pt, char *val) {
 
-	return ptypes[pt->type]->parse_val(pt, val);
+	if (ptypes[pt->type] && ptypes[pt->type]->parse_val)
+		return ptypes[pt->type]->parse_val(pt, val);
+	
+	return POM_ERR;
 }
 
 /**

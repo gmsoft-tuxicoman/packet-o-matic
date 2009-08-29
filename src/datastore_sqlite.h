@@ -68,6 +68,6 @@ static int datastore_unregister_sqlite(struct datastore_reg *r);
 
 static int sqlite_get_ds_state_error(int res);
 static size_t sqlite_escape_string(char *to, char *from, size_t len);
-
+static int sqlite_busy_callback(void *priv, int retries);
 
 #endif

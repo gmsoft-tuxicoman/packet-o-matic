@@ -30,6 +30,7 @@
 #include "ptype_bool.h"
 #include "ptype_uint16.h"
 #include "ptype_string.h"
+#include "ptype_timestamp.h"
 
 static unsigned int match_undefined_id;
 static struct target_mode *mode_default;
@@ -37,7 +38,7 @@ static struct target_mode *mode_default;
 static unsigned long long total_delivery = 0; ///< Used in mail filename to avoid duplicate
 
 static struct datavalue_descr dataset_fields[7] = {
-	{ "time", "string" },
+	{ "time", "timestamp" },
 	{ "client", "string" },
 	{ "server", "string" },
 	{ "port", "uint16" },
@@ -430,7 +431,7 @@ static int pop_process_line(struct target *t, struct target_conntrack_priv_pop *
 
 			if (cp->logon_data) {
 				struct datavalue *dv = cp->logon_data;
-				PTYPE_STRING_SETVAL(dv[0].value, strformat);
+				PTYPE_TIMESTAMP_SETVAL(dv[0].value, f->tv.tv_sec);
 				PTYPE_STRING_SETVAL_P(dv[1].value, src);
 				PTYPE_STRING_SETVAL_P(dv[2].value, dst);
 				ptype_parse_val(dv[3].value, port);

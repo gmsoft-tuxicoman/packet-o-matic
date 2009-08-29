@@ -29,6 +29,7 @@
 #include "ptype_uint16.h"
 #include "ptype_uint32.h"
 #include "ptype_uint64.h"
+#include "ptype_timestamp.h"
 
 int target_init_log_http(struct target *t) {
 
@@ -117,7 +118,7 @@ int target_init_log_http(struct target *t) {
 	ds_fields['s'].name = "status";
 	ds_fields['s'].type = "uint16";
 	ds_fields['t'].name = "request_recvd_time";
-	ds_fields['t'].type = "string";
+	ds_fields['t'].type = "timestamp";
 	ds_fields['T'].name = "request_elapsed_time";
 	ds_fields['T'].type = "uint32";
 	ds_fields['u'].name = "username";
@@ -475,7 +476,7 @@ int target_write_log_http(struct target_priv_http *priv, struct target_conntrack
 
 				case 's':
 					snprintf(buff, sizeof(buff), "%u", cp->info.err_code);
-					output=buff;
+					output = buff;
 					break;
 
 				case 't': 
@@ -653,16 +654,10 @@ int target_write_log_http(struct target_priv_http *priv, struct target_conntrack
 
 				case 't': 
 					if (info->query_time.tv_sec) {
-						struct tm tmp;
-						localtime_r((time_t*)&info->query_time.tv_sec, &tmp);
-						strftime(buff, sizeof(buff) - 1, "%d/%b/%Y:%T %z", &tmp);
-						PTYPE_STRING_SETVAL(info->dset_data[i].value, buff);
+						PTYPE_TIMESTAMP_SETVAL(info->dset_data[i].value, info->query_time.tv_sec);
 					} else if (info->response_time.tv_sec) {
 						// Should we mark that it was the response time ?
-						struct tm tmp;
-						localtime_r((time_t*)&info->response_time.tv_sec, &tmp);
-						strftime(buff, sizeof(buff) - 1, "%d/%b/%Y:%T %z", &tmp);
-						PTYPE_STRING_SETVAL(info->dset_data[i].value, buff);
+						PTYPE_TIMESTAMP_SETVAL(info->dset_data[i].value, info->response_time.tv_sec);
 					}
 					break;
 

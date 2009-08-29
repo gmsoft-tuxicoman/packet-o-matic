@@ -30,6 +30,12 @@
 
 #include <libpq-fe.h>
 
+
+// A few defs usefull for timestamps
+#define POSTGRES_EPOCH_JDATE	2451545 
+#define UNIX_EPOCH_JDATE	2440588 
+#define SECS_PER_DAY		86400
+
 struct datastore_priv_postgres {
 
 	struct ptype *dbname;
@@ -40,8 +46,9 @@ struct datastore_priv_postgres {
 
 	char *conninfo; // Connection string
 
-
 	PGconn *connection;
+
+	int integer_datetimes; // True if postgres server has timestamps as int64
 
 };
 
@@ -52,6 +59,8 @@ union datastore_postgres_data {
 	uint16_t uint16;
 	uint32_t uint32;
 	uint64_t uint64;
+	int64_t int64;
+	double dfloat;
 	char *str;
 
 };

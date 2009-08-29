@@ -654,9 +654,9 @@ size_t target_parse_query_response_http(struct target_priv_http *priv, struct ta
 							return POM_ERR;
 						cp->log_info = malloc(sizeof(struct http_log_info));
 						memset(cp->log_info, 0, sizeof(struct http_log_info));
-						cp->log_info->log_flags = priv->log_flags | HTTP_LOG_LOGGED_RESPONSE;
-					
+						cp->log_info->log_flags = priv->log_flags;
 					}
+					cp->log_info->log_flags |= HTTP_LOG_LOGGED_RESPONSE;
 					cp->state = HTTP_RESPONSE;
 					if (cp->log_info && (cp->log_info->log_flags & HTTP_LOG_REQUEST_PROTOCOL)) {
 						cp->log_info->request_proto = malloc(tok_size + 1);
@@ -667,22 +667,22 @@ size_t target_parse_query_response_http(struct target_priv_http *priv, struct ta
 					if (cp->info.headers_num > 0) // New query but headers are present -> reset
 						target_reset_conntrack_http(cp);
 
-					if (cp->log_info && (cp->log_info->log_flags & HTTP_LOG_LOGGED_RESPONSE)) {
+					if (cp->log_info && (cp->log_info->log_flags & HTTP_LOG_LOGGED_QUERY)) {
 						// We got a new query but we already have logging info from a previous one
 						// Let's log the previous one and start a new one
 						if (target_write_log_http(priv, cp) == POM_ERR)
 							return POM_ERR;
 						cp->log_info = malloc(sizeof(struct http_log_info));
 						memset(cp->log_info, 0, sizeof(struct http_log_info));
-						cp->log_info->log_flags = priv->log_flags | HTTP_LOG_LOGGED_QUERY;
-					
+						cp->log_info->log_flags = priv->log_flags;
 					}
+					cp->log_info->log_flags |= HTTP_LOG_LOGGED_QUERY;
+					cp->state = HTTP_QUERY;
 					if (cp->log_info && (cp->log_info->log_flags & HTTP_LOG_REQUEST_METHOD)) {
 						cp->log_info->request_method = malloc(tok_size + 1);
 						memcpy(cp->log_info->request_method, token, tok_size);
 						cp->log_info->request_method[tok_size] = 0;
 					}
-					cp->state = HTTP_QUERY;
 				} else {
 					return POM_ERR; // Unhandled stuff that we won't care
 				}

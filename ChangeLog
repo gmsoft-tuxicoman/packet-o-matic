@@ -1,3 +1,13 @@
+* 2009/08/29 Guy Martin <gmsoft@tuxicoman.be>
+Added ptype_timestamp.
+Added timestamp support to datastores.
+Use timestamp for time fields in target_http and target_pop.
+Make sure datastores are write locked before calling datastore_cleanup().
+Add busy handler to datastore_sqlite.
+Close opened datasets if target eventually fails to start.
+Allow ptypes not to have a parse function.
+Fix logic and memory leak in target_http while logging.
+
 * 2009/08/20 Guy Martin <gmsoft@tuxicoman.be>
 Fix unwanted PID detection in input_docsis.
 Don't error out in target_pcap if layer wasn't found in packet but simply issue a warning and continue.

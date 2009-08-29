@@ -209,6 +209,7 @@ fi
 AC_CHECK_HEADERS([sqlite3.h], [want_sqlite3=yes], [want_sqlite3=no])
 if test "x$want_sqlite3" = "xyes"
 then
+	AC_CHECK_LIB([sqlite3], [sqlite3_unlock_notify], [AC_DEFINE([HAVE_SQLITE3_UNLOCK_NOTIFY], ,[Sqlite3 unlock notify API])])
 	DATASTORE_OBJS="$DATASTORE_OBJS datastore_sqlite.la"
 fi
 

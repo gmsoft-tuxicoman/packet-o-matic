@@ -387,6 +387,18 @@ int target_open(struct target *t) {
 
 	if (targets[t->type] && targets[t->type]->open)
 		if ((*targets[t->type]->open) (t) != POM_OK) {
+			// Make sure we close the datastores already open
+			struct target_dataset *ds = NULL;
+			while (t->datasets) {
+				ds = t->datasets;
+				t->datasets = t->datasets->next;
+				if (ds->dset && ds->dset->open) {
+					ds->dset->query_data = ds->orig_ds_data;
+					datastore_dataset_close(ds->dset);
+				}
+				free(ds->name);
+				free(ds);
+			}
 			return POM_ERR;
 		}
 
@@ -838,6 +850,11 @@ struct target_dataset *target_open_dataset(struct target *t, char *name, char *d
 		dstore = dstore->next;
 	}
 	main_config_datastores_unlock();
+
+	if (!dstore) {
+		pom_log(POM_LOG_ERR "Unable to find datastore %s", datastore_name);
+		return NULL;
+	}
 
 	// Found the right datastore. Open the dataset now
 	

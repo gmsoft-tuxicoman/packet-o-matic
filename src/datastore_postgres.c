@@ -25,18 +25,20 @@
 #include "ptype_uint16.h"
 #include "ptype_uint32.h"
 #include "ptype_uint64.h"
+#include "ptype_timestamp.h"
 
 #define POSTGRES_PKID_NAME	"pkid"
 
-#define POSTGRES_PTYPE_OTHER	0
-#define POSTGRES_PTYPE_BOOL	1
-#define POSTGRES_PTYPE_UINT8	2
-#define POSTGRES_PTYPE_UINT16	3
-#define POSTGRES_PTYPE_UINT32	4
-#define POSTGRES_PTYPE_UINT64	5
-#define POSTGRES_PTYPE_STRING	6
+#define POSTGRES_PTYPE_OTHER		0
+#define POSTGRES_PTYPE_BOOL		1
+#define POSTGRES_PTYPE_UINT8		2
+#define POSTGRES_PTYPE_UINT16		3
+#define POSTGRES_PTYPE_UINT32		4
+#define POSTGRES_PTYPE_UINT64		5
+#define POSTGRES_PTYPE_STRING		6
+#define POSTGRES_PTYPE_TIMESTAMP	7
 
-static struct ptype *pt_bool, *pt_uint8, *pt_uint16, *pt_uint32, *pt_uint64, *pt_string;
+static struct ptype *pt_bool, *pt_uint8, *pt_uint16, *pt_uint32, *pt_uint64, *pt_string, *pt_timestamp;
 
 int datastore_register_postgres(struct datastore_reg *r) {
 
@@ -47,8 +49,9 @@ int datastore_register_postgres(struct datastore_reg *r) {
 	pt_uint32 = ptype_alloc("uint32", NULL);
 	pt_uint64 = ptype_alloc("uint64", NULL);
 	pt_string = ptype_alloc("string", NULL);
+	pt_timestamp = ptype_alloc("timestamp", NULL);
 	
-	if (!pt_bool || !pt_uint8 || !pt_uint16 || !pt_uint32 || !pt_uint64 || !pt_string) {
+	if (!pt_bool || !pt_uint8 || !pt_uint16 || !pt_uint32 || !pt_uint64 || !pt_string || !pt_timestamp) {
 		datastore_unregister_postgres(r);
 		return POM_ERR;
 	}
@@ -188,6 +191,20 @@ static int datastore_open_postgres(struct datastore *d) {
 
 	priv->conninfo = conninfo;
 
+	const char *integer_datetimes = PQparameterStatus(priv->connection, "integer_datetimes");
+	if (!integer_datetimes) {
+		pom_log(POM_LOG_INFO "Unable to determine binary format for TIMESTAMP fields");
+		free(priv->conninfo);
+		PQfinish(priv->connection);
+		priv->connection = NULL;
+		return POM_ERR;
+	}
+
+	if (!strcmp(integer_datetimes, "on"))
+		priv->integer_datetimes = 1;
+	else
+		priv->integer_datetimes = 0;
+
 	pom_log(POM_LOG_INFO "Connected on database %s at %s", PTYPE_STRING_GETVAL(priv->dbname), PTYPE_STRING_GETVAL(priv->host));
 
 	return POM_OK;
@@ -225,6 +242,8 @@ static int datastore_dataset_alloc_postgres(struct dataset *ds) {
 			dv[i].native_type = POSTGRES_PTYPE_UINT64;
 		else if (dv[i].value->type == pt_string->type)
 			dv[i].native_type = POSTGRES_PTYPE_STRING;
+		else if (dv[i].value->type == pt_timestamp->type)
+			dv[i].native_type = POSTGRES_PTYPE_TIMESTAMP;
 		else
 			dv[i].native_type = POSTGRES_PTYPE_OTHER;
 
@@ -307,6 +326,9 @@ static int datastore_dataset_alloc_postgres(struct dataset *ds) {
 			case POSTGRES_PTYPE_UINT64:
 				sprintf(buff, "$%u::bigint", i + 1);
 				break;
+			case POSTGRES_PTYPE_TIMESTAMP:
+				sprintf(buff, "$%u::timestamp", i + 1);
+				break;
 			default:
 				sprintf(buff, "$%u::varchar", i + 1);
 				break;
@@ -383,6 +405,9 @@ static int datastore_dataset_create_postgres(struct dataset *ds) {
 				break;
 			case POSTGRES_PTYPE_UINT64:
 				type = " bigint";
+				break;
+			case POSTGRES_PTYPE_TIMESTAMP:
+				type = " timestamp";
 				break;
 		}
 
@@ -585,6 +610,8 @@ static int datastore_dataset_read_postgres(struct dataset *ds) {
 	uint64_t *ptr =  (uint64_t*) PQgetvalue(priv->read_res, priv->read_query_cur, 0);
 	ds->data_id = ntohll(*ptr);
 
+	tzset(); // Init timezone and daylight variable
+
 	struct datavalue *dv = ds->query_data;
 	int i;
 	for (i = 0; dv[i].name; i++) {
@@ -612,6 +639,28 @@ static int datastore_dataset_read_postgres(struct dataset *ds) {
 			case POSTGRES_PTYPE_UINT64: {
 				uint64_t *res = (uint64_t*) PQgetvalue(priv->read_res, priv->read_query_cur, i + 1);
 				PTYPE_UINT64_SETVAL(dv[i].value, ntohll(*res));
+				break;
+			}
+			case POSTGRES_PTYPE_TIMESTAMP: {
+				time_t t = 0;
+				if (dpriv->integer_datetimes) {
+					int64_t *my_time = (int64_t*) PQgetvalue(priv->read_res, priv->read_query_cur, i + 1);
+					t = (ntohll(*my_time) / 1000000L) + ((POSTGRES_EPOCH_JDATE - UNIX_EPOCH_JDATE) * SECS_PER_DAY);
+				} else {
+					// nasty trick to swap the double value
+					uint64_t *my_time = (uint64_t*) PQgetvalue(priv->read_res, priv->read_query_cur, i + 1);
+					uint64_t tmp = ntohll(*my_time);
+					double *swp_time = (double*)&tmp;
+
+					t = *swp_time + ((POSTGRES_EPOCH_JDATE - UNIX_EPOCH_JDATE) * SECS_PER_DAY);
+				}
+				// Adjust for timezone and daylight
+				// Assume that stored values are localtime
+				t += timezone;
+				if (daylight)
+					t -= 3600;
+
+				PTYPE_TIMESTAMP_SETVAL(dv[i].value, t);
 				break;
 			}
 			default: {
@@ -644,6 +693,7 @@ static int datastore_dataset_write_postgres(struct dataset *ds) {
 		return POM_ERR;
 	}
 
+	tzset(); // Init timezone and daylight variable
 
 	struct datavalue *dv = ds->query_data;
 	int i;
@@ -678,6 +728,33 @@ static int datastore_dataset_write_postgres(struct dataset *ds) {
 				priv->write_query_param_val[i] = (char*) &priv->write_data_buff[i].uint64;
 				priv->write_query_param_len[i] = sizeof(uint64_t);
 				break;
+			}
+			case POSTGRES_PTYPE_TIMESTAMP: {
+				time_t ts = PTYPE_TIMESTAMP_GETVAL(dv[i].value);
+				// Adjust for timezone and daylight
+				// Store values as localtime
+				ts -= timezone;
+				if (daylight)
+					ts += 3600;
+	
+				if (dpriv->integer_datetimes) {
+					int64_t my_time = ts - ((POSTGRES_EPOCH_JDATE - UNIX_EPOCH_JDATE) * SECS_PER_DAY);
+					my_time *= 1000000;
+					priv->write_data_buff[i].int64 = (int64_t) htonll(my_time);
+					priv->write_query_param_val[i] = (char*) &priv->write_data_buff[i].int64;
+					priv->write_query_param_len[i] = sizeof(int64_t);
+				} else {
+					// Nasty trick to swap the double value
+					double my_time = ts - ((POSTGRES_EPOCH_JDATE - UNIX_EPOCH_JDATE) * SECS_PER_DAY);
+					uint64_t *tmp = (uint64_t*)&my_time;
+					double *swp_time = (double*)tmp;
+					*tmp = htonll(*tmp);
+					priv->write_data_buff[i].dfloat = *swp_time;
+					priv->write_query_param_val[i] = (char*) &priv->write_data_buff[i].dfloat;
+					priv->write_query_param_len[i] = sizeof(double);
+				}
+				break;
+
 			}
 			case POSTGRES_PTYPE_STRING: {
 				char *value = PTYPE_STRING_GETVAL(dv[i].value);
@@ -896,6 +973,7 @@ static int datastore_unregister_postgres(struct datastore_reg *r) {
 	ptype_cleanup(pt_uint32);
 	ptype_cleanup(pt_uint64);
 	ptype_cleanup(pt_string);
+	ptype_cleanup(pt_timestamp);
 
 	return POM_OK;
 

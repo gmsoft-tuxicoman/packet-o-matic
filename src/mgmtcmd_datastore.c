@@ -408,6 +408,7 @@ int mgmtcmd_datastore_remove(struct mgmt_connection *c, int argc, char *argv[]) 
 		return POM_OK;
 	}
 
+	datastore_lock_instance(d, 1); // unlocked by datastore_cleanup()
 	if (d->started) {
 		datastore_close(d);
 	}

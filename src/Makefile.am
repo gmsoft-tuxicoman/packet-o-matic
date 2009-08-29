@@ -25,7 +25,7 @@ MATCH_OBJS = match_docsis.la match_ethernet.la match_80211.la match_vlan.la matc
 CONNTRACK_OBJS = conntrack_ipv4.la conntrack_ipv6.la conntrack_rtp.la conntrack_tcp.la conntrack_udp.la
 HELPER_OBJS = helper_docsis.la helper_ipv4.la helper_ipv6.la helper_tcp.la helper_rtp.la
 TARGET_OBJS = target_display.la target_dump_payload.la target_irc.la target_http.la target_msn.la target_pop.la target_rtp.la target_tftp.la target_null.la @TARGET_OBJS@
-PTYPES_OBJS = ptype_bool.la ptype_uint8.la ptype_uint16.la ptype_uint32.la ptype_uint64.la ptype_mac.la ptype_ipv4.la ptype_ipv6.la ptype_string.la ptype_bytes.la ptype_interval.la
+PTYPES_OBJS = ptype_bool.la ptype_uint8.la ptype_uint16.la ptype_uint32.la ptype_uint64.la ptype_mac.la ptype_ipv4.la ptype_ipv6.la ptype_string.la ptype_bytes.la ptype_interval.la ptype_timestamp.la
 DATASTORE_OBJS = @DATASTORE_OBJS@
 
 
@@ -197,6 +197,9 @@ ptype_bytes_la_LIBADD = libpom.la
 ptype_interval_la_SOURCES = ptype_interval.c ptype_interval.h modules_common.h
 ptype_interval_la_LDFLAGS = -module -avoid-version
 ptype_interval_la_LIBADD = libpom.la
+ptype_timestamp_la_SOURCES = ptype_timestamp.c ptype_timestamp.h modules_common.h
+ptype_timestamp_la_LDFLAGS = -module -avoid-version
+ptype_timestamp_la_LIBADD = libpom.la
 
 datastore_postgres_la_SOURCES = datastore_postgres.c datastore_postgres.h modules_common.h
 datastore_postgres_la_LDFLAGS = -module -avoid-version -rpath '$(libdir)' -lpq
