@@ -59,10 +59,14 @@ static int match_identify_udp(struct frame *f, struct layer* l, unsigned int sta
 	struct udphdr *hdr = f->buff + start;
 
 	if (len < sizeof(struct udphdr))
-		return POM_ERR; /// Invalid packet
+		return POM_ERR; // Invalid packet
+
+	uint16_t ulen = ntohs(hdr->uh_ulen);
+	if (ulen < sizeof(struct udphdr))
+		return POM_ERR; // Invalid packet
 
 	l->payload_start = start + sizeof(struct udphdr);
-	l->payload_size = ntohs(hdr->uh_ulen) - sizeof(struct udphdr);
+	l->payload_size = ulen - sizeof(struct udphdr);
 
 	PTYPE_UINT16_SETVAL(l->fields[field_sport], ntohs(hdr->uh_sport));
 	PTYPE_UINT16_SETVAL(l->fields[field_dport], ntohs(hdr->uh_dport));

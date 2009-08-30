@@ -360,13 +360,6 @@ void xmlrpcsrv_authentication_handler2(struct URIHandler2 *handler, TSession *se
 	const TRequestInfo *requestInfoP;
 	SessionGetRequestInfo(sessionP, &requestInfoP);
 
-	if (strcmp(requestInfoP->uri, XMLRPC_URI)) {
-		*successP = FALSE;
-		return;
-	}
-		
-
-
 	char *hdr = RequestHeaderValue(sessionP, "authorization");
 
 	if (hdr) {

@@ -91,7 +91,6 @@ static int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int st
 		switch (nhdr) {
 			case IPPROTO_HOPOPTS: // 0
 			case IPPROTO_ROUTING: // 43
-			case IPPROTO_FRAGMENT: // 44
 			case IPPROTO_DSTOPTS: // 60
 				ehdr = f->buff + l->payload_start;
 				int ehlen = (ehdr->ip6e_len + 1) * 8;
@@ -113,6 +112,7 @@ static int match_identify_ipv6(struct frame *f, struct layer* l, unsigned int st
 				return match_icmpv6->id;
 
 			case IPPROTO_NONE: // 59
+			case IPPROTO_FRAGMENT: // 44
 				return match_undefined->id;
 
 			default:
