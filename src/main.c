@@ -45,6 +45,7 @@
 #include <signal.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/select.h>
 #include <dirent.h>
 #include <errno.h>
@@ -54,6 +55,10 @@
 #include <time.h>
 #ifdef TIME_WITH_SYS_TIME
 #include <sys/time.h>
+#endif
+
+#ifdef HAVE_EXECINFO_H
+#include <execinfo.h>
 #endif
 
 #include <libxml/xmlerror.h>
@@ -84,6 +89,50 @@ void signal_handler(int signal) {
 			input_interrupt(rbuf->i);
 			break;
 
+		case SIGQUIT:
+		case SIGBUS:
+		case SIGSEGV: {
+			printf("*CRASH* :-(\n");
+			printf("Awww packet-o-matic crashed. This should not be happening !\n");
+			printf("Please report this to " PACKAGE_BUGREPORT " to have this fixed.\n");
+#ifdef HAVE_EXECINFO_H
+			int nptrs;
+			char **strings;
+			const int max_stack_size = 100;
+			void *buff[max_stack_size];
+			nptrs = backtrace(buff, max_stack_size);
+
+			strings = backtrace_symbols(buff, nptrs);
+			if (!strings) {
+				printf("Unable to display a backtrace, no string representation of the stack available.\n");
+				exit(EXIT_FAILURE);
+			} 
+
+			printf("Provide the following output while reporting the crash :\n");
+			printf("-------------------------- CUT HERE --------------------------\n");
+			int i;
+			for (i = 0; i < nptrs; i++)
+				printf("%u: %s\n", nptrs - i, strings[i]);
+			printf("-------------------------- CUT HERE --------------------------\n");
+			free(strings);
+
+#else
+			printf("No backtrace available.\n");
+#endif
+
+			// Resend the signal with the default handler
+			struct sigaction mysigaction;
+			sigemptyset(&mysigaction.sa_mask);
+			mysigaction.sa_flags = 0;
+			mysigaction.sa_handler = SIG_DFL;
+			sigaction(signal, &mysigaction, NULL);
+			raise(signal);
+
+			abort(); // Just in case 
+
+			break;
+		}
+
 		default: // Should be only SIGINT
 			// Use printf and not pom_log
 			printf("Received signal. Finishing ... !\n");
@@ -102,7 +151,6 @@ void print_usage() {
 		"Options :\n"
 		" -c, --config=FILE          specify configuration file to use (default pom.xml.conf)\n"
 		" -b, --background           run in the background as a daemon\n"
-		" -e, --empty-config         start with an empty config\n"
 		" -h, --help                 display the help\n"
 		"     --no-cli               disable the CLI console\n"
 		" -p, --port=PORT            specify the CLI console port (default 4655)\n"
@@ -247,7 +295,7 @@ int start_input(struct ringbuffer *r) {
 	}
 
 	if (pthread_mutex_lock(&r->mutex)) {
-		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording");
+		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Aborting");
 		return POM_ERR;
 	}
 
@@ -276,14 +324,14 @@ int start_input(struct ringbuffer *r) {
 
 
 	if (pthread_create(&input_thread, NULL, input_thread_func, (void*)r)) {
-		pom_log(POM_LOG_ERR "Error when creating the input thread. Abording");
+		pom_log(POM_LOG_ERR "Error when creating the input thread. Aborting");
 		input_close(r->i);
 		r->state = rb_state_closed;
 		return POM_ERR;
 	}
 	
 	if (pthread_mutex_unlock(&r->mutex)) {
-		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording");
+		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Aborting");
 		input_close(r->i);
 		r->state = rb_state_closed;
 		return POM_ERR;
@@ -300,14 +348,14 @@ int stop_input(struct ringbuffer *r) {
 	}
 
 	if (pthread_mutex_lock(&r->mutex)) {
-		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording");
+		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Aborting");
 		return POM_ERR;
 	}
 
 	r->state = rb_state_stopping;
 
 	if (pthread_mutex_unlock(&r->mutex)) {
-		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording");
+		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Aborting");
 		return POM_ERR;
 	}
 
@@ -327,7 +375,7 @@ void *input_thread_func(void *params) {
 
 
 	if (pthread_mutex_lock(&r->mutex)) {
-		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording");
+		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Aborting");
 		finish = 1;
 		return NULL;
 	}
@@ -351,7 +399,7 @@ void *input_thread_func(void *params) {
 	while (r->state == rb_state_open) {
 
 		if (pthread_mutex_unlock(&r->mutex)) {
-			pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording");
+			pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Aborting");
 			finish = 1;
 			return NULL;
 		}
@@ -384,7 +432,7 @@ void *input_thread_func(void *params) {
 		}
 
 		if (pthread_mutex_lock(&r->mutex)) {
-			pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording");
+			pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Aborting");
 			finish = 1;
 			return NULL;
 		}
@@ -443,7 +491,7 @@ void *input_thread_func(void *params) {
 	ringbuffer_cleanup(r);
 
 	if (pthread_mutex_unlock(&r->mutex)) {
-		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording");
+		pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Aborting");
 		finish = 1;
 		return NULL;
 	}
@@ -465,7 +513,6 @@ int main(int argc, char *argv[]) {
 	console_output = 1;
 
 	char *cfgfile = "pom.xml.conf";
-	int empty_config = 0;
 	int disable_mgmtsrv = 0;
 	char *cli_port = "4655";
 #ifdef USE_XMLRPC
@@ -481,7 +528,6 @@ int main(int argc, char *argv[]) {
 			{ "help", 0, 0, 'h' },
 			{ "background", 0, 0, 'b' },
 			{ "config", 1, 0, 'c'},
-			{ "empty-config", 0, 0, 'e'},
 			{ "port", 1, 0, 'p'},
 			{ "password", 1, 0, 'w'},
 			{ "no-cli", 0, 0, 1},
@@ -549,10 +595,6 @@ int main(int argc, char *argv[]) {
 				break;
 			}
 				
-			case 'e':
-				empty_config = 1;
-				pom_log("Starting with an empty configuration");
-				break;
 			case 'p':
 				cli_port = optarg;
 				pom_log("Using port %s for CLI console", cli_port);
@@ -620,7 +662,7 @@ int main(int argc, char *argv[]) {
 	struct ptype *param_quit_on_input_error = ptype_alloc("bool", NULL);
 	if (!param_autosave_on_exit || !param_quit_on_input_error) {
 		// This is the very first module to be loaded
-		pom_log(POM_LOG_ERR "Cannot allocate ptype bool. Abording");
+		pom_log(POM_LOG_ERR "Cannot allocate ptype bool. Aborting");
 		pom_log(POM_LOG_ERR "Did you set LD_LIBRARY_PATH correctly ?\r\n");
 		return -1;
 	}
@@ -641,6 +683,9 @@ int main(int argc, char *argv[]) {
 	mysigaction.sa_handler = signal_handler;
 	sigaction(SIGINT, &mysigaction, NULL);
 	sigaction(SIGHUP, &mysigaction, NULL);
+	sigaction(SIGQUIT, &mysigaction, NULL);
+	sigaction(SIGBUS, &mysigaction, NULL);
+	sigaction(SIGSEGV, &mysigaction, NULL);
 
 	// Ignore INPUTSIG in this thread and subsequent ones
 	static sigset_t sigmask;
@@ -653,11 +698,11 @@ int main(int argc, char *argv[]) {
 	pthread_t mgmtsrv_thread;
 	if (!disable_mgmtsrv) {
 		if (mgmtsrv_init(cli_port) == POM_ERR) {
-			pom_log(POM_LOG_ERR "Error when initializing the management console. Abording");
+			pom_log(POM_LOG_ERR "Error when initializing the management console. Aborting");
 			goto err;
 		}
 		if (pthread_create(&mgmtsrv_thread, NULL, mgmtsrv_thread_func, NULL)) {
-			pom_log(POM_LOG_ERR "Error when creating the management console thread. Abording");
+			pom_log(POM_LOG_ERR "Error when creating the management console thread. Aborting");
 			goto err;
 		}
 	}
@@ -666,23 +711,31 @@ int main(int argc, char *argv[]) {
 	pthread_t xmlrpcsrv_thread;
 	if (!disable_xmlrpcsrv) {
 		if (xmlrpcsrv_init(xmlrpc_port) == POM_ERR) {
-			pom_log(POM_LOG_ERR "Error while initializing the XML-RPC interface. Abording");
+			pom_log(POM_LOG_ERR "Error while initializing the XML-RPC interface. Aborting");
 			goto err;
 		}
 		if (pthread_create(&xmlrpcsrv_thread, NULL, xmlrpcsrv_thread_func, NULL)) {
-			pom_log(POM_LOG_ERR "Error when creating the XML-RPC thread. Abording");
+			pom_log(POM_LOG_ERR "Error when creating the XML-RPC thread. Aborting");
 			goto err;
 		}
 	}
 #endif
 
-	if (empty_config) {
+	// Check if the config file exists
+	struct stat st;
+	if (stat(cfgfile, &st)) {
+		char errbuff[256];
+		memset(errbuff, 0, sizeof(errbuff));
+		strerror_r(errno, errbuff, sizeof(errbuff));
+		pom_log(POM_LOG_ERR "Could not open config file %s : %s", cfgfile, errbuff);
+		pom_log(POM_LOG_WARN "Starting with and empty configuration");
 		strncpy(main_config->filename, cfgfile, NAME_MAX);
-	} else {
-		if (config_parse(main_config, cfgfile) == POM_ERR) {
-			pom_log(POM_LOG_ERR "Error while parsing config");
-			goto err;
-		}
+	} else if (config_parse(main_config, cfgfile) == POM_ERR) {
+		pom_log(POM_LOG_WARN "Starting with and empty configuration");
+		config_cleanup(main_config);
+		main_config = config_alloc();
+		strncpy(main_config->filename, cfgfile, NAME_MAX);
+		
 	}
 
 	rbuf->i = main_config->input;
@@ -690,7 +743,7 @@ int main(int argc, char *argv[]) {
 	pom_log("packet-o-matic " POM_VERSION " started");
 
 	if (pthread_mutex_lock(&rbuf->mutex)) {
-		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording");
+		pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Aborting");
 		goto finish;
 	}
 
@@ -728,7 +781,7 @@ int main(int argc, char *argv[]) {
 	while (1) {
 		
 		if (pthread_mutex_unlock(&rbuf->mutex)) {
-			pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Abording");
+			pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Aborting");
 			goto finish;
 		}
 		struct timeval *now = get_curent_time_p();
@@ -741,7 +794,7 @@ int main(int argc, char *argv[]) {
 		}
 
 		if (pthread_mutex_lock(&reader_mutex)) {
-			pom_log(POM_LOG_ERR "Error while locking the reader mutex. Abording");
+			pom_log(POM_LOG_ERR "Error while locking the reader mutex. Aborting");
 			goto finish;
 		}
 	
@@ -758,13 +811,13 @@ int main(int argc, char *argv[]) {
 
 
 		if (pthread_mutex_unlock(&reader_mutex)) {
-			pom_log(POM_LOG_ERR "Error while locking the reader mutex. Abording");
+			pom_log(POM_LOG_ERR "Error while locking the reader mutex. Aborting");
 			goto finish;
 		}
 
 
 		if (pthread_mutex_lock(&rbuf->mutex)) {
-			pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Abording");
+			pom_log(POM_LOG_ERR "Error while locking the buffer mutex. Aborting");
 			goto finish;
 		}
 		rbuf->usage--;

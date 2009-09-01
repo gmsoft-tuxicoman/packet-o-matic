@@ -647,12 +647,11 @@ static int datastore_dataset_read_postgres(struct dataset *ds) {
 					int64_t *my_time = (int64_t*) PQgetvalue(priv->read_res, priv->read_query_cur, i + 1);
 					t = (ntohll(*my_time) / 1000000L) + ((POSTGRES_EPOCH_JDATE - UNIX_EPOCH_JDATE) * SECS_PER_DAY);
 				} else {
-					// nasty trick to swap the double value
-					uint64_t *my_time = (uint64_t*) PQgetvalue(priv->read_res, priv->read_query_cur, i + 1);
-					uint64_t tmp = ntohll(*my_time);
-					double *swp_time = (double*)&tmp;
+					double *my_time = (double*) PQgetvalue(priv->read_res, priv->read_query_cur, i + 1);
+					double swp_time;
+					ntohd(my_time, &swp_time);
 
-					t = *swp_time + ((POSTGRES_EPOCH_JDATE - UNIX_EPOCH_JDATE) * SECS_PER_DAY);
+					t = swp_time + ((POSTGRES_EPOCH_JDATE - UNIX_EPOCH_JDATE) * SECS_PER_DAY);
 				}
 				// Adjust for timezone and daylight
 				// Assume that stored values are localtime
@@ -744,12 +743,8 @@ static int datastore_dataset_write_postgres(struct dataset *ds) {
 					priv->write_query_param_val[i] = (char*) &priv->write_data_buff[i].int64;
 					priv->write_query_param_len[i] = sizeof(int64_t);
 				} else {
-					// Nasty trick to swap the double value
 					double my_time = ts - ((POSTGRES_EPOCH_JDATE - UNIX_EPOCH_JDATE) * SECS_PER_DAY);
-					uint64_t *tmp = (uint64_t*)&my_time;
-					double *swp_time = (double*)tmp;
-					*tmp = htonll(*tmp);
-					priv->write_data_buff[i].dfloat = *swp_time;
+					htond(&my_time, &priv->write_data_buff[i].dfloat);
 					priv->write_query_param_val[i] = (char*) &priv->write_data_buff[i].dfloat;
 					priv->write_query_param_len[i] = sizeof(double);
 				}
@@ -1063,3 +1058,16 @@ static void postgres_notice_processor(void *arg, const char *message) {
 
 }
 
+static void vswap64(void *in, void *out) {
+
+	char *in_c = in, *out_c = out;
+	out_c[0] = in_c[7];
+	out_c[1] = in_c[6];
+	out_c[2] = in_c[5];
+	out_c[3] = in_c[4];
+	out_c[4] = in_c[3];
+	out_c[5] = in_c[2];
+	out_c[6] = in_c[1];
+	out_c[7] = in_c[0];
+
+}

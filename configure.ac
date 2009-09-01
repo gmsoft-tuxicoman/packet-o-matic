@@ -22,7 +22,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ(2.61)
-AC_INIT([packet-o-matic], [svn], [gmsoft@tuxicoman.be])
+AC_INIT([packet-o-matic], [svn], [Guy Martin <gmsoft@tuxicoman.be>])
 AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([-Wall foreign])
 AC_CONFIG_SRCDIR([config.h.in])
@@ -47,8 +47,11 @@ AC_CHECK_HEADERS([arpa/inet.h fcntl.h stdint.h stdlib.h string.h sys/ioctl.h sys
 # BSD specific header files
 AC_CHECK_HEADERS([sys/endian.h])
 
-# Linux specidic header files
+# Linux specific header files
 AC_CHECK_HEADERS([mcheck.h endian.h])
+
+# Check for backtrace()'s header
+AC_CHECK_HEADERS([execinfo.h])
 
 # Check endianess
 AC_C_BIGENDIAN

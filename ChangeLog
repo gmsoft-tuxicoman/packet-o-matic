@@ -1,3 +1,9 @@
+* 2009/09/01 Guy Martin <gmsoft@tuxicoman.be>
+Get rid of -e switch, simply use an empty config in case of error.
+Fix typo 'abord' -> 'abort'.
+Handle SIGSEGV, SIGBUS and SIGQUIT and print a backtrace.
+Use a less-hacky way of bswap64() double value in datastore_postgres.
+
 * 2009/08/30 Guy Martin <gmsoft@tuxicoman.be>
 Make ipv6 fragment be ignored for the time being.
 Add more sanity checking to payload length in match_udp.

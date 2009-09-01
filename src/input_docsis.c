@@ -628,7 +628,7 @@ static int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_d
 
 		// Check sync byte
 		if (buff[0] != 0x47) {
-			pom_log(POM_LOG_ERR "Error, stream out of sync ! Abording !");
+			pom_log(POM_LOG_ERR "Error, stream out of sync ! Aborting !");
 			return -2;
 		}
 		

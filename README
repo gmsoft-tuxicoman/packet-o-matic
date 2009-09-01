@@ -54,7 +54,7 @@ It the match result is positive, we process the packet with the targets defined 
 
 Getting started :
 -----------------
-First, start packet-o-matic with the flag -e : `packet-o-matic -e`. This will start the program without any configuration.
+First, start packet-o-matic by running `packet-o-matic` in the console.
 Once started, it will listen on port 4655. Simply telnet to that port and start issuing commands.
 You have to perform the following tasks to get a running configuration :
  - choose an input type and configure it
