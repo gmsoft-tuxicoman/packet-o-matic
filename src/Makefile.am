@@ -21,9 +21,9 @@ libpom_la_SOURCES = input.c input.h match.c match.h conntrack.c conntrack.h targ
 libpom_la_CFLAGS = -DLIBDIR='"@LIB_DIR@"'
 
 INPUT_OBJS = @INPUT_OBJS@
-MATCH_OBJS = match_docsis.la match_ethernet.la match_80211.la match_vlan.la match_ipv4.la match_icmp.la match_ipv6.la match_icmpv6.la match_tcp.la match_udp.la match_rtp.la match_undefined.la match_linux_cooked.la match_prism.la match_ppi.la match_radiotap.la
+MATCH_OBJS = match_docsis.la match_ethernet.la match_80211.la match_vlan.la match_ipv4.la match_icmp.la match_ipv6.la match_icmpv6.la match_tcp.la match_udp.la match_rtp.la match_undefined.la match_linux_cooked.la match_prism.la match_ppi.la match_radiotap.la match_pppoe.la match_ppp.la
 CONNTRACK_OBJS = conntrack_ipv4.la conntrack_ipv6.la conntrack_rtp.la conntrack_tcp.la conntrack_udp.la
-HELPER_OBJS = helper_docsis.la helper_ipv4.la helper_ipv6.la helper_tcp.la helper_rtp.la
+HELPER_OBJS = helper_docsis.la helper_ipv4.la helper_ipv6.la helper_tcp.la helper_rtp.la helper_pppoe.la
 TARGET_OBJS = target_display.la target_dump_payload.la target_irc.la target_http.la target_msn.la target_pop.la target_rtp.la target_tftp.la target_null.la @TARGET_OBJS@
 PTYPES_OBJS = ptype_bool.la ptype_uint8.la ptype_uint16.la ptype_uint32.la ptype_uint64.la ptype_mac.la ptype_ipv4.la ptype_ipv6.la ptype_string.la ptype_bytes.la ptype_interval.la ptype_timestamp.la
 DATASTORE_OBJS = @DATASTORE_OBJS@
@@ -88,6 +88,12 @@ match_ppi_la_LIBADD = libpom.la
 match_radiotap_la_SOURCES = match_radiotap.c match_radiotap.h modules_common.h include/radiotap.h
 match_radiotap_la_LDFLAGS = -module -avoid-version
 match_radiotap_la_LIBADD = libpom.la
+match_pppoe_la_SOURCES = match_pppoe.c match_pppoe.h modules_common.h include/pppoe.h
+match_pppoe_la_LDFLAGS = -module -avoid-version
+match_pppoe_la_LIBADD = libpom.la
+match_ppp_la_SOURCES = match_ppp.c match_ppp.h modules_common.h
+match_ppp_la_LDFLAGS = -module -avoid-version
+match_ppp_la_LIBADD = libpom.la
 
 conntrack_ipv4_la_SOURCES = conntrack_ipv4.c conntrack_ipv4.h modules_common.h include/jhash.h
 conntrack_ipv4_la_LDFLAGS = -module -avoid-version
@@ -120,6 +126,9 @@ helper_tcp_la_LIBADD = libpom.la
 helper_rtp_la_SOURCES = helper_rtp.c helper_rtp.h modules_common.h include/rtp.h
 helper_rtp_la_LDFLAGS = -module -avoid-version
 helper_rtp_la_LIBADD = libpom.la
+helper_pppoe_la_SOURCES = helper_pppoe.c helper_pppoe.h modules_common.h include/pppoe.h
+helper_pppoe_la_LDFLAGS = -module -avoid-version
+helper_pppoe_la_LIBADD = libpom.la
 
 
 target_display_la_SOURCES = target_display.c target_display.h modules_common.h

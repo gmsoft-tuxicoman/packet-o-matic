@@ -25,7 +25,7 @@
 #include <sys/socket.h>
 
 
-static struct match_dep *match_undefined, *match_ipv4, *match_ipv6, *match_arp, *match_vlan;
+static struct match_dep *match_undefined, *match_ipv4, *match_ipv6, *match_arp, *match_vlan, *match_pppoe;
 
 static int field_saddr, field_daddr;
 
@@ -41,8 +41,9 @@ int match_register_ethernet(struct match_reg *r) {
 	match_ipv6 = match_add_dependency(r->type, "ipv6");
 	match_arp = match_add_dependency(r->type, "arp");
 	match_vlan = match_add_dependency(r->type, "vlan");
+	match_pppoe = match_add_dependency(r->type, "pppoe");
 
-	ptype_mac = ptype_alloc ("mac", NULL);
+	ptype_mac = ptype_alloc("mac", NULL);
 
 	if (!ptype_mac)
 		return POM_ERR;
@@ -78,6 +79,9 @@ static int match_identify_ethernet(struct frame *f, struct layer* l, unsigned in
 			return match_vlan->id;
 		case 0x86dd:
 			return match_ipv6->id;
+		case 0x8863:
+		case 0x8864:
+			return match_pppoe->id;
 	}
 
 	return match_undefined->id;
