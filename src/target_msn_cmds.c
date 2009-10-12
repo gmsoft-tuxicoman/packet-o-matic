@@ -347,11 +347,13 @@ int target_msn_handler_lsg(struct target *t, struct target_conntrack_priv_msn *c
 			pom_log(POM_LOG_DEBUG "LSG: Invalid group ID received");
 			return POM_OK;
 		}
-		return target_msn_session_found_group(cp, tokens[6], tokens[5]);
+		target_msn_session_found_group(cp, tokens[6], tokens[5]);
+		return POM_OK;
 
 	} else if (tok_num > 2) {
 		// Could check the GUID but too lazy
-		return target_msn_session_found_group(cp, tokens[1], tokens[2]);
+		target_msn_session_found_group(cp, tokens[1], tokens[2]);
+		return POM_OK;
 	} else {
 		// Only 1 arg -> from client
 		target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_CLIENT);
@@ -421,7 +423,7 @@ int target_msn_handler_lst(struct target *t, struct target_conntrack_priv_msn *c
 
 	if (account) {
 		pom_log(POM_LOG_TSHOOT "Account in the list : \"%s\" (%s)", nick, account);
-		struct target_buddy_msn *buddy = target_msn_session_found_buddy(cp, account, nick, group);
+		struct target_buddy_list_session_msn *buddy = target_msn_session_found_buddy(cp, account, nick, group, &f->tv);
 		if (!buddy) {
 			pom_log(POM_LOG_DEBUG "Invalid buddy provided in LST command : %s", account);
 			return POM_OK;
@@ -494,20 +496,20 @@ int target_msn_handler_chg(struct target *t, struct target_conntrack_priv_msn *c
 	}
 
 
-	if (sess->user.status != new_status) {
+	if (sess->user->status != new_status) {
 		pom_log(POM_LOG_TSHOOT "Status changed : %s", status_msg);
 		struct target_event_msn evt;
 		memset(&evt, 0, sizeof(struct target_event_msn));
 		memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
 		evt.buff = status_msg;
-		evt.from = &sess->user;
+		evt.from = sess->user;
 		evt.type = msn_evt_status_change;
 		evt.conv = cp->conv;
 		evt.sess = cp->session;
 		
-		sess->user.status = new_status;
+		sess->user->status = new_status;
 
-		res = target_msn_session_event(&evt);
+		res = target_msn_session_broadcast_event(&evt);
 	}
 
 
@@ -569,9 +571,11 @@ int target_msn_handler_ubx(struct target *t, struct target_conntrack_priv_msn *c
 	else
 		account = tokens[1];
 
-	struct target_buddy_msn *buddy = target_msn_session_found_buddy(cp, account, NULL, NULL);
+	struct target_buddy_msn *buddy = target_msn_session_get_buddy(cp->target_priv, account);
 
-	if (length > 0) {
+	target_msn_session_found_buddy2(cp, buddy, NULL, NULL, &f->tv);
+
+	if (length > 0 && buddy) {
 		cp->msg[cp->curdir] = msn_cmd_alloc_msg(length, msn_payload_type_status_msg);
 		cp->msg[cp->curdir]->from = buddy;
 	}
@@ -600,7 +604,8 @@ int target_msn_handler_ubn(struct target *t, struct target_conntrack_priv_msn *c
 		return POM_OK;
 	}
 
-	struct target_buddy_msn *buddy = target_msn_session_found_buddy(cp, tokens[1], NULL, NULL);
+	struct target_buddy_msn *buddy = target_msn_session_get_buddy(cp->target_priv, tokens[1]);
+	target_msn_session_found_buddy2(cp, buddy, NULL, NULL, &f->tv);
 
 	target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_SERVER);
 
@@ -851,7 +856,7 @@ int target_msn_handler_rng(struct target *t, struct target_conntrack_priv_msn *c
 		return POM_OK;
 	}
 
-	target_msn_session_found_buddy(cp, tokens[5], tokens[6], NULL);
+	target_msn_session_found_buddy(cp, tokens[5], tokens[6], NULL, &f->tv);
 
 	char *port = strchr(tokens[2], ':');
 	if (!port) {
@@ -879,13 +884,13 @@ int target_msn_handler_out(struct target *t, struct target_conntrack_priv_msn *c
 
 	char *account = "Unknown";
 	struct target_session_priv_msn *sess = cp->session;
-	if (sess->user.account)
-		account = sess->user.account;
+	if (sess->user->account)
+		account = sess->user->account;
 
 	struct target_event_msn evt;
 	memset(&evt, 0, sizeof(struct target_event_msn));
 	memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
-	evt.from = &sess->user;
+	evt.from = sess->user;
 	evt.sess = sess;
 
 	if (cp->conv) {// let's try to see if it's a NS or SB 
@@ -967,11 +972,17 @@ int target_msn_handler_nln(struct target *t, struct target_conntrack_priv_msn *c
 			friendly = tokens[4];
 		}
 
-		buddy = target_msn_session_found_buddy(cp, account, friendly, NULL);
+		struct target_buddy_list_session_msn *bud_lst = target_msn_session_found_buddy(cp, account, friendly, NULL, &f->tv);
+		if (!bud_lst) {
+			pom_log(POM_LOG_DEBUG "Invalid account in NLN message : %s", account);
+			return POM_OK;
+		}
+		buddy = bud_lst->bud;
 	} else {
 		pom_log(POM_LOG_DEBUG "Warning, invalid NLN message : %s", tokens[3]);
 		return POM_OK;
 	}
+
 
 	int new_status = msn_status_unknown;
 	char *status_msg = NULL;
@@ -1014,7 +1025,7 @@ int target_msn_handler_nln(struct target *t, struct target_conntrack_priv_msn *c
 		evt.conv = cp->conv;
 		evt.sess = cp->session;
 		
-		res = target_msn_session_event(&evt);
+		res = target_msn_session_broadcast_event(&evt);
 
 		buddy->status = new_status;
 	}
@@ -1050,11 +1061,17 @@ int target_msn_handler_iln(struct target *t, struct target_conntrack_priv_msn *c
 		else
 			account = tokens[3];
 
-		buddy = target_msn_session_found_buddy(cp, account, tokens[3], NULL);
+		struct target_buddy_list_session_msn *bud_lst = target_msn_session_found_buddy(cp, account, tokens[3], NULL, &f->tv);
+		if (!bud_lst) {
+			pom_log(POM_LOG_DEBUG "Invalid account in ILN message : %s", account);
+			return POM_OK;
+		}
+		buddy = bud_lst->bud;
 	} else {
 		pom_log(POM_LOG_DEBUG "Warning, invalid ILN message : %s", tokens[3]);
 		return POM_OK;
 	}
+
 
 	int new_status = msn_status_unknown;
 	char *status_msg = NULL;
@@ -1097,7 +1114,7 @@ int target_msn_handler_iln(struct target *t, struct target_conntrack_priv_msn *c
 		evt.conv = cp->conv;
 		evt.sess = cp->session;
 		
-		res = target_msn_session_event(&evt);
+		res = target_msn_session_broadcast_event(&evt);
 
 		buddy->status = new_status;
 	}
@@ -1138,25 +1155,29 @@ int target_msn_handler_fln(struct target *t, struct target_conntrack_priv_msn *c
 		return POM_OK;
 	}
 
-	struct target_buddy_msn *buddy = target_msn_session_found_buddy(cp, account, NULL, NULL);
+	struct target_buddy_list_session_msn *buddy = target_msn_session_found_buddy(cp, account, NULL, NULL, &f->tv);
+	if (!buddy) {
+		pom_log(POM_LOG_DEBUG "Warning, invalid FLN message : %s", account);
+		return POM_OK;
+	}
 
-	if (buddy == &cp->session->user) // Sometimes we receive FLN for ourself probably for caps
+	if (buddy->bud == cp->session->user) // Sometimes we receive FLN for ourself probably for caps
 		return POM_OK;
 
-	if (buddy->status != msn_status_offline) {
+	if (buddy->bud->status != msn_status_offline) {
 
 		struct target_event_msn evt;
 		memset(&evt, 0, sizeof(struct target_event_msn));
 		memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
 		evt.buff = "Offline";
-		evt.from = buddy;
+		evt.from = buddy->bud;
 		evt.type = msn_evt_status_change;
 		evt.conv = cp->conv;
 		evt.sess = cp->session;
 		
-		res = target_msn_session_event(&evt);
+		res = target_msn_session_broadcast_event(&evt);
 
-		buddy->status = msn_status_offline;
+		buddy->bud->status = msn_status_offline;
 	}
 
 	pom_log(POM_LOG_TSHOOT "User \"%s\" signed out", account);
@@ -1194,7 +1215,8 @@ int target_msn_handler_uun(struct target *t, struct target_conntrack_priv_msn *c
 		return POM_OK;
 	}
 	
-	struct target_buddy_msn *to = target_msn_session_found_buddy(cp, tokens[2], NULL, NULL);
+	struct target_buddy_msn *to = target_msn_session_get_buddy(cp->target_priv, tokens[2]);
+	target_msn_session_found_buddy2(cp, to, NULL, NULL, &f->tv);
 
 	if (length > 0 && to) {
 		cp->msg[cp->curdir] = msn_cmd_alloc_msg(length, msn_payload_type_uun_ubn);
@@ -1230,7 +1252,7 @@ int target_msn_handler_uux(struct target *t, struct target_conntrack_priv_msn *c
 	if (length > 0) {
 		target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_CLIENT);
 		cp->msg[cp->curdir] = msn_cmd_alloc_msg(length, msn_payload_type_status_msg);
-		cp->msg[cp->curdir]->from = &cp->session->user;
+		cp->msg[cp->curdir]->from = cp->session->user;
 	}
 
 	return POM_OK;
@@ -1390,22 +1412,24 @@ int target_msn_handler_uum(struct target *t, struct target_conntrack_priv_msn *c
 		return POM_OK;
 	}
 
-	struct target_buddy_msn *to = NULL;
+	struct target_buddy_list_session_msn *to = NULL;
 
 	if (strchr(tokens[2], '@') != NULL) { // We found an account 
 		target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_CLIENT);
 		// We should not use found_party() as this is an out of band msg
-		to = target_msn_session_found_buddy(cp, tokens[2], NULL, NULL);
+		to = target_msn_session_found_buddy(cp, tokens[2], NULL, NULL, &f->tv);
 
-		if (!to) {
+		if (!to)
 			pom_log(POM_LOG_DEBUG "Invalid destination account in UUM : %s", tokens[2]);
-			return POM_OK;
-		}
 	}
 
 	if (length > 0) {
-		cp->msg[cp->curdir] = msn_cmd_alloc_msg(length, msn_payload_type_msg);
-		cp->msg[cp->curdir]->to = to;
+		enum msn_payload_type pload = msn_payload_type_msg;
+		if (!to)
+			pload = msn_payload_type_ignore;
+		cp->msg[cp->curdir] = msn_cmd_alloc_msg(length, pload);
+		if (to)
+			cp->msg[cp->curdir]->to = to->bud;
 	}
 
 	return POM_OK;
@@ -1430,22 +1454,23 @@ int target_msn_handler_ubm(struct target *t, struct target_conntrack_priv_msn *c
 		return POM_OK;
 	}
 
-	struct target_buddy_msn *from = NULL;
+	struct target_buddy_list_session_msn *from = NULL;
 
 	if (strchr(tokens[1], '@') != NULL) { // We found an account 
 		target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_SERVER);
-		from = target_msn_session_found_buddy(cp, tokens[1], NULL, 0);
+		from = target_msn_session_found_buddy(cp, tokens[1], NULL, NULL, &f->tv);
 
-		if (!from) {
+		if (!from)
 			pom_log(POM_LOG_DEBUG "Invalid destination account in UBM : %s", tokens[2]);
-			return POM_OK;
-		}
-
 	}
 
 	if (length > 0) {
+		enum msn_payload_type pload = msn_payload_type_msg;
+		if (!from)
+			pload = msn_payload_type_ignore;
 		cp->msg[cp->curdir] = msn_cmd_alloc_msg(length, msn_payload_type_msg);
-		cp->msg[cp->curdir]->from = from;
+		if (from)
+			cp->msg[cp->curdir]->from = from->bud;
 	}
 
 	return POM_OK;
@@ -1482,9 +1507,19 @@ int target_msn_handler_sdc(struct target *t, struct target_conntrack_priv_msn *c
 
 		target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_CLIENT);
 
+		struct target_buddy_list_session_msn *to = target_msn_session_found_buddy(cp, tokens[2], NULL, NULL, &f->tv);
+		
+		if (!to)
+			pom_log(POM_LOG_DEBUG "Invalid destination account in SDC : %s", tokens[2]);
+			
+
 		if (length > 0) {
+			enum msn_payload_type pload = msn_payload_type_mail_invite;
+			if (!to)
+				pload = msn_payload_type_ignore;
 			cp->msg[cp->curdir] = msn_cmd_alloc_msg(length, msn_payload_type_mail_invite);
-			cp->msg[cp->curdir]->to = target_msn_session_found_buddy(cp, tokens[2], NULL, NULL);
+			if (to)
+				cp->msg[cp->curdir]->to = to->bud;
 
 		}
 
@@ -1522,15 +1557,20 @@ int target_msn_handler_snd(struct target *t, struct target_conntrack_priv_msn *c
 
 		target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_CLIENT);
 
-		struct target_event_msn evt;
-		memset(&evt, 0, sizeof(struct target_event_msn));
-		memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
-		evt.to = target_msn_session_found_buddy(cp, tokens[2], NULL, NULL);
-		evt.type = msn_evt_mail_invite;
-		evt.conv = cp->conv;
-		evt.sess = cp->session;
+		struct target_buddy_list_session_msn *to = target_msn_session_found_buddy(cp, tokens[2], NULL, NULL, &f->tv);
 
-		res = target_msn_session_event(&evt);
+		if (to) {
+
+			struct target_event_msn evt;
+			memset(&evt, 0, sizeof(struct target_event_msn));
+			memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
+			evt.to = to->bud;
+			evt.type = msn_evt_mail_invite;
+			evt.conv = cp->conv;
+			evt.sess = cp->session;
+
+			res = target_msn_session_event(&evt);
+		}
 
 		pom_log(POM_LOG_TSHOOT "SND : invites %s", tokens[2]);
 	}
@@ -1606,12 +1646,12 @@ int target_msn_handler_rea(struct target *t, struct target_conntrack_priv_msn *c
 
 	struct target_session_priv_msn *sess = cp->session;
 
-	if (sess->user.account) {
-		if (!strcmp(sess->user.account, account)) { // We're updating our own nick
+	if (sess->user->account) {
+		if (!strcasecmp(sess->user->account, account)) { // We're updating our own nick
 			pom_log(POM_LOG_TSHOOT "User changed his nick to \"%s\"", friendly_name);
 			res = target_msn_session_found_friendly_name(t, cp, friendly_name, &f->tv);
 		} else { // Updating someone's nick
-			target_msn_session_found_buddy(cp, account, friendly_name, NULL);
+			target_msn_session_found_buddy(cp, account, friendly_name, NULL, &f->tv);
 			pom_log(POM_LOG_TSHOOT "Buddy %s is now known as \"%s\"", account, friendly_name);
 		}
 	}
@@ -1727,41 +1767,44 @@ int target_msn_handler_add(struct target *t, struct target_conntrack_priv_msn *c
 		target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_CLIENT);
 	}
 
-	struct target_buddy_msn *tmp_bud = NULL, *buddy = NULL;
+	struct target_buddy_list_session_msn *tmp_bud = NULL;
+	struct target_buddy_msn *buddy = NULL;
 
-	// Find out if that buddy already exists or not
-	for (tmp_bud = cp->session->buddies; tmp_bud && strcmp(tmp_bud->account, account); tmp_bud = tmp_bud->next);
-
-	buddy = target_msn_session_found_buddy(cp, account, nick, group);
+	buddy = target_msn_session_get_buddy(cp->target_priv, account);
 	if (!buddy) {
 		pom_log(POM_LOG_DEBUG "Invalid buddy provided in ADD command");
 		return POM_OK;
 	}
 
+	// Find out if that buddy already exists or not
+	for (tmp_bud = cp->session->buddies; tmp_bud && tmp_bud->bud != buddy; tmp_bud = tmp_bud->next);
+
+
 	struct target_event_msn evt;
 	memset(&evt, 0, sizeof(struct target_event_msn));
 	memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
-	evt.from = &cp->session->user;
+	evt.from = cp->session->user;
 	evt.to = buddy;
 	evt.conv = cp->conv;
 	evt.sess = cp->session;
 
 	if (!tmp_bud) { // Buddy not found
 		
+		target_msn_session_found_buddy(cp, account, nick, group, &f->tv);
 		evt.type = msn_evt_user_added;
 		res = target_msn_session_event(&evt);
 
-	} else if (!strcmp(tokens[2], "BL") && !buddy->blocked) {
+	} else if (!strcmp(tokens[2], "BL") && !tmp_bud->blocked) {
 		
 		// User added to the block list
-		buddy->blocked = 1;
+		tmp_bud->blocked = 1;
 		evt.type = msn_evt_user_blocked;
 		res = target_msn_session_event(&evt);
 
-	} else if (!strcmp(tokens[2], "AL") && buddy->blocked) {
+	} else if (!strcmp(tokens[2], "AL") && tmp_bud->blocked) {
 	
 		// User added to the allow list
-		buddy->blocked = 0;
+		tmp_bud->blocked = 0;
 		evt.type = msn_evt_user_blocked;
 		res = target_msn_session_event(&evt);
 	}
@@ -1802,41 +1845,44 @@ int target_msn_handler_adc(struct target *t, struct target_conntrack_priv_msn *c
 	if (tok_num > 5 && !strncmp(tokens[5], "C=", strlen("C=")))
 			group = tokens[5] + strlen("C=");
 
-	struct target_buddy_msn *tmp_bud = NULL, *buddy = NULL;
+	struct target_buddy_list_session_msn *tmp_bud = NULL;
+	struct target_buddy_msn *buddy = NULL;
 
-	// Find out if that buddy already exists or not
-	for (tmp_bud = cp->session->buddies; tmp_bud && strcmp(tmp_bud->account, account); tmp_bud = tmp_bud->next);
-
-	buddy = target_msn_session_found_buddy(cp, account, nick, group);
+	buddy = target_msn_session_get_buddy(cp->target_priv, account);
 	if (!buddy) {
 		pom_log(POM_LOG_DEBUG "Invalid buddy provided in ADC command");
 		return POM_OK;
 	}
 
+	// Find out if that buddy already exists or not
+	for (tmp_bud = cp->session->buddies; tmp_bud && tmp_bud->bud != buddy; tmp_bud = tmp_bud->next);
+
+
 	struct target_event_msn evt;
 	memset(&evt, 0, sizeof(struct target_event_msn));
 	memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
-	evt.from = &cp->session->user;
+	evt.from = cp->session->user;
 	evt.to = buddy;
 	evt.conv = cp->conv;
 	evt.sess = cp->session;
 
 	if (!tmp_bud) { // Buddy not found
 		
+		target_msn_session_found_buddy(cp, account, nick, group, &f->tv);
 		evt.type = msn_evt_user_added;
 		res = target_msn_session_event(&evt);
 
-	} else if (!strcmp(tokens[2], "BL") && !buddy->blocked) {
+	} else if (!strcmp(tokens[2], "BL") && !tmp_bud->blocked) {
 	
 		// User added to the block list
-		buddy->blocked = 1;
+		tmp_bud->blocked = 1;
 		evt.type = msn_evt_user_blocked;
 		res = target_msn_session_event(&evt);
 
-	} else if (!strcmp(tokens[2], "AL") && buddy->blocked) {
+	} else if (!strcmp(tokens[2], "AL") && tmp_bud->blocked) {
 		
 		// User added to the allow list
-		buddy->blocked = 0;
+		tmp_bud->blocked = 0;
 		evt.type = msn_evt_user_unblocked;
 		res = target_msn_session_event(&evt);
 
@@ -1875,7 +1921,7 @@ int target_msn_handler_rem(struct target *t, struct target_conntrack_priv_msn *c
 		target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_CLIENT);
 	}
 
-	struct target_buddy_msn *buddy = target_msn_session_found_buddy(cp, account, NULL, NULL);
+	struct target_buddy_list_session_msn *buddy = target_msn_session_found_buddy(cp, account, NULL, NULL, &f->tv);
 
 	if (!buddy) {
 		pom_log(POM_LOG_DEBUG "Invalid buddy provided in REM command");
@@ -1885,8 +1931,8 @@ int target_msn_handler_rem(struct target *t, struct target_conntrack_priv_msn *c
 	struct target_event_msn evt;
 	memset(&evt, 0, sizeof(struct target_event_msn));
 	memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
-	evt.from = &cp->session->user;
-	evt.to = buddy;
+	evt.from = cp->session->user;
+	evt.to = buddy->bud;
 	evt.conv = cp->conv;
 	evt.sess = cp->session;
 

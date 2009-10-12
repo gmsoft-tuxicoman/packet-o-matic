@@ -269,11 +269,14 @@ static int input_read_pcap(struct input *i, struct frame *f) {
 	int result;
 	result = pcap_next_ex(p->p, &phdr, &next_pkt);
 
-	if (result == -2) { // End of file
+	if (result < 0) { // End of file or error
 
 		if (i->mode == mode_directory) {
 			pcap_close(p->p);
 			p->p = NULL;
+
+			if (result != -2)
+				pom_log(POM_LOG_ERR "Error while reading packet, moving on to the next file");
 
 			// Rescan the directory for possible new files
 			if (input_browse_dir_pcap(p) == POM_ERR)
@@ -291,14 +294,15 @@ static int input_read_pcap(struct input *i, struct frame *f) {
 			result = pcap_next_ex(p->p, &phdr, &next_pkt);
 
 		} else {
-			input_close(i);
-			return POM_OK;
-		}
-	}
+			if (result == -2) { // End of file
+				input_close(i);
+				return POM_OK;
+			}
 
-	if (result < 0) { // Error
-		pom_log(POM_LOG_ERR "Error while reading packet.");
-		return POM_ERR;
+			// Error
+			pom_log(POM_LOG_ERR "Error while reading packet");
+			return POM_ERR;
+		}
 	}
 
 	if (result == 0) { // Timeout

@@ -588,7 +588,7 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 
 	if (file->fd == -1) {
 
-		if (!cp->session->user.account) // Account unknown, ignore
+		if (!cp->session->user->account) // Account unknown, ignore
 			return POM_OK;
 
 		if (!msg_size) // Empty message, discard it
@@ -603,7 +603,7 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 				strncpy(fname, m->from->account, NAME_MAX);
 			} else {
 				// File is sent by us
-				strncpy(fname, cp->session->user.account, NAME_MAX);
+				strncpy(fname, cp->session->user->account, NAME_MAX);
 			}
 			strncat(fname, "-display-picture.png", NAME_MAX - strlen(fname));
 		} else if (file->type == msn_file_type_transfer) {
@@ -631,7 +631,7 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 
 		char filename[NAME_MAX + 1];
 		strcpy(filename, cp->session->parsed_path);
-		strncat(filename, cp->session->user.account, NAME_MAX - strlen(filename));
+		strncat(filename, cp->session->user->account, NAME_MAX - strlen(filename));
 		strncat(filename, "/", NAME_MAX - strlen(filename));
 		strncat(filename, fname, NAME_MAX - strlen(filename));
 		int fd = target_file_open(NULL, filename, O_WRONLY | O_CREAT, 0666);
@@ -795,8 +795,11 @@ int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *c
 					*buddy_guid = 0;
 					buddy_guid++;
 				}
-				buddy_dest = target_msn_session_found_buddy(cp, sip_hdrs[hdr_num].value, NULL, NULL);
-				if (buddy_dest == &sess->user)
+				
+				struct target_buddy_list_session_msn *bud_lst = target_msn_session_found_buddy(cp, sip_hdrs[hdr_num].value, NULL, NULL, &f->tv);
+				if (bud_lst)
+					buddy_dest = bud_lst->bud;
+				if (buddy_dest == sess->user)
 					buddy_dest = NULL;
 				if (m->from && buddy_dest && m->from != buddy_dest)
 					pom_log(POM_LOG_DEBUG "Warning, destination buddy missmatch");
@@ -1206,6 +1209,15 @@ int target_process_mail_invite_msn(struct target *t, struct target_conntrack_pri
 int target_process_status_msg_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
 
 	struct target_msg_msn *m = cp->msg[cp->curdir];
+
+
+	if (!m->from) {
+		pom_log(POM_LOG_DEBUG "Uknnown source for status message");
+		target_free_msg_msn(cp, cp->curdir);
+		return POM_OK;
+	}
+
+
 	int len = m->tot_len - m->cur_pos;
 
 	xmlDocPtr doc = NULL;
@@ -1279,14 +1291,14 @@ int target_process_status_msg_msn(struct target *t, struct target_conntrack_priv
 						strcpy(buddy->psm, psm);
 
 						evt.buff = buddy->psm;
-						res = target_msn_session_event(&evt);
+						res = target_msn_session_broadcast_event(&evt);
 
 					}
 					xmlFree(psm);
 				} else if (buddy->psm) {
 					free(buddy->psm); // Message was unset
 					buddy->psm = NULL;
-					res = target_msn_session_event(&evt);
+					res = target_msn_session_broadcast_event(&evt);
 				}
 
 			} else if (!xmlStrcmp(cur->name, (const xmlChar*) "CurrentMedia")) {
@@ -1412,7 +1424,7 @@ int target_process_adl_msn(struct target *t, struct target_conntrack_priv_msn *c
 					xmlFree(account);
 					xmlFree(list_id_str);
 
-					struct target_buddy_msn *buddy = target_msn_session_found_buddy(cp, full_account, NULL, NULL);
+					struct target_buddy_list_session_msn *buddy = target_msn_session_found_buddy(cp, full_account, NULL, NULL, &f->tv);
 					free(full_account);
 
 					if (buddy && (list_id & 0x4)) // blocked ?

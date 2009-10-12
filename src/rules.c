@@ -44,7 +44,7 @@ int dump_invalid_packet(struct frame *f) {
 	struct layer *l = f->l;
 	char buff[2048];
 	memset(buff, 0, sizeof(buff));
-	snprintf(buff, sizeof(buff), "Invalid packet : frame len %u, bufflen %u > ", f->len, f->bufflen);
+	snprintf(buff, sizeof(buff), "Invalid packet @%lu.%lu : frame len %u, bufflen %u > ", f->tv.tv_sec, f->tv.tv_usec, f->len, f->bufflen);
 
 	while (l) {
 		char *match_name = match_get_name(l->type);

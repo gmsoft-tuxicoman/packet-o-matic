@@ -377,12 +377,12 @@ size_t base64_decode(char *output, char *input, size_t out_len) {
 	size_t len = strlen(input);
 
 	if (len % 4) {
-		pom_log(POM_LOG_WARN "Base64 input length not multiple of 4");
+		pom_log(POM_LOG_DEBUG "Base64 input length not multiple of 4");
 		return POM_ERR;
 	}
 
 	if (out_len < ((len / 4) * 3 + 1)) {
-		pom_log(POM_LOG_WARN "Base64 output length too short");
+		pom_log(POM_LOG_DEBUG "Base64 output length too short");
 		return POM_ERR;
 	}
 

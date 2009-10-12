@@ -1,3 +1,9 @@
+* 2009/10/12 Guy Martin <gmsoft@tuxicoman.be>
+Make input_pcap continue to the next file on read error in directory mode.
+Use a hash table for buddies in target_msn.
+Lots of other improvement in target_msn.
+Print time when displaying info about an invalid packet.
+
 * 2009/09/06 Guy Martin <gmsoft@tuxicoman.be>
 Added match pppoe and ppp.
 Added helper pppoe to update payload length in PPPOE header.

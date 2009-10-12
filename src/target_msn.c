@@ -101,6 +101,7 @@ static struct target_mode *mode_default;
 int target_register_msn(struct target_reg *r) {
 
 	r->init = target_init_msn;
+	r->open = target_open_msn;
 	r->process = target_process_msn;
 	r->close = target_close_msn;
 	r->cleanup = target_cleanup_msn;
@@ -147,6 +148,11 @@ int target_init_msn(struct target *t) {
 	return POM_OK;
 }
 
+int target_open_msn(struct target *t) {
+
+	return target_msn_session_init_buddy_table(t);
+}
+
 int target_close_msn(struct target *t) {
 
 	struct target_priv_msn *priv = t->target_priv;
@@ -154,6 +160,23 @@ int target_close_msn(struct target *t) {
 	while (priv->ct_privs) {
 		conntrack_remove_target_priv(priv->ct_privs, priv->ct_privs->ce);
 		target_close_connection_msn(t, priv->ct_privs->ce, priv->ct_privs);
+	}
+
+	int i;
+	for (i = 0; i < TARGET_MSN_BUDDY_TABLE_SIZE; i++) {
+		struct target_buddy_list_msn *tmp = priv->buddy_table[i];
+		while (tmp) {
+			struct target_buddy_msn *bud = tmp->bud;
+			free(bud->account);
+			if (bud->nick)
+				free(bud->nick);
+			if (bud->psm)
+				free(bud->psm);
+			free(bud);
+			priv->buddy_table[i] = tmp->next;
+			free(tmp);
+			tmp = priv->buddy_table[i];
+		}
 	}
 
 	return POM_OK;
@@ -169,6 +192,7 @@ int target_cleanup_msn(struct target *t) {
 		ptype_cleanup(priv->dump_session);
 		ptype_cleanup(priv->dump_avatar);
 		ptype_cleanup(priv->dump_file_transfer);
+		free(priv->buddy_table);
 		free(priv);
 
 	}
@@ -204,6 +228,7 @@ int target_process_msn(struct target *t, struct frame *f) {
 		cp = malloc(sizeof(struct target_conntrack_priv_msn));
 		memset(cp, 0, sizeof(struct target_conntrack_priv_msn));
 
+		cp->target_priv = priv;
 		cp->server_dir = CE_DIR_UNK;
 		conntrack_add_target_priv(cp, t, f->ce, target_close_connection_msn);
 
@@ -215,6 +240,10 @@ int target_process_msn(struct target *t, struct frame *f) {
 		sess->refcount++;
 		sess->target_priv = priv;
 
+		// Create a new empty user
+		sess->user = malloc(sizeof(struct target_buddy_msn));
+		memset(sess->user, 0, sizeof(struct target_buddy_msn));
+
 		char tmp[NAME_MAX + 1];
 		memset(tmp, 0, sizeof(tmp));
 		if (layer_field_parse(f->l, PTYPE_STRING_GETVAL(priv->path), tmp, NAME_MAX) == POM_ERR) {
@@ -225,6 +254,15 @@ int target_process_msn(struct target *t, struct frame *f) {
 		strcpy(sess->parsed_path, tmp);
 		if (*(sess->parsed_path + strlen(sess->parsed_path) - 1) != '/')
 			strcat(sess->parsed_path, "/");
+
+		// Add the new session event
+		struct target_event_msn evt;
+		memset(&evt, 0, sizeof(struct target_event_msn));
+		memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
+		evt.from = sess->user;
+		evt.type = msn_evt_session_start;
+		evt.sess = sess;
+		target_msn_session_event(&evt);
 
 		cp->session = sess;
 		
@@ -635,27 +673,25 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 			close(sess->fd);
 		}
 
-		struct target_buddy_msn *bud = sess->buddies;
-		while (bud) {
-			free(bud->account);
-			if (bud->nick)
-				free(bud->nick);
-			if (bud->group_list)
-				free(bud->group_list);
-			if (bud->psm)
-				free(bud->psm);
+		struct target_buddy_list_session_msn *bud_lst = sess->buddies;
+		while (bud_lst) {
 			sess->buddies = sess->buddies->next;
-			free(bud);
-			bud = sess->buddies;
-		}
+			struct target_session_list_msn *prev_sess_lst = NULL, *sess_lst = bud_lst->bud->sess_lst;
+			while (sess_lst) {
+				if (sess_lst->sess == sess) {
+					if (!prev_sess_lst)
+						bud_lst->bud->sess_lst = sess_lst->next;
+					else
+						prev_sess_lst->next = sess_lst->next;
+					free(sess_lst);
+					break;
+				}
+				prev_sess_lst = sess_lst;
+				sess_lst = sess_lst->next;
+			}
 
-		struct target_buddy_group_msn *grp = sess->groups;
-		while (grp) {
-			free(grp->name);
-			free(grp->id);
-			sess->groups = sess->groups->next;
-			free(grp);
-			grp = sess->groups;
+			free(bud_lst);
+			bud_lst = sess->buddies;
 		}
 
 		while (sess->conv) {
@@ -698,12 +734,21 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 			pom_log(POM_LOG_TSHOOT "Dropped buffered event because account wasn't found");
 		}
 
-		if (sess->user.account)
-			free(sess->user.account);
-		if (sess->user.nick)
-			free(sess->user.nick);
-		if (sess->user.psm)
-			free(sess->user.psm);
+		// Remove session reference from the account
+		struct target_session_list_msn *prev_sess_lst = NULL, *sess_lst = sess->user->sess_lst;
+		while (sess_lst) {
+			if (sess_lst->sess == sess) {
+				if (!prev_sess_lst)
+					sess->user->sess_lst = sess_lst->next;
+				else
+					prev_sess_lst->next = sess_lst->next;
+				free(sess_lst);
+				break;
+			}
+			prev_sess_lst = sess_lst;
+			sess_lst = sess_lst->next;
+		}
+
 		if (sess->parsed_path)
 			free(sess->parsed_path);
 
@@ -714,6 +759,14 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 
 		if (sess == priv->sessions) 
 			priv->sessions = sess->next;
+
+		if (!sess->user->account) { // Account not populated, it's a temporary buddy
+			if (sess->user->nick)
+				free(sess->user->nick);
+			if (sess->user->psm)
+				free(sess->user->psm);
+			free(sess->user);
+		}
 
 		free(sess);
 	}
@@ -775,6 +828,7 @@ struct target_conntrack_priv_msn* target_msn_conntrack_priv_fork(struct target *
 	new_cp = malloc(sizeof(struct target_conntrack_priv_msn));
 	memset(new_cp, 0, sizeof(struct target_conntrack_priv_msn));
 
+	new_cp->target_priv = t->target_priv;
 	new_cp->server_dir = CE_DIR_UNK;
 
 	cp->session->refcount++;

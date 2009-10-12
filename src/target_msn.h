@@ -35,6 +35,8 @@
 // check if and event needs the session or the connection file
 #define MSN_EVT_SESSION_MASK	0xff00
 
+#define TARGET_MSN_BUDDY_TABLE_SIZE 8192
+
 enum msn_payload_type {
 	
 	msn_payload_type_unk = 0, ///< Unknown
@@ -61,35 +63,44 @@ enum msn_status_type {
 	msn_status_offline,
 };
 
-struct target_buddy_group_msn {
+struct target_buddy_list_msn {
 
-	char *name; // Name of the group
-	char *id; // Could be just an int or a full winwin GUID
+	struct target_buddy_msn *bud;
+	struct target_buddy_list_msn *next;
 
-	struct target_buddy_group_msn *next;
+};
+
+struct target_buddy_list_session_msn {
+
+	struct target_buddy_msn *bud;
+	int blocked; // True if user is blocked
+	struct target_buddy_list_session_msn *next;
+
+};
+
+struct target_session_list_msn {
+
+	struct target_session_priv_msn *sess;
+	struct target_session_list_msn *next;
 };
 
 struct target_buddy_msn {
 	char *account; // Account for this user
 	char *nick; // Friendly name of the user
-	char *group_list; // List of group to which this user belongs to
 	enum msn_status_type status; // Status of this user
 	char *psm; // Personal message of the user
-	int blocked; // True if user is blocked
-
-	struct target_buddy_msn *next;
+	struct target_session_list_msn *sess_lst; // Sessions to which this buddy is in
 };
 
 struct target_session_priv_msn {
 
 	int refcount; // Reference count for this MSN session
 
-	struct target_buddy_msn *buddies; // Known buddies
-	struct target_buddy_group_msn *groups; // Known group of buddies
+	struct target_buddy_list_session_msn *buddies; // Known buddies
 
 	unsigned int version; // Protocol version for this connection
 
-	struct target_buddy_msn user; // User who logged in
+	struct target_buddy_msn *user; // User who logged in
 
 	// Buffer of conversation events while we still don't know the account
 	struct target_event_msn *evt_buff;
@@ -121,9 +132,7 @@ enum msn_file_type {
 	msn_file_type_unsupported,
 	msn_file_type_display_image,
 	msn_file_type_transfer,
-
 };
-
 
 struct target_bin_msg_buff_msn {
 
@@ -178,7 +187,8 @@ enum msn_evt_type {
 	msn_evt_wink,
 	msn_evt_file_transfer_start,
 	msn_evt_file_transfer_end,
-	msn_evt_friendly_name_change = 0x0100,
+	msn_evt_session_start = 0x0100,
+	msn_evt_friendly_name_change,
 	msn_evt_status_change,
 	msn_evt_user_disconnect,
 	msn_evt_mail_invite,
@@ -249,6 +259,7 @@ struct target_conntrack_priv_msn {
 
 	struct conntrack_entry *ce; // Associated conntrack entry
 
+	struct target_priv_msn *target_priv;
 
 };
 
@@ -263,6 +274,8 @@ struct target_priv_msn {
 
 	struct target_session_priv_msn *sessions; // Sessions for each users
 
+	struct target_buddy_list_msn **buddy_table;
+
 };
 
 
@@ -276,6 +289,7 @@ struct msn_cmd_handler {
 int target_register_msn(struct target_reg *r);
 
 int target_init_msn(struct target *t);
+int target_open_msn(struct target *t);
 int target_process_msn(struct target *t, struct frame *f);
 int target_process_line_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_process_payload_ignore_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
