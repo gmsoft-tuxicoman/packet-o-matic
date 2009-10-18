@@ -367,7 +367,7 @@ int get_current_time(struct timeval *cur_time) {
 	return POM_OK;
 }
 
-struct timeval *get_curent_time_p() {
+struct timeval *get_current_time_p() {
 
 	return &now;
 }

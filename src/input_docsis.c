@@ -122,6 +122,9 @@ static int input_init_docsis(struct input *i) {
 	memset(i->input_priv, 0, sizeof(struct input_priv_docsis));
 
 	struct input_priv_docsis *p = i->input_priv;
+	p->frontend_fd = -1;
+	p->demux_fd = -1;
+	p->dvr_fd = -1;
 	p->temp_buff = malloc(TEMP_BUFF_LEN);
 	memset(p->temp_buff, 0xff, TEMP_BUFF_LEN);
 
@@ -189,6 +192,7 @@ static int input_open_docsis(struct input *i) {
 		if (fstat(p->dvr_fd, &buff)) {
 			pom_log(POM_LOG_ERR "Unable to stat() the file %s", PTYPE_STRING_GETVAL(p_file));
 			close(p->dvr_fd);
+			p->dvr_fd = -1;
 			return POM_ERR;
 		}
 		memset(&p->packet_time, 0, sizeof(struct timeval));
@@ -386,9 +390,23 @@ static int input_open_docsis(struct input *i) {
 
 err:
 
-	close(p->frontend_fd);
-	close(p->demux_fd);
-	close(p->dvr_fd);
+	if (p->frontend_fd != -1) {
+		close(p->frontend_fd);
+		p->frontend_fd = -1;
+	}
+	if (p->demux_fd != -1) {
+		close(p->demux_fd);
+		p->demux_fd = -1;
+	}
+	if (p->dvr_fd != -1) {
+		close(p->dvr_fd);
+		p->dvr_fd = -1;
+	}
+	
+	if (p->frontend_name) {
+		free(p->frontend_name);
+		p->frontend_name = NULL;
+	}
 	
 	return POM_ERR;
 
@@ -612,8 +630,17 @@ static int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_d
 		ssize_t len = 0, r = 0;
 
 		do {
+
 			r = read(p->dvr_fd, buff + len, MPEG_TS_LEN - len);
 			if (r < 0) {
+				if (errno == EOVERFLOW) {
+					pom_log(POM_LOG_WARN "Overflow in the kernel buffer while reading MPEG packets. Lots of packets will be dropped !!!");
+					len = 0;
+					r = 0;
+					// Approximation but whole buffer is being discarded in the kernel
+					p->missed_packets += DEMUX_BUFFER_SIZE / MPEG_TS_LEN;
+					continue;
+				}
 				pom_log(POM_LOG_ERR "Error while reading dvr");
 				return -2;
 			} else if (r == 0) {
@@ -1032,13 +1059,23 @@ static int input_close_docsis(struct input *i) {
 
 	if (i->mode != mode_file) {
 		free(p->frontend_name);
-		p->frontend_name = 0;
+		p->frontend_name = NULL;
 
-		close(p->frontend_fd);
-		close(p->demux_fd);
+		if (p->frontend_fd != -1) {
+			close(p->frontend_fd);
+			p->frontend_fd = -1;
+		}
+		
+		if (p->demux_fd != -1) {
+			close(p->demux_fd);
+			p->demux_fd = -1;
+		}
 	}
 
-	close(p->dvr_fd);
+	if (p->dvr_fd != -1) {
+		close(p->dvr_fd);
+		p->dvr_fd = -1;
+	}
 
 	pom_log("0x%02lx; DOCSIS : Total MPEG packet read %lu, missed %lu (%.1f%%), erroneous %lu (%.1f%%), invalid %lu (%.1f%%), total errors %lu (%.1f%%)", \
 		(unsigned long) i->input_priv, \

@@ -794,6 +794,11 @@ static int rule_parse_branch(char *expr, struct rule_node **start, struct rule_n
 	while (strlen(expr) > 0 && expr[strlen(expr) - 1] == ' ')
 		expr[strlen(expr) - 1] = 0;
 
+	if (strlen(expr) == 0) {
+		snprintf(errbuff, errlen, "Empty branch\r\n");
+		return POM_ERR;
+	}
+
 	if (expr[0] == '!') {
 		inv = 1;
 		expr++;
@@ -808,7 +813,7 @@ static int rule_parse_branch(char *expr, struct rule_node **start, struct rule_n
 
 		if (inv) {
 			if ((*start)->b){
-				snprintf(errbuff, errlen,"Unexpected \"!\"\r\n");
+				snprintf(errbuff, errlen, "Unexpected \"!\"\r\n");
 				return POM_ERR;
 			}
 			(*start)->op |= RULE_OP_NOT;

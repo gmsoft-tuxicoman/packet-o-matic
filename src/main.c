@@ -784,7 +784,7 @@ int main(int argc, char *argv[]) {
 			pom_log(POM_LOG_ERR "Error while unlocking the buffer mutex. Aborting");
 			goto finish;
 		}
-		struct timeval *now = get_curent_time_p();
+		struct timeval *now = get_current_time_p();
 		if (rbuf->ic.is_live)
 			gettimeofday(now, NULL);
 		else {

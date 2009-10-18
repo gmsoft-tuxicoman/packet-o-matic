@@ -318,6 +318,26 @@ int target_msn_session_found_account(struct target *t, struct target_conntrack_p
 
 			if (!cp->conv->parts) 
 				pom_log(POM_LOG_DEBUG "Conversation without participant after account found !");
+
+			// Remove possible join/part event for ourself in the conversation
+			struct target_event_msn *evt_buff_prev = NULL, *evt_buff = cp->conv->evt_buff;
+			while (evt_buff) {
+				if ((evt_buff->type == msn_evt_buddy_join || evt_buff->type == msn_evt_buddy_leave) && evt_buff->from == cp->session->user) {
+					if (evt_buff_prev)
+						evt_buff_prev->next = evt_buff->next;
+					else
+						cp->conv->evt_buff = evt_buff->next;
+					if (evt_buff->buff)
+						free(evt_buff->buff);
+					struct target_event_msn *tmp_evt = evt_buff->next;
+					free(evt_buff);
+					evt_buff = tmp_evt;
+					continue;
+
+				}
+				evt_buff_prev = evt_buff;
+				evt_buff = evt_buff->next;
+			}
 		}
 
 		struct target_buddy_list_session_msn *prev_bud_lst = NULL, *bud_lst = cp->session->buddies;

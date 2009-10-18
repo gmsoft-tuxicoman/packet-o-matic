@@ -1,3 +1,10 @@
+* 2009/10/18 Guy Martin <gmsoft@tuxicoman.be>
+Add some sanity checks on fds in input_docsis.
+Fix function name typo get_curent_time_p -> get_current_time_p.
+Fix crash when using "or or" in a rule.
+Fix crash when giving an invalid field name in path completion.
+Remove invalid buffered join/part events from session account in target_msn.
+
 * 2009/10/12 Guy Martin <gmsoft@tuxicoman.be>
 Make input_pcap continue to the next file on read error in directory mode.
 Use a hash table for buddies in target_msn.

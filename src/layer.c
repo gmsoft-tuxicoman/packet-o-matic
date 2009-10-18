@@ -213,6 +213,8 @@ int layer_field_parse(struct layer *l, char *expr, char *buff, size_t size) {
 				int i;
 				for (i = 0; i < MAX_LAYER_FIELDS; i++) {
 					struct match_field_reg *field = match_get_field(tmpl->type, i);
+					if (!field)
+						break;
 					if (!strcmp(field->name, expr_sep)) {
 						char vbuff[1024];
 						memset(vbuff, 0, sizeof(vbuff));
@@ -230,8 +232,8 @@ int layer_field_parse(struct layer *l, char *expr, char *buff, size_t size) {
 			tmpl = tmpl->next;
 		}
 		if (!found) {
-			if (size < strlen(buff) + strlen(expr_start) + strlen(expr_sep) + 1) {
-				strcat(buff, expr_start);
+			if (strlen(buff) + strlen(match) + strlen(expr_sep) + 1 < size) {
+				strcat(buff, match);
 				strcat(buff, ".");
 				strcat(buff, expr_sep);
 			}
