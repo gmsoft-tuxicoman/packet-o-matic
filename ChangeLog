@@ -1,3 +1,10 @@
+* 2009/10/23 Guy Martin <gmsoft@tuxicoman.be>
+Fix error message in input_pcap when datalink doesn't match in mode directory.
+Do not display stats in input_docsis if it fails to find a frequency in mode scan.
+Always compare usernames in a case insensitive fashion in target_msn.
+Don't set the conversation reference for out of band message in target_msn.
+Fix session ref for buddies in target_msn.
+
 * 2009/10/18 Guy Martin <gmsoft@tuxicoman.be>
 Add some sanity checks on fds in input_docsis.
 Fix function name typo get_curent_time_p -> get_current_time_p.

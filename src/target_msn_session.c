@@ -221,12 +221,22 @@ struct target_buddy_list_session_msn *target_msn_session_found_buddy2(struct tar
 		bud_lst->next = cp->session->buddies;
 		cp->session->buddies = bud_lst;
 
-		// Reference the session to the buddy
-		struct target_session_list_msn *sess_lst = malloc(sizeof(struct target_session_list_msn));
-		memset(sess_lst, 0, sizeof(struct target_session_list_msn));
-		sess_lst->sess = cp->session;
-		sess_lst->next = bud->sess_lst;
-		bud->sess_lst = sess_lst;
+		// Reference the session to the buddy if not done yet
+		struct target_session_list_msn *sess_lst = bud->sess_lst;
+
+		while (sess_lst) {
+			if (sess_lst->sess == cp->session)
+				break;
+			sess_lst = sess_lst->next;
+		}
+
+		if (!sess_lst) {
+			sess_lst = malloc(sizeof(struct target_session_list_msn));
+			memset(sess_lst, 0, sizeof(struct target_session_list_msn));
+			sess_lst->sess = cp->session;
+			sess_lst->next = bud->sess_lst;
+			bud->sess_lst = sess_lst;
+		}
 	}
 
 	pom_log(POM_LOG_TSHOOT "Got buddy (%s)", bud->account);
@@ -304,7 +314,7 @@ int target_msn_session_found_account(struct target *t, struct target_conntrack_p
 		if (cp->conv) {
 			struct target_connection_party_msn *prev_part = NULL, *parts = cp->conv->parts;
 			while (parts) {
-				if (parts->buddy == cp->session->user) { // Delete this participant
+				if (parts->buddy == bud) { // Delete this participant
 					if (prev_part)
 						prev_part->next = parts->next;
 					else
@@ -322,7 +332,7 @@ int target_msn_session_found_account(struct target *t, struct target_conntrack_p
 			// Remove possible join/part event for ourself in the conversation
 			struct target_event_msn *evt_buff_prev = NULL, *evt_buff = cp->conv->evt_buff;
 			while (evt_buff) {
-				if ((evt_buff->type == msn_evt_buddy_join || evt_buff->type == msn_evt_buddy_leave) && evt_buff->from == cp->session->user) {
+				if ((evt_buff->type == msn_evt_buddy_join || evt_buff->type == msn_evt_buddy_leave) && evt_buff->from == bud) {
 					if (evt_buff_prev)
 						evt_buff_prev->next = evt_buff->next;
 					else
@@ -340,9 +350,10 @@ int target_msn_session_found_account(struct target *t, struct target_conntrack_p
 			}
 		}
 
+		// Remove the account from the buddy list if added
 		struct target_buddy_list_session_msn *prev_bud_lst = NULL, *bud_lst = cp->session->buddies;
 		while (bud_lst) {
-			if (bud_lst->bud == cp->session->user) {
+			if (bud_lst->bud == bud) {
 				if (prev_bud_lst)
 					prev_bud_lst->next = bud_lst->next;
 				else
@@ -410,12 +421,22 @@ int target_msn_session_found_account(struct target *t, struct target_conntrack_p
 
 		} else {
 			
-			// Reference the session to the buddy
-			struct target_session_list_msn *sess_lst = malloc(sizeof(struct target_session_list_msn));
-			memset(sess_lst, 0, sizeof(struct target_session_list_msn));
-			sess_lst->sess = cp->session;
-			sess_lst->next = bud->sess_lst;
-			bud->sess_lst = sess_lst;
+			// Reference the session to the buddy if not done already
+
+			struct target_session_list_msn *sess_lst = bud->sess_lst;
+			while (sess_lst) {
+				if (sess_lst->sess == cp->session)
+					break;
+				sess_lst = sess_lst->next;
+			}
+			
+			if (!sess_lst) {
+				sess_lst = malloc(sizeof(struct target_session_list_msn));
+				memset(sess_lst, 0, sizeof(struct target_session_list_msn));
+				sess_lst->sess = cp->session;
+				sess_lst->next = bud->sess_lst;
+				bud->sess_lst = sess_lst;
+			}
 			pom_log(POM_LOG_TSHOOT "User account is %s", cp->session->user->account);
 
 		}
@@ -507,22 +528,6 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 	if (new_sess->refcount != 0) 
 		pom_log(POM_LOG_WARN "Warning, session refcount is not 0 !");
 
-	// Update session reference for user account
-/*	struct target_session_list_msn *prev_sess_lst = NULL, *sess_lst = new_sess->user->sess_lst;
-	while (sess_lst) {
-		if (sess_lst->sess == new_sess) {
-			if (!prev_sess_lst) {
-				new_sess->user->sess_lst = sess_lst->next;
-			} else {
-				prev_sess_lst->next = sess_lst->next;
-			}
-			free(sess_lst);
-			break;
-		}
-		prev_sess_lst = sess_lst;
-		sess_lst = sess_lst->next;
-	}*/
-
 	// Merge buddies
 	struct target_buddy_list_session_msn *new_bud = new_sess->buddies;
 	while (new_bud) {
@@ -539,14 +544,24 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 			new_bud->next = old_sess->buddies;
 			old_sess->buddies = new_bud;
 
-			// Update sess reference to point to new one
+			// Update sess reference to point to new one if it doesn't belong to that session yet
+
 			struct target_session_list_msn *sess_lst = new_bud->bud->sess_lst;
 			while (sess_lst) {
-				if (sess_lst->sess == new_sess) {
-					sess_lst->sess = old_sess;
+				if (sess_lst->sess == old_sess)
 					break;
-				}
 				sess_lst = sess_lst->next;
+			}
+			
+			if (!sess_lst) {
+				sess_lst = new_bud->bud->sess_lst;
+				while (sess_lst) {
+					if (sess_lst->sess == new_sess) {
+						sess_lst->sess = old_sess;
+						break;
+					}
+					sess_lst = sess_lst->next;
+				}
 			}
 
 		} else {

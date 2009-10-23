@@ -716,7 +716,6 @@ static int input_scan_docsis(struct input *i) {
 	p->scan_curfreq += p->scan_step;
 
 	if (p->scan_curfreq > p->scan_endfreq) {
-		pom_log(POM_LOG_WARN "No DOCSIS stream found");
 		return POM_ERR;
 	}
 
@@ -1077,17 +1076,22 @@ static int input_close_docsis(struct input *i) {
 		p->dvr_fd = -1;
 	}
 
-	pom_log("0x%02lx; DOCSIS : Total MPEG packet read %lu, missed %lu (%.1f%%), erroneous %lu (%.1f%%), invalid %lu (%.1f%%), total errors %lu (%.1f%%)", \
-		(unsigned long) i->input_priv, \
-		p->total_packets - p->missed_packets, \
-		p->missed_packets, \
-		100.0 / (double) p->total_packets * (double) p->missed_packets, \
-		p->error_packets, \
-		100.0 / (double) p->total_packets * (double) p->error_packets, \
-		p->invalid_packets, \
-		100.0 / (double) p->total_packets * (double) p->invalid_packets, \
-		p->missed_packets + p->error_packets + p->invalid_packets, \
-		100.0 / (double) p->total_packets * (double) (p->missed_packets  + p->error_packets + p->invalid_packets));
+	if (i->mode == mode_scan) {
+		pom_log(POM_LOG_WARN "No DOCSIS stream found");
+	} else {	
+		pom_log("0x%02lx; DOCSIS : Total MPEG packet read %lu, missed %lu (%.1f%%), erroneous %lu (%.1f%%), invalid %lu (%.1f%%), total errors %lu (%.1f%%)", \
+			(unsigned long) i->input_priv, \
+			p->total_packets - p->missed_packets, \
+			p->missed_packets, \
+			100.0 / (double) p->total_packets * (double) p->missed_packets, \
+			p->error_packets, \
+			100.0 / (double) p->total_packets * (double) p->error_packets, \
+			p->invalid_packets, \
+			100.0 / (double) p->total_packets * (double) p->invalid_packets, \
+			p->missed_packets + p->error_packets + p->invalid_packets, \
+			100.0 / (double) p->total_packets * (double) (p->missed_packets  + p->error_packets + p->invalid_packets));
+
+	}
 
 	p->total_packets = 0;
 	p->missed_packets = 0;

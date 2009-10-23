@@ -485,7 +485,7 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 				m->cur_pos = 0;
 				m->tot_len = sip_msg->total_size;
 				
-				int res = target_process_sip_msn(t, cp, f, buddy_dest, buddy_guid);
+				int res = target_process_sip_msn(t, cp, f, buddy_dest, buddy_guid, 0);
 
 				cp->buffer[cp->curdir] = old_cp_buffer;
 				cp->buffer_len[cp->curdir] = old_cp_buffer_len;
@@ -526,7 +526,7 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 			return POM_OK;
 		}
 
-		return target_process_sip_msn(t, cp, f, buddy_dest, buddy_guid);
+		return target_process_sip_msn(t, cp, f, buddy_dest, buddy_guid, 0);
 	}
 
 	// Process the payload
@@ -696,7 +696,7 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 
 }
 
-int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f, struct target_buddy_msn *buddy_dest, char *buddy_guid) {
+int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f, struct target_buddy_msn *buddy_dest, char *buddy_guid, int oob) {
 
 	struct target_msg_msn *m = cp->msg[cp->curdir];
 
@@ -990,7 +990,7 @@ int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *c
 			external_addrs_and_ports = hdrs[hdr_num].value;
 			pom_log(POM_LOG_TSHOOT "External IPv4 Addrs and ports : %s", hdrs[hdr_num].value);
 
-		} else if (!strcasecmp(hdrs[hdr_num].name,"stroPdnAsrddA6vPI")) { // IPv6AddrsAndPorts
+		} else if (!strcasecmp(hdrs[hdr_num].name, "stroPdnAsrddA6vPI")) { // IPv6AddrsAndPorts
 			target_mirror_string_msn(hdrs[hdr_num].value);
 			ipv6_addrs_and_ports = hdrs[hdr_num].value;
 			pom_log(POM_LOG_TSHOOT "IPv6 Addrs and ports : %s", hdrs[hdr_num].value);
@@ -1019,6 +1019,8 @@ int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *c
 	}
 
 	unsigned int flags = MSN_CONN_FLAG_P2P | (cp->flags & (MSN_CONN_FLAG_WLM2009_BIN | MSN_CONN_FLAG_UDP));
+	if (oob)
+		flags |= MSN_CONN_FLAG_OOB;
 	if (internal_addrs && internal_port) {
 		char *str, *saveptr = NULL, *token;
 		for (str = internal_addrs; ; str = NULL) {
@@ -1095,7 +1097,10 @@ int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *c
 	}
 
 	if (server_addr) {
-		target_add_expectation_msn(t, cp, f, server_addr, "443", MSN_CONN_FLAG_STUN | (cp->flags & MSN_CONN_FLAG_WLM2009_BIN));
+		int tmpflags = MSN_CONN_FLAG_STUN | (cp->flags & MSN_CONN_FLAG_WLM2009_BIN);
+		if (oob)
+			tmpflags |= MSN_CONN_FLAG_OOB;
+		target_add_expectation_msn(t, cp, f, server_addr, "443", tmpflags);
 	}
 
 	if (b64_context) {
@@ -1169,9 +1174,11 @@ int target_process_uun_ubn_msn(struct target *t, struct target_conntrack_priv_ms
 	} else if (!strncasecmp(payload, "<sip", strlen("<sip"))) {
 		pom_log(POM_LOG_TSHOOT "P2P, Ignoring base64 encoded SIP payload"); 
 	} else {
-		res = target_process_sip_msn(t, cp, f, NULL, NULL);
+		res = target_process_sip_msn(t, cp, f, NULL, NULL, 1);
 	}
 
+	// Out of band message should not associate a conversation
+	cp->conv = NULL;
 
 	target_free_msg_msn(cp, cp->curdir);
 

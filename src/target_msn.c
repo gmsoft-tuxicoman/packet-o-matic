@@ -475,6 +475,10 @@ int target_process_msn(struct target *t, struct frame *f) {
 				case msn_payload_type_msg:
 					res = target_process_msg_msn(t, cp, f);
 					break;
+				case msn_payload_type_msg_oob:
+					res = target_process_msg_msn(t, cp, f);
+					cp->conv = NULL; // Make sure conversation isn't assigned for out of band messages
+					break;
 				case msn_payload_type_mail_invite:
 					res = target_process_mail_invite_msn(t, cp, f);
 					break;
@@ -485,7 +489,7 @@ int target_process_msn(struct target *t, struct frame *f) {
 					res = target_process_adl_msn(t, cp, f);
 					break;
 				case msn_payload_type_sip_msg:
-					res = target_process_sip_msn(t, cp, f, NULL, NULL);
+					res = target_process_sip_msn(t, cp, f, NULL, NULL, 0);
 					target_free_msg_msn(cp, cp->curdir);
 					break;
 				case msn_payload_type_uun_ubn:
@@ -834,11 +838,6 @@ struct target_conntrack_priv_msn* target_msn_conntrack_priv_fork(struct target *
 	cp->session->refcount++;
 	new_cp->session = cp->session;
 
-	if (cp->conv) {
-		cp->conv->refcount++;
-		new_cp->conv = cp->conv;
-	}
-
 	new_cp->next = priv->ct_privs;
 	if (priv->ct_privs)
 		priv->ct_privs->prev = new_cp;
@@ -885,6 +884,12 @@ int target_add_expectation_msn(struct target *t, struct target_conntrack_priv_ms
 
 	struct target_conntrack_priv_msn *new_cp = target_msn_conntrack_priv_fork(t, cp, f);
 	new_cp->flags = flags;
+
+	if (!(flags & MSN_CONN_FLAG_OOB) && cp->conv) {
+		cp->conv->refcount++;
+		new_cp->conv = cp->conv;
+	}
+
 
 	expectation_set_target_priv(expt, new_cp, target_close_connection_msn);
 	if (expectation_add(expt, MSN_EXPECTATION_TIMER) == POM_ERR) {

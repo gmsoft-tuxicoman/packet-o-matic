@@ -41,6 +41,7 @@ enum msn_payload_type {
 	
 	msn_payload_type_unk = 0, ///< Unknown
 	msn_payload_type_msg, ///< processing a message
+	msn_payload_type_msg_oob, ///< processing an out of band message
 	msn_payload_type_mail_invite, ///< user sent a mail invite
 	msn_payload_type_status_msg, ///< status message and other info
 	msn_payload_type_adl, ///< Payload from the ADL command, contains the contact list
@@ -214,6 +215,7 @@ struct target_event_msn {
 #define MSN_CONN_FLAG_STUN		0x04 // Set if this is a STUN connection to a relay server
 #define MSN_CONN_FLAG_WLM2009_BIN	0x08 // Set if the connection will use the WLM2009 binary header format
 #define MSN_CONN_FLAG_UDP		0x10 // Set if the connection needs UDP expectations
+#define MSN_CONN_FLAG_OOB		0x20 // Set if the conversation shouldn't be carrier on this new connection
 
 struct target_conversation_msn {
 	

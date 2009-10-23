@@ -391,7 +391,7 @@ int target_msn_handler_lst(struct target *t, struct target_conntrack_priv_msn *c
 	// They are probably too st00pid to get it right
 
 	int new_syntax = 0;
-	if (!strncmp(tokens[1], "N=", strlen("N="))) // New syntax alway give account prepended with N=
+	if (!strncasecmp(tokens[1], "N=", strlen("N="))) // New syntax alway give account prepended with N=
 		new_syntax = 1;
 
 	char *account = NULL, *nick = NULL, *group = NULL, *list_id = NULL;
@@ -774,7 +774,7 @@ int target_msn_handler_bye(struct target *t, struct target_conntrack_priv_msn *c
 		if (cp->conv && cp->conv->parts)
 			party = cp->conv->parts;
 		while (party) {
-			if (!strcmp(party->buddy->account, tokens[1])) {
+			if (!strcasecmp(party->buddy->account, tokens[1])) {
 				break;
 			}
 			party_prev = party;

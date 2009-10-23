@@ -559,7 +559,7 @@ static int input_open_next_file_pcap(struct input_priv_pcap *p) {
 			break;
 		pcap_close(p->p);
 		p->p = NULL;
-		pom_log(POM_LOG_WARN "Skipping file %s since it's not the same datalink as the previous ones");
+		pom_log(POM_LOG_WARN "Skipping file %s since it's not the same datalink as the previous ones", filename);
 
 	} while(1);
 

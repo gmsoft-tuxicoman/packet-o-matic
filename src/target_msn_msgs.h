@@ -112,7 +112,7 @@ int target_process_status_msg_msn(struct target *t, struct target_conntrack_priv
 int target_process_adl_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 
 
-int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f, struct target_buddy_msn *buddy_dest, char *buddy_guid);
+int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f, struct target_buddy_msn *buddy_dest, char *buddy_guid, int oob);
 int target_process_uun_ubn_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 
 int target_mirror_string_msn(char *value);
