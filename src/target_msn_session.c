@@ -25,6 +25,7 @@
 
 #include <fcntl.h>
 #include <ctype.h>
+#include <errno.h>
 
 // Random value for hashing
 #define INITVAL 0x7fc8031d
@@ -545,23 +546,35 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 			old_sess->buddies = new_bud;
 
 			// Update sess reference to point to new one if it doesn't belong to that session yet
-
+			
+			int found = 0;
 			struct target_session_list_msn *sess_lst = new_bud->bud->sess_lst;
 			while (sess_lst) {
-				if (sess_lst->sess == old_sess)
+				if (sess_lst->sess == old_sess) {
+					found = 1;
 					break;
+				}
 				sess_lst = sess_lst->next;
 			}
-			
-			if (!sess_lst) {
-				sess_lst = new_bud->bud->sess_lst;
-				while (sess_lst) {
-					if (sess_lst->sess == new_sess) {
+		
+			struct target_session_list_msn *prev_sess_lst = NULL;
+			sess_lst = new_bud->bud->sess_lst;
+			while (sess_lst) {
+				if (sess_lst->sess == new_sess) {
+					if (found) { // Get rid of the old ref
+						if (!prev_sess_lst) {
+							sess_lst->next = sess_lst->next;
+						} else {
+							prev_sess_lst->next = sess_lst->next;
+						}
+						free(sess_lst);
+					} else { // Update the old ref
 						sess_lst->sess = old_sess;
-						break;
 					}
-					sess_lst = sess_lst->next;
+					break;
 				}
+				prev_sess_lst = sess_lst;
+				sess_lst = sess_lst->next;
 			}
 
 		} else {
@@ -725,6 +738,20 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 		file->next = new_sess->file;
 	}
 
+	// Remove the reference to the old session for the user
+	struct target_session_list_msn *prev_sess_lst = NULL, *sess_lst = old_sess->user->sess_lst;
+	while (sess_lst) {
+		if (sess_lst->sess == new_sess) {
+			if (!prev_sess_lst) 
+				old_sess->user->sess_lst = sess_lst->next;
+			else
+				prev_sess_lst->next = sess_lst->next;
+			free(sess_lst);
+			break;
+		}
+		prev_sess_lst = sess_lst;
+		sess_lst = sess_lst->next;
+	}
 
 
 	// Remove the session from the sessions list
@@ -932,8 +959,12 @@ int target_msn_session_process_event(struct target_event_msn *evt) {
 
 		// Open could do the job but it's better to use the API if it changes later on
 		conv->fd = target_file_open(NULL, filename, O_WRONLY | O_CREAT | O_APPEND, 0666);
-		if (conv->fd == POM_ERR)
+		if (conv->fd == POM_ERR) {
+			char errbuff[256];
+			strerror_r(errno, errbuff, sizeof(errbuff) - 1);
+			pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s", filename, errbuff);
 			return POM_ERR;
+		}
 	}
 
 	// Open the session logs
@@ -958,8 +989,12 @@ int target_msn_session_process_event(struct target_event_msn *evt) {
 
 		// Open could do the job but it's better to use the API if it changes later on
 		sess->fd = target_file_open(NULL, filename, O_WRONLY | O_CREAT | O_APPEND, 0666);
-		if (sess->fd == POM_ERR)
+		if (sess->fd == POM_ERR) {
+			char errbuff[256];
+			strerror_r(errno, errbuff, sizeof(errbuff) - 1);
+			pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s", filename, errbuff);
 			return POM_ERR;
+		}
 	}
 
 	char timestamp[12];
@@ -1164,8 +1199,12 @@ int target_msn_session_write(int fd, char *buff) {
 	size_t len = strlen(buff);
 	size_t res = 0, pos = 0;
 	while ((res = write(fd, buff + pos, len - pos)) && pos < len) {
-		if (res == -1)
+		if (res == -1) {
+			char errbuff[256];
+			strerror_r(errno, errbuff, sizeof(errbuff) - 1);
+			pom_log(POM_LOG_ERR "Write error : %s", errbuff);
 			return POM_ERR;
+		}
 		pos += res;
 	}
 

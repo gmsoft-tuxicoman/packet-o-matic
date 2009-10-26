@@ -1,3 +1,8 @@
+* 2009/10/26 Guy Martin <gmsoft@tuxicoman.be>
+Make target_msn more verbose on failures.
+Remove session reference for the old sess on the user when merging session in target_msn.
+Print usage when providing unneeded extra arguments.
+
 * 2009/10/23 Guy Martin <gmsoft@tuxicoman.be>
 Fix error message in input_pcap when datalink doesn't match in mode directory.
 Do not display stats in input_docsis if it fails to find a frequency in mode scan.

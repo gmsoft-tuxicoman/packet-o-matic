@@ -632,6 +632,11 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
+	if (optind < argc) {
+		print_usage();
+		return 1;
+	}
+
 	// Write to the pidfile
 	if (pidfile) {
 		FILE* pid_fd = fopen(pidfile, "w");

@@ -135,7 +135,7 @@ int target_init_msn(struct target *t) {
 	priv->dump_avatar = ptype_alloc("bool", NULL);
 	priv->dump_file_transfer = ptype_alloc("bool", NULL);
 
-	if (!priv->path) {
+	if (!priv->path || !priv->dump_session || !priv->dump_avatar || !priv->dump_file_transfer) {
 		target_cleanup_msn(t);
 		return POM_ERR;
 	}
@@ -893,6 +893,7 @@ int target_add_expectation_msn(struct target *t, struct target_conntrack_priv_ms
 
 	expectation_set_target_priv(expt, new_cp, target_close_connection_msn);
 	if (expectation_add(expt, MSN_EXPECTATION_TIMER) == POM_ERR) {
+		pom_log(POM_LOG_WARN "Unable to add an expectation");
 		new_cp->session->refcount--;
 		free(new_cp);
 		return POM_ERR;

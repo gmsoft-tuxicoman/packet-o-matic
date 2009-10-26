@@ -28,6 +28,7 @@
 #include <libxml/parser.h>
 
 #include <iconv.h>
+#include <errno.h>
 
 
 static struct msn_mime_type msn_mime_types[] = {
@@ -637,7 +638,9 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 		int fd = target_file_open(NULL, filename, O_WRONLY | O_CREAT, 0666);
 		
 		if (fd == -1) {
-			pom_log(POM_LOG_WARN "Error while opening file %s", filename);
+			char errbuff[256];
+			strerror_r(errno, errbuff, sizeof(errbuff) - 1);
+			pom_log(POM_LOG_ERR "Error while opening file %s for writing", filename, errbuff);
 			return POM_ERR;
 		}
 
@@ -680,8 +683,12 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 	
 	size_t res = 0, len = msg_size;
 	while ((res = write(file->fd, cp->buffer[cp->curdir] + m->cur_pos, len))) {
-		if (res == -1)
+		if (res == -1) {
+			char errbuff[256];
+			strerror_r(errno, errbuff, sizeof(errbuff) - 1);
+			pom_log(POM_LOG_ERR "Write error : %s", errbuff);
 			return POM_ERR;
+		}
 		m->cur_pos += res;
 		len -= res;
 	}
