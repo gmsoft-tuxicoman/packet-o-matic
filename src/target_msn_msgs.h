@@ -92,6 +92,7 @@ struct msn_file_transfer_context {
 	uint32_t unk;
 	uint64_t file_size;
 	uint32_t flags;
+	char *filename;
 };
 
 char* line_split(struct target_conntrack_priv_msn *cp);

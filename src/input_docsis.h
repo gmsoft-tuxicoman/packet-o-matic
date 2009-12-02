@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -66,10 +66,14 @@ struct input_priv_docsis {
 	struct timeval packet_time, packet_time_last_sync;
 
 	// stats stuff
-	unsigned long total_packets; ///< Total packet read.
-	unsigned long missed_packets; ///< Number of missed packets.
-	unsigned long error_packets; ///< Number of erroneous packets.
-	unsigned long invalid_packets; ///< Number of invalid packets.
+	struct perf_item *perf_tot_pkts; ///< Total packet read.
+	struct perf_item *perf_missed_pkts; ///< Number of missed packets.
+	struct perf_item *perf_err_pkts; ///< Number of erroneous packets.
+	struct perf_item *perf_invalid_pkts; ///< Number of invalid packets.
+
+	struct perf_item *perf_signal; ///< Signal strength
+	struct perf_item *perf_snr; ///< Signal to noise ratio
+	struct perf_item *perf_ber; ///< Bit error rate
 
 	// misc stuff
 	int encrypted_warning; ///< Was encrypted traffic found and a warning issued 
@@ -111,6 +115,16 @@ static int input_docsis_check_downstream(struct input *i);
 
 /// Provide the capabilities of the input
 static int input_getcaps_docsis(struct input *i, struct input_caps *ic);
+
+/// Update signal perf gauge
+static int input_update_signal_docsis(struct perf_item *itm, void *priv);
+
+/// Update snr perf gauge
+static int input_update_snr_docsis(struct perf_item *itm, void *priv);
+
+/// Update ber perf gauge
+static int input_update_ber_docsis(struct perf_item *itm, void *priv);
+
 
 #endif
 

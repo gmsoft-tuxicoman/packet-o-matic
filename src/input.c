@@ -29,10 +29,15 @@
 #include "timers.h"
 #include "ptype.h"
 #include "ptype_uint64.h"
+#include "ptype_bool.h"
+#include "perf.h"
+#include "core_param.h"
 
 struct input_reg *inputs[MAX_INPUT];
 
 static pthread_rwlock_t input_global_lock = PTHREAD_RWLOCK_INITIALIZER;
+
+static struct perf_class *input_perf_class = NULL;
 
 /**
  * @ingroup input_api
@@ -93,6 +98,8 @@ int input_register(const char *input_name) {
 		}
 
 	}
+
+	input_perf_class = perf_register_class("input");
 
 	return POM_ERR;
 
@@ -236,27 +243,31 @@ struct input *input_alloc(int input_type) {
 		return NULL;
 	}
 
+	if (!input_perf_class)
+		input_perf_class = perf_register_class("input");
+
 	struct input *i = malloc(sizeof(struct input));
 	memset(i, 0, sizeof(struct input));
 
 	i->type = input_type;
+	i->perfs = perf_register_instance(input_perf_class, i);
 	
 	if (inputs[input_type]->init)
 		if ((*inputs[input_type]->init) (i) != POM_OK) {
+			perf_unregister_instance(input_perf_class, i->perfs);
 			free(i);
 			return NULL;
 		}
 
 	inputs[input_type]->refcount++;
-	
-	i->pkt_cnt = ptype_alloc("uint64", "packets");
-	i->pkt_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
-	i->byte_cnt = ptype_alloc("uint64", "bytes");
-	i->byte_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN_1024;
 
+	i->perf_pkts_in = perf_add_item(i->perfs, "pkts_in", perf_item_type_counter, "Number of packets read");
+	i->perf_bytes_in = perf_add_item(i->perfs, "bytes_in", perf_item_type_counter, "Number of bytes read");
+	i->perf_uptime = perf_add_item(i->perfs, "uptime", perf_item_type_uptime, "Runtime");
+	
 	// assign default mode
 	i->mode = inputs[input_type]->modes;
-	
+	    
 	return i;
 }
 
@@ -280,6 +291,14 @@ int input_open(struct input *i) {
 			return POM_ERR;
 	}
 
+	perf_item_val_reset(i->perf_uptime);
+
+	struct ptype* param_reset_counters_on_restart = core_get_param_value("reset_counters_on_item_restart");
+	if (PTYPE_BOOL_GETVAL(param_reset_counters_on_restart)) {
+		perf_item_val_reset(i->perf_pkts_in);
+		perf_item_val_reset(i->perf_bytes_in);
+	}
+
 	i->running = 1;
 	return res;
 }
@@ -300,8 +319,8 @@ int input_read(struct input *i, struct frame *f) {
 	}
 
 	if (f->len > 0) { // frames with 0 length must be ignored
-		PTYPE_UINT64_INC(i->pkt_cnt, 1);
-		PTYPE_UINT64_INC(i->byte_cnt, f->len);
+		perf_item_val_inc(i->perf_pkts_in, 1);
+		perf_item_val_inc(i->perf_bytes_in, f->len);
 	}
 	return res;
 }
@@ -318,7 +337,9 @@ int input_close(struct input *i) {
 	
 	if (!i->running)
 		return POM_ERR;
-	
+
+	perf_item_val_uptime_stop(i->perf_uptime);
+
 	i->running = 0;
 
 	if (inputs[i->type] && inputs[i->type]->close) 
@@ -343,8 +364,8 @@ int input_cleanup(struct input *i) {
 
 	inputs[i->type]->refcount--;
 
-	ptype_cleanup(i->pkt_cnt);
-	ptype_cleanup(i->byte_cnt);
+	perf_unregister_instance(input_perf_class, i->perfs);
+
 	free (i);
 	
 	return POM_ERR;

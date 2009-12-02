@@ -242,8 +242,6 @@ static int target_process_pcap(struct target *t, struct frame *f) {
 
 	}
 	
-	
-	
 	struct pcap_pkthdr phdr;
 	
 	memcpy(&phdr.ts, &f->tv, sizeof(struct timeval));
@@ -251,10 +249,10 @@ static int target_process_pcap(struct target *t, struct frame *f) {
 	unsigned int len = f->len - start;
 	phdr.len = len;
 	
-	if (SNAPLEN > len)
+	if (PTYPE_UINT16_GETVAL(priv->snaplen) > len)
 		phdr.caplen = len;
 	else
-		phdr.caplen = SNAPLEN;
+		phdr.caplen = PTYPE_UINT16_GETVAL(priv->snaplen);
 
 	pcap_dumper_t *pdump = NULL;
 

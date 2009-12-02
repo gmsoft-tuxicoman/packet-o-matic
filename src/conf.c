@@ -63,7 +63,12 @@ int config_cleanup(struct conf* c) {
 	input_cleanup(c->input);
 	input_unlock();
 
-	list_destroy(c->rules);
+	struct rule_list *tmp;
+	while (c->rules) {
+		tmp = c->rules;
+		c->rules = c->rules->next;
+		rule_list_cleanup(tmp);
+	}
 
 	if (pthread_rwlock_destroy(&c->rules_lock)) {
 		pom_log(POM_LOG_ERR "Unable to destroy the config rules lock");
@@ -457,11 +462,7 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 
 
-	struct rule_list *r;
-	r = malloc(sizeof(struct rule_list));
-	memset(r, 0, sizeof(struct rule_list));
-
-	r->uid = get_uid();
+	struct rule_list *r  = rule_list_alloc(NULL);
 	
 	struct ptype *disabled_pt = ptype_alloc("bool", NULL);
 	if (!disabled_pt) {
@@ -472,9 +473,11 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 	char *disabled = (char *) xmlGetProp(cur, (const xmlChar*) "disabled");
 	if (disabled) {
 		ptype_unserialize(disabled_pt, disabled);
-		r->enabled = !PTYPE_BOOL_GETVAL(disabled_pt);
-	} else
-		r->enabled = 1;
+		if (!PTYPE_BOOL_GETVAL(disabled_pt))
+			rule_list_enable(r);
+	} else {
+		rule_list_enable(r);
+	}
 	xmlFree(disabled);
 
 	ptype_cleanup(disabled_pt);
@@ -509,11 +512,6 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 
 		cur = cur->next;
 	}
-
-	r->pkt_cnt = ptype_alloc("uint64", "pkts");
-	r->pkt_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
-	r->byte_cnt = ptype_alloc("uint64", "bytes");
-	r->byte_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN_1024;
 
 	return r;
 

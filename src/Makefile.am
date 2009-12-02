@@ -6,18 +6,22 @@ if USE_XMLRPC
 XMLRPC_SRC = xmlrpcsrv.c xmlrpcsrv.h xmlrpccmd.c xmlrpccmd.h xmlrpccmd_input.c xmlrpccmd_input.h xmlrpccmd_helper.c xmlrpccmd_helper.h xmlrpccmd_conntrack.c xmlrpccmd_conntrack.h xmlrpccmd_rules.c xmlrpccmd_rules.h xmlrpccmd_match.c xmlrpccmd_match.h xmlrpccmd_target.c xmlrpccmd_target.h
 endif
 
+if USE_NETSNMP
+SNMP_SRC = snmpagent.c snmpagent.h snmpcmd_core.c snmpcmd_core.h snmpcmd_input.c snmpcmd_input.h snmpcmd_rules.c snmpcmd_rules.h
+endif
+
 BUILT_SOURCES = svnversion.h
 VERSION_SRC = version.h release.h svnversion.h
 
 bin_PROGRAMS = packet-o-matic
-packet_o_matic_SOURCES = main.c main.h core_param.c core_param.h rules.c rules.h conf.c conf.h $(VERSION_SRC) $(MGMT_SRC) $(XMLRPC_SRC)
-packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"' -DDATAROOT='"$(pkgdatadir)"'
+packet_o_matic_SOURCES = main.c main.h core_param.c core_param.h rules.c rules.h conf.c conf.h $(VERSION_SRC) $(MGMT_SRC) $(XMLRPC_SRC) $(SNMP_SRC)
+packet_o_matic_CFLAGS = @libxml2_CFLAGS@ -DLIBDIR='"@LIB_DIR@"' -DDATAROOT='"$(pkgdatadir)"' @netsnmp_CFLAGS@
 packet_o_matic_LDFLAGS = @LIBS@ @libxml2_LIBS@
-packet_o_matic_LDADD = libpom.la @xmlrpc_LIBS@
+packet_o_matic_LDADD = libpom.la @xmlrpc_LIBS@ @netsnmp_LIBS@
 
 noinst_HEADERS = include/jhash.h
 
-libpom_la_SOURCES = input.c input.h match.c match.h conntrack.c conntrack.h target.c target.h timers.c timers.h helper.c helper.h ptype.c ptype.h expectation.c expectation.h common.c common.h layer.c layer.h include/jhash.h datastore.c datastore.h
+libpom_la_SOURCES = input.c input.h match.c match.h conntrack.c conntrack.h target.c target.h timers.c timers.h helper.c helper.h ptype.c ptype.h expectation.c expectation.h common.c common.h layer.c layer.h include/jhash.h datastore.c datastore.h perf.c perf.h
 libpom_la_CFLAGS = -DLIBDIR='"@LIB_DIR@"'
 
 INPUT_OBJS = @INPUT_OBJS@

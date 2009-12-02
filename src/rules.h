@@ -54,8 +54,11 @@ struct rule_list {
 	uint32_t target_serial; ///< Number of changes of the associated targets
 	char * description; ///< Description of the rule
 
-	struct ptype* pkt_cnt; ///< matched packet count
-	struct ptype* byte_cnt; ///< matched byte count
+
+	struct perf_instance *perfs; ///< Performance counter instance
+	struct perf_item *perf_pkts; ///< Matched packets count
+	struct perf_item *perf_bytes; ///< Matched bytes count
+	struct perf_item *perf_uptime; ///< Time the rule has been enabled
 
 	struct rule_list *next; ///< next rule in the list
 	struct rule_list *prev; ///< previous rule in the list
@@ -66,19 +69,22 @@ struct rule_list {
 
 int rules_init();
 
-int rule_set_uid(struct rule_list *rule, struct rule_list *list);
-
-int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct rule_node *last);
+int rule_node_match(struct frame *f, struct layer **l, struct rule_node *n, struct rule_node *last);
 
 int do_rules(struct frame *f, struct rule_list *rules, pthread_rwlock_t *rule_lock);
 
 int node_destroy(struct rule_node *node, int sub);
 
-int list_destroy(struct rule_list *list);
-
 int rule_print_flat(struct rule_node *n, struct rule_node *last, char *buffer, size_t buff_len);
 
 int rule_parse(char *expr, struct rule_node **start, struct rule_node **end, char *errbuff, int errlen);
 
+struct rule_list* rule_list_alloc(struct rule_node *n);
+
+int rule_list_cleanup(struct rule_list *rl);
+
+int rule_list_enable(struct rule_list *rl);
+
+int rule_list_disable(struct rule_list *rl);
 #endif
 

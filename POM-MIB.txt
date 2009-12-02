@@ -1,0 +1,530 @@
+POM-MIB DEFINITIONS ::= BEGIN
+
+IMPORTS
+	MODULE-IDENTITY, OBJECT-TYPE, Unsigned32, enterprises,
+	Counter64, Gauge32, TimeTicks FROM SNMPv2-SMI
+	TEXTUAL-CONVENTION, DisplayString, TruthValue FROM SNMPv2-TC
+;
+
+packet-o-matic MODULE-IDENTITY
+	LAST-UPDATED	"200910300000Z"
+	ORGANIZATION	"www.packet-o-matic.org"
+	CONTACT-INFO	"email: gmsoft@tuxicoman.be"
+	DESCRIPTION	"Packet-o-matic MIB"
+
+	REVISION	"200910300000Z"
+	DESCRIPTION	"Initial revision"
+
+	::= { enterprises 31355 2 1 }
+
+--
+-- Misc definition
+--
+
+GenericTableIndex ::= TEXTUAL-CONVENTION
+	DISPLAY-HINT	"d"
+	STATUS		current
+	DESCRIPTION	"Generic index syntax"
+	SYNTAX		Unsigned32 (1..4294967295)
+
+--
+-- Core definition
+--
+
+core	OBJECT IDENTIFIER ::= { packet-o-matic 1 }
+
+coreRunning OBJECT-TYPE
+	SYNTAX		TruthValue
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION	"Set to false to stop packet-o-matic"
+	::= { core 1 }
+
+coreDebugLevel OBJECT-TYPE
+	SYNTAX		Unsigned32
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION	"Debug level of the console"
+	::= { core 2 }
+
+coreParamTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF CoreParamEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"The core parameters"
+	::= { core 3 }
+
+coreParamEntry OBJECT-TYPE
+	SYNTAX		CoreParamEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"A core parameter"
+	INDEX		{ coreParamIndex }
+	::= { coreParamTable 1 }
+
+CoreParamEntry ::=
+	SEQUENCE {
+		coreParamIndex	GenericTableIndex,
+		coreParamName	DisplayString,
+		coreParamValue	DisplayString,
+		coreParamUnit	DisplayString,
+		coreParamType	DisplayString,
+		coreParamDescr	DisplayString
+	}
+
+coreParamIndex OBJECT-TYPE
+	SYNTAX		GenericTableIndex
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Index of a core parameter"
+	::= { coreParamEntry 1 }
+
+
+coreParamName OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Name a core parameter"
+	::= { coreParamEntry 2 }
+
+coreParamValue OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION	"Value of a core parameter"
+	::= { coreParamEntry 3 }
+
+coreParamUnit OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Unit of a core parameter"
+	::= { coreParamEntry 4 }
+
+coreParamType OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Type of a core parameter"
+	::= { coreParamEntry 5 }
+
+coreParamDescr OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Description of a core parameter"
+	::= { coreParamEntry 6 }
+
+
+corePerf OBJECT IDENTIFIER ::={ core 4 }
+
+coreVersion OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Version of packet-o-matic"
+	::= { corePerf 1 }
+
+coreUpTime OBJECT-TYPE
+	SYNTAX		TimeTicks
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"UpTime of packet-o-matic"
+	::= { corePerf 2 }
+
+coreRingBufferPackets OBJECT-TYPE
+	SYNTAX		Gauge32
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Number of packets currently in the ring buffer"
+	::= { corePerf 3 }
+
+coreRingBufferTotPackets OBJECT-TYPE
+	SYNTAX		Counter64
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Total number of packets which went into the ring buffer"
+	::= { corePerf 4 }
+
+coreRingBufferDroppedPackets OBJECT-TYPE
+	SYNTAX		Counter64
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Total number of packets dropped in the ring buffer"
+	::= { corePerf 5 }
+
+coreRingBufferOverflow OBJECT-TYPE
+	SYNTAX		Counter64
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Number of time the ring buffer overflowed"
+	::= { corePerf 6 }
+
+--
+-- Input definition
+--
+
+input	OBJECT IDENTIFIER ::= { packet-o-matic 2 }
+
+inputType OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION	"The input type"
+	::= { input 1 }
+
+inputMode OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION	"The input mode"
+	::= { input 2 }
+
+
+inputParamTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF InputParamEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"The input parameters"
+	::= { input 3 }
+
+inputParamEntry OBJECT-TYPE
+	SYNTAX		InputParamEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"A input parameter"
+	INDEX		{ inputParamIndex }
+	::= { inputParamTable 1 }
+
+InputParamEntry ::=
+	SEQUENCE {
+		inputParamIndex	GenericTableIndex,
+		inputParamName	DisplayString,
+		inputParamValue	DisplayString,
+		inputParamUnit	DisplayString,
+		inputParamType	DisplayString,
+		inputParamDescr	DisplayString
+	}
+
+inputParamIndex OBJECT-TYPE
+	SYNTAX		GenericTableIndex
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Index of an input parameter"
+	::= { inputParamEntry 1 }
+
+inputParamName OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Name an input parameter"
+	::= { inputParamEntry 2 }
+
+inputParamValue	OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION	"Value of an input parameter"
+	::= { inputParamEntry 3 }
+
+inputParamUnit	OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Unit of an input parameter"
+	::= { inputParamEntry 4 }
+
+inputParamType	OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Type of an input parameter"
+	::= { inputParamEntry 5 }
+
+inputParamDescr	OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Description of an input parameter"
+	::= { inputParamEntry 6 }
+
+inputRunning OBJECT-TYPE
+	SYNTAX		TruthValue
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION	"True if the input is started"
+	::= { input 4 }
+
+
+-- Input perf stuff
+
+inputPerf OBJECT IDENTIFIER ::= { input 5 }
+
+inputBytesIn OBJECT-TYPE
+	SYNTAX		Counter64
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Number of bytes read by the input"
+	::= { inputPerf 1 }
+
+inputPacketsIn OBJECT-TYPE
+	SYNTAX		Counter64
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Numer of packets read by the input"
+	::= { inputPerf 2 }
+
+inputUpTime OBJECT-TYPE
+	SYNTAX		TimeTicks
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"UpTime of the input"
+	::= { inputPerf 3 }
+
+inputSnapLen OBJECT-TYPE
+	SYNTAX		Gauge32
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION
+		"Snap length of the inupt. Represent the maximum
+		packet size which will be captured by this input.
+		This counter is only available when the input is
+		running."
+	::= { inputPerf 4 }
+
+inputIsLive OBJECT-TYPE
+	SYNTAX		TruthValue
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION
+		"True if packets are captured from real network
+		interface currently reading packets or false if
+		packets are read from a saved file."
+	::= { inputPerf 5 }
+
+-- Extra counters
+
+inputPerfExtraCounterTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF InputPerfExtraCounterEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"The list of extra input performance objects"
+	::= { inputPerf 6 }
+
+inputPerfExtraCounterEntry OBJECT-TYPE
+	SYNTAX		InputPerfExtraCounterEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"One input performance object"
+	INDEX		{ inputPerfExtraCounterIndex }
+	::= { inputPerfExtraCounterTable 1 }
+
+InputPerfExtraCounterEntry ::=
+	SEQUENCE {
+		inputPerfExtraCounterIndex	GenericTableIndex,
+		inputPerfExtraCounterName	DisplayString,
+		inputPerfExtraCounterValue	Counter64,
+		inputPerfExtraCounterDescr	DisplayString
+	}
+
+inputPerfExtraCounterIndex OBJECT-TYPE
+	SYNTAX		GenericTableIndex
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Index of extra performance objects for input"
+	::= { inputPerfExtraCounterEntry 1 }
+
+inputPerfExtraCounterName OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Name of extra performance objects for input"
+	::= { inputPerfExtraCounterEntry 2 }
+
+inputPerfExtraCounterValue OBJECT-TYPE
+	SYNTAX		Counter64
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Value of extra performance objects for input"
+	::= { inputPerfExtraCounterEntry 3 }
+
+inputPerfExtraCounterDescr OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Description of extra performance objects for input"
+	::= { inputPerfExtraCounterEntry 4 }
+
+-- Input perf extra gauges
+
+inputPerfExtraGaugeTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF InputPerfExtraGaugeEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"The list of extra input performance objects"
+	::= { inputPerf 7 }
+
+inputPerfExtraGaugeEntry OBJECT-TYPE
+	SYNTAX		InputPerfExtraGaugeEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"One input performance object"
+	INDEX		{ inputPerfExtraGaugeIndex }
+	::= { inputPerfExtraGaugeTable 1 }
+
+InputPerfExtraGaugeEntry ::=
+	SEQUENCE {
+		inputPerfExtraGaugeIndex	GenericTableIndex,
+		inputPerfExtraGaugeName		DisplayString,
+		inputPerfExtraGaugeValue	Gauge32,
+		inputPerfExtraGaugeDescr	DisplayString
+	}
+
+inputPerfExtraGaugeIndex OBJECT-TYPE
+	SYNTAX		GenericTableIndex
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Index of extra performance objects for input"
+	::= { inputPerfExtraGaugeEntry 1 }
+
+inputPerfExtraGaugeName OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Name of extra performance objects for input"
+	::= { inputPerfExtraGaugeEntry 2 }
+
+inputPerfExtraGaugeValue OBJECT-TYPE
+	SYNTAX		Gauge32
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Value of extra performance objects for input"
+	::= { inputPerfExtraGaugeEntry 3 }
+
+inputPerfExtraGaugeDescr OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Description of extra performance objects for input"
+	::= { inputPerfExtraGaugeEntry 4 }
+
+--
+-- Rules definition
+--
+
+rules OBJECT IDENTIFIER ::= { packet-o-matic 3 }
+
+ruleTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF RuleEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"The list of rules"
+	::= { rules 1 }
+
+ruleEntry OBJECT-TYPE
+	SYNTAX		RuleEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"A rule"
+	INDEX		{ ruleIndex }
+	::= { ruleTable 1 }
+
+RuleEntry ::=
+	SEQUENCE {
+		ruleIndex	GenericTableIndex,
+		ruleCliIndex	Unsigned32,
+		ruleDefinition	DisplayString,
+		ruleDescription DisplayString,
+		ruleEnabled	TruthValue
+	}
+
+ruleIndex OBJECT-TYPE
+	SYNTAX		GenericTableIndex
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Index of the rule"
+	::= { ruleEntry 1 }
+
+ruleCliIndex OBJECT-TYPE
+	SYNTAX		Unsigned32
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Index of the rule in the CLI"
+	::= { ruleEntry 2 }
+
+ruleDefinition OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION	"Definition of the rule"
+	::= { ruleEntry 3 }
+
+ruleDescription OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION	"Description of the rule"
+	::= { ruleEntry 4 }
+
+ruleEnabled OBJECT-TYPE
+	SYNTAX		TruthValue
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION	"Define if the rule is enabled or not"
+	::= { ruleEntry 5 }
+
+
+rulePerf OBJECT IDENTIFIER ::={ rules 2 }
+
+rulePerfTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF RulePerfEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"The list of rules performance counters"
+	::= { rulePerf 1 }
+
+rulePerfEntry OBJECT-TYPE
+	SYNTAX		RulePerfEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"Performance objects for a rule"
+	INDEX		{ rulePerfIndex }
+	::= { rulePerfTable 1 }
+
+RulePerfEntry ::=
+	SEQUENCE {
+		rulePerfIndex		GenericTableIndex,
+		ruleBytes		Counter64,
+		rulePackets		Counter64,
+		ruleUpTime		TimeTicks
+	}
+
+rulePerfIndex OBJECT-TYPE
+	SYNTAX		GenericTableIndex
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Index of the rule performance objects"
+	::= { rulePerfEntry 1 }
+
+ruleBytes OBJECT-TYPE
+	SYNTAX		Counter64
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Number of bytes matched by the rule"
+	::= { rulePerfEntry 2 }
+
+rulePackets OBJECT-TYPE
+	SYNTAX		Counter64
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Number of packets matched by the rule"
+	::= { rulePerfEntry 3 }
+
+ruleUpTime OBJECT-TYPE
+	SYNTAX		TimeTicks
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Time for which the rule has been enabled"
+	::= { rulePerfEntry 4 }
+
+END

@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -129,10 +129,11 @@ int mgmtcmd_input_show(struct mgmt_connection *c, int argc, char *argv[]) {
 	mgmtsrv_send(c, ", mode ");
 	mgmtsrv_send(c, i->mode->name);
 
-	char pkts[16], bytes[16];
-	ptype_print_val(i->pkt_cnt, pkts, sizeof(pkts));
-	ptype_print_val(i->byte_cnt, bytes, sizeof(bytes));
-	mgmtsrv_send(c, " (%s %s, %s %s)", pkts, i->pkt_cnt->unit, bytes, i->byte_cnt->unit);
+	char pkts[16], bytes[16], uptime[64];
+	perf_item_val_get_human(i->perf_pkts_in, pkts, sizeof(pkts) - 1);
+	perf_item_val_get_human_1024(i->perf_bytes_in, bytes, sizeof(bytes) - 1);
+	perf_item_val_get_human(i->perf_uptime, uptime, sizeof(uptime) - 1);
+	mgmtsrv_send(c, " (%s packets, %s bytes, up %s)", pkts, bytes, uptime);
 
 	if (i->running)
 		mgmtsrv_send(c, " (running)\r\n");

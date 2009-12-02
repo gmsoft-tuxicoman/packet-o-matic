@@ -23,6 +23,7 @@
 #include "mgmtcmd_target.h"
 #include "mgmtcmd_rule.h"
 #include "target.h"
+#include "perf.h"
 
 
 #define MGMT_TARGET_COMMANDS_NUM 13
@@ -201,10 +202,11 @@ int mgmtcmd_target_show(struct mgmt_connection *c, int argc, char *argv[]) {
 	unsigned int rule_num = 0, target_num;
 
 	while (rl) {
-		char pkts[16], bytes[16];
-		ptype_print_val(rl->pkt_cnt, pkts, sizeof(pkts));
-		ptype_print_val(rl->byte_cnt, bytes, sizeof(bytes));
-		mgmtsrv_send(c, "Rule %u : targets (%s %s, %s %s)", rule_num, pkts, rl->pkt_cnt->unit, bytes, rl->byte_cnt->unit);
+		char pkts[16], bytes[16], uptime[64];
+		perf_item_val_get_human(rl->perf_pkts, pkts, sizeof(pkts) - 1);
+		perf_item_val_get_human_1024(rl->perf_bytes, bytes, sizeof(bytes) - 1);
+		perf_item_val_get_human(rl->perf_uptime, uptime, sizeof(uptime) - 1);
+		mgmtsrv_send(c, "Rule %u : targets (%s packets, %s bytes)", rule_num, pkts, bytes, uptime);
 		if (!rl->enabled)
 			mgmtsrv_send(c, " (disabled)");
 		mgmtsrv_send(c, " : \r\n");

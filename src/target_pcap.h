@@ -28,8 +28,6 @@
 
 #include <pcap.h>
 
-#define SNAPLEN 1522
-
 struct target_priv_pcap {
 
 	pcap_dumper_t *pdump;

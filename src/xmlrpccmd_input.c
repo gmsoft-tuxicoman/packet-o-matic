@@ -200,21 +200,23 @@ xmlrpc_value *xmlrpccmd_stop_input(xmlrpc_env * const envP, xmlrpc_value * const
 xmlrpc_value *xmlrpccmd_set_input_type(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
 
 
-	if (envP->fault_occurred)
-		return NULL;
-
-	if (rbuf->i && rbuf->i->running) {
-		xmlrpc_faultf(envP, "Input is running. You need to stop it before doing any change");
-		return NULL;
-	}
-
 	if (pthread_mutex_lock(&rbuf->mutex)) {
 		xmlrpc_faultf(envP, "Error while locking the buffer mutex");
 		return NULL;
 	}
 
+	if (rbuf->i && rbuf->i->running) {
+		xmlrpc_faultf(envP, "Input is running. You need to stop it before doing any change");
+		pthread_mutex_unlock(&rbuf->mutex);
+		return NULL;
+	}
 	char *type;
 	xmlrpc_decompose_value(envP, paramArrayP, "(s)", &type);
+
+	if (envP->fault_occurred) {
+		pthread_mutex_unlock(&rbuf->mutex);
+		return NULL;
+	}
 
 	if (rbuf->i && !strcmp(type, input_get_name(rbuf->i->type))) {
 		xmlrpc_faultf(envP, "Input type is already %s", type);
@@ -266,12 +268,20 @@ xmlrpc_value *xmlrpccmd_set_input_type(xmlrpc_env * const envP, xmlrpc_value * c
 
 xmlrpc_value *xmlrpccmd_set_input_mode(xmlrpc_env * const envP, xmlrpc_value * const paramArrayP, void * const userData) {
 
+	if (pthread_mutex_lock(&rbuf->mutex)) {
+		pthread_mutex_unlock(&rbuf->mutex);
+		xmlrpc_faultf(envP, "Error while locking the buffer mutex");
+		return NULL;
+	}
+
 	if (!rbuf->i) {
+		pthread_mutex_unlock(&rbuf->mutex);
 		xmlrpc_faultf(envP, "No input configured yet");
 		return NULL;
 	}
 
 	if (rbuf->i->running) {
+		pthread_mutex_unlock(&rbuf->mutex);
 		xmlrpc_faultf(envP, "Input is running. You need to stop it before doing any change");
 		return NULL;
 	}
@@ -279,10 +289,13 @@ xmlrpc_value *xmlrpccmd_set_input_mode(xmlrpc_env * const envP, xmlrpc_value * c
 	char *mode;
 	xmlrpc_decompose_value(envP, paramArrayP, "(s)", &mode);
 
-	if (envP->fault_occurred)
+	if (envP->fault_occurred) {
+		pthread_mutex_unlock(&rbuf->mutex);
 		return NULL;
+	}
 
 	if (input_set_mode(rbuf->i, mode) != POM_OK) {
+		pthread_mutex_unlock(&rbuf->mutex);
 		xmlrpc_faultf(envP, "No mode %s for this input", mode);
 		free(mode);
 		return NULL;
@@ -290,6 +303,8 @@ xmlrpc_value *xmlrpccmd_set_input_mode(xmlrpc_env * const envP, xmlrpc_value * c
 	free(mode);
 	
 	main_config->input_serial++;
+
+	xmlrpc_faultf(envP, "No mode %s for this input", mode);
 
 	return xmlrpc_int_new(envP, 0);
 }

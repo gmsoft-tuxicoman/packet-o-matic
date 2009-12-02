@@ -27,6 +27,7 @@ AC_CONFIG_AUX_DIR([build-aux])
 AM_INIT_AUTOMAKE([-Wall foreign])
 AC_CONFIG_SRCDIR([config.h.in])
 AC_CONFIG_HEADER([config.h])
+AC_CONFIG_MACRO_DIR([m4])
 
 # Checks for programs.
 AC_PROG_CC
@@ -230,7 +231,25 @@ then
 	zlib_LIBS="-lz"
 	AC_SUBST(zlib_LIBS)
 fi
-#
+
+# Check for net-snmp
+AC_MSG_CHECKING([for net-snmp-config])
+NETSNMP_CONFIG=`which net-snmp-config 2>/dev/null`
+if [ test ! -x "${NETSNMP_CONFIG}" ]
+then
+	want_netsnmp=no
+else
+	want_netsnmp=yes
+	netsnmp_LIBS="`net-snmp-config --agent-libs`"
+	netsnmp_CFLAGS="`net-snmp-config --base-cflags | sed -e 's/-W[[a-zA-Z-]]*//g'`"
+	AC_DEFINE(USE_NETSNMP, , [Compile net-snmp interface])
+fi
+AC_MSG_RESULT($want_netsnmp)
+
+AM_CONDITIONAL([USE_NETSNMP], [test "x$want_netsnmp" = "xyes"])
+
+AC_SUBST(netsnmp_LIBS)
+AC_SUBST(netsnmp_CFLAGS)
 
 AC_SUBST(INPUT_OBJS)
 AC_SUBST(TARGET_OBJS)
@@ -249,15 +268,16 @@ echo "=============================================================="
 echo " Configuration result :"
 echo " ----------------------"
 echo ""
-echo " * Found libpcap      : $want_pcap"
-echo " * Found xmlrpc-c     : $want_xmlrpc"
-echo " * Linux raw socket   : $want_netpacket"
-echo " * Linux DVB headers  : $want_dvb"
-echo " * Linux TUN headers  : $want_tun"
-echo " * PostgreSQL headers : $want_postgres"
-echo " * Sqlite3 headers    : $want_sqlite3"
-echo " * MySQL headers      : $want_mysql"
-echo " * Zlib headers       : $want_zlib"
+echo " * libpcap          : $want_pcap"
+echo " * XMLRPC-C         : $want_xmlrpc"
+echo " * Linux raw socket : $want_netpacket"
+echo " * Linux DVB        : $want_dvb"
+echo " * Linux TUN        : $want_tun"
+echo " * Net-SNMP         : $want_netsnmp"
+echo " * PostgreSQL       : $want_postgres"
+echo " * Sqlite3          : $want_sqlite3"
+echo " * MySQL            : $want_mysql"
+echo " * Zlib             : $want_zlib"
 echo ""
 echo "Author : Guy Martin <gmsoft@tuxicoman.be>"
 

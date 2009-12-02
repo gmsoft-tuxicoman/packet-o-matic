@@ -18,6 +18,8 @@
  *
  */
 
+#include <stddef.h>
+
 #include "match_docsis.h"
 #include "ptype_uint8.h"
 #include "ptype_bool.h"
@@ -65,11 +67,13 @@ static int match_identify_docsis(struct frame *f, struct layer* l, unsigned int 
 	PTYPE_BOOL_SETVAL(l->fields[field_ehdr_on], dhdr->ehdr_on);
 
 	if (dhdr->ehdr_on) {
-		// fc_parm is len of ehdr if ehdr_on == 1
-		l->payload_start += dhdr->fc_parm;
-		l->payload_size -= dhdr->fc_parm;
 
-		struct docsis_ehdr *ehdr = (struct docsis_ehdr*)&dhdr->hcs;
+		struct docsis_ehdr *ehdr = (struct docsis_ehdr*) (dhdr + offsetof(struct docsis_hdr, hcs));
+		if (ehdr->eh_len + sizeof(struct docsis_ehdr) > ntohs(dhdr->len) - sizeof(dhdr->hcs))
+			return POM_ERR;
+
+		l->payload_start += ehdr->eh_len + sizeof(struct docsis_ehdr);
+		l->payload_size -= ehdr->eh_len + sizeof(struct docsis_ehdr);
 		
 		// Make sure this is not matched as valid traffic
 		if (ehdr->eh_type == EH_TYPE_BP_DOWN || ehdr->eh_type == EH_TYPE_BP_DOWN) 

@@ -29,6 +29,7 @@
 #include <pthread.h>
 
 extern struct conf *main_config;
+extern struct perf_item *core_perf_uptime;
 
 enum ringbuffer_state {
 	rb_state_closed,
@@ -44,8 +45,9 @@ struct ringbuffer {
 	pthread_mutex_t mutex; ///< Mutex of the circle buffer
 	pthread_cond_t underrun_cond; ///< Condition wait of the circle buffer when it's empty
 	pthread_cond_t overflow_cond; ///< Condition wait of the circle buffer when it's full and we don't have to drop packets
-	unsigned long dropped_packets; ///< Count the dropped packets
-	unsigned long total_packets; ///< Count the total number of packet that went trough the buffer
+	struct perf_item *perf_dropped_packets; ///< Count the dropped packets
+	struct perf_item *perf_total_packets; ///< Count the total number of packet that went trough the buffer
+	struct perf_item *perf_overflow; ///< Count the total number of times the buffer overflowed
 
 
 	struct frame** buffer;

@@ -169,12 +169,9 @@ xmlrpc_value *xmlrpccmd_add_rule(xmlrpc_env * const envP, xmlrpc_value * const p
 
 	// rule parsed, let's add it
 
-	struct rule_list *rl;
-	rl = malloc(sizeof(struct rule_list));
-	memset(rl, 0, sizeof(struct rule_list));
+	struct rule_list *rl = rule_list_alloc(start);
 
 	main_config_rules_lock(1);
-	rl->uid = get_uid();
 	main_config->rules_serial++;
 
 	if (!main_config->rules) {
@@ -188,12 +185,6 @@ xmlrpc_value *xmlrpccmd_add_rule(xmlrpc_env * const envP, xmlrpc_value * const p
 		rl->prev = tmprl;
 	}
 	
-	rl->node = start;
-	rl->pkt_cnt = ptype_alloc("uint64", "pkts");
-	rl->pkt_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
-	rl->byte_cnt = ptype_alloc("uint64", "bytes");
-	rl->byte_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN_1024;
-
 	main_config_rules_unlock();
 
 	return xmlrpc_int_new(envP, rl->uid);
@@ -308,7 +299,6 @@ xmlrpc_value *xmlrpccmd_remove_rule(xmlrpc_env * const envP, xmlrpc_value * cons
 		return NULL;
 	}
 
-	node_destroy(rl->node, 0);
 
 	if (rl->prev)
 		rl->prev->next = rl->next;
@@ -318,22 +308,7 @@ xmlrpc_value *xmlrpccmd_remove_rule(xmlrpc_env * const envP, xmlrpc_value * cons
 	if (rl->next)
 		rl->next->prev = rl->prev;
 
-	while (rl->target) {
-
-		struct target *tmpt = rl->target;
-		rl->target = rl->target->next;
-		target_lock_instance(tmpt, 1);
-
-		if (tmpt->started)
-			target_close(tmpt);
-
-		target_cleanup_module(tmpt);
-		
-	}
-
-	ptype_cleanup(rl->pkt_cnt);
-	ptype_cleanup(rl->byte_cnt);
-	free(rl);
+	rule_list_cleanup(rl);
 
 	main_config->rules_serial++;
 	main_config_rules_unlock();
@@ -366,7 +341,7 @@ xmlrpc_value *xmlrpccmd_enable_rule(xmlrpc_env * const envP, xmlrpc_value * cons
 		return NULL;	
 	}
 
-	rl->enabled = 1;
+	rule_list_enable(rl);
 
 	main_config->rules_serial++;
 	rl->serial++;
@@ -400,7 +375,7 @@ xmlrpc_value *xmlrpccmd_disable_rule(xmlrpc_env * const envP, xmlrpc_value * con
 		return NULL;	
 	}
 
-	rl->enabled = 0;
+	rule_list_disable(rl);
 
 	main_config->rules_serial++;
 	rl->serial++;

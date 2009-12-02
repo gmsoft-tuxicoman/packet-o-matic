@@ -48,16 +48,14 @@ struct docsis_hdr {
 
 struct docsis_ehdr {
 #if __BYTE_ORDER == __LITTLE_ENDIAN
-	unsigned int eh_len:4;
-	unsigned int eh_type:4;
+	uint8_t eh_len:4;
+	uint8_t eh_type:4;
 #elif __BYTE_ORDER == __BIG_ENDIAN
-	unsigned int eh_type:4;
-	unsigned int eh_len:4;
+	uint8_t eh_type:4;
+	uint8_t eh_len:4;
 #else
 # error "Please fix <bits/endian.h>"
 #endif
-
-	char eh_value[15];
 
 };
 

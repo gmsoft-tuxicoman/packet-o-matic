@@ -32,6 +32,10 @@
 #include "xmlrpcsrv.h"
 #endif
 
+#ifdef USE_NETSNMP
+#include "snmpagent.h"
+#endif
+
 #include "main.h"
 #include "core_param.h"
 
@@ -73,6 +77,10 @@ static pthread_mutex_t reader_mutex = PTHREAD_MUTEX_INITIALIZER; ///< Mutex used
 static pthread_t input_thread;
 
 static int finish = 0, sighup = 0;
+
+static struct perf_class *core_perf_class = NULL;
+static struct perf_instance *core_perf_instance = NULL;
+struct perf_item *core_perf_uptime = NULL;
 
 void signal_handler(int signal) {
 
@@ -286,6 +294,17 @@ void *xmlrpcsrv_thread_func(void *params) {
 }
 #endif
 
+#ifdef USE_NETSNMP
+void *snmpagent_thread_func(void *params) {
+
+	while (!finish) {
+		snmpagent_process();
+	}
+	return NULL;
+
+}
+#endif
+
 int start_input(struct ringbuffer *r) {
 
 
@@ -444,14 +463,16 @@ void *input_thread_func(void *params) {
 			pthread_cond_signal(&r->underrun_cond);
 		}
 
-		r->total_packets++;
+		perf_item_val_inc(r->perf_total_packets, 1);
 		r->usage++;
 
+		int overflowed = 0;
 		while (r->usage >= PTYPE_UINT32_GETVAL(r->size) - 1) {
 			if (r->ic.is_live) {
 				//pom_log(POM_LOG_TSHOOT "Buffer overflow (%u). droping packet", r->usage);
+				overflowed = 1;
 				r->write_pos--;
-				r->dropped_packets++;
+				perf_item_val_inc(r->perf_dropped_packets, 1);
 				r->usage--;
 				break;
 			} else {
@@ -463,6 +484,8 @@ void *input_thread_func(void *params) {
 				}
 			}
 		}
+		if (overflowed)
+			perf_item_val_inc(r->perf_overflow, 1);
 
 		r->write_pos++;
 		if (r->write_pos >= PTYPE_UINT32_GETVAL(r->size))
@@ -578,6 +601,7 @@ int main(int argc, char *argv[]) {
 				target_unregister_all();
 				target_cleanup();
 				core_param_unregister_all();
+				perf_cleanup();
 				ptype_unregister_all();
 				pom_log_cleanup();
 				return 0;
@@ -654,6 +678,7 @@ int main(int argc, char *argv[]) {
 
 
 	// Init the stuff
+	uid_init();
 	ptype_init();
 	layer_init();
 	match_init();
@@ -663,9 +688,16 @@ int main(int argc, char *argv[]) {
 	rules_init();
 	expectation_init();
 
+	core_perf_class = perf_register_class("core");
+	core_perf_instance = perf_register_instance(core_perf_class, NULL);
+	core_perf_uptime = perf_add_item(core_perf_instance, "uptime", perf_item_type_uptime, "UpTime of packet-o-matic");
+	perf_item_val_reset(core_perf_uptime);
+
+
 	struct ptype *param_autosave_on_exit = ptype_alloc("bool", NULL);
 	struct ptype *param_quit_on_input_error = ptype_alloc("bool", NULL);
-	if (!param_autosave_on_exit || !param_quit_on_input_error) {
+	struct ptype *param_reset_counters_on_restart = ptype_alloc("bool", NULL);
+	if (!param_autosave_on_exit || !param_quit_on_input_error || !param_reset_counters_on_restart) {
 		// This is the very first module to be loaded
 		pom_log(POM_LOG_ERR "Cannot allocate ptype bool. Aborting");
 		pom_log(POM_LOG_ERR "Did you set LD_LIBRARY_PATH correctly ?\r\n");
@@ -673,6 +705,7 @@ int main(int argc, char *argv[]) {
 	}
 	core_register_param("autosave_config_on_exit", "yes", param_autosave_on_exit, "Automatically save the configuration when exiting", NULL);
 	core_register_param("quit_on_input_error", "no", param_quit_on_input_error, "Quit when there is an error on the input", NULL);
+	core_register_param("reset_counters_on_item_restart", "yes", param_reset_counters_on_restart, "Reset counters when restarting/reenabling an item", NULL);
 
 
 	rbuf = malloc(sizeof(struct ringbuffer));
@@ -723,6 +756,18 @@ int main(int argc, char *argv[]) {
 			pom_log(POM_LOG_ERR "Error when creating the XML-RPC thread. Aborting");
 			goto err;
 		}
+	}
+#endif
+
+#ifdef USE_NETSNMP
+	pthread_t snmpagent_thread;
+	if (snmpagent_init() == POM_ERR) {
+		pom_log(POM_LOG_ERR "Error while initializing the SNMP interface. Aborting");
+		goto err;
+	}
+	if (pthread_create(&snmpagent_thread, NULL, snmpagent_thread_func, NULL)) {
+		pom_log(POM_LOG_ERR "Error when creating the SNMP thread. Aborting");
+		goto err;
 	}
 #endif
 
@@ -893,7 +938,13 @@ finish:
 		pthread_join(xmlrpcsrv_thread, NULL);
 #endif
 
-	pom_log("Total packets read : %lu, dropped %lu (%.2f%%)", rbuf->total_packets, rbuf->dropped_packets, 100.0 / rbuf->total_packets * rbuf->dropped_packets);
+#ifdef USE_NETSNMP
+	pthread_join(snmpagent_thread, NULL);
+#endif
+
+	pom_log("Total packets read : %lu, dropped %lu (%.2f%%)", perf_item_val_get_raw(rbuf->perf_total_packets), perf_item_val_get_raw(rbuf->perf_dropped_packets), 100.0 / perf_item_val_get_raw(rbuf->perf_total_packets) * perf_item_val_get_raw(rbuf->perf_dropped_packets));
+
+	perf_unregister_instance(core_perf_class, core_perf_instance);
 
 	// Process remaining queued frames
 	conntrack_close_connections(main_config->rules, &main_config->rules_lock);
@@ -907,6 +958,10 @@ err:
 #ifdef USE_XMLRPC	
 	if (!disable_xmlrpcsrv)
 		xmlrpcsrv_cleanup();
+#endif
+
+#ifdef USE_NETSNMP
+	snmpagent_cleanup();
 #endif
 	config_cleanup(main_config);
 
@@ -934,8 +989,10 @@ err:
 	free(rbuf);
 	ptype_cleanup(param_autosave_on_exit);
 	ptype_cleanup(param_quit_on_input_error);
+	ptype_cleanup(param_reset_counters_on_restart);
 	core_param_unregister_all();
 
+	perf_cleanup();
 	ptype_unregister_all();
 
 	pom_log_cleanup();
@@ -948,6 +1005,10 @@ int ringbuffer_init(struct ringbuffer *r) {
 	pthread_mutex_init(&r->mutex, NULL);
 	pthread_cond_init(&r->underrun_cond, NULL);
 	pthread_cond_init(&r->overflow_cond, NULL);
+
+	r->perf_dropped_packets = perf_add_item(core_perf_instance, "dropped_packets", perf_item_type_counter, "Total number of packets which went into the ring buffer");
+	r->perf_total_packets = perf_add_item(core_perf_instance, "total_packets", perf_item_type_counter, "Total number of packets dropped in the ring buffer");
+	r->perf_overflow = perf_add_item(core_perf_instance, "overflows", perf_item_type_counter, "Total number of time the buffer overflowed");
 
 	r->size = ptype_alloc("uint32", "packets");
 	if (!r->size)

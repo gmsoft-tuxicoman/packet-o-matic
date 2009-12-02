@@ -1,3 +1,16 @@
+* 2009/12/01 Guy Martin <gmsoft@tuxicoman.be>
+Added partial SNMP support.
+Added performance counter API.
+Fix docsis extended header handling in the input, match and helper.
+Added signal performance counters for input_docsis.
+Added functions to allocate, cleanup, enable and disable rule_list.
+Added uptime perfmon counters for core, input and rules.
+Fix snaplen handling in target_pcap.
+Fix crash in target_msn when client provides an invalid length for file transfer context.
+Fix locking in xmlrpc input functions.
+Move uid_init() into main.c.
+Renamed a few rules functions to match with naming convention.
+
 * 2009/10/26 Guy Martin <gmsoft@tuxicoman.be>
 Make target_msn more verbose on failures.
 Remove session reference for the old sess on the user when merging session in target_msn.

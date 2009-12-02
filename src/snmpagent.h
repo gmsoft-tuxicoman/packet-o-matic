@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -18,34 +18,19 @@
  *
  */
 
+#ifndef __SNMPAGENT_H__
+#define __SNMPAGENT_H__
 
-#ifndef __MODULES_COMMON_H__
-#define __MODULES_COMMON_H__
+#include <net-snmp/net-snmp-config.h>
+#include <net-snmp/net-snmp-includes.h>
+#include <net-snmp/agent/net-snmp-agent-includes.h>
 
-#include "config.h"
 
-#include "rules.h"
-#include "perf.h"
-// Common stuff used in modules
-#include <stdlib.h>
-#include <stdio.h>
-#ifdef HAVE_STDINT_H
-#include <stdint.h>
+int snmpagent_init();
+int snmpagent_init_oids();
+int snmpagent_process();
+int snmpagent_cleanup();
+
+int snmpagent_log_handler(netsnmp_log_handler* handler, int priority, const char *str);
+
 #endif
-#include <string.h>
-#include <strings.h>
-#include <dlfcn.h>
-#include <arpa/inet.h>
-
-// Define IPv6 fields
-#if defined(__APPLE__) || defined(__darwin__) || defined(__FreeBSD__) || defined (__NetBSD__) || defined (__OpenBSD__)
-#define s6_addr __u6_addr.__u6_addr8
-#define s6_addr16 __u6_addr.__u6_addr16
-#define s6_addr32 __u6_addr.__u6_addr32
-#endif
-
-#if defined (__SVR4) && defined (__sun)
-#define s6_addr32 _S6_un._S6_u32
-#endif
-
-#endif // __MODULES_COMMON_H__

@@ -29,6 +29,7 @@
 
 #include <iconv.h>
 #include <errno.h>
+#include <stddef.h>
 
 
 static struct msn_mime_type msn_mime_types[] = {
@@ -1122,21 +1123,21 @@ int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *c
 			if (!file->filename && file->type == msn_file_type_transfer && outlen >= sizeof(struct msn_file_transfer_context)) {
 				// Of course, this crap is little endian ...
 				struct msn_file_transfer_context *ctx = (struct msn_file_transfer_context*)context;
-				ctx->len = le32(ctx->len);
+				ctx->len = le32(ctx->len); // Do not trust this value
 				file->len = le64(ctx->file_size);
 				if (!ctx->len > outlen) {
 					pom_log(POM_LOG_DEBUG "Length provided in context is too big : %u, max %u", ctx->len, outlen);
-				} else if (outlen > 24) {
+				} else if (outlen > sizeof(struct msn_file_transfer_context)) {
 					// And this crap is UTF-16 ...
 					iconv_t cd = iconv_open("UTF-8", "UTF-16");
 					if (cd == (iconv_t)-1) {
 						pom_log(POM_LOG_DEBUG "Unable to open an iconv_t for UTF-16 to UTF-8");
 					} else {
-						size_t inbytesleft = ctx->len - 20;
+						size_t inbytesleft = outlen - offsetof(struct msn_file_transfer_context, filename);
 						size_t outbytesleft = inbytesleft;
 						file->filename = malloc(outbytesleft  + 1);
 						memset(file->filename, 0, outbytesleft  + 1);
-						char *inbuf = context + 20;
+						char *inbuf = context + offsetof(struct msn_file_transfer_context, filename);
 						char *outbuf = file->filename;
 						while (iconv(cd, &inbuf, &inbytesleft, &outbuf, &outbytesleft) != -1) {
 							if (!*outbuf)

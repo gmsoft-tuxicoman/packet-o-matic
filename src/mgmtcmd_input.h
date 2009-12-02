@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2009 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -25,6 +25,7 @@
 #include "main.h"
 #include "mgmtsrv.h"
 #include "mgmtcmd.h"
+#include "perf.h"
 
 int mgmtcmd_input_register_all();
 int mgmtcmd_input_show(struct mgmt_connection *c, int argc, char *argv[]);

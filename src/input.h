@@ -66,8 +66,10 @@ struct input {
 	void *input_priv; ///< Private stuff, place to store a struct used by the input internaly
 	struct input_mode *mode; ///< Current input mode
 	int running; ///< Set to 1 if the input is running or 0 if not
-	struct ptype *pkt_cnt; ///< Read packet count
-	struct ptype *byte_cnt; ///< Read byte count
+	struct perf_instance *perfs; ///< Performance counter instance
+	struct perf_item *perf_pkts_in; ///< Read packet count
+	struct perf_item *perf_bytes_in; ///< Read bytes count
+	struct perf_item *perf_uptime; ///< Running time of the input
 };
 
 /*@}*/

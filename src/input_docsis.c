@@ -34,6 +34,7 @@
 #include <sys/ioctl.h>
 #include <errno.h>
 
+#include <stddef.h>
 
 #include <docsis.h>
 #include "input_docsis.h"
@@ -127,6 +128,12 @@ static int input_init_docsis(struct input *i) {
 	p->dvr_fd = -1;
 	p->temp_buff = malloc(TEMP_BUFF_LEN);
 	memset(p->temp_buff, 0xff, TEMP_BUFF_LEN);
+
+	// Add counters
+	p->perf_tot_pkts = perf_add_item(i->perfs, "mpeg_tot_pkts", perf_item_type_counter, "Total number of MPEG packets for the DOCSIS PID");
+	p->perf_missed_pkts = perf_add_item(i->perfs, "mpeg_missed_pkts", perf_item_type_counter, "Number of MPEG packets lost");
+	p->perf_err_pkts = perf_add_item(i->perfs, "mpeg_err_pkts", perf_item_type_counter, "Numer of erroneous MPEG packets");
+	p->perf_invalid_pkts = perf_add_item(i->perfs, "mpeg_invalid_pkts", perf_item_type_counter, "Number of invalid MPEG packets");
 
 	return POM_OK;
 
@@ -382,7 +389,20 @@ static int input_open_docsis(struct input *i) {
 			goto err;
 		}
 
+		// Add signal related perf items
+		p->perf_signal = perf_add_item(i->perfs, "signal", perf_item_type_gauge, "Signal strength");
+		perf_item_set_update_hook(p->perf_signal, input_update_signal_docsis, p);
+		p->perf_snr = perf_add_item(i->perfs, "snr", perf_item_type_gauge, "Signal to noise ratio");
+		perf_item_set_update_hook(p->perf_snr, input_update_snr_docsis, p);
+		p->perf_ber = perf_add_item(i->perfs, "ber", perf_item_type_gauge, "Bit error rate");
+		perf_item_set_update_hook(p->perf_ber, input_update_ber_docsis, p);
+
 	}
+
+	perf_item_val_reset(p->perf_tot_pkts);
+	perf_item_val_reset(p->perf_missed_pkts);
+	perf_item_val_reset(p->perf_err_pkts);
+	perf_item_val_reset(p->perf_invalid_pkts);
 
 	pom_log("Docsis stream opened successfully");
 	
@@ -638,8 +658,11 @@ static int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_d
 					len = 0;
 					r = 0;
 					// Approximation but whole buffer is being discarded in the kernel
-					p->missed_packets += DEMUX_BUFFER_SIZE / MPEG_TS_LEN;
+					perf_item_val_inc(p->perf_missed_pkts, DEMUX_BUFFER_SIZE / MPEG_TS_LEN);
 					continue;
+				} else if (errno == EINTR) {
+					pom_log(POM_LOG_DEBUG "Read interrupted by signal");
+					return -3;
 				}
 				pom_log(POM_LOG_ERR "Error while reading dvr");
 				return -2;
@@ -649,9 +672,16 @@ static int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_d
 			len += r;
 		} while (len < MPEG_TS_LEN);
 
-		p->total_packets++;
 
 		// Let's see if we should care about that packet
+
+		// Check for the right PID, normaly the demux handle this
+		if ( ((buff[1] & 0x1F) != 0x1F) || (buff[2] != 0xFE)) {
+			// Don't count packets for other PID as invalid
+			//p->invalid_packets++;
+			return -1;
+		}
+		perf_item_val_inc(p->perf_tot_pkts, 1);
 
 		// Check sync byte
 		if (buff[0] != 0x47) {
@@ -661,39 +691,33 @@ static int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_d
 		
 		// Check transport error indicator
 		if (buff[1] & 0x80) {
-			p->error_packets++;
+			perf_item_val_inc(p->perf_err_pkts, 1);
 			return -1;
 		}
 		
 		// Check the transport priority
 		if (buff[1] & 0x20) {
-			p->invalid_packets++;
+			perf_item_val_inc(p->perf_invalid_pkts, 1);
 			return -1;
 		}
 
-		// Check for the right PID, normaly the demux handle this
-		if ( ((buff[1] & 0x1F) != 0x1F) || (buff[2] != 0xFE)) {
-			// Don't count packets for other PID as invalid
-			//p->invalid_packets++;
-			return -1;
-		}
 
 		// Check the transport scrambling control
 		if (buff[3] & 0xC0) {
-			p->invalid_packets++;
+			perf_item_val_inc(p->perf_invalid_pkts, 1);
 			return -1;
 		}
 
 		// Check the adaptation field control
 		if ((buff[3] & 0x30) != 0x10) {
-			p->invalid_packets++;
+			perf_item_val_inc(p->perf_invalid_pkts, 1);
 			return -1;
 		}
 	
 		// Check if payload unit start indicator is present and if it is valid
 		if (buff[1] & 0x40) {
 			if (buff[4] > 183) {
-				p->invalid_packets++;
+				perf_item_val_inc(p->perf_invalid_pkts, 1);
 				return -1;
 			}
 			return 1;
@@ -896,8 +920,8 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 		p->last_seq = (p->last_seq + 1) & 0xF;
 		while (p->last_seq != (mpeg_buff[3] & 0xF)) {
 			p->last_seq = (p->last_seq + 1) & 0xF;
-			p->missed_packets++;
-			p->total_packets++;
+			perf_item_val_inc(p->perf_missed_pkts, 1);
+			perf_item_val_inc(p->perf_tot_pkts, 1);
 			memset(f->buff + packet_pos, 0xff, MPEG_TS_LEN - 4); // Fill buffer with stuff byte
 			packet_pos += MPEG_TS_LEN - 4;
 
@@ -909,15 +933,14 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 				packet_pos = 0;
 				dlen = 0;
 
+				int inc = 0;
 				if (p->last_seq < (mpeg_buff[3] & 0xF)) {
-					int inc = (mpeg_buff[3] & 0xF) - p->last_seq;
-					p->missed_packets += inc;
-					p->total_packets += inc;
+					inc = (mpeg_buff[3] & 0xF) - p->last_seq;
 				} else {
-					int inc = (mpeg_buff[3] & 0xF) + 0x10 - p->last_seq;
-					p->missed_packets += inc;
-					p->total_packets += inc;
+					inc = (mpeg_buff[3] & 0xF) + 0x10 - p->last_seq;
 				}
+				perf_item_val_inc(p->perf_missed_pkts, inc);
+				perf_item_val_inc(p->perf_tot_pkts, inc);
 
 				p->last_seq = mpeg_buff[3] & 0xF;
 				break;
@@ -984,7 +1007,7 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 	}
 
 	if (dhdr->ehdr_on) {
-		struct docsis_ehdr *ehdr = (struct docsis_ehdr*) &dhdr->hcs;
+		struct docsis_ehdr *ehdr = (struct docsis_ehdr*) (dhdr + offsetof(struct docsis_hdr, hcs));
 		// EH_TYPE_BP_UP should not occur as we only support downstream
 		if (ehdr->eh_type == EH_TYPE_BP_DOWN) {
 			if (!p->encrypted_warning) {
@@ -1029,8 +1052,16 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 		
 		// fc_parm is len of ehdr if ehdr_on == 1
 		if (dhdr->ehdr_on) {
-			new_start += dhdr->fc_parm;
-			dlen -= new_start;
+			
+			struct docsis_ehdr *ehdr = (struct docsis_ehdr*)(dhdr + offsetof(struct docsis_hdr, hcs));
+			if (ehdr->eh_len + sizeof(struct docsis_ehdr) > ntohs(dhdr->len) - sizeof(dhdr->hcs)) {
+				pom_log(POM_LOG_TSHOOT "Invalid EHDR size in DOCSIS packet. Discarding.");
+				f->len = 0;
+				return POM_OK;
+			}
+
+			new_start += ehdr->eh_len + sizeof(struct docsis_ehdr);
+			dlen -= ehdr->eh_len + sizeof(struct docsis_ehdr);
 		}
 
 		f->buff += new_start;
@@ -1057,6 +1088,22 @@ static int input_close_docsis(struct input *i) {
 		return POM_ERR;
 
 	if (i->mode != mode_file) {
+		
+		if (p->perf_signal) {
+			perf_remove_item(i->perfs, p->perf_signal);
+			p->perf_signal = NULL;
+		}
+
+		if (p->perf_snr) {
+			perf_remove_item(i->perfs, p->perf_snr);
+			p->perf_snr = NULL;
+		}
+
+		if (p->perf_ber) {
+			perf_remove_item(i->perfs, p->perf_ber);
+			p->perf_ber = NULL;
+		}
+
 		free(p->frontend_name);
 		p->frontend_name = NULL;
 
@@ -1079,24 +1126,18 @@ static int input_close_docsis(struct input *i) {
 	if (i->mode == mode_scan) {
 		pom_log(POM_LOG_WARN "No DOCSIS stream found");
 	} else {	
-		pom_log("0x%02lx; DOCSIS : Total MPEG packet read %lu, missed %lu (%.1f%%), erroneous %lu (%.1f%%), invalid %lu (%.1f%%), total errors %lu (%.1f%%)", \
-			(unsigned long) i->input_priv, \
-			p->total_packets - p->missed_packets, \
-			p->missed_packets, \
-			100.0 / (double) p->total_packets * (double) p->missed_packets, \
-			p->error_packets, \
-			100.0 / (double) p->total_packets * (double) p->error_packets, \
-			p->invalid_packets, \
-			100.0 / (double) p->total_packets * (double) p->invalid_packets, \
-			p->missed_packets + p->error_packets + p->invalid_packets, \
-			100.0 / (double) p->total_packets * (double) (p->missed_packets  + p->error_packets + p->invalid_packets));
+		pom_log("Total MPEG packet read %lu, missed %lu (%.1f%%), erroneous %lu (%.1f%%), invalid %lu (%.1f%%), total errors %lu (%.1f%%)", \
+			perf_item_val_get_raw(p->perf_tot_pkts) - perf_item_val_get_raw(p->perf_missed_pkts), \
+			perf_item_val_get_raw(p->perf_missed_pkts), \
+			100.0 / (double) perf_item_val_get_raw(p->perf_tot_pkts) * (double) perf_item_val_get_raw(p->perf_missed_pkts), \
+			perf_item_val_get_raw(p->perf_err_pkts), \
+			100.0 / (double) perf_item_val_get_raw(p->perf_tot_pkts) * (double) perf_item_val_get_raw(p->perf_err_pkts), \
+			perf_item_val_get_raw(p->perf_invalid_pkts), \
+			100.0 / (double) perf_item_val_get_raw(p->perf_tot_pkts) * (double) perf_item_val_get_raw(p->perf_invalid_pkts), \
+			perf_item_val_get_raw(p->perf_missed_pkts) + perf_item_val_get_raw(p->perf_err_pkts) + perf_item_val_get_raw(p->perf_invalid_pkts), \
+			100.0 / (double) perf_item_val_get_raw(p->perf_tot_pkts) * (double) (perf_item_val_get_raw(p->perf_missed_pkts) + perf_item_val_get_raw(p->perf_err_pkts) + perf_item_val_get_raw(p->perf_invalid_pkts)));
 
 	}
-
-	p->total_packets = 0;
-	p->missed_packets = 0;
-	p->error_packets = 0;
-	p->invalid_packets = 0;
 
 	// Reset temporary buffer
 	p->temp_buff_len = 0;
@@ -1125,4 +1166,38 @@ static int input_getcaps_docsis(struct input *i, struct input_caps *ic) {
 
 }
 
+static int input_update_signal_docsis(struct perf_item *itm, void *priv) {
 
+	struct input_priv_docsis *p = priv;
+
+	uint16_t signal = 0;
+	if (ioctl(p->frontend_fd, FE_READ_SIGNAL_STRENGTH, &signal) != 0)
+		return POM_ERR;
+
+	itm->value = signal;
+	return POM_OK;
+}
+
+static int input_update_snr_docsis(struct perf_item *itm, void *priv) {
+
+	struct input_priv_docsis *p = priv;
+
+	uint16_t snr = 0;
+	if (ioctl(p->frontend_fd, FE_READ_SNR, &snr) != 0)
+		return POM_ERR;
+
+	itm->value = snr;
+	return POM_OK;
+}
+
+static int input_update_ber_docsis(struct perf_item *itm, void *priv) {
+
+	struct input_priv_docsis *p = priv;
+
+	uint16_t ber = 0;
+	if (ioctl(p->frontend_fd, FE_READ_BER, &ber) != 0)
+		return POM_ERR;
+
+	itm->value = ber;
+	return POM_OK;
+}

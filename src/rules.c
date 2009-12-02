@@ -21,6 +21,9 @@
 
 #include "rules.h"
 #include "helper.h"
+#include "perf.h"
+#include "core_param.h"
+#include "ptype_bool.h"
 
 #include <pthread.h>
 
@@ -28,12 +31,13 @@
 
 static int match_undefined_id;
 
+static struct perf_class *rules_perf_class = NULL;
 
 int rules_init() {
 
 	match_undefined_id = match_register("undefined");
 
-	uid_init();
+	rules_perf_class = perf_register_class("rules");
 
 	return POM_OK;
 
@@ -69,7 +73,7 @@ int dump_invalid_packet(struct frame *f) {
  * @return 1 if true, 0 if false, -1 in case of invalid packet. Set *l to the last matched layer.
  **/
 
-int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct rule_node *last) {
+int rule_node_match(struct frame *f, struct layer **l, struct rule_node *n, struct rule_node *last) {
 
 	if (n == last)
 		return 1;
@@ -184,8 +188,8 @@ int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct ru
 			if (n->op & (RULE_OP_OR | RULE_OP_AND)) {
 				int result_a, result_b;
 				struct layer *layer_a = (*l), *layer_b = (*l);
-				result_a = node_match(f, &layer_a, n->a, new_last);
-				result_b = node_match(f, &layer_b, n->b, new_last);
+				result_a = rule_node_match(f, &layer_a, n->a, new_last);
+				result_b = rule_node_match(f, &layer_b, n->b, new_last);
 				if (result_a == -1 || result_b == -1)
 					return -1; // Invalid packet
 				if (n->op & RULE_OP_OR)
@@ -197,12 +201,12 @@ int node_match(struct frame *f, struct layer **l, struct rule_node *n, struct ru
 				if ((result_a && result_b) && (layer_a != layer_b)) { // we have to branch here because both side didn't match up to the same layer
 					// last layer matched is different, branching
 					if (result_a)  {
-						result_a = node_match(f, &layer_a, new_last, last);
+						result_a = rule_node_match(f, &layer_a, new_last, last);
 						if (result_a < 0)
 							return result_a; // Invalid packet
 					}
 					if (result_b) {
-						result_b = node_match(f, &layer_b, new_last, last);
+						result_b = rule_node_match(f, &layer_b, new_last, last);
 						if (result_b < 0)
 							return result_b; //Invalid packet
 					}
@@ -317,15 +321,15 @@ int do_rules(struct frame *f, struct rule_list *rules, pthread_rwlock_t *rule_lo
 		if (r->node && r->enabled) {
 			// If there is a conntrack_entry, it means one of the target added it's priv, so the packet needs to be processed
 			struct layer *start_l = f->l;
-			r->result = node_match(f, &start_l, r->node, NULL); // Get the result to fully populate layers
+			r->result = rule_node_match(f, &start_l, r->node, NULL); // Get the result to fully populate layers
 			if (r->result < 0) { // Invalid packet or packet needs help
 				pthread_rwlock_unlock(rule_lock);
 				return POM_OK;
 			}
 			if (r->result) {
 			//	pom_log(POM_LOG_TSHOOT "Rule matched");
-				PTYPE_UINT64_INC(r->pkt_cnt, 1);
-				PTYPE_UINT64_INC(r->byte_cnt, f->len);
+				perf_item_val_inc(r->perf_pkts, 1);
+				perf_item_val_inc(r->perf_bytes, f->len);
 			}
 		}
 		r = r->next;
@@ -440,42 +444,6 @@ int node_destroy(struct rule_node *node, int sub) {
 	}
 	
 	return POM_OK;
-
-}
-
-int list_destroy(struct rule_list *list) {
-
-	if (!list)
-		return POM_ERR;
-	
-	struct rule_list *tmp;
-	
-	do {
-		tmp = list;
-		list = list->next;
-		if (tmp->node)
-			node_destroy(tmp->node, 0);
-
-		struct target* t = tmp->target;
-		while (t) {
-			target_lock_instance(t, 1);
-			struct target* next = t->next;
-			target_close(t);
-			target_cleanup_module(t);
-			t = next;
-		}
-		ptype_cleanup(tmp->pkt_cnt);
-		ptype_cleanup(tmp->byte_cnt);
-
-		if (tmp->description)
-			free(tmp->description);
-
-		free(tmp);
-
-	} while (list);
-	
-	return POM_OK;
-
 
 }
 
@@ -886,5 +854,78 @@ int rule_parse(char *expr, struct rule_node **start, struct rule_node **end, cha
 		*start = *my_start_addr;
 
 
+	return POM_OK;
+}
+
+struct rule_list* rule_list_alloc(struct rule_node *n) {
+	
+	struct rule_list *rl;
+	rl = malloc(sizeof(struct rule_list));
+	memset(rl, 0, sizeof(struct rule_list));
+
+	rl->uid = get_uid();
+
+	rl->node = n;
+
+	rl->perfs = perf_register_instance(rules_perf_class, rl);
+	rl->perf_pkts = perf_add_item(rl->perfs, "pkts", perf_item_type_counter, "Number of packets matched");
+	rl->perf_bytes = perf_add_item(rl->perfs, "bytes", perf_item_type_counter, "Number of bytes matched");
+	rl->perf_uptime = perf_add_item(rl->perfs, "uptime", perf_item_type_uptime, "Time for which the rule has been enabled");
+
+	return rl;
+
+}
+
+int rule_list_cleanup(struct rule_list *rl) {
+
+	node_destroy(rl->node, 0);
+	
+	while (rl->target) {
+
+		struct target *tmpt = rl->target;
+		rl->target = rl->target->next;
+		target_lock_instance(tmpt, 1);
+
+		if (tmpt->started)
+			target_close(tmpt);
+
+		target_cleanup_module(tmpt);
+	}
+
+	if (rl->description)
+		free(rl->description);
+
+	perf_unregister_instance(rules_perf_class, rl->perfs);
+	free(rl);
+
+	return POM_OK;
+}
+
+
+int rule_list_enable(struct rule_list *rl) {
+
+	if (rl->enabled)
+		return POM_ERR;
+
+	rl->enabled = 1;
+	perf_item_val_reset(rl->perf_uptime);
+
+	struct ptype* param_reset_counters_on_restart = core_get_param_value("reset_counters_on_item_restart");
+	if (PTYPE_BOOL_GETVAL(param_reset_counters_on_restart)) {
+		perf_item_val_reset(rl->perf_pkts);
+		perf_item_val_reset(rl->perf_bytes);
+	}
+
+	return POM_OK;
+}
+
+int rule_list_disable(struct rule_list *rl) {
+
+	if (!rl->enabled)
+		return POM_ERR;
+
+	rl->enabled = 0;
+	perf_item_val_uptime_stop(rl->perf_uptime);
+	
 	return POM_OK;
 }
