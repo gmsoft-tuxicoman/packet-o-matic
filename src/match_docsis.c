@@ -46,7 +46,7 @@ int match_register_docsis(struct match_reg *r) {
 
 	field_fc_type = match_register_field(r->type, "fc_type", ptype_uint8, "Frame control type");
 	field_fc_parm = match_register_field(r->type, "fc_parm", ptype_uint8, "Frame parameters");
-	field_ehdr_on = match_register_field(r->type, "ehdr_on", ptype_uint8, "Extended header");
+	field_ehdr_on = match_register_field(r->type, "ehdr_on", ptype_bool, "Extended header");
 
 	return POM_OK;
 }
@@ -68,14 +68,14 @@ static int match_identify_docsis(struct frame *f, struct layer* l, unsigned int 
 
 	if (dhdr->ehdr_on) {
 
-		struct docsis_ehdr *ehdr = (struct docsis_ehdr*) (dhdr + offsetof(struct docsis_hdr, hcs));
-		if (ehdr->eh_len + sizeof(struct docsis_ehdr) > ntohs(dhdr->len) - sizeof(dhdr->hcs))
+		if (dhdr->mac_parm > ntohs(dhdr->len))
 			return POM_ERR;
 
-		l->payload_start += ehdr->eh_len + sizeof(struct docsis_ehdr);
-		l->payload_size -= ehdr->eh_len + sizeof(struct docsis_ehdr);
+		l->payload_start += dhdr->mac_parm;
+		l->payload_size -= dhdr->mac_parm;
 		
 		// Make sure this is not matched as valid traffic
+		struct docsis_ehdr *ehdr = (struct docsis_ehdr*) (dhdr + offsetof(struct docsis_hdr, hcs));
 		if (ehdr->eh_type == EH_TYPE_BP_DOWN || ehdr->eh_type == EH_TYPE_BP_DOWN) 
 			return match_undefined->id;
 	}

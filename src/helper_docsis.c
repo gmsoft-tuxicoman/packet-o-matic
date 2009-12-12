@@ -18,7 +18,6 @@
  *
  */
 
-#include <stddef.h>
 #include "helper_docsis.h"
 
 
@@ -28,20 +27,18 @@ int helper_register_docsis(struct helper_reg *r) {
 	return POM_OK;
 }
 
-
-
 static int helper_resize_docsis(struct frame *f, unsigned int start, unsigned int new_psize) {
 
 
 	struct docsis_hdr *dhdr = f->buff + start;
 
-	if (dhdr->ehdr_on) {
-		struct docsis_ehdr *ehdr = (struct docsis_ehdr*) (dhdr + offsetof(struct docsis_hdr, hcs));
-		dhdr->len = htons(new_psize + ehdr->eh_len + sizeof(struct docsis_ehdr) + sizeof(struct docsis_hdr));
+	if (dhdr->fc_type == FC_TYPE_PKT_MAC)
+		new_psize += 4; // Add ethernet checksum size
 
-	} else {
-		dhdr->len = htons(new_psize + sizeof(struct docsis_hdr));
-	}
+	if (dhdr->ehdr_on)
+		dhdr->len = htons(new_psize + dhdr->mac_parm);
+	else
+		dhdr->len = htons(new_psize);
 
 	return POM_OK;
 }

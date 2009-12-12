@@ -1050,18 +1050,16 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 		dlen -= sizeof(struct docsis_hdr);
 		unsigned int new_start = sizeof(struct docsis_hdr);
 		
-		// fc_parm is len of ehdr if ehdr_on == 1
 		if (dhdr->ehdr_on) {
 			
-			struct docsis_ehdr *ehdr = (struct docsis_ehdr*)(dhdr + offsetof(struct docsis_hdr, hcs));
-			if (ehdr->eh_len + sizeof(struct docsis_ehdr) > ntohs(dhdr->len) - sizeof(dhdr->hcs)) {
+			if (dhdr->mac_parm > ntohs(dhdr->len)) {
 				pom_log(POM_LOG_TSHOOT "Invalid EHDR size in DOCSIS packet. Discarding.");
 				f->len = 0;
 				return POM_OK;
 			}
 
-			new_start += ehdr->eh_len + sizeof(struct docsis_ehdr);
-			dlen -= ehdr->eh_len + sizeof(struct docsis_ehdr);
+			new_start += dhdr->mac_parm;
+			dlen -= dhdr->mac_parm;
 		}
 
 		f->buff += new_start;

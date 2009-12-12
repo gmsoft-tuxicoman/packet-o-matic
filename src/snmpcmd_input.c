@@ -31,20 +31,21 @@ int snmpcmd_input_init_oids(oid *base_oid, int base_oid_len) {
 	oid my_oid[MAX_OID_LEN];
 	memcpy(my_oid, base_oid, base_oid_len * sizeof(oid));
 	my_oid[base_oid_len] = 2;
+	my_oid[base_oid_len + 1] = 1;
 
 	// Register type handler
-	my_oid[base_oid_len + 1] = 1;
-	netsnmp_handler_registration *input_type_handler = netsnmp_create_handler_registration("inputType", snmpcmd_input_type_handler, my_oid, base_oid_len + 2, HANDLER_CAN_RWRITE);
+	my_oid[base_oid_len + 2] = 1;
+	netsnmp_handler_registration *input_type_handler = netsnmp_create_handler_registration("inputType", snmpcmd_input_type_handler, my_oid, base_oid_len + 3, HANDLER_CAN_RWRITE);
 	netsnmp_register_instance(input_type_handler);
 
 	// Register mode handler
-	my_oid[base_oid_len + 1] = 2;
-	netsnmp_handler_registration *input_mode_handler = netsnmp_create_handler_registration("inputMode", snmpcmd_input_mode_handler, my_oid, base_oid_len + 2, HANDLER_CAN_RWRITE);
+	my_oid[base_oid_len + 2] = 2;
+	netsnmp_handler_registration *input_mode_handler = netsnmp_create_handler_registration("inputMode", snmpcmd_input_mode_handler, my_oid, base_oid_len + 3, HANDLER_CAN_RWRITE);
 	netsnmp_register_instance(input_mode_handler);
 
 	// Register parameters handler
-	my_oid[base_oid_len + 1] = 3;
-	netsnmp_handler_registration *input_params_handler = netsnmp_create_handler_registration("inputParamTable", snmpcmd_input_param_handler, my_oid, base_oid_len + 2, HANDLER_CAN_RWRITE);
+	my_oid[base_oid_len + 2] = 3;
+	netsnmp_handler_registration *input_params_handler = netsnmp_create_handler_registration("inputParamTable", snmpcmd_input_param_handler, my_oid, base_oid_len + 3, HANDLER_CAN_RWRITE);
 
 	if (!input_params_handler)
 		return POM_ERR;
@@ -59,12 +60,28 @@ int snmpcmd_input_init_oids(oid *base_oid, int base_oid_len) {
 	netsnmp_register_table(input_params_handler, input_params_table_info);
 
 	// Register running handler
-	my_oid[base_oid_len + 1] = 4;
-	netsnmp_handler_registration *input_running_handler = netsnmp_create_handler_registration("inputStarted", snmpcmd_input_running_handler, my_oid, base_oid_len + 2, HANDLER_CAN_RWRITE);
+	my_oid[base_oid_len + 2] = 4;
+	netsnmp_handler_registration *input_running_handler = netsnmp_create_handler_registration("inputStarted", snmpcmd_input_running_handler, my_oid, base_oid_len + 3, HANDLER_CAN_RWRITE);
 	netsnmp_register_instance(input_running_handler);
 
+	// Register modes handler
+	my_oid[base_oid_len + 2] = 5;
+	netsnmp_handler_registration *input_modes_handler = netsnmp_create_handler_registration("inputModesTable", snmpcmd_input_modes_handler, my_oid, base_oid_len + 3, HANDLER_CAN_RONLY);
+
+	if (!input_modes_handler)
+		return POM_ERR;
+
+	netsnmp_table_registration_info *input_modes_table_info = malloc(sizeof(netsnmp_table_registration_info));
+	memset(input_modes_table_info, 0, sizeof(netsnmp_table_registration_info));
+
+	netsnmp_table_helper_add_indexes(input_modes_table_info, ASN_INTEGER, 0);
+	input_modes_table_info->min_column = 1;
+	input_modes_table_info->max_column = 3;
+
+	netsnmp_register_table(input_modes_handler, input_modes_table_info);
+
 	// Register perfs handler
-	my_oid[base_oid_len + 1] = 5;
+	my_oid[base_oid_len + 1] = 2;
 
 	// Register perfs bytes in handler
 	my_oid[base_oid_len + 2] = 1;
@@ -470,6 +487,110 @@ int snmpcmd_input_running_handler(netsnmp_mib_handler *handler, netsnmp_handler_
 	return SNMP_ERR_NOERROR;
 }
 
+int snmpcmd_input_modes_handler(netsnmp_mib_handler *handler, netsnmp_handler_registration *reginfo, netsnmp_agent_request_info *reqinfo, netsnmp_request_info *requests) {
+
+
+	while (requests) {
+		netsnmp_variable_list *var = requests->requestvb;
+		if (requests->processed != 0) {
+			requests = requests->next;
+			continue;
+		}
+
+		netsnmp_table_request_info *table_info = netsnmp_extract_table_info(requests);
+		if (!table_info) {
+			requests = requests->next;
+			continue;
+		}
+
+		// Get rid of useless modes
+		if (reqinfo->mode != MODE_GETNEXT && reqinfo->mode != MODE_GET && reqinfo->mode != MODE_SET_ACTION) {
+			requests = requests->next;
+			continue;
+		}
+
+		// Find the right parameter
+		int mode_id = *(table_info->indexes->val.integer);
+		if (reqinfo->mode == MODE_GETNEXT)
+			mode_id++;
+
+		if (!rbuf->i) {
+			requests = requests->next;
+			continue;
+		}
+		if (input_lock(0)) {
+			netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_GENERR);
+			pom_log(POM_LOG_ERR "Error while locking the input lock");
+			requests = requests->next;
+			continue;
+		}
+
+		// Find the right mode
+		struct input_mode *m = inputs[rbuf->i->type]->modes;
+		int i;
+		for (i = 1; i < mode_id && m; i++)
+			m = m->next;
+
+		// Go to the next column
+		if (!m && reqinfo->mode == MODE_GETNEXT) {
+			table_info->colnum++;
+			mode_id = 1;
+			m = inputs[rbuf->i->type]->modes;
+		}
+
+		if (!m) {
+			input_unlock();
+			requests = requests->next;
+			continue;
+		}
+
+	
+		if (reqinfo->mode == MODE_GETNEXT || reqinfo->mode == MODE_GET) {
+			unsigned char type = ASN_NULL;
+			char *value = NULL;
+			size_t len = 0;
+			
+			switch (table_info->colnum) {
+				case 1: // Index
+					type = ASN_UNSIGNED;
+					value = (char *)&mode_id;
+					len = sizeof(mode_id);
+					break;
+				case 2: // Mode name
+					type = ASN_OCTET_STR;
+					value = m->name;
+					len = strlen(value);
+					break;
+
+				case 3: // Mode description
+					type = ASN_OCTET_STR;
+					value = m->descr;
+					len = strlen(value);
+					break;
+			}
+
+			if (value) {
+
+				if (reqinfo->mode == MODE_GETNEXT) {
+					*(table_info->indexes->val.integer) = mode_id;
+					netsnmp_table_build_result(reginfo, requests, table_info, type, (unsigned char *)value, len);
+
+				} else if (reqinfo->mode == MODE_GET && var->type == ASN_NULL) {
+					snmp_set_var_typed_value(var, type, (unsigned char *)value, len);
+				}
+			}
+		}
+
+		if (input_unlock()) {
+			netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_GENERR);
+			pom_log(POM_LOG_ERR "Error while unlocking the input lock");
+		}
+
+		requests = requests->next;
+
+	}
+	return SNMP_ERR_NOERROR;
+}
 int snmpcmd_input_perf_bytes_in_handler(netsnmp_mib_handler *handler, netsnmp_handler_registration *reginfo, netsnmp_agent_request_info *reqinfo, netsnmp_request_info *requests) {
 
 	if (reqinfo->mode == MODE_GET && rbuf->i) {

@@ -40,7 +40,7 @@ struct docsis_hdr {
 #else
 # error "Please fix <bits/endian.h>"
 #endif
-	char mac_parm;
+	unsigned char mac_parm;
 	uint16_t len;
 	uint16_t hcs; // can also be start of ehdr. See SCTE 22-12002 section 6.2.1.4
 

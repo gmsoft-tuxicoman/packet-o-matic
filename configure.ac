@@ -233,16 +233,20 @@ then
 fi
 
 # Check for net-snmp
-AC_MSG_CHECKING([for net-snmp-config])
-NETSNMP_CONFIG=`which net-snmp-config 2>/dev/null`
-if [ test ! -x "${NETSNMP_CONFIG}" ]
+AC_CHECK_HEADERS([net-snmp/net-snmp-config.h], [want_netsnmp=yes], [want_netsnmp=no])
+
+if test "x$want_netsnmp" = "xyes"
 then
-	want_netsnmp=no
-else
-	want_netsnmp=yes
-	netsnmp_LIBS="`net-snmp-config --agent-libs`"
-	netsnmp_CFLAGS="`net-snmp-config --base-cflags | sed -e 's/-W[[a-zA-Z-]]*//g'`"
-	AC_DEFINE(USE_NETSNMP, , [Compile net-snmp interface])
+	AC_MSG_CHECKING([for net-snmp-config])
+	NETSNMP_CONFIG=`which net-snmp-config 2>/dev/null`
+	if [ test ! -x "${NETSNMP_CONFIG}" ]
+	then
+		want_netsnmp=no
+	else
+		netsnmp_LIBS="`net-snmp-config --agent-libs`"
+		netsnmp_CFLAGS="`net-snmp-config --base-cflags | sed -e 's/-W[[a-zA-Z-]]*//g'`"
+		AC_DEFINE(USE_NETSNMP, , [Compile net-snmp interface])
+	fi
 fi
 AC_MSG_RESULT($want_netsnmp)
 

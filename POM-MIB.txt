@@ -166,19 +166,21 @@ coreRingBufferOverflow OBJECT-TYPE
 
 input	OBJECT IDENTIFIER ::= { packet-o-matic 2 }
 
+inputConfig OBJECT IDENTIFIER  ::= { input 1 }
+
 inputType OBJECT-TYPE
 	SYNTAX		DisplayString
 	MAX-ACCESS	read-write
 	STATUS		current
 	DESCRIPTION	"The input type"
-	::= { input 1 }
+	::= { inputConfig 1 }
 
 inputMode OBJECT-TYPE
 	SYNTAX		DisplayString
 	MAX-ACCESS	read-write
 	STATUS		current
 	DESCRIPTION	"The input mode"
-	::= { input 2 }
+	::= { inputConfig 2 }
 
 
 inputParamTable OBJECT-TYPE
@@ -186,13 +188,13 @@ inputParamTable OBJECT-TYPE
 	MAX-ACCESS	not-accessible
 	STATUS		current
 	DESCRIPTION	"The input parameters"
-	::= { input 3 }
+	::= { inputConfig 3 }
 
 inputParamEntry OBJECT-TYPE
 	SYNTAX		InputParamEntry
 	MAX-ACCESS	not-accessible
 	STATUS		current
-	DESCRIPTION	"A input parameter"
+	DESCRIPTION	"An input parameter"
 	INDEX		{ inputParamIndex }
 	::= { inputParamTable 1 }
 
@@ -253,12 +255,55 @@ inputRunning OBJECT-TYPE
 	MAX-ACCESS	read-write
 	STATUS		current
 	DESCRIPTION	"True if the input is started"
-	::= { input 4 }
+	::= { inputConfig 4 }
+
+inputModesTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF InputModesEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"Possible input modes"
+	::= { inputConfig 5 }
+
+inputModesEntry OBJECT-TYPE
+	SYNTAX		InputModesEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"An input mode description"
+	INDEX		{ inputParamIndex }
+	::= { inputModesTable 1 }
+
+InputModesEntry ::=
+	SEQUENCE {
+		inputModesIndex	GenericTableIndex,
+		inputModesName	DisplayString,
+		inputModesDescr	DisplayString
+	}
+
+inputModesIndex OBJECT-TYPE
+	SYNTAX		GenericTableIndex
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Index of the input modes table"
+	::= { inputModesEntry 1 }
+
+inputModesName OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Name an input mode"
+	::= { inputModesEntry 2 }
+
+inputModesDescr OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION	"Description of an input mode"
+	::= { inputModesEntry 3 }
 
 
 -- Input perf stuff
 
-inputPerf OBJECT IDENTIFIER ::= { input 5 }
+inputPerf OBJECT IDENTIFIER ::= { input 2 }
 
 inputBytesIn OBJECT-TYPE
 	SYNTAX		Counter64
@@ -412,14 +457,14 @@ inputPerfExtraGaugeDescr OBJECT-TYPE
 -- Rules definition
 --
 
-rules OBJECT IDENTIFIER ::= { packet-o-matic 3 }
+rule OBJECT IDENTIFIER ::= { packet-o-matic 3 }
 
 ruleTable OBJECT-TYPE
 	SYNTAX		SEQUENCE OF RuleEntry
 	MAX-ACCESS	not-accessible
 	STATUS		current
 	DESCRIPTION	"The list of rules"
-	::= { rules 1 }
+	::= { rule 1 }
 
 ruleEntry OBJECT-TYPE
 	SYNTAX		RuleEntry
@@ -473,8 +518,9 @@ ruleEnabled OBJECT-TYPE
 	DESCRIPTION	"Define if the rule is enabled or not"
 	::= { ruleEntry 5 }
 
+--- Rules perf stuff
 
-rulePerf OBJECT IDENTIFIER ::={ rules 2 }
+rulePerf OBJECT IDENTIFIER ::={ rule 2 }
 
 rulePerfTable OBJECT-TYPE
 	SYNTAX		SEQUENCE OF RulePerfEntry
@@ -526,5 +572,36 @@ ruleUpTime OBJECT-TYPE
 	STATUS		current
 	DESCRIPTION	"Time for which the rule has been enabled"
 	::= { rulePerfEntry 4 }
+
+---
+--- Target definition
+---
+
+target OBJECT IDENTIFIER ::= { packet-o-matic 4 }
+
+---
+--- Match definition
+---
+
+match OBJECT IDENTIFIER ::= { packet-o-matic 5 }
+
+
+---
+--- Helper definition
+---
+
+helper OBJECT IDENTIFIER ::= { packet-o-matic 6 }
+
+
+---
+--- Conntrack definition
+---
+
+conntrack OBJECT IDENTIFIER ::= { packet-o-matic 7 }
+
+conntrackConfig OBJECT IDENTIFIER ::= { conntrack 1 }
+
+
+conntrackPerf OBJECT IDENTIFIER ::= { conntrack 2 }
 
 END

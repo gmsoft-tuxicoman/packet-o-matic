@@ -1,3 +1,11 @@
+* 2009/12/12 Guy Martin <gmsoft@tuxicoman.be>
+Check for net-snmp headers as well at configure time.
+Fix docsis extended header size handling for good.
+Move input configuration oids under inputConfig.
+Added oids to list available modes for the input.
+Fix allocation of field ehdr_on in match_docsis.
+Remove unnessecary build-aux dir from svn repo.
+
 * 2009/12/01 Guy Martin <gmsoft@tuxicoman.be>
 Added partial SNMP support.
 Added performance counter API.
