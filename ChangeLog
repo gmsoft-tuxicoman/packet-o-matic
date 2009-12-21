@@ -1,3 +1,7 @@
+* 2009/12/21 Guy Martin <gmsoft@tuxicoman.be>
+Added DOCSIS 3 support.
+Added match_docsis_mgmt.
+
 * 2009/12/12 Guy Martin <gmsoft@tuxicoman.be>
 Check for net-snmp headers as well at configure time.
 Fix docsis extended header size handling for good.

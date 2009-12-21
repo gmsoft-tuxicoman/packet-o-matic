@@ -25,7 +25,7 @@ libpom_la_SOURCES = input.c input.h match.c match.h conntrack.c conntrack.h targ
 libpom_la_CFLAGS = -DLIBDIR='"@LIB_DIR@"'
 
 INPUT_OBJS = @INPUT_OBJS@
-MATCH_OBJS = match_docsis.la match_ethernet.la match_80211.la match_vlan.la match_ipv4.la match_icmp.la match_ipv6.la match_icmpv6.la match_tcp.la match_udp.la match_rtp.la match_undefined.la match_linux_cooked.la match_prism.la match_ppi.la match_radiotap.la match_pppoe.la match_ppp.la
+MATCH_OBJS = match_docsis.la match_docsis_mgmt.la match_ethernet.la match_80211.la match_vlan.la match_ipv4.la match_icmp.la match_ipv6.la match_icmpv6.la match_tcp.la match_udp.la match_rtp.la match_undefined.la match_linux_cooked.la match_prism.la match_ppi.la match_radiotap.la match_pppoe.la match_ppp.la
 CONNTRACK_OBJS = conntrack_ipv4.la conntrack_ipv6.la conntrack_rtp.la conntrack_tcp.la conntrack_udp.la
 HELPER_OBJS = helper_docsis.la helper_ipv4.la helper_ipv6.la helper_tcp.la helper_rtp.la helper_pppoe.la
 TARGET_OBJS = target_display.la target_dump_payload.la target_irc.la target_http.la target_msn.la target_pop.la target_rtp.la target_tftp.la target_null.la @TARGET_OBJS@
@@ -47,6 +47,9 @@ input_pcap_la_LIBADD = libpom.la
 match_docsis_la_SOURCES = match_docsis.c match_docsis.h modules_common.h include/docsis.h
 match_docsis_la_LDFLAGS = -module -avoid-version
 match_docsis_la_LIBADD = libpom.la
+match_docsis_mgmt_la_SOURCES = match_docsis_mgmt.c match_docsis_mgmt.h modules_common.h include/docsis.h
+match_docsis_mgmt_la_LDFLAGS = -module -avoid-version
+match_docsis_mgmt_la_LIBADD = libpom.la
 match_ethernet_la_SOURCES = match_ethernet.c match_ethernet.h modules_common.h include/ethernet.h
 match_ethernet_la_LDFLAGS = -module -avoid-version
 match_ethernet_la_LIBADD = libpom.la

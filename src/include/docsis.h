@@ -60,12 +60,34 @@ struct docsis_ehdr {
 };
 
 
+struct docsis_mgmt_hdr {
+
+	unsigned char daddr[6];
+	unsigned char saddr[6];
+	uint16_t len;
+	unsigned char dsap;
+	unsigned char ssap;
+	unsigned char control;
+	unsigned char version;
+	unsigned char type;
+	unsigned char rsvd;
+
+};
+
+struct docsis_mgmt_mdd_hdr {
+	unsigned char change_count;
+	unsigned char frag_tot;
+	unsigned char frag_seq;
+	unsigned char chan_dcid;
+
+};
+
 // Definition of the standard types
 
-#define FC_TYPE_PKT_MAC	0x0 // Packet-based MAC frame
-#define FC_TYPE_ATM	0x1 // ATM cell MAC frame
-#define FC_TYPE_RSVD	0x2 // Reserved PDU MAC frame
-#define FC_TYPE_MAC_SPC 0x3 // MAC-specific header
+#define FC_TYPE_PKT_MAC			0x0 // Packet-based MAC frame
+#define FC_TYPE_ATM			0x1 // ATM cell MAC frame
+#define FC_TYPE_ISOLATION_PKT_MAC	0x2 // DOCSIS 3 isolation packet MAC frame
+#define FC_TYPE_MAC_SPC 		0x3 // MAC-specific header
 
 
 // Definition of mac management mac_parm values

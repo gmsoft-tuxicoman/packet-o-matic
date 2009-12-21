@@ -312,6 +312,9 @@ int input_open(struct input *i) {
  **/
 int input_read(struct input *i, struct frame *f) {
 
+	if (!i->running)
+		return POM_ERR;
+	
 	int res = (*inputs[i->type]->read) (i, f);
 	if (res == POM_ERR) {
 		input_close(i);

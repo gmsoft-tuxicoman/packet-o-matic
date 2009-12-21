@@ -18,28 +18,18 @@
  *
  */
 
-#include "helper_docsis.h"
+
+#ifndef __MATCH_DOCSIS_MGMT_H__
+#define __MATCH_DOCSIS_MGMT_H__
 
 
-int helper_register_docsis(struct helper_reg *r) {
-	
-	r->resize = helper_resize_docsis;
-	return POM_OK;
-}
-
-static int helper_resize_docsis(struct frame *f, unsigned int start, unsigned int new_psize) {
+#include "modules_common.h"
+#include "match.h"
+#include <docsis.h>
 
 
-	struct docsis_hdr *dhdr = f->buff + start;
+int match_register_docsis_mgmt(struct match_reg *r);
+static int match_identify_docsis_mgmt(struct frame *f, struct layer* l, unsigned int start, unsigned int len);
+static int match_unregister_docsis_mgmt(struct match_reg *r);
 
-	if (dhdr->fc_type == FC_TYPE_PKT_MAC || dhdr->fc_type == FC_TYPE_ISOLATION_PKT_MAC)
-		new_psize += 4; // Add ethernet checksum size
-
-	if (dhdr->ehdr_on)
-		dhdr->len = htons(new_psize + dhdr->mac_parm);
-	else
-		dhdr->len = htons(new_psize);
-
-	return POM_OK;
-}
-
+#endif

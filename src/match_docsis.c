@@ -24,7 +24,7 @@
 #include "ptype_uint8.h"
 #include "ptype_bool.h"
 
-static struct match_dep *match_undefined, *match_atm, *match_ethernet;
+static struct match_dep *match_undefined, *match_atm, *match_ethernet, *match_docsis_mgmt;
 
 static int field_fc_type, field_fc_parm, field_ehdr_on;
 
@@ -38,6 +38,7 @@ int match_register_docsis(struct match_reg *r) {
 	match_undefined = match_add_dependency(r->type, "undefined");
 	match_atm = match_add_dependency(r->type, "atm");
 	match_ethernet = match_add_dependency(r->type, "ethernet");
+	match_docsis_mgmt = match_add_dependency(r->type, "docsis_mgmt");
 
 	ptype_uint8 = ptype_alloc("uint8", NULL);
 	ptype_bool = ptype_alloc("bool", NULL);
@@ -82,28 +83,22 @@ static int match_identify_docsis(struct frame *f, struct layer* l, unsigned int 
 
 	switch (dhdr->fc_type) {
 		case FC_TYPE_PKT_MAC:
+		case FC_TYPE_ISOLATION_PKT_MAC:
 			// We don't need the 4 bytes of ethernet checksum
 			l->payload_size -= 4;
 			return match_ethernet->id;
 		case FC_TYPE_ATM:
 			return match_atm->id;
-		case FC_TYPE_RSVD:
+		case FC_TYPE_MAC_SPC:
+			if (dhdr->fc_parm == FCP_MGMT)
+				return match_docsis_mgmt->id;
+			else
+				return match_undefined->id;
+
+		default:
 			return POM_ERR;
 	}
 
-	// At this point, only fc_type == FC_TYPE_MAC_SPC is left
-/*
-	switch (dhdr->fc_parm) {
-
-		case FCP_TIMING:
-		case FCP_MGMT:
-
-		// XXX : not handled, upstream only
-		case FCP_REQ:
-		case FCP_CONCAT:
-			return -1;
-	}
-*/
 	return match_undefined->id;
 }
 
