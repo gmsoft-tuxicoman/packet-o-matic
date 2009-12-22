@@ -579,6 +579,65 @@ ruleUpTime OBJECT-TYPE
 
 target OBJECT IDENTIFIER ::= { packet-o-matic 4 }
 
+targetTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF TargetEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"The list of targets"
+	::= { target 1 }
+
+targetEntry OBJECT-TYPE
+	SYNTAX		TargetEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"A target"
+	INDEX		{ targetRuleIndex, targetIndex }
+	::= { targetTable 1 }
+
+TargetEntry ::=
+	SEQUENCE {
+		targetRuleIndex	GenericTableIndex,
+		targetIndex	GenericTableIndex,
+		targetType	DisplayString,
+		targetDescription DisplayString,
+		targetStarted	TruthValue
+	}
+
+targetRuleIndex OBJECT-TYPE
+	SYNTAX		GenericTableIndex
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Rule index of the target"
+	::= { targetEntry 1 }
+
+targetIndex OBJECT-TYPE
+	SYNTAX		GenericTableIndex
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Index of the target"
+	::= { targetEntry 2 }
+
+targetType OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION	"Type of the target"
+	::= { targetEntry 3 }
+
+targetDescription OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION	"Description"
+	::= { targetEntry 4 }
+
+targetStarted OBJECT-TYPE
+	SYNTAX		TruthValue
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION	"Running status of the target"
+	::= { targetEntry 5 }
+
 ---
 --- Match definition
 ---

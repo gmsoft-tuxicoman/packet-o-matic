@@ -243,3 +243,6 @@ svnversion.h: svnversion.h.tmp
 mostlyclean-local:
 	rm -f svnversion.h svnversion.h.tmp
 
+
+dist-hook:
+	sed -s "/POM_RELEASE_VERSION/s/.*/#define POM_RELEASE_VERSION \"dist-`date "+%Y%m%d"`\"/" -i $(distdir)/release.h

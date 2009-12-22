@@ -559,7 +559,7 @@ static int input_open_docsis(struct input *i) {
 			p->scan_modulation = modulation;
 
 
-			pom_log("Starting a scan from %uMhz to %uMhz", start / 1000000, end / 1000000);
+			pom_log("Starting a scan from %umHz to %umHz", start / 1000000, end / 1000000);
 			return POM_OK;
 		} else {
 			pom_log(POM_LOG_ERR "Invalid input mode");
@@ -911,7 +911,7 @@ static int input_scan_docsis(struct input *i) {
 
 	unsigned int need_reinit = PTYPE_BOOL_GETVAL(p_frontend_reinit);
 
-	pom_log("Tuning to %u Mhz ...", j / 1000000);
+	pom_log("Tuning to %u mHz ...", j / 1000000);
 
 	int res = input_docsis_tune(p, j, p->scan_srate, p->scan_modulation, 0);
 	if (res == -1)
@@ -943,7 +943,7 @@ static int input_scan_docsis(struct input *i) {
 		qam = "QAM64";
 	else if(p->scan_modulation == QAM_256)
 		qam = "QAM256";
-	pom_log("Frequency : %f Mhz, Symbol rate : %u Sym/s, QAM : %s", (double) j / 1000000.0, p->scan_srate, qam);
+	pom_log("Frequency : %f mHz, Symbol rate : %u Sym/s, QAM : %s", (double) j / 1000000.0, p->scan_srate, qam);
 
 	PTYPE_UINT32_SETVAL(p_frequency, j);
 

@@ -169,6 +169,9 @@ void print_usage() {
 		" -P, --xmlrpc-port=PORT     specify the XML-RPC port (default 8080)\n"
 		" -W, --xmlrpc-password=PASS specify the password for XML-RPC calls\n"
 #endif
+#ifdef USE_NETSNMP
+		" -S, --enable-snmpagent     enable the Net-SNMP sub agent\n"
+#endif
 		"     --pid-file             specify the file where to write the PID\n"
 		"\n"
 		);
@@ -542,6 +545,9 @@ int main(int argc, char *argv[]) {
 	int disable_xmlrpcsrv = 1;
 	char *xmlrpc_port = "8080";
 #endif
+#ifdef USE_NETSNMP
+	int disable_snmpagent = 1;
+#endif
 	char *pidfile = NULL;
 
 	int c;
@@ -560,14 +566,22 @@ int main(int argc, char *argv[]) {
 			{ "xmlrpc-port", 1, 0, 'P'},
 			{ "xmlrcp-password", 1, 0, 'W'},
 #endif
+#ifdef USE_NETSNMP
+			{ "enable-snmpagent", 0, 0, 'S'},
+#endif
 			{ "pid-file", 1, 0, 2},
 			{ 0, 0, 0, 0}
 		};
 
-		char *args = "hbc:ep:w:d:";
+		char *args = "hbc:ep:w:d:" 
 #ifdef USE_XMLRPC
-		args = "hbc:ep:w:d:XP:W:";
+		"XP:W:" 
 #endif
+
+#ifdef USE_NETSNMP
+		"S"
+#endif
+		;
 
 		c = getopt_long(argc, argv, args, long_options, NULL);
 
@@ -646,6 +660,11 @@ int main(int argc, char *argv[]) {
 			case 'W':
 				xmlrpcsrv_set_password(optarg);
 				pom_log("XML-RPC interface is password protected");
+				break;
+#endif
+#ifdef USE_NETSNMP
+			case 'S':
+				disable_snmpagent = 0;
 				break;
 #endif
 			case '?':
@@ -761,13 +780,15 @@ int main(int argc, char *argv[]) {
 
 #ifdef USE_NETSNMP
 	pthread_t snmpagent_thread;
-	if (snmpagent_init() == POM_ERR) {
-		pom_log(POM_LOG_ERR "Error while initializing the SNMP interface. Aborting");
-		goto err;
-	}
-	if (pthread_create(&snmpagent_thread, NULL, snmpagent_thread_func, NULL)) {
-		pom_log(POM_LOG_ERR "Error when creating the SNMP thread. Aborting");
-		goto err;
+	if (!disable_snmpagent) {
+		if (snmpagent_init() == POM_ERR) {
+			pom_log(POM_LOG_ERR "Error while initializing the SNMP interface. Aborting");
+			goto err;
+		}
+		if (pthread_create(&snmpagent_thread, NULL, snmpagent_thread_func, NULL)) {
+			pom_log(POM_LOG_ERR "Error when creating the SNMP thread. Aborting");
+			goto err;
+		}
 	}
 #endif
 
@@ -927,19 +948,26 @@ finish:
 		config_write(main_config, main_config->filename);
 	}
 
-	if (rbuf->i)
+	if (rbuf->i && rbuf->state == rb_state_open)
 		stop_input(rbuf);
 
-	if (!disable_mgmtsrv)
+	if (!disable_mgmtsrv) {
+		pom_log(POM_LOG_INFO "Waiting for CLI mgmt thread to finish ...");
 		pthread_join(mgmtsrv_thread, NULL);
+	}
 
 #ifdef USE_XMLRPC
-	if (!disable_xmlrpcsrv)
+	if (!disable_xmlrpcsrv) {
+		pom_log(POM_LOG_INFO "Waiting for XML-RPC thread to finish ...");
 		pthread_join(xmlrpcsrv_thread, NULL);
+	}
 #endif
 
 #ifdef USE_NETSNMP
-	pthread_join(snmpagent_thread, NULL);
+	if (!disable_snmpagent) {
+		pom_log(POM_LOG_INFO "Waiting for NET-SNMP subagent thread to finish ...");
+		pthread_join(snmpagent_thread, NULL);
+	}
 #endif
 
 	pom_log("Total packets read : %lu, dropped %lu (%.2f%%)", perf_item_val_get_raw(rbuf->perf_total_packets), perf_item_val_get_raw(rbuf->perf_dropped_packets), 100.0 / perf_item_val_get_raw(rbuf->perf_total_packets) * perf_item_val_get_raw(rbuf->perf_dropped_packets));
@@ -961,7 +989,8 @@ err:
 #endif
 
 #ifdef USE_NETSNMP
-	snmpagent_cleanup();
+	if (!disable_snmpagent)
+		snmpagent_cleanup();
 #endif
 	config_cleanup(main_config);
 

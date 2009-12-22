@@ -1,3 +1,11 @@
+* 2009/12/22 Guy Martin <gmsoft@tuxicoman.be>
+Make helper_ipv4 use the helper_resize_payload API.
+Fix typo Mhz -> mHz in input_docsis.
+Don't try to stop the input when exiting if already stopped.
+Don't enable snmpagent by default but only when -S is provided.
+Added debug message when waiting for threads to finish.
+Added dist-hook to save date of make distcheck in release.h.
+
 * 2009/12/21 Guy Martin <gmsoft@tuxicoman.be>
 Added DOCSIS 3 support.
 Added match_docsis_mgmt.

@@ -86,12 +86,26 @@ static int helper_ipv4_process_frags(struct helper_priv_ipv4 *p) {
 
 	hdr->ip_off = 0;
 	hdr->ip_id = 0;
-	hdr->ip_len = htons(f->bufflen - p->hdr_offset);
+	
+	unsigned int hdr_len = hdr->ip_hl * 4;
 
+	struct layer *l = f->l;
+	while (l->next)
+		l = l->next;
+
+	helper_resize_payload(f, l, f->bufflen - p->hdr_offset - hdr_len);
+	// Free layers
+	while (f->l) {
+		struct layer *tmpl = f->l;
+		f->l = f->l->next;
+		free(tmpl);
+	}
 
 	pom_log(POM_LOG_TSHOOT "sending packet to rule processor. len %u, first_layer %u", f->bufflen, f->first_layer);
 
 	helper_queue_frame(f);
+
+	
 
 	p->f = NULL;
 
@@ -181,6 +195,28 @@ static int helper_need_help_ipv4(struct frame *f, unsigned int start, unsigned i
 		memcpy(tmp->f->buff, f->buff, frag_start);
 		tmp->f->len = frag_start;
 		tmp->hdr_offset = start;
+
+		// Copy the layers up to ipv4
+		struct layer *fl = f->l, *lastl = NULL;
+		while (fl) {
+			struct layer *newl = malloc(sizeof(struct layer));
+			memcpy(newl, fl, sizeof(struct layer));
+			newl->next = NULL;
+			if (lastl) {
+				newl->prev = lastl;
+				lastl->next = newl;
+			} else {
+				tmp->f->l = newl;
+				newl->prev = NULL;
+			}
+			lastl = newl;
+
+			if (fl == l) // Copy up to IPv4
+				break;
+
+			fl = fl->next;
+
+		}
 
 		pom_log(POM_LOG_TSHOOT "allocated buffer for new packet id %u", ntohs(hdr->ip_id));
 		tmp->t = timer_alloc(tmp, f->input, helper_cleanup_ipv4_frag);
@@ -321,6 +357,11 @@ static int helper_cleanup_ipv4_frag(void *priv) {
 		p->next->prev = p->prev;
 
 	if (p->f) {
+		while (p->f->l) {
+			struct layer *tmpl = p->f->l;
+			p->f->l = p->f->l->next;
+			free(tmpl);
+		}
 		free(p->f->buff_base);
 		free(p->f);
 	}
