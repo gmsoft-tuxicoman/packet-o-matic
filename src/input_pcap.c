@@ -140,6 +140,10 @@ static int input_open_pcap(struct input *i) {
 			pom_log(POM_LOG_ERR "Error when opening interface %s : %s", interface, errbuf);
 			return POM_ERR;
 		}
+		
+		p->perf_dropped = perf_add_item(i->perfs, "dropped_pkts", perf_item_type_counter, "Total number of packet dropped");
+		perf_item_set_update_hook(p->perf_dropped, input_update_dropped_pcap, p->p);
+
 		pom_log("Reading from Interface %s with a snaplen of %u", interface, snaplen);
 	} else if (i->mode == mode_directory) {
 	
@@ -341,6 +345,11 @@ static int input_close_pcap(struct input *i) {
 
 	if (strlen(PTYPE_STRING_GETVAL(p_filter)) > 0)
 		pcap_freecode(&p->fp);
+
+	if (p->perf_dropped) {
+		perf_remove_item(i->perfs, p->perf_dropped);
+		p->perf_dropped = NULL;
+	}
 
 	if (p->p) {
 		pcap_close(p->p);
@@ -579,6 +588,17 @@ static int input_open_next_file_pcap(struct input_priv_pcap *p) {
 		}
 
 	}
+
+	return POM_OK;
+}
+
+static int input_update_dropped_pcap(struct perf_item *itm, void *priv) {
+
+	struct pcap *p = priv;
+
+	struct pcap_stat ps;
+	if (!pcap_stats(p, &ps))
+		itm->value = ps.ps_drop;
 
 	return POM_OK;
 }

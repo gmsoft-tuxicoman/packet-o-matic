@@ -27,6 +27,7 @@
 #include "ptype.h"
 #include "main.h"
 #include "core_param.h"
+#include "perf.h"
 
 #include "ptype_uint64.h"
 #include "ptype_string.h"
@@ -37,6 +38,8 @@ struct target_reg *targets[MAX_TARGET];
 static pthread_rwlock_t target_global_lock = PTHREAD_RWLOCK_INITIALIZER;
 
 static struct ptype *param_autostart_datastore = NULL;
+
+static struct perf_class *target_perf_class = NULL;
 
 /**
  * @ingroup target_core
@@ -49,6 +52,8 @@ int target_init() {
 		return POM_ERR;
 	
 	core_register_param("target_autostart_datastore", "yes", param_autostart_datastore, "Automatically start a datastore being used by a target", NULL);
+
+	target_perf_class = perf_register_class("target");
 
 	return POM_OK;
 
@@ -264,11 +269,11 @@ struct target *target_alloc(int target_type) {
 
 	t->uid = get_uid();
 
-
-	t->pkt_cnt = ptype_alloc("uint64", "pkts");
-	t->pkt_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN;
-	t->byte_cnt = ptype_alloc("uint64", "bytes");
-	t->byte_cnt->print_mode = PTYPE_UINT64_PRINT_HUMAN_1024;
+	
+	t->perfs = perf_register_instance(target_perf_class, t);
+	t->perf_pkts = perf_add_item(t->perfs, "pkts", perf_item_type_counter, "Number of packets processed");
+	t->perf_bytes = perf_add_item(t->perfs, "bytes", perf_item_type_counter, "Number of bytes processed");
+	t->perf_uptime = perf_add_item(t->perfs, "uptime", perf_item_type_uptime, "Time for which the target has been started");
 
 	// Default mode is the first one
 	t->mode = targets[target_type]->modes;
@@ -402,6 +407,14 @@ int target_open(struct target *t) {
 			return POM_ERR;
 		}
 
+	perf_item_val_reset(t->perf_uptime);
+	struct ptype* param_reset_counters_on_restart = core_get_param_value("reset_counters_on_item_restart");
+	if (PTYPE_BOOL_GETVAL(param_reset_counters_on_restart)) {
+		perf_item_val_reset(t->perf_pkts);
+		perf_item_val_reset(t->perf_bytes);
+	}
+
+
 	t->started = 1;
 	t->serial++;
 	if (t->parent_serial) {
@@ -425,8 +438,8 @@ int target_process(struct target *t, struct frame *f) {
 
 	target_lock_instance(t, 0);
 	if (t->started) {
-		PTYPE_UINT64_INC(t->pkt_cnt, 1);
-		PTYPE_UINT64_INC(t->byte_cnt, f->len);
+		perf_item_val_inc(t->perf_pkts, 1);
+		perf_item_val_inc(t->perf_bytes, f->len);
 		if (targets[t->type]->process && (*targets[t->type]->process) (t, f) == POM_ERR) {
 			pom_log(POM_LOG_ERR "Target %s returned an error. Stopping it", target_get_name(t->type));
 			target_close(t);
@@ -472,6 +485,8 @@ int target_close(struct target *t) {
 		free(ds);
 	}
 
+	perf_item_val_uptime_stop(t->perf_uptime);
+
 	t->serial++;
 	if (t->parent_serial) {
 		(*t->parent_serial)++;
@@ -506,8 +521,7 @@ int target_cleanup_module(struct target *t) {
 		targets[t->type]->refcount--;
 	}
 
-	ptype_cleanup(t->pkt_cnt);
-	ptype_cleanup(t->byte_cnt);
+	perf_unregister_instance(target_perf_class, t->perfs);
 
 	target_unlock_instance(t);
 	pthread_rwlock_destroy(&t->lock);

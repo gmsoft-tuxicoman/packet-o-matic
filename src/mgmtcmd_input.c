@@ -129,7 +129,7 @@ int mgmtcmd_input_show(struct mgmt_connection *c, int argc, char *argv[]) {
 	mgmtsrv_send(c, ", mode ");
 	mgmtsrv_send(c, i->mode->name);
 
-	char pkts[16], bytes[16], uptime[64];
+	char pkts[32], bytes[32], uptime[64];
 	perf_item_val_get_human(i->perf_pkts_in, pkts, sizeof(pkts) - 1);
 	perf_item_val_get_human_1024(i->perf_bytes_in, bytes, sizeof(bytes) - 1);
 	perf_item_val_get_human(i->perf_uptime, uptime, sizeof(uptime) - 1);
@@ -275,6 +275,7 @@ int mgmtcmd_input_mode_set(struct mgmt_connection *c, int argc, char *argv[]) {
 		mgmtsrv_send(c, "Input is running. You need to stop it before doing any change\r\n");
 	} else if (input_set_mode(rbuf->i, argv[0]) != POM_OK) {
 		mgmtsrv_send(c, "No mode %s for this input\r\n", argv[0]);
+	} else {
 		main_config->input_serial++;
 	}
 

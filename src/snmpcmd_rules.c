@@ -26,7 +26,6 @@
 #include "main.h"
 #include "rules.h"
 #include "perf.h"
-#include "version.h"
 
 int snmpcmd_rules_init_oids(oid *base_oid, int base_oid_len) {
 
@@ -46,12 +45,17 @@ int snmpcmd_rules_init_oids(oid *base_oid, int base_oid_len) {
 
 	netsnmp_table_helper_add_indexes(rules_table_info, ASN_INTEGER, 0);
 	rules_table_info->min_column = 1;
-	rules_table_info->max_column = 5;
+	rules_table_info->max_column = 7;
 
 	netsnmp_register_table(rules_handler, rules_table_info);
 
-	// Register rules perf handler
+	// Register rules serial handler
 	my_oid[base_oid_len + 1] = 2;
+	netsnmp_handler_registration *rules_serial_handler = netsnmp_create_handler_registration("rulesSerial", snmpcmd_rules_serial_handler, my_oid, base_oid_len + 2, HANDLER_CAN_RONLY);
+	netsnmp_register_instance(rules_serial_handler);
+
+	// Register rules perf handler
+	my_oid[base_oid_len + 1] = 3;
 	my_oid[base_oid_len + 2] = 1;
 	netsnmp_handler_registration *rules_perf_handler = netsnmp_create_handler_registration("rules_perf", snmpcmd_rules_perf_handler, my_oid, base_oid_len + 3, HANDLER_CAN_RONLY);
 
@@ -70,7 +74,7 @@ int snmpcmd_rules_init_oids(oid *base_oid, int base_oid_len) {
 	return POM_OK;
 }
 
-static unsigned int snmpcmd_rules_find_next(struct rule_list *r, struct rule_list **next) {
+unsigned int snmpcmd_rules_find_next(struct rule_list *r, struct rule_list **next) {
 
 	uint32_t cur_uid = 0;
 	if (*next)
@@ -164,7 +168,9 @@ int snmpcmd_rules_handler(netsnmp_mib_handler *handler, netsnmp_handler_registra
 			}
 		}
 
-		if (!r || table_info->colnum > 5) {
+		if (!r || table_info->colnum > 7) {
+			if (reqinfo->mode == MODE_SET_ACTION)
+				netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_NOSUCHNAME);
 			requests = requests->next;
 			main_config_rules_unlock();
 			continue;
@@ -215,6 +221,18 @@ int snmpcmd_rules_handler(netsnmp_mib_handler *handler, netsnmp_handler_registra
 						enabled = 2;
 					value = (char *)&enabled;
 					len = sizeof(enabled);
+					break;
+
+				case 6: // Rule serial
+					type = ASN_COUNTER;
+					value = (char *)&r->serial;
+					len = sizeof(r->serial);
+					break;
+
+				case 7: // Target serial
+					type = ASN_COUNTER;
+					value = (char *)&r->target_serial;
+					len = sizeof(r->target_serial);
 					break;
 					
 			}
@@ -303,6 +321,15 @@ int snmpcmd_rules_handler(netsnmp_mib_handler *handler, netsnmp_handler_registra
 	return SNMP_ERR_NOERROR;
 
 }
+
+int snmpcmd_rules_serial_handler(netsnmp_mib_handler *handler, netsnmp_handler_registration *reginfo, netsnmp_agent_request_info *reqinfo, netsnmp_request_info *requests) {
+	
+	if (reqinfo->mode == MODE_GET)
+		snmp_set_var_typed_value(requests->requestvb, ASN_COUNTER, (unsigned char*) &main_config->rules_serial, sizeof(main_config->rules_serial));
+
+	return SNMP_ERR_NOERROR;
+}
+
 
 int snmpcmd_rules_perf_handler(netsnmp_mib_handler *handler, netsnmp_handler_registration *reginfo, netsnmp_agent_request_info *reqinfo, netsnmp_request_info *requests) {
 

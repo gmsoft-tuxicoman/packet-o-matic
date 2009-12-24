@@ -26,6 +26,7 @@
 #include "snmpcmd_core.h"
 #include "snmpcmd_input.h"
 #include "snmpcmd_rules.h"
+#include "snmpcmd_target.h"
 
 int snmpagent_init() {
 
@@ -78,6 +79,7 @@ int snmpagent_init_oids() {
 	snmpcmd_core_init_oids(base_oid, OID_LENGTH(base_oid));
 	snmpcmd_input_init_oids(base_oid, OID_LENGTH(base_oid));
 	snmpcmd_rules_init_oids(base_oid, OID_LENGTH(base_oid));
+	snmpcmd_target_init_oids(base_oid, OID_LENGTH(base_oid));
 	return POM_OK;
 
 }

@@ -496,6 +496,12 @@ struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 					tmpt->next = t;
 					t->prev = tmpt;
 				}
+
+				if (t->started) { // The target was started
+					r->target_serial++;
+					main_config->target_serial++;
+				}
+
 				t->parent_serial = &r->target_serial;
 			}
 		} else if (!xmlStrcmp(cur->name, (const xmlChar *) "matches")) {

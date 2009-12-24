@@ -202,11 +202,11 @@ int mgmtcmd_target_show(struct mgmt_connection *c, int argc, char *argv[]) {
 	unsigned int rule_num = 0, target_num;
 
 	while (rl) {
-		char pkts[16], bytes[16], uptime[64];
+		char pkts[32], bytes[32], uptime[64];
 		perf_item_val_get_human(rl->perf_pkts, pkts, sizeof(pkts) - 1);
 		perf_item_val_get_human_1024(rl->perf_bytes, bytes, sizeof(bytes) - 1);
 		perf_item_val_get_human(rl->perf_uptime, uptime, sizeof(uptime) - 1);
-		mgmtsrv_send(c, "Rule %u : targets (%s packets, %s bytes)", rule_num, pkts, bytes, uptime);
+		mgmtsrv_send(c, "Rule %u : targets (%s packets, %s bytes, up %s)", rule_num, pkts, bytes, uptime);
 		if (!rl->enabled)
 			mgmtsrv_send(c, " (disabled)");
 		mgmtsrv_send(c, " : \r\n");
@@ -219,9 +219,11 @@ int mgmtcmd_target_show(struct mgmt_connection *c, int argc, char *argv[]) {
 			target_lock_instance(t, 0);
 			mgmtsrv_send(c, "   %u) %s", target_num, target_get_name(t->type));
 			if (t->mode) {
-				ptype_print_val(t->pkt_cnt, pkts, sizeof(pkts));
-				ptype_print_val(t->byte_cnt, bytes, sizeof(bytes));
-				mgmtsrv_send(c, ", mode %s (%s %s, %s %s)", t->mode->name, pkts, t->pkt_cnt->unit, bytes, t->byte_cnt->unit);
+				perf_item_val_get_human(t->perf_pkts, pkts, sizeof(pkts) - 1);
+				perf_item_val_get_human_1024(t->perf_bytes, bytes, sizeof(bytes) - 1);
+				perf_item_val_get_human(t->perf_uptime, uptime, sizeof(uptime) - 1);
+				
+				mgmtsrv_send(c, ", mode %s (%s packets, %s bytes, up %s)", t->mode->name, pkts, bytes, uptime);
 				if (!t->started)
 					mgmtsrv_send(c, " (stopped)");
 				mgmtsrv_send(c, "\r\n");
@@ -279,7 +281,7 @@ int mgmtcmd_target_start(struct mgmt_connection *c, int argc, char *argv[]) {
 		return POM_OK;
 	}
 
-	target_lock_instance(t, 0);
+	target_lock_instance(t, 1);
 	if (t->started) {
 		target_unlock_instance(t);
 		mgmtsrv_send(c, "Target already started\r\n");
@@ -718,7 +720,7 @@ int mgmtcmd_target_description_set(struct mgmt_connection *c, int argc, char *ar
 	}
 	char *target_descr = malloc(target_descr_len + 1);
 	memset(target_descr, 0, target_descr_len + 1);
-	for (i = 1; i < argc; i++) {
+	for (i = 2; i < argc; i++) {
 		strcat(target_descr, argv[i]);
 		strcat(target_descr, " ");
 	}

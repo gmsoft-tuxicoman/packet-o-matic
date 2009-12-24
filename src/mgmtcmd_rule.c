@@ -220,7 +220,7 @@ int mgmtcmd_rule_show(struct mgmt_connection *c, int argc, char *argv[]) {
 	unsigned int rule_num = 0;
 
 	while (rl) {
-		char pkts[16], bytes[16], uptime[64];
+		char pkts[32], bytes[32], uptime[64];
 		perf_item_val_get_human(rl->perf_pkts, pkts, sizeof(pkts) - 1);
 		perf_item_val_get_human_1024(rl->perf_bytes, bytes, sizeof(bytes) - 1);
 		perf_item_val_get_human(rl->perf_uptime, uptime, sizeof(uptime) - 1);

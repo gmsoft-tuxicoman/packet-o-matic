@@ -1,3 +1,13 @@
+* 2009/12/23 Guy Martin <gmsoft@tuxicoman.be>
+Added dropped packets perf item to input_pcap.
+Added serial oids for input, rules and targets.
+Update all the serials when input starts the target on load.
+Don't unlock the rbuf mutex if the input is running when updating input param via SNMP.
+Use bigger buffers for displaying perf counters value in CLI.
+Added target oids.
+Write lock the target instance when starting it.
+Converted target counters to perf items.
+
 * 2009/12/22 Guy Martin <gmsoft@tuxicoman.be>
 Make helper_ipv4 use the helper_resize_payload API.
 Fix typo Mhz -> mHz in input_docsis.

@@ -2,7 +2,7 @@ POM-MIB DEFINITIONS ::= BEGIN
 
 IMPORTS
 	MODULE-IDENTITY, OBJECT-TYPE, Unsigned32, enterprises,
-	Counter64, Gauge32, TimeTicks FROM SNMPv2-SMI
+	Counter32, Counter64, Gauge32, TimeTicks FROM SNMPv2-SMI
 	TEXTUAL-CONVENTION, DisplayString, TruthValue FROM SNMPv2-TC
 ;
 
@@ -300,6 +300,13 @@ inputModesDescr OBJECT-TYPE
 	DESCRIPTION	"Description of an input mode"
 	::= { inputModesEntry 3 }
 
+inputSerial OBJECT-TYPE
+	SYNTAX		Counter32
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Number of changes of the input"
+	::= { inputConfig 6 }
+
 
 -- Input perf stuff
 
@@ -476,11 +483,13 @@ ruleEntry OBJECT-TYPE
 
 RuleEntry ::=
 	SEQUENCE {
-		ruleIndex	GenericTableIndex,
-		ruleCliIndex	Unsigned32,
-		ruleDefinition	DisplayString,
-		ruleDescription DisplayString,
-		ruleEnabled	TruthValue
+		ruleIndex		GenericTableIndex,
+		ruleCliIndex		Unsigned32,
+		ruleDefinition		DisplayString,
+		ruleDescription		DisplayString,
+		ruleEnabled		TruthValue,
+		ruleSerial		Counter32,
+		ruleTargetSerial	Counter32
 	}
 
 ruleIndex OBJECT-TYPE
@@ -518,9 +527,30 @@ ruleEnabled OBJECT-TYPE
 	DESCRIPTION	"Define if the rule is enabled or not"
 	::= { ruleEntry 5 }
 
+ruleSerial OBJECT-TYPE
+	SYNTAX		Counter32
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION 	"Number of changes for this rule"
+	::= { ruleEntry 6 }
+
+ruleTargetSerial OBJECT-TYPE
+	SYNTAX		Counter32
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION 	"Number of changes for the targets of this rule"
+	::= { ruleEntry 7 }
+
+rulesSerial OBJECT-TYPE
+	SYNTAX		Counter32
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Number of changes for the rules"
+	::= { rule 2 }
+
 --- Rules perf stuff
 
-rulePerf OBJECT IDENTIFIER ::={ rule 2 }
+rulePerf OBJECT IDENTIFIER ::={ rule 3 }
 
 rulePerfTable OBJECT-TYPE
 	SYNTAX		SEQUENCE OF RulePerfEntry
@@ -596,11 +626,13 @@ targetEntry OBJECT-TYPE
 
 TargetEntry ::=
 	SEQUENCE {
-		targetRuleIndex	GenericTableIndex,
-		targetIndex	GenericTableIndex,
-		targetType	DisplayString,
-		targetDescription DisplayString,
-		targetStarted	TruthValue
+		targetRuleIndex		GenericTableIndex,
+		targetIndex		GenericTableIndex,
+		targetCliIndex		Unsigned32,
+		targetType		DisplayString,
+		targetDescription	DisplayString,
+		targetStarted		TruthValue,
+		targetSerial		Counter32
 	}
 
 targetRuleIndex OBJECT-TYPE
@@ -617,26 +649,133 @@ targetIndex OBJECT-TYPE
 	DESCRIPTION	"Index of the target"
 	::= { targetEntry 2 }
 
+targetCliIndex OBJECT-TYPE
+	SYNTAX		Unsigned32
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Index of the target in the CLI"
+	::= { targetEntry 3 }
+
 targetType OBJECT-TYPE
 	SYNTAX		DisplayString
-	MAX-ACCESS	read-write
+	MAX-ACCESS	read-only
 	STATUS		current
 	DESCRIPTION	"Type of the target"
-	::= { targetEntry 3 }
+	::= { targetEntry 4 }
 
 targetDescription OBJECT-TYPE
 	SYNTAX		DisplayString
 	MAX-ACCESS	read-write
 	STATUS		current
 	DESCRIPTION	"Description"
-	::= { targetEntry 4 }
+	::= { targetEntry 5 }
 
 targetStarted OBJECT-TYPE
 	SYNTAX		TruthValue
 	MAX-ACCESS	read-write
 	STATUS		current
 	DESCRIPTION	"Running status of the target"
-	::= { targetEntry 5 }
+	::= { targetEntry 6 }
+
+targetSerial OBJECT-TYPE
+	SYNTAX		Counter32
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Number of changes for this target"
+	::= { targetEntry 7 }
+
+
+
+targetParamTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF TargetParamEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"The list of target parameters"
+	::= { target 2 }
+
+targetParamEntry OBJECT-TYPE
+	SYNTAX		TargetParamEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"A target parameter"
+	INDEX		{ targetParamRuleIndex, targetParamTargetIndex, targetParamIndex }
+	::= { targetParamTable 1 }
+
+TargetParamEntry ::=
+	SEQUENCE {
+		targetParamRuleIndex	GenericTableIndex,
+		targetParamTargetIndex	GenericTableIndex,
+		targetParamIndex	GenericTableIndex,
+		targetParamName		DisplayString,
+		targetParamValue	DisplayString,
+		targetParamUnit		DisplayString,
+		targetParamType		DisplayString,
+		targetParamDescr	DisplayString
+	}
+
+targetParamRuleIndex OBJECT-TYPE
+	SYNTAX		GenericTableIndex
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Rule index of the target parameter"
+	::= { targetParamEntry 1 }
+
+targetParamTargetIndex OBJECT-TYPE
+	SYNTAX		GenericTableIndex
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Index of the target"
+	::= { targetParamEntry 2 }
+
+targetParamIndex OBJECT-TYPE
+	SYNTAX		GenericTableIndex
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Index of the target parameter"
+	::= { targetParamEntry 3 }
+
+targetParamName OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Name of the target parameter"
+	::= { targetParamEntry 4 }
+
+targetParamValue OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-write
+	STATUS		current
+	DESCRIPTION	"Value of the target parameter"
+	::= { targetParamEntry 5 }
+
+targetParamUnit OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Unit of the target parameter"
+	::= { targetParamEntry 6 }
+
+targetParamType OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Type of the target parameter"
+	::= { targetParamEntry 7 }
+
+targetParamDescr OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Name of the target parameter"
+	::= { targetParamEntry 8 }
+
+targetsSerial OBJECT-TYPE
+	SYNTAX		Counter32
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Number of changes for the targets"
+	::= { target 3 }
+
 
 ---
 --- Match definition

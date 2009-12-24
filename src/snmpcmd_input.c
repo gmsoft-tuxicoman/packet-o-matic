@@ -80,6 +80,12 @@ int snmpcmd_input_init_oids(oid *base_oid, int base_oid_len) {
 
 	netsnmp_register_table(input_modes_handler, input_modes_table_info);
 
+	// Register serial handler
+	my_oid[base_oid_len + 2] = 6;
+	netsnmp_handler_registration *input_serial_handler = netsnmp_create_handler_registration("inputSerial", snmpcmd_input_serial_handler, my_oid, base_oid_len + 3, HANDLER_CAN_RONLY);
+	netsnmp_register_instance(input_serial_handler);
+
+
 	// Register perfs handler
 	my_oid[base_oid_len + 1] = 2;
 
@@ -399,7 +405,6 @@ int snmpcmd_input_param_handler(netsnmp_mib_handler *handler, netsnmp_handler_re
 			if (table_info->colnum != 3) {
 				netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_NOTWRITABLE);
 			} else if (rbuf->i->running) {
-				pthread_mutex_unlock(&rbuf->mutex);
 				netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_GENERR);
 				pom_log(POM_LOG_DEBUG "Input is running. You need to stop it before doing any change");
 			} else if (ptype_parse_val(p->value, new_val) != POM_OK) {
@@ -591,6 +596,16 @@ int snmpcmd_input_modes_handler(netsnmp_mib_handler *handler, netsnmp_handler_re
 	}
 	return SNMP_ERR_NOERROR;
 }
+
+int snmpcmd_input_serial_handler(netsnmp_mib_handler *handler, netsnmp_handler_registration *reginfo, netsnmp_agent_request_info *reqinfo, netsnmp_request_info *requests) {
+
+	if (reqinfo->mode == MODE_GET) {
+		snmp_set_var_typed_value(requests->requestvb, ASN_COUNTER, (unsigned char*) &main_config->input_serial, sizeof(main_config->input_serial));
+	}
+	return SNMP_ERR_NOERROR;
+}
+
+
 int snmpcmd_input_perf_bytes_in_handler(netsnmp_mib_handler *handler, netsnmp_handler_registration *reginfo, netsnmp_agent_request_info *reqinfo, netsnmp_request_info *requests) {
 
 	if (reqinfo->mode == MODE_GET && rbuf->i) {

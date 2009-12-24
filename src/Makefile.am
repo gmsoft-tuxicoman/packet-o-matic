@@ -7,7 +7,7 @@ XMLRPC_SRC = xmlrpcsrv.c xmlrpcsrv.h xmlrpccmd.c xmlrpccmd.h xmlrpccmd_input.c x
 endif
 
 if USE_NETSNMP
-SNMP_SRC = snmpagent.c snmpagent.h snmpcmd_core.c snmpcmd_core.h snmpcmd_input.c snmpcmd_input.h snmpcmd_rules.c snmpcmd_rules.h
+SNMP_SRC = snmpagent.c snmpagent.h snmpcmd_core.c snmpcmd_core.h snmpcmd_input.c snmpcmd_input.h snmpcmd_rules.c snmpcmd_rules.h snmpcmd_target.c snmpcmd_target.h
 endif
 
 BUILT_SOURCES = svnversion.h

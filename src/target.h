@@ -160,8 +160,10 @@ struct target {
 	pthread_rwlock_t lock; ///< Lock used to make each target operation atomic
 	struct target_dataset *datasets; ///< Datasets used by the target
 
-	struct ptype* pkt_cnt; ///< Number of packets processed by this target
-	struct ptype* byte_cnt; ///< Number of bytes processed by this target
+	struct perf_instance *perfs; /// Performance counter instance
+	struct perf_item *perf_pkts; ///< Number of packets processed by this target
+	struct perf_item *perf_bytes; ///< Number of bytes processed by this target
+	struct perf_item *perf_uptime; ///< Time for which the target has been started
 
 	struct target *next; ///< Used for linking
 	struct target *prev; ///< Used for linking

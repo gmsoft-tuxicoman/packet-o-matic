@@ -18,18 +18,12 @@
  *
  */
 
-#ifndef __SNMPCMD_RULES_H__
-#define __SNMPCMD_RULES_H__
+#ifndef __SNMPCMD_TARGET_H__
+#define __SNMPCMD_TARGET_H__
 
-#include "rules.h"
-
-int snmpcmd_rules_init_oids(oid *base_oid, int base_oid_len);
-unsigned int snmpcmd_rules_find_next(struct rule_list *r, struct rule_list **next);
-int snmpcmd_rules_handler(netsnmp_mib_handler *handler, netsnmp_handler_registration *reginfo, netsnmp_agent_request_info *reqinfo, netsnmp_request_info *requests);
-int snmpcmd_rules_serial_handler(netsnmp_mib_handler *handler, netsnmp_handler_registration *reginfo, netsnmp_agent_request_info *reqinfo, netsnmp_request_info *requests);
-int snmpcmd_rules_perf_handler(netsnmp_mib_handler *handler, netsnmp_handler_registration *reginfo, netsnmp_agent_request_info *reqinfo, netsnmp_request_info *requests);
+int snmpcmd_target_init_oids(oid *base_oid, int base_oid_len);
+int snmpcmd_target_handler(netsnmp_mib_handler *handler, netsnmp_handler_registration *reginfo, netsnmp_agent_request_info *reqinfo, netsnmp_request_info *requests);
+int snmpcmd_target_param_handler(netsnmp_mib_handler *handler, netsnmp_handler_registration *reginfo, netsnmp_agent_request_info *reqinfo, netsnmp_request_info *requests);
+int snmpcmd_target_serial_handler(netsnmp_mib_handler *handler, netsnmp_handler_registration *reginfo, netsnmp_agent_request_info *reqinfo, netsnmp_request_info *requests);
 
 #endif
-
-
-
