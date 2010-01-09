@@ -908,12 +908,14 @@ int rule_list_enable(struct rule_list *rl) {
 		return POM_ERR;
 
 	rl->enabled = 1;
-	perf_item_val_reset(rl->perf_uptime);
 
 	struct ptype* param_reset_counters_on_restart = core_get_param_value("reset_counters_on_item_restart");
 	if (PTYPE_BOOL_GETVAL(param_reset_counters_on_restart)) {
+		perf_item_val_reset(rl->perf_uptime);
 		perf_item_val_reset(rl->perf_pkts);
 		perf_item_val_reset(rl->perf_bytes);
+	} else {
+		perf_item_val_uptime_restart(rl->perf_uptime);
 	}
 
 	return POM_OK;

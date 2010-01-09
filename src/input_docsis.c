@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -529,7 +529,7 @@ static int input_open_docsis(struct input *i) {
 			
 			pom_log("Docsis stream locked on adapter %u with frequency %uHz", 0, frequency);
 
-		} else if (i->mode == mode_scan) { // No frequency supplied. Scanning for downstream
+		} else if (i->mode == mode_scan) {
 
 
 			unsigned int start = PTYPE_UINT32_GETVAL(p_startfreq);
@@ -686,7 +686,7 @@ static int input_docsis_check_downstream(struct input *i, unsigned int adapt_id)
 		
 	} 
 
-	pom_log(POM_LOG_ERR "Did not receive SYNC message within timeout");
+	pom_log(POM_LOG_DEBUG "Did not receive SYNC message within timeout");
 	return POM_ERR;
 }
 
@@ -698,9 +698,6 @@ static int input_docsis_tune(struct input_priv_docsis *p, uint32_t frequency, ui
 	
 	fe_status_t status;
 	struct dvb_frontend_parameters frp;
-	struct dvb_frontend_event event;
-
-
 	struct pollfd pfd[1];
 
 	memset(&frp, 0, sizeof(struct dvb_frontend_parameters));
@@ -733,10 +730,6 @@ static int input_docsis_tune(struct input_priv_docsis *p, uint32_t frequency, ui
 	while (now.tv_sec < timeout) {
 		if (poll(pfd, 1, 1000)){
 			if (pfd[0].revents & POLLIN) {
-				if (ioctl(p->adapts[adapt_id].frontend_fd, FE_GET_EVENT, &event)) {
-					pom_log(POM_LOG_WARN "IOCTL failed while getting event of DOCSIS input on adapter %u", adapt_id);
-					continue;
-				}
 				if (ioctl(p->adapts[adapt_id].frontend_fd, FE_READ_STATUS, &status)) {
 					pom_log(POM_LOG_WARN "IOCTL failed while getting status of DOCSIS input on adapter %u", adapt_id);
 					return -1;
@@ -803,7 +796,7 @@ static int input_docsis_read_mpeg_frame(unsigned char *buff, struct input_priv_d
 			r = read(p->adapts[adapt_id].dvr_fd, buff + len, MPEG_TS_LEN - len);
 			if (r < 0) {
 				if (errno == EOVERFLOW) {
-					pom_log(POM_LOG_WARN "Overflow in the kernel buffer while reading MPEG packets from adapter %u. Lots of packets were missed", adapt_id);
+					pom_log(POM_LOG_DEBUG "Overflow in the kernel buffer while reading MPEG packets from adapter %u. Lots of packets were missed", adapt_id);
 					len = 0;
 					r = 0;
 					// Approximation but whole buffer is being discarded in the kernel
@@ -1537,6 +1530,7 @@ static int input_parse_mdd_docsis(struct input *i, unsigned int adapt_id, unsign
 
 				uint32_t freq = 0;
 				unsigned char modulation = 0xff;
+				unsigned char pri_capable = 0;
 
 				buff += 2;
 				len -= tlvlen + 2;
@@ -1556,6 +1550,10 @@ static int input_parse_mdd_docsis(struct input *i, unsigned int adapt_id, unsign
 							break;
 						case 3:
 							modulation = *(buff + 2);
+							realsublen = sizeof(char);
+							break;
+						case 4:
+							pri_capable = *(buff + 2);
 							realsublen = sizeof(char);
 							break;
 						default: // Invalid
@@ -1582,8 +1580,16 @@ static int input_parse_mdd_docsis(struct input *i, unsigned int adapt_id, unsign
 					} else if (modulation == 1) {
 						adapt_modulation = QAM_256;
 					} else { // Invalid
+						pom_log(POM_LOG_WARN "Invalid modulation supplied in MDD");
 						return POM_OK;
 					}
+
+					if (pri_capable && pri_capable != 1) {
+						pom_log(POM_LOG_WARN "Invalid 'primary capable' value in MDD");
+						return POM_OK;
+					}
+
+
 
 					int j, found = 0;
 					for (j = 0; j < p->num_adapts_open; j++) {
@@ -1628,7 +1634,7 @@ static int input_parse_mdd_docsis(struct input *i, unsigned int adapt_id, unsign
 						pom_log(POM_LOG_ERR "Error while tuning to %uHz on adapter %u", freq, p->num_adapts_open - 1);
 						return POM_ERR;
 					}
-					if (input_docsis_check_downstream(i, p->num_adapts_open - 1) == POM_ERR) {
+					if (pri_capable && input_docsis_check_downstream(i, p->num_adapts_open - 1) == POM_ERR) {
 						pom_log("Error, no DOCSIS SYNC message received within timeout on adapter %u for frequency %uHz", p->num_adapts_open - 1, freq);
 						return POM_ERR;
 					}

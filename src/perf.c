@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2009 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2009-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -68,10 +68,17 @@ struct perf_instance *perf_register_instance(struct perf_class *class, void *obj
 		pom_log(POM_LOG_WARN "Object 0x%llX already added to class %s", object, class->name);
 		return tmp;
 	}
+
 	
 	tmp = malloc(sizeof(struct perf_instance));
 	memset(tmp, 0, sizeof(struct perf_instance));
 	
+	if (pthread_rwlock_init(&tmp->lock, NULL)) {
+		pom_log(POM_LOG_ERR "Unable to initialize the performance instance lock");
+		free(tmp);
+		return NULL;
+	}
+
 	tmp->object = object;
 
 	tmp->next = class->instances;
@@ -84,12 +91,79 @@ struct perf_instance *perf_register_instance(struct perf_class *class, void *obj
 
 }
 
+int perf_instance_lock(struct perf_instance *instance, int write) {
+
+	int result = 0;
+
+	if (write) {
+		pthread_rwlock_wrlock(&instance->lock);
+	} else {
+		pthread_rwlock_rdlock(&instance->lock);
+	}
+
+	if (result) {
+		pom_log(POM_LOG_ERR "Error while locking the perf instance lock");
+		abort();
+		return POM_ERR;
+	}
+
+	return POM_OK;
+}
+
+int perf_instance_unlock(struct perf_instance *instance) {
+
+	if (pthread_rwlock_unlock(&instance->lock)) {
+		pom_log(POM_LOG_ERR "Error while unlocking the perf instance lock");
+		abort();
+		return POM_ERR;
+	}
+
+	return POM_OK;
+}
+
+int perf_item_lock(struct perf_item *itm, int write) {
+
+	int result = 0;
+
+	perf_instance_lock(itm->instance, 0);
+
+	if (write) {
+		pthread_rwlock_wrlock(&itm->lock);
+	} else {
+		pthread_rwlock_rdlock(&itm->lock);
+	}
+
+	if (result) {
+		pom_log(POM_LOG_ERR "Error while locking the perf item lock");
+		perf_instance_unlock(itm->instance);
+		abort();
+		return POM_ERR;
+	}
+	perf_instance_unlock(itm->instance);
+
+	return POM_OK;
+}
+
+int perf_item_unlock(struct perf_item *itm) {
+
+	if (pthread_rwlock_unlock(&itm->lock)) {
+		pom_log(POM_LOG_ERR "Error while unlocking the perf item lock");
+		abort();
+		return POM_ERR;
+	}
+
+	return POM_OK;
+}
+
 struct perf_item *perf_add_item(struct perf_instance *instance, char *name, enum perf_item_type type, char *descr) {
+
+	perf_instance_lock(instance, 1);
 
 	struct perf_item *tmp = instance->items, *tmp_last = NULL;
 	while (tmp) {
 		if (!strcmp(tmp->name, name)) {
 			pom_log(POM_LOG_WARN "Item %s already added to instance", name);
+			perf_instance_unlock(instance);
 			return NULL;
 		}
 		tmp_last = tmp;
@@ -98,9 +172,18 @@ struct perf_item *perf_add_item(struct perf_instance *instance, char *name, enum
 
 	tmp = malloc(sizeof(struct perf_item));
 	memset(tmp, 0, sizeof(struct perf_item));
+
+	if (pthread_rwlock_init(&tmp->lock, NULL)) {
+		pom_log(POM_LOG_ERR "Unable to initialize the performance item lock");
+		free(tmp);
+		return NULL;
+	}
+
 	tmp->name = strdup(name);
 	tmp->type = type;
 	tmp->descr = strdup(descr);
+	tmp->instance = instance;
+
 	if (type == perf_item_type_uptime)
 		tmp->value = PERF_UPTIME_STOPPED;
 
@@ -111,18 +194,33 @@ struct perf_item *perf_add_item(struct perf_instance *instance, char *name, enum
 		tmp->prev = tmp_last;
 	}
 	
+	perf_instance_unlock(instance);
+
 	return tmp;
 
 }
 
 int perf_item_set_update_hook(struct perf_item *itm, int (*update_hook) (struct perf_item *itm, void *priv), void *priv) {
 
+	perf_item_lock(itm, 1);
+
+	if (itm->type == perf_item_type_uptime) {
+		perf_item_unlock(itm);
+		pom_log(POM_LOG_ERR "Cannot set an update hook on an uptime item");
+		return POM_ERR;
+	}
+
 	itm->update_hook = update_hook;
 	itm->hook_priv = priv;
+
+	perf_item_unlock(itm);
+
 	return POM_OK;
 }
 
 int perf_remove_item(struct perf_instance *instance, struct perf_item *itm) {
+
+	perf_instance_lock(instance, 1);
 
 	if (!itm->prev) {
 		instance->items = itm;
@@ -135,12 +233,17 @@ int perf_remove_item(struct perf_instance *instance, struct perf_item *itm) {
 
 	free(itm->name);
 	free(itm->descr);
+	pthread_rwlock_destroy(&itm->lock);
 	free(itm);
+
+	perf_instance_unlock(instance);
 
 	return POM_OK;
 }
 
 int perf_unregister_instance(struct perf_class *class, struct perf_instance *instance) {
+
+	perf_instance_lock(instance, 1);
 
 	struct perf_instance *tmp = class->instances;
 	while (tmp) {
@@ -160,6 +263,7 @@ int perf_unregister_instance(struct perf_class *class, struct perf_instance *ins
 		itm = itm->next;
 		free(del_item->name);
 		free(del_item->descr);
+		pthread_rwlock_destroy(&del_item->lock);
 		free(del_item);
 	}
 
@@ -171,6 +275,9 @@ int perf_unregister_instance(struct perf_class *class, struct perf_instance *ins
 	if (tmp->next)
 		tmp->next->prev = tmp->prev;
 
+	perf_instance_unlock(instance);
+
+	pthread_rwlock_destroy(&tmp->lock);
 	free(tmp);
 
 
@@ -184,7 +291,7 @@ int perf_cleanup() {
 		perfs_head = perfs_head->next;
 		free(tmp->name);
 		if (tmp->instances)
-			pom_log(POM_LOG_WARN "Warning not all instances from perf_class were unregistered");
+			pom_log(POM_LOG_WARN "Warning not all instances from perf_class were unregistered, some memory will not be freed");
 		free(tmp);
 	}
 
@@ -194,22 +301,28 @@ int perf_cleanup() {
 
 int perf_item_val_reset(struct perf_item *itm) {
 
+	perf_item_lock(itm, 1);
+
 	if (itm->type == perf_item_type_uptime) {
 		struct timeval tv;
 		gettimeofday(&tv, NULL);
 		// Time is stored in centisecs
 		itm->value = (tv.tv_sec * 100) + (tv.tv_usec / 10000);
 	} else if (itm->update_hook) {
+		perf_item_unlock(itm);
 		pom_log(POM_LOG_WARN "Cannot reset item value when an update hook is set");
 		return POM_ERR;
 	} else {
 		itm->value = 0;
 	}
+
+	perf_item_unlock(itm);
 	return POM_OK;
 }
 
 uint64_t perf_item_val_inc(struct perf_item *itm, uint64_t inc) {
 
+	perf_item_lock(itm, 1);
 	if (itm->type == perf_item_type_uptime) {
 		pom_log(POM_LOG_WARN "Cannot increment item of type uptime");
 	} else if (itm->update_hook) {
@@ -217,22 +330,57 @@ uint64_t perf_item_val_inc(struct perf_item *itm, uint64_t inc) {
 	} else {
 		itm->value += inc;
 	}
+	perf_item_unlock(itm);
 	return itm->value;
 }
 
 int perf_item_val_uptime_stop(struct perf_item *itm) {
 
+	perf_item_lock(itm, 1);
 	if (itm->type != perf_item_type_uptime) {
+		perf_item_unlock(itm);
 		pom_log(POM_LOG_WARN "Warning, trying to stop uptime on a non uptime performance item");
 		return POM_ERR;
 	}
 
 	if (itm->value & PERF_UPTIME_STOPPED) {
+		perf_item_unlock(itm);
 		pom_log(POM_LOG_WARN "Warning, uptime already stopped");
 		return POM_ERR;
 	}
 
-	itm->value = perf_item_val_get_raw(itm) | PERF_UPTIME_STOPPED;
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	uint64_t now = (tv.tv_sec * 100) + (tv.tv_usec / 10000);
+	itm->value = (now - itm->value) | PERF_UPTIME_STOPPED;
+
+	perf_item_unlock(itm);
+
+	return POM_OK;
+
+}
+
+int perf_item_val_uptime_restart(struct perf_item *itm) {
+
+	perf_item_lock(itm, 1);
+	if (itm->type != perf_item_type_uptime) {
+		perf_item_unlock(itm);
+		pom_log(POM_LOG_WARN "Warning, trying to restart uptime on a non uptime performance item");
+		return POM_ERR;
+	}
+
+	if (!(itm->value & PERF_UPTIME_STOPPED)) {
+		perf_item_unlock(itm);
+		pom_log(POM_LOG_WARN "Warning, uptime already started");
+		return POM_ERR;
+	}
+
+	struct timeval tv;
+	gettimeofday(&tv, NULL);
+	uint64_t now = (tv.tv_sec * 100) + (tv.tv_usec / 10000);
+	itm->value = now - (itm->value & ~PERF_UPTIME_STOPPED);
+
+	perf_item_unlock(itm);
 
 	return POM_OK;
 
@@ -240,24 +388,39 @@ int perf_item_val_uptime_stop(struct perf_item *itm) {
 
 uint64_t perf_item_val_get_raw(struct perf_item *itm) {
 
+	perf_item_lock(itm, 0);
+	uint64_t val = 0;
 	if (itm->type == perf_item_type_uptime) {
 
 		// Return raw value if uptime count was stopped
-		if (itm->value & PERF_UPTIME_STOPPED)
-			return itm->value & ~PERF_UPTIME_STOPPED;
+		if (itm->value & PERF_UPTIME_STOPPED) {
+			uint64_t val = itm->value & ~PERF_UPTIME_STOPPED;
+			perf_item_unlock(itm);
+			return val;
+		}
 
 		struct timeval tv;
 		gettimeofday(&tv, NULL);
 		uint64_t now = (tv.tv_sec * 100) + (tv.tv_usec / 10000);
-		return now - itm->value;
+		uint64_t val = now - itm->value;
+		perf_item_unlock(itm);
+		return val;
 	}
 
-	if (itm->update_hook)
+	if (itm->update_hook) {
+		perf_item_unlock(itm);
+		// We need a write lock
+		perf_item_lock(itm, 1);
 		if (itm->update_hook(itm, itm->hook_priv) == POM_ERR) {
 			pom_log(POM_LOG_WARN "Item update hook failed for item %s", itm->name);
 		}
 
-	return itm->value;
+	}
+
+	val = itm->value;
+	perf_item_unlock(itm);
+
+	return val;
 }
 
 int perf_item_val_get_human(struct perf_item *itm, char *val, size_t size) {
@@ -283,7 +446,6 @@ int perf_item_val_get_human(struct perf_item *itm, char *val, size_t size) {
 
 		return snprintf(val, size, "%02u:%02u.%02u", mins, secs, csec);
 
-
 	}
 
 	if (value > 99999) {
@@ -294,18 +456,18 @@ int perf_item_val_get_human(struct perf_item *itm, char *val, size_t size) {
 				value = (value + 500) / 1000;
 				if (value > 9999) {
 					value = (value + 500) / 1000;
-					snprintf(val, size, "%llut", value);
+					snprintf(val, size, "%llut", (long long unsigned int)value);
 				} else {
-					return snprintf(val, size, "%llug", value);
+					return snprintf(val, size, "%llug", (long long unsigned int)value);
 				}
 			} else {
-				return snprintf(val, size, "%llum", value);
+				return snprintf(val, size, "%llum", (long long unsigned int)value);
 			}
 		} else {
-			return snprintf(val, size, "%lluk", value);
+			return snprintf(val, size, "%lluk", (long long unsigned int)value);
 		}
 	} else {
-		return snprintf(val, size, "%llu", value);
+		return snprintf(val, size, "%llu", (long long unsigned int)value);
 	}
 	
 	return 0;
@@ -326,18 +488,18 @@ int perf_item_val_get_human_1024(struct perf_item *itm, char *val, size_t size) 
 				value = (value + 512) / 1024;
 				if (value > 9999) {
 					value = (value + 512) / 1024;
-					return snprintf(val, size, "%lluT", value);
+					return snprintf(val, size, "%lluT", (long long unsigned int)value);
 				} else {
-					return snprintf(val, size, "%lluG", value);
+					return snprintf(val, size, "%lluG", (long long unsigned int)value);
 				}
 			} else {
-				return snprintf(val, size, "%lluM", value);
+				return snprintf(val, size, "%lluM", (long long unsigned int)value);
 			}
 		} else {
-			return snprintf(val, size, "%lluK", value);
+			return snprintf(val, size, "%lluK", (long long unsigned int)value);
 		}
 	} else {
-		return snprintf(val, size, "%llu", value);
+		return snprintf(val, size, "%llu", (long long unsigned int)value);
 	}
 	
 	return 0;

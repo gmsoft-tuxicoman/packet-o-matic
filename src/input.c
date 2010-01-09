@@ -291,12 +291,14 @@ int input_open(struct input *i) {
 			return POM_ERR;
 	}
 
-	perf_item_val_reset(i->perf_uptime);
 
 	struct ptype* param_reset_counters_on_restart = core_get_param_value("reset_counters_on_item_restart");
 	if (PTYPE_BOOL_GETVAL(param_reset_counters_on_restart)) {
+		perf_item_val_reset(i->perf_uptime);
 		perf_item_val_reset(i->perf_pkts_in);
 		perf_item_val_reset(i->perf_bytes_in);
+	} else {
+		perf_item_val_uptime_restart(i->perf_uptime);
 	}
 
 	i->running = 1;

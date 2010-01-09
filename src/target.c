@@ -407,11 +407,13 @@ int target_open(struct target *t) {
 			return POM_ERR;
 		}
 
-	perf_item_val_reset(t->perf_uptime);
 	struct ptype* param_reset_counters_on_restart = core_get_param_value("reset_counters_on_item_restart");
 	if (PTYPE_BOOL_GETVAL(param_reset_counters_on_restart)) {
+		perf_item_val_reset(t->perf_uptime);
 		perf_item_val_reset(t->perf_pkts);
 		perf_item_val_reset(t->perf_bytes);
+	} else {
+		perf_item_val_uptime_restart(t->perf_uptime);
 	}
 
 

@@ -1,3 +1,10 @@
+* 2010/01/09 Guy Martin <gmsoft@tuxicoman.be>
+No need to check for FE_GET_EVENT in input_docsis.
+Do not check for SYNC messages on non-primary capable DOCSIS channels.
+Added perf_item_val_uptime_restart().
+Added locks to struct perf_instance and struct perf_item.
+Fix compilation warnings on 64bit platform for perf.c.
+
 * 2009/12/23 Guy Martin <gmsoft@tuxicoman.be>
 Added dropped packets perf item to input_pcap.
 Added serial oids for input, rules and targets.
