@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2009 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2009-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -138,6 +138,12 @@ int snmpcmd_target_handler(netsnmp_mib_handler *handler, netsnmp_handler_registr
 		}
 
 		main_config_rules_lock(0);
+
+		if (!main_config->rules) {
+			main_config_rules_unlock();
+			requests = requests->next;
+			continue;
+		}
 
 		// Find the right rule and target
 		uint32_t rule_uid = *(table_info->indexes->val.integer);
@@ -364,6 +370,12 @@ int snmpcmd_target_param_handler(netsnmp_mib_handler *handler, netsnmp_handler_r
 		}
 
 		main_config_rules_lock(0);
+
+		if (!main_config->rules) {
+			main_config_rules_unlock();
+			requests = requests->next;
+			continue;
+		}
 
 		// Find the right rule and target
 		uint32_t rule_uid = *(table_info->indexes->val.integer);

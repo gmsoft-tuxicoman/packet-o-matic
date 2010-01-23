@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -62,7 +62,7 @@ static struct xmlrpc_command xmlrpc_rules_commands[XMLRPC_RULES_COMMANDS_NUM] = 
 	{
 		.name = "rules.remove",
 		.callback_func = xmlrpccmd_remove_rule,
-		.signature = "i:",
+		.signature = "i:i",
 		.help = "Remove a rule given its UID",
 	},
 
@@ -106,10 +106,6 @@ xmlrpc_value *xmlrpccmd_get_rules(xmlrpc_env * const envP, xmlrpc_value * const 
 	}
 
 	xmlrpc_value *rules = xmlrpc_array_new(envP);
-	if (envP->fault_occurred) {
-		main_config_rules_unlock();
-		return NULL;
-	}
 
 	while (rl) {
 		char buff[2048];

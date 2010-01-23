@@ -1,3 +1,9 @@
+* 2010/01/23 Guy Martin <gmsoft@tuxicoman.be>
+Fix signature of xmlrpc function rules.remove.
+Fix crash in target snmp oids when no rules are configured.
+Simplify locking handling in xmlrpccmd_get_target().
+Added XML-RPC functions for datastores.
+
 * 2010/01/09 Guy Martin <gmsoft@tuxicoman.be>
 No need to check for FE_GET_EVENT in input_docsis.
 Do not check for SYNC messages on non-primary capable DOCSIS channels.

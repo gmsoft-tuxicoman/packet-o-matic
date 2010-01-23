@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@
 #include "xmlrpccmd_rules.h"
 #include "xmlrpccmd_match.h"
 #include "xmlrpccmd_target.h"
+#include "xmlrpccmd_datastore.h"
 
 #define XMLRPC_COMMANDS_NUM 7
 
@@ -108,6 +109,7 @@ int xmlrpccmd_register_all() {
 	xmlrpccmd_rules_register_all();
 	xmlrpccmd_match_register_all();
 	xmlrpccmd_target_register_all();
+	xmlrpccmd_datastore_register_all();
 
 	return POM_OK;
 }
@@ -152,7 +154,7 @@ xmlrpc_value *xmlrpccmd_set_core_parmeter(xmlrpc_env * const envP, xmlrpc_value 
 	memset(err, 0, sizeof(err));
 
 	if (core_set_param_value(name, value, err, sizeof(err) - 1) != POM_OK) {
-		xmlrpc_faultf(envP, err);
+		xmlrpc_faultf(envP, "%s", err);
 		free(name);
 		free(value);
 		return NULL;

@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -214,12 +214,11 @@ xmlrpc_value *xmlrpccmd_get_target(xmlrpc_env * const envP, xmlrpc_value * const
 	}
 
 	struct target *t = rl->target;
-	if (t)
-		target_lock_instance(t, 0);
 
 	xmlrpc_value *result = xmlrpc_array_new(envP);
 
 	while (t) {
+		target_lock_instance(t, 0);
 		xmlrpc_value *params = xmlrpc_array_new(envP);
 
 		if (t->mode) {
@@ -263,12 +262,7 @@ xmlrpc_value *xmlrpccmd_get_target(xmlrpc_env * const envP, xmlrpc_value * const
 
 		xmlrpc_array_append_item(envP, result, target);
 		xmlrpc_DECREF(target);
-		if (t->next)
-			target_lock_instance(t->next, 0);
-		struct target *tmp = t;
-		t = t->next;
-		target_unlock_instance(tmp);
-
+		target_unlock_instance(t);
 
 	}
 
@@ -600,14 +594,15 @@ xmlrpc_value *xmlrpccmd_set_target_parameter(xmlrpc_env * const envP, xmlrpc_val
 	main_config_rules_unlock();
 
 	struct ptype *p = target_get_param_value(t, param_name);
-	free(param_name);
 	
 	if (!p) {
 		target_unlock_instance(t);
 		xmlrpc_faultf(envP, "No parameter %s for the target", param_name);
+		free(param_name);
 		free(value);
 		return NULL;
 	}
+	free(param_name);
 
 	if (ptype_parse_val(p, value) != POM_OK) {
 		target_unlock_instance(t);

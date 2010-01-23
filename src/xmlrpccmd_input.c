@@ -125,8 +125,6 @@ xmlrpc_value *xmlrpccmd_get_input(xmlrpc_env * const envP, xmlrpc_value * const 
 		return xmlrpc_build_value(envP, "{}");
 
 	xmlrpc_value *params = xmlrpc_array_new(envP);
-	if (envP->fault_occurred)
-		return NULL;
 
 	struct input_param *p = i->mode->params;
 	while (p) {
