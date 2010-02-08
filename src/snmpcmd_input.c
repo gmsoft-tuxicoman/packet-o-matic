@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2009 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2009-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -116,7 +116,7 @@ int snmpcmd_input_init_oids(oid *base_oid, int base_oid_len) {
 
 	// Register input extra perf counter
 	my_oid[base_oid_len + 2] = 6;
-	netsnmp_handler_registration *input_perf_extra_counter_handler = netsnmp_create_handler_registration("inputPerfExtraCounterTable", snmpcmd_input_perf_extra_handler, my_oid, base_oid_len + 3, HANDLER_CAN_RWRITE);
+	netsnmp_handler_registration *input_perf_extra_counter_handler = netsnmp_create_handler_registration("inputPerfExtraCounterTable", snmpcmd_input_perf_extra_handler, my_oid, base_oid_len + 3, HANDLER_CAN_RONLY);
 
 	if (!input_perf_extra_counter_handler)
 		return POM_ERR;
@@ -133,7 +133,7 @@ int snmpcmd_input_init_oids(oid *base_oid, int base_oid_len) {
 
 	// Register input extra perf gauge
 	my_oid[base_oid_len + 2] = 7;
-	netsnmp_handler_registration *input_perf_extra_gauge_handler = netsnmp_create_handler_registration("inputPerfExtraGaugeTable", snmpcmd_input_perf_extra_handler, my_oid, base_oid_len + 3, HANDLER_CAN_RWRITE);
+	netsnmp_handler_registration *input_perf_extra_gauge_handler = netsnmp_create_handler_registration("inputPerfExtraGaugeTable", snmpcmd_input_perf_extra_handler, my_oid, base_oid_len + 3, HANDLER_CAN_RONLY);
 
 	if (!input_perf_extra_gauge_handler)
 		return POM_ERR;

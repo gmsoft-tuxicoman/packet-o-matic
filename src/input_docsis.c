@@ -1723,7 +1723,7 @@ static int input_update_ber_docsis(struct perf_item *itm, void *priv) {
 
 	struct input_adapt_docsis *adapt = priv;
 
-	uint16_t ber = 0;
+	uint32_t ber = 0;
 	if (ioctl(adapt->frontend_fd, FE_READ_BER, &ber) != 0)
 		return POM_ERR;
 

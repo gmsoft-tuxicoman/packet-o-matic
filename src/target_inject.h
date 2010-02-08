@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,7 +33,6 @@
 struct target_priv_inject {
 
 	pcap_t *p;
-	unsigned long size, packets;
 	struct ptype *iface;
 };
 

@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2009 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2009-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -56,8 +56,7 @@ int snmpcmd_rules_init_oids(oid *base_oid, int base_oid_len) {
 
 	// Register rules perf handler
 	my_oid[base_oid_len + 1] = 3;
-	my_oid[base_oid_len + 2] = 1;
-	netsnmp_handler_registration *rules_perf_handler = netsnmp_create_handler_registration("rules_perf", snmpcmd_rules_perf_handler, my_oid, base_oid_len + 3, HANDLER_CAN_RONLY);
+	netsnmp_handler_registration *rules_perf_handler = netsnmp_create_handler_registration("rules_perf", snmpcmd_rules_perf_handler, my_oid, base_oid_len + 2, HANDLER_CAN_RONLY);
 
 	if (!rules_perf_handler)
 		return POM_ERR;

@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -106,15 +106,15 @@ static int postgres_exec(struct dataset *ds, const char *query);
 static int postgres_reconnect(struct datastore_priv_postgres *priv);
 static int postgres_get_ds_state_error(struct dataset *ds, PGresult *res);
 static void postgres_notice_processor(void *arg, const char *message);
-static void vswap64(void *in, void *out);
 
 // Functions used to swap a double value
 #if BYTE_ORDER == BIG_ENDIAN
-#define htond(x, y)	(x, y)
-#define ntohd(x, y)	(x, y)
+#define htond(x, y)	memcpy(y, x, 8)
+#define ntohd(x, y)	memcpy(y, x, 8)
 #elif BYTE_ORDER == LITTLE_ENDIAN
 #define htond(x, y)	vswap64(x, y)
 #define ntohd(x, y)	vswap64(x, y)
+static void vswap64(void *in, void *out);
 #else
 #error "Please define byte ordering"
 #endif

@@ -550,14 +550,12 @@ rulesSerial OBJECT-TYPE
 
 --- Rules perf stuff
 
-rulePerf OBJECT IDENTIFIER ::={ rule 3 }
-
 rulePerfTable OBJECT-TYPE
 	SYNTAX		SEQUENCE OF RulePerfEntry
 	MAX-ACCESS	not-accessible
 	STATUS		current
 	DESCRIPTION	"The list of rules performance counters"
-	::= { rulePerf 1 }
+	::= { rule 3 }
 
 rulePerfEntry OBJECT-TYPE
 	SYNTAX		RulePerfEntry
@@ -609,12 +607,14 @@ ruleUpTime OBJECT-TYPE
 
 target OBJECT IDENTIFIER ::= { packet-o-matic 4 }
 
+targetConfig OBJECT IDENTIFIER ::= { target 1 }
+
 targetTable OBJECT-TYPE
 	SYNTAX		SEQUENCE OF TargetEntry
 	MAX-ACCESS	not-accessible
 	STATUS		current
 	DESCRIPTION	"The list of targets"
-	::= { target 1 }
+	::= { targetConfig 1 }
 
 targetEntry OBJECT-TYPE
 	SYNTAX		TargetEntry
@@ -691,7 +691,7 @@ targetParamTable OBJECT-TYPE
 	MAX-ACCESS	not-accessible
 	STATUS		current
 	DESCRIPTION	"The list of target parameters"
-	::= { target 2 }
+	::= { targetConfig 2 }
 
 targetParamEntry OBJECT-TYPE
 	SYNTAX		TargetParamEntry
@@ -774,9 +774,207 @@ targetsSerial OBJECT-TYPE
 	MAX-ACCESS	read-only
 	STATUS		current
 	DESCRIPTION	"Number of changes for the targets"
-	::= { target 3 }
+	::= { targetConfig 3 }
 
 
+targetPerf OBJECT IDENTIFIER  ::= { target 2 }
+
+targetPerfTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF TargetPerfEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"The list of target performance objects"
+	::= { targetPerf 1 }
+
+targetPerfEntry OBJECT-TYPE
+	SYNTAX		TargetPerfEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"A target performance object"
+	INDEX		{ targetPerfRuleIndex, targetPerfTargetIndex }
+	::= { targetPerfTable 1 }
+
+TargetPerfEntry ::=
+	SEQUENCE {
+		targetPerfRuleIndex	GenericTableIndex,
+		targetPerfTargetIndex	GenericTableIndex,
+		targetBytes		Counter64,
+		targetPackets		Counter64,
+		targetUpTime		TimeTicks
+	}
+
+targetPerfRuleIndex OBJECT-TYPE
+	SYNTAX		GenericTableIndex
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Rule index of the target performance objects"
+	::= { targetPerfEntry 1 }
+
+targetPerfTargetIndex OBJECT-TYPE
+	SYNTAX		GenericTableIndex
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Index of the target"
+	::= { targetPerfEntry 2 }
+
+targetBytes OBJECT-TYPE
+	SYNTAX		Counter64
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Number of bytes sent to the target for processing"
+	::= { targetPerfEntry 3 }
+
+targetPackets OBJECT-TYPE
+	SYNTAX		Counter64
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Number of packets sent to the target for processing"
+	::= { targetPerfEntry 4 }
+
+targetUpTime OBJECT-TYPE
+	SYNTAX		TimeTicks
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Time for which the target has been started"
+	::= { targetPerfEntry 5 }
+
+
+
+targetPerfExtraCounterTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF TargetPerfExtraCounterEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"The list of target extra counters performance objects"
+	::= { targetPerf 2 }
+
+targetPerfExtraCounterEntry OBJECT-TYPE
+	SYNTAX		TargetPerfExtraCounterEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"A target performance extra counter object"
+	INDEX		{ targetPerfExtraCounterRuleIndex, targetPerfExtraCounterTargetIndex, targetPerfExtraCounterIndex }
+	::= { targetPerfExtraCounterTable 1 }
+
+TargetPerfExtraCounterEntry ::=
+	SEQUENCE {
+		targetPerfExtraCounterRuleIndex		GenericTableIndex,
+		targetPerfExtraCounterTargetIndex	GenericTableIndex,
+		targetPerfExtraCounterIndex		GenericTableIndex,
+		targetPerfExtraCounterName		DisplayString,
+		targetPerfExtraCounterValue		Counter64,
+		targetPerfExtraCounterDescr		DisplayString
+	}
+
+targetPerfExtraCounterRuleIndex OBJECT-TYPE
+	SYNTAX		GenericTableIndex
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Rule index of the target extra counter performance objects"
+	::= { targetPerfExtraCounterEntry 1 }
+
+targetPerfExtraCounterTargetIndex OBJECT-TYPE
+	SYNTAX		GenericTableIndex
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Index of the target"
+	::= { targetPerfExtraCounterEntry 2 }
+
+targetPerfExtraCounterIndex OBJECT-TYPE
+	SYNTAX		GenericTableIndex
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Index of the extra counter performance object"
+	::= { targetPerfExtraCounterEntry 3 }
+
+targetPerfExtraCounterName OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Name of the extra counter performance object"
+	::= { targetPerfExtraCounterEntry 4 }
+
+targetPerfExtraCounterValue OBJECT-TYPE
+	SYNTAX		Counter64
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Value of the extra counter performance object"
+	::= { targetPerfExtraCounterEntry 5 }
+
+targetPerfExtraCounterDescr OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Description  of the extra counter performance object"
+	::= { targetPerfExtraCounterEntry 6 }
+
+
+
+targetPerfExtraGaugeTable OBJECT-TYPE
+	SYNTAX		SEQUENCE OF TargetPerfExtraGaugeEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"The list of target extra counters performance objects"
+	::= { targetPerf 3 }
+
+targetPerfExtraGaugeEntry OBJECT-TYPE
+	SYNTAX		TargetPerfExtraGaugeEntry
+	MAX-ACCESS	not-accessible
+	STATUS		current
+	DESCRIPTION	"A target performance extra counter object"
+	INDEX		{ targetPerfExtraGaugeRuleIndex, targetPerfExtraGaugeTargetIndex, targetPerfExtraGaugeIndex }
+	::= { targetPerfExtraGaugeTable 1 }
+
+TargetPerfExtraGaugeEntry ::=
+	SEQUENCE {
+		targetPerfExtraGaugeRuleIndex		GenericTableIndex,
+		targetPerfExtraGaugeTargetIndex	GenericTableIndex,
+		targetPerfExtraGaugeIndex		GenericTableIndex,
+		targetPerfExtraGaugeName		DisplayString,
+		targetPerfExtraGaugeValue		Gauge64,
+		targetPerfExtraGaugeDescr		DisplayString
+	}
+
+targetPerfExtraGaugeRuleIndex OBJECT-TYPE
+	SYNTAX		GenericTableIndex
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Rule index of the target extra counter performance objects"
+	::= { targetPerfExtraGaugeEntry 1 }
+
+targetPerfExtraGaugeTargetIndex OBJECT-TYPE
+	SYNTAX		GenericTableIndex
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Index of the target"
+	::= { targetPerfExtraGaugeEntry 2 }
+
+targetPerfExtraGaugeIndex OBJECT-TYPE
+	SYNTAX		GenericTableIndex
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Index of the extra counter performance object"
+	::= { targetPerfExtraGaugeEntry 3 }
+
+targetPerfExtraGaugeName OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Name of the extra counter performance object"
+	::= { targetPerfExtraGaugeEntry 4 }
+
+targetPerfExtraGaugeValue OBJECT-TYPE
+	SYNTAX		Gauge64
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Value of the extra counter performance object"
+	::= { targetPerfExtraGaugeEntry 5 }
+
+targetPerfExtraGaugeDescr OBJECT-TYPE
+	SYNTAX		DisplayString
+	MAX-ACCESS	read-only
+	STATUS		current
+	DESCRIPTION	"Description  of the extra counter performance object"
+	::= { targetPerfExtraGaugeEntry 6 }
 ---
 --- Match definition
 ---

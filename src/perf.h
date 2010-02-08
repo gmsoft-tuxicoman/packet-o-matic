@@ -79,7 +79,7 @@ int perf_unregister_instance(struct perf_class *class, struct perf_instance *ins
 int perf_cleanup();
 
 int perf_item_val_reset(struct perf_item *itm);
-uint64_t perf_item_val_inc(struct perf_item *itm, uint64_t inc);
+uint64_t perf_item_val_inc(struct perf_item *itm, int64_t inc);
 int perf_item_val_uptime_stop(struct perf_item *itm);
 int perf_item_val_uptime_restart(struct perf_item *itm);
 uint64_t perf_item_val_get_raw(struct perf_item *itm);

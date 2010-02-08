@@ -264,6 +264,7 @@ xmlrpc_value *xmlrpccmd_get_target(xmlrpc_env * const envP, xmlrpc_value * const
 		xmlrpc_DECREF(target);
 		target_unlock_instance(t);
 
+		t = t->next;
 	}
 
 

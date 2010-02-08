@@ -96,9 +96,9 @@ int perf_instance_lock(struct perf_instance *instance, int write) {
 	int result = 0;
 
 	if (write) {
-		pthread_rwlock_wrlock(&instance->lock);
+		result = pthread_rwlock_wrlock(&instance->lock);
 	} else {
-		pthread_rwlock_rdlock(&instance->lock);
+		result = pthread_rwlock_rdlock(&instance->lock);
 	}
 
 	if (result) {
@@ -125,21 +125,17 @@ int perf_item_lock(struct perf_item *itm, int write) {
 
 	int result = 0;
 
-	perf_instance_lock(itm->instance, 0);
-
 	if (write) {
-		pthread_rwlock_wrlock(&itm->lock);
+		result = pthread_rwlock_wrlock(&itm->lock);
 	} else {
-		pthread_rwlock_rdlock(&itm->lock);
+		result = pthread_rwlock_rdlock(&itm->lock);
 	}
 
 	if (result) {
 		pom_log(POM_LOG_ERR "Error while locking the perf item lock");
-		perf_instance_unlock(itm->instance);
 		abort();
 		return POM_ERR;
 	}
-	perf_instance_unlock(itm->instance);
 
 	return POM_OK;
 }
@@ -243,7 +239,6 @@ int perf_remove_item(struct perf_instance *instance, struct perf_item *itm) {
 
 int perf_unregister_instance(struct perf_class *class, struct perf_instance *instance) {
 
-	perf_instance_lock(instance, 1);
 
 	struct perf_instance *tmp = class->instances;
 	while (tmp) {
@@ -257,6 +252,7 @@ int perf_unregister_instance(struct perf_class *class, struct perf_instance *ins
 		return POM_ERR;
 	}
 
+	perf_instance_lock(instance, 1);
 	struct perf_item *itm = tmp->items;
 	while (itm) {
 		struct perf_item *del_item = itm;
@@ -320,7 +316,7 @@ int perf_item_val_reset(struct perf_item *itm) {
 	return POM_OK;
 }
 
-uint64_t perf_item_val_inc(struct perf_item *itm, uint64_t inc) {
+uint64_t perf_item_val_inc(struct perf_item *itm, int64_t inc) {
 
 	perf_item_lock(itm, 1);
 	if (itm->type == perf_item_type_uptime) {
@@ -388,7 +384,7 @@ int perf_item_val_uptime_restart(struct perf_item *itm) {
 
 uint64_t perf_item_val_get_raw(struct perf_item *itm) {
 
-	perf_item_lock(itm, 0);
+	perf_item_lock(itm, 1);
 	uint64_t val = 0;
 	if (itm->type == perf_item_type_uptime) {
 

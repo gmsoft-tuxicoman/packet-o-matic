@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -1058,6 +1058,7 @@ static void postgres_notice_processor(void *arg, const char *message) {
 
 }
 
+#if BYTE_ORDER == LITTLE_ENDIAN
 static void vswap64(void *in, void *out) {
 
 	char *in_c = in, *out_c = out;
@@ -1071,3 +1072,4 @@ static void vswap64(void *in, void *out) {
 	out_c[7] = in_c[0];
 
 }
+#endif

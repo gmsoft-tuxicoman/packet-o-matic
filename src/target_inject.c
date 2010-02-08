@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -110,9 +110,6 @@ static int target_open_inject(struct target *t) {
 	pom_log(POM_LOG_DEBUG "Interface %s opened for injection", PTYPE_STRING_GETVAL(priv->iface));
 
 
-	priv->size = 0;
-	priv->packets = 0;
-
 	return POM_OK;
 }
 
@@ -137,9 +134,7 @@ static int target_process_inject(struct target *t, struct frame *f) {
 	
 	if (pcap_inject(priv->p, f->buff + start, len - start) != -1) {
 		
-		priv->size += len;
-		priv->packets++;
-		pom_log(POM_LOG_DEBUG "Packet injected (%lu bytes (+%u bytes))", priv->size, len);
+		pom_log(POM_LOG_DEBUG "Packet injected (+%u bytes)", len);
 		return POM_OK;
 	} 
 
@@ -155,7 +150,11 @@ static int target_close_inject(struct target *t) {
 
 	struct target_priv_inject *priv = t->target_priv;
 
-	pom_log("%lu bytes injected in %lu packets", priv->size, priv->packets);
+	char size_str[16], count_str[16];
+	perf_item_val_get_human_1024(t->perf_bytes, size_str, sizeof(size_str) - 1);
+	perf_item_val_get_human(t->perf_pkts, count_str, sizeof(count_str) - 1);
+
+	pom_log("%s bytes injected in %s packets", size_str, count_str);
 
 	if (priv->p) 
 		pcap_close(priv->p);

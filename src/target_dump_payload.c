@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -51,6 +51,7 @@ int target_register_dump_payload(struct target_reg *r) {
 	target_register_param(mode_default, "prefix", "dump", "Prefix of dumped filenames including path");
 	target_register_param(mode_default, "markdir", "no", "Mark the direction of each packets in dumped files");
 
+
 	return POM_OK;
 
 }
@@ -72,6 +73,10 @@ static int target_init_dump_payload(struct target *t) {
 
 	target_register_param_value(t, mode_default, "prefix", priv->prefix);
 	target_register_param_value(t, mode_default, "markdir", priv->markdir);
+
+	priv->perf_tot_conn = perf_add_item(t->perfs, "tot_conn", perf_item_type_counter, "Total number of connections handled");
+	priv->perf_cur_conn = perf_add_item(t->perfs, "cur_conn", perf_item_type_gauge, "Current number of connections being handled");
+	priv->perf_tot_bytes = perf_add_item(t->perfs, "tot_bytes", perf_item_type_counter, "Total number of bytes dumped");
 
 	return POM_OK;
 }
@@ -96,6 +101,20 @@ static int target_cleanup_dump_payload(struct target *t) {
 			
 		ptype_cleanup(priv->prefix);
 		ptype_cleanup(priv->markdir);
+
+		if (priv->perf_tot_conn) {
+			perf_remove_item(t->perfs, priv->perf_tot_conn);
+			priv->perf_tot_conn = NULL;
+		}
+		if (priv->perf_cur_conn) {
+			perf_remove_item(t->perfs, priv->perf_cur_conn);
+			priv->perf_cur_conn = NULL;
+		}
+		if (priv->perf_tot_bytes) {
+			perf_remove_item(t->perfs, priv->perf_tot_bytes);
+			priv->perf_tot_bytes = NULL;
+		}
+
 		free(priv);
 
 	}
@@ -167,16 +186,46 @@ static int target_process_dump_payload(struct target *t, struct frame *f) {
 			priv->ct_privs->prev = cp;
 		priv->ct_privs = cp;
 
+		perf_item_val_inc(priv->perf_tot_conn, 1);
+		perf_item_val_inc(priv->perf_cur_conn, 1);
+
 	}
 
 	if (PTYPE_BOOL_GETVAL(priv->markdir)) {
+		char *mark_str = "\n< ";
 		if (f->ce->direction == CE_DIR_FWD)
-			write(cp->fd, "\n> ", 3);
-		else
-			write(cp->fd, "\n< ", 3);
+			mark_str = "\n> ";
+
+		int s = strlen(mark_str);
+
+		while (s > 0) {
+			int wres = write(cp->fd, mark_str, s);
+			if (wres < 0) {
+				char err_str[256];
+				strerror_r(errno, err_str, sizeof(err_str) - 1);
+				pom_log(POM_LOG_ERR "Error while writing to file : %s", err_str);
+				return POM_ERR;
+			}
+			s -= wres;
+			mark_str += wres;
+		}
 	}
 
-	write(cp->fd, f->buff + lastl->payload_start, lastl->payload_size);
+	int s = lastl->payload_size;
+	void *buff = f->buff + lastl->payload_start;
+	while (s > 0) {
+		int wres = write(cp->fd, buff, s);
+		if (wres < 0) {
+			char err_str[256];
+			strerror_r(errno, err_str, sizeof(err_str) - 1);
+			pom_log(POM_LOG_ERR "Error while writing to file : %s", err_str);
+			return POM_ERR;
+		}
+		s -= wres;
+		buff += wres;
+	}
+
+	perf_item_val_inc(priv->perf_tot_bytes, lastl->payload_size);
 
 	pom_log(POM_LOG_TSHOOT "Saved %u bytes of payload", lastl->payload_size);
 
@@ -184,8 +233,6 @@ static int target_process_dump_payload(struct target *t, struct frame *f) {
 }
 
 static int target_close_connection_dump_payload(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
-
-	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx", (unsigned long) conntrack_priv);
 
 	struct target_conntrack_priv_dump_payload *cp;
 	cp = conntrack_priv;
@@ -203,6 +250,8 @@ static int target_close_connection_dump_payload(struct target *t, struct conntra
 		cp->next->prev = cp->prev;
 
 	free(cp);
+
+	perf_item_val_inc(priv->perf_cur_conn, -1);
 
 	return POM_OK;
 

@@ -1,3 +1,13 @@
+* 2010/02/08 Guy Martin <gmsoft@tuxicoman.be>
+Fix ioctl call to FE_READ_BER in input_docsis.
+Update SNMP MIB for perfs.
+Added OIDs for target perf objects.
+Fix xmlrpccmd_get_target() broken in last commit.
+Fix timestamp handling on big endian platform for datastore_postgres.
+Added extra perf objects to target_dump_payload.
+Improve locking of perf objects.	
+Remove now useless performance stats on target_inject.
+
 * 2010/01/23 Guy Martin <gmsoft@tuxicoman.be>
 Fix signature of xmlrpc function rules.remove.
 Fix crash in target snmp oids when no rules are configured.

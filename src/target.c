@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -258,6 +258,15 @@ struct target *target_alloc(int target_type) {
 	}
 
 	// Init the target internal stuff
+	t->uid = get_uid();
+
+	// Default mode is the first one
+	t->mode = targets[target_type]->modes;
+	
+	t->perfs = perf_register_instance(target_perf_class, t);
+	t->perf_pkts = perf_add_item(t->perfs, "pkts", perf_item_type_counter, "Number of packets processed");
+	t->perf_bytes = perf_add_item(t->perfs, "bytes", perf_item_type_counter, "Number of bytes processed");
+	t->perf_uptime = perf_add_item(t->perfs, "uptime", perf_item_type_uptime, "Time for which the target has been started");
 
 	if (targets[target_type]->init) {
 		if ((*targets[target_type]->init) (t) != POM_OK) {
@@ -265,18 +274,6 @@ struct target *target_alloc(int target_type) {
 			return NULL;
 		}
 	}
-
-
-	t->uid = get_uid();
-
-	
-	t->perfs = perf_register_instance(target_perf_class, t);
-	t->perf_pkts = perf_add_item(t->perfs, "pkts", perf_item_type_counter, "Number of packets processed");
-	t->perf_bytes = perf_add_item(t->perfs, "bytes", perf_item_type_counter, "Number of bytes processed");
-	t->perf_uptime = perf_add_item(t->perfs, "uptime", perf_item_type_uptime, "Time for which the target has been started");
-
-	// Default mode is the first one
-	t->mode = targets[target_type]->modes;
 
 	targets[target_type]->refcount++;
 		

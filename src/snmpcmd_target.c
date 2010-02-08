@@ -36,7 +36,8 @@ int snmpcmd_target_init_oids(oid *base_oid, int base_oid_len) {
 
 	// Register target handler
 	my_oid[base_oid_len + 1] = 1;
-	netsnmp_handler_registration *target_handler = netsnmp_create_handler_registration("target", snmpcmd_target_handler, my_oid, base_oid_len + 2, HANDLER_CAN_RWRITE);
+	my_oid[base_oid_len + 2] = 1;
+	netsnmp_handler_registration *target_handler = netsnmp_create_handler_registration("target", snmpcmd_target_handler, my_oid, base_oid_len + 3, HANDLER_CAN_RWRITE);
 
 	if (!target_handler)
 		return POM_OK;
@@ -51,8 +52,8 @@ int snmpcmd_target_init_oids(oid *base_oid, int base_oid_len) {
 	netsnmp_register_table(target_handler, target_table_info);
 
 	// Register target param handler
-	my_oid[base_oid_len + 1] = 2;
-	netsnmp_handler_registration *target_param_handler = netsnmp_create_handler_registration("targetParam", snmpcmd_target_param_handler, my_oid, base_oid_len + 2, HANDLER_CAN_RWRITE);
+	my_oid[base_oid_len + 2] = 2;
+	netsnmp_handler_registration *target_param_handler = netsnmp_create_handler_registration("targetParam", snmpcmd_target_param_handler, my_oid, base_oid_len + 3, HANDLER_CAN_RWRITE);
 
 	if (!target_param_handler)
 		return POM_OK;
@@ -67,9 +68,60 @@ int snmpcmd_target_init_oids(oid *base_oid, int base_oid_len) {
 	netsnmp_register_table(target_param_handler, target_param_table_info);
 
 	// Register targets serial handler
-	my_oid[base_oid_len + 1] = 3;
-	netsnmp_handler_registration *target_serial_handler = netsnmp_create_handler_registration("targetSerial", snmpcmd_target_serial_handler, my_oid, base_oid_len + 2, HANDLER_CAN_RONLY);
+	my_oid[base_oid_len + 2] = 3;
+	netsnmp_handler_registration *target_serial_handler = netsnmp_create_handler_registration("targetSerial", snmpcmd_target_serial_handler, my_oid, base_oid_len + 3, HANDLER_CAN_RONLY);
 	netsnmp_register_instance(target_serial_handler);
+
+
+	// Register target param handler
+	my_oid[base_oid_len + 1] = 2;
+	my_oid[base_oid_len + 2] = 1;
+	netsnmp_handler_registration *target_perf_handler = netsnmp_create_handler_registration("targetPerf", snmpcmd_target_perf_handler, my_oid, base_oid_len + 3, HANDLER_CAN_RONLY);
+
+	if (!target_perf_handler)
+		return POM_OK;
+
+	netsnmp_table_registration_info *target_perf_table_info = malloc(sizeof(netsnmp_table_registration_info));
+	memset(target_perf_table_info, 0, sizeof(netsnmp_table_registration_info));
+
+	netsnmp_table_helper_add_indexes(target_perf_table_info, ASN_INTEGER, ASN_INTEGER, 0);
+	target_perf_table_info->min_column = 1;
+	target_perf_table_info->max_column = 5;
+
+	netsnmp_register_table(target_perf_handler, target_perf_table_info);
+
+	// Register target extra perf counter
+	my_oid[base_oid_len + 2] = 2;
+	netsnmp_handler_registration *target_perf_extra_counter_handler = netsnmp_create_handler_registration("targetPerfExtraCounterTable", snmpcmd_target_perf_extra_handler, my_oid, base_oid_len + 3, HANDLER_CAN_RONLY);
+	if (!target_perf_extra_counter_handler)
+		return POM_ERR;
+
+	target_perf_extra_counter_handler->my_reg_void = (void*) perf_item_type_counter;
+	netsnmp_table_registration_info *target_perf_extra_counter_table_info = malloc(sizeof(netsnmp_table_registration_info));
+	memset(target_perf_extra_counter_table_info, 0, sizeof(netsnmp_table_registration_info));
+
+	netsnmp_table_helper_add_indexes(target_perf_extra_counter_table_info, ASN_INTEGER, ASN_INTEGER, ASN_INTEGER, 0);
+	target_perf_extra_counter_table_info->min_column = 1;
+	target_perf_extra_counter_table_info->max_column = 6;
+
+	netsnmp_register_table(target_perf_extra_counter_handler, target_perf_extra_counter_table_info);
+	
+	// Register target extra perf gauge
+	my_oid[base_oid_len + 2] = 3;
+	netsnmp_handler_registration *target_perf_extra_gauge_handler = netsnmp_create_handler_registration("targetPerfExtraGaugeTable", snmpcmd_target_perf_extra_handler, my_oid, base_oid_len + 3, HANDLER_CAN_RONLY);
+	if (!target_perf_extra_gauge_handler)
+		return POM_ERR;
+
+	target_perf_extra_gauge_handler->my_reg_void = (void*) perf_item_type_gauge;
+	netsnmp_table_registration_info *target_perf_extra_gauge_table_info = malloc(sizeof(netsnmp_table_registration_info));
+	memset(target_perf_extra_gauge_table_info, 0, sizeof(netsnmp_table_registration_info));
+
+	netsnmp_table_helper_add_indexes(target_perf_extra_gauge_table_info, ASN_INTEGER, ASN_INTEGER, ASN_INTEGER, 0);
+	target_perf_extra_gauge_table_info->min_column = 1;
+	target_perf_extra_gauge_table_info->max_column = 6;
+
+	netsnmp_register_table(target_perf_extra_gauge_handler, target_perf_extra_gauge_table_info);
+
 	return POM_OK;
 
 }
@@ -463,6 +515,7 @@ int snmpcmd_target_param_handler(netsnmp_mib_handler *handler, netsnmp_handler_r
 		if (reqinfo->mode == MODE_GETNEXT || reqinfo->mode == MODE_GET) {
 
 			target_lock_instance(t, 0);
+			main_config_rules_unlock();
 
 			unsigned char type = ASN_NULL;
 			char *value = NULL;
@@ -538,6 +591,7 @@ int snmpcmd_target_param_handler(netsnmp_mib_handler *handler, netsnmp_handler_r
 			char *new_val = (char*)requests->requestvb->val.string;
 
 			target_lock_instance(t, 1);
+			main_config_rules_unlock();
 
 			if (table_info->colnum != 5) {
 				netsnmp_set_request_error(reqinfo, requests, SNMP_ERR_NOTWRITABLE);
@@ -557,7 +611,6 @@ int snmpcmd_target_param_handler(netsnmp_mib_handler *handler, netsnmp_handler_r
 			target_unlock_instance(t);
 		}
 
-		main_config_rules_unlock();
 
 		requests = requests->next;
 	}
@@ -570,6 +623,358 @@ int snmpcmd_target_serial_handler(netsnmp_mib_handler *handler, netsnmp_handler_
 	
 	if (reqinfo->mode == MODE_GET)
 		snmp_set_var_typed_value(requests->requestvb, ASN_COUNTER, (unsigned char*) &main_config->target_serial, sizeof(main_config->rules_serial));
+
+	return SNMP_ERR_NOERROR;
+}
+
+int snmpcmd_target_perf_handler(netsnmp_mib_handler *handler, netsnmp_handler_registration *reginfo, netsnmp_agent_request_info *reqinfo, netsnmp_request_info *requests) {
+
+	while (requests) {
+		netsnmp_variable_list *var = requests->requestvb;
+		if (requests->processed != 0) {
+			requests = requests->next;
+			continue;
+		}
+
+		netsnmp_table_request_info *table_info = netsnmp_extract_table_info(requests);
+		if (!table_info) {
+			requests = requests->next;
+			continue;
+		}
+
+
+		// Get rid of useless modes
+		if (reqinfo->mode != MODE_GETNEXT && reqinfo->mode != MODE_GET) {
+			requests = requests->next;
+			continue;
+		}
+
+		main_config_rules_lock(0);
+
+		if (!main_config->rules) {
+			main_config_rules_unlock();
+			requests = requests->next;
+			continue;
+		}
+
+		// Find the right rule and target
+		uint32_t rule_uid = *(table_info->indexes->val.integer);
+
+		struct rule_list *r = main_config->rules;
+		while (r && r->uid != rule_uid) {
+			r = r->next;
+		}
+
+		// Find the right target
+
+		uint32_t target_uid = *(table_info->indexes->next_variable->val.integer);
+		uint32_t target_id = 0;
+		struct target *t = NULL;
+
+		if (r) {
+			t = r->target;
+			while (t && t->uid != target_uid) {
+				t = t->next;
+				target_id++;
+			}
+		}
+
+		// Find the next item
+		if (reqinfo->mode == MODE_GETNEXT) {
+			if (rule_uid == 0 || !r) { // Get first rule
+				r = NULL;
+				snmpcmd_rules_find_next(main_config->rules, &r);
+				t = r->target;
+			}
+
+			if (target_uid == 0) { // Get the first target
+				t = NULL;
+				snmpcmd_target_find_next(r->target, &t);
+			} else { // Get the next target
+				snmpcmd_target_find_next(r->target, &t);
+				if (!t) { // Got the end of the target, next rule, first target
+					snmpcmd_rules_find_next(main_config->rules, &r);
+					if (!r) { // Last rule, back to first rule with first target and next colnum
+						r = NULL;
+						snmpcmd_rules_find_next(main_config->rules, &r);
+						snmpcmd_target_find_next(r->target, &t);
+						table_info->colnum++;
+					} else { // First target of next rule
+						t = NULL;
+						snmpcmd_target_find_next(r->target, &t);
+					}
+				}
+			}
+		}
+
+		if (!r || !t || table_info->colnum > 5) {
+			requests = requests->next;
+			main_config_rules_unlock();
+			continue;
+		}
+
+		target_lock_instance(t, 0);
+		main_config_rules_unlock();
+
+		unsigned char type = ASN_NULL;
+		char *value = NULL;
+		size_t len = 0;
+
+		switch(table_info->colnum) {
+			case 1: // Rule Index
+				type = ASN_UNSIGNED;
+				value = (char *)&r->uid;
+				len = sizeof(r->uid);
+				break;
+
+			case 2: // Target Index
+				type = ASN_UNSIGNED;
+				value = (char *)&t->uid;
+				len = sizeof(t->uid);
+				break;
+			
+			case 3: { // Target Bytes
+				type = ASN_COUNTER64;
+				uint64_t v64 = perf_item_val_get_raw(t->perf_bytes);
+				struct counter64 vc64;
+				vc64.high = v64 >> 32;
+				vc64.low = v64 & 0xFFFFFFFF;
+				value = (char *)&vc64;
+				len = sizeof(struct counter64);
+				break;
+			}
+
+			case 4: { // Target Packets
+				type = ASN_COUNTER64;
+				uint64_t v64 = perf_item_val_get_raw(t->perf_pkts);
+				struct counter64 vc64;
+				vc64.high = v64 >> 32;
+				vc64.low = v64 & 0xFFFFFFFF;
+				value = (char *)&vc64;
+				len = sizeof(struct counter64);
+				break;
+			}
+
+			case 5: { // Target UpTime
+				type = ASN_TIMETICKS;
+				uint64_t v = perf_item_val_get_raw(t->perf_uptime);
+				value = (char *) &v;
+				len = sizeof(uint64_t);
+				break;
+			}
+		}
+
+		target_unlock_instance(t);
+
+		if (reqinfo->mode == MODE_GETNEXT) {
+			*(table_info->indexes->val.integer) = r->uid;
+			*(table_info->indexes->next_variable->val.integer) = t->uid;
+			netsnmp_table_build_result(reginfo, requests, table_info, type, (unsigned char *)value, len);
+		} else if (reqinfo->mode == MODE_GET && var->type == ASN_NULL) {
+			snmp_set_var_typed_value(var, type, (unsigned char*)value, len);
+		}
+
+
+		requests = requests->next;
+	}
+
+
+	return SNMP_ERR_NOERROR;
+}
+
+static struct perf_item *snmpcmd_target_perf_item_getnext(struct target *t, struct perf_item *itm, enum perf_item_type type) {
+	while (itm && (itm->type != type || itm == t->perf_pkts || itm == t->perf_bytes || itm == t->perf_uptime))
+		itm = itm->next;
+	return itm;
+}
+
+
+int snmpcmd_target_perf_extra_handler(netsnmp_mib_handler *handler, netsnmp_handler_registration *reginfo, netsnmp_agent_request_info *reqinfo, netsnmp_request_info *requests) {
+
+	enum perf_item_type type = (enum perf_item_type)reginfo->my_reg_void;
+
+	while (requests) {
+		netsnmp_variable_list *var = requests->requestvb;
+		if (requests->processed != 0) {
+			requests = requests->next;
+			continue;
+		}
+
+		netsnmp_table_request_info *table_info = netsnmp_extract_table_info(requests);
+		if (!table_info) {
+			requests = requests->next;
+			continue;
+		}
+
+		// Get rid of useless modes
+		if (reqinfo->mode != MODE_GETNEXT && reqinfo->mode != MODE_GET) {
+			requests = requests->next;
+			continue;
+		}
+
+		main_config_rules_lock(0);
+
+		if (!main_config->rules) {
+			main_config_rules_unlock();
+			requests = requests->next;
+			continue;
+		}
+
+		// Find the right rule and target
+		uint32_t rule_uid = *(table_info->indexes->val.integer);
+
+		struct rule_list *r = main_config->rules;
+		while (r && r->uid != rule_uid) {
+			r = r->next;
+		}
+
+		// Find the right target
+
+		uint32_t target_uid = *(table_info->indexes->next_variable->val.integer);
+		struct target *t = NULL;
+
+		struct perf_item *itm = NULL;
+		uint32_t item_id = *(table_info->indexes->next_variable->next_variable->val.integer);
+
+		if (r) {
+			t = r->target;
+			itm = snmpcmd_target_perf_item_getnext(t, t->perfs->items, type);
+			while (t && t->uid != target_uid)
+				t = t->next;
+			
+			// Find the right item
+			int i;
+			for (i = 1; itm && item_id; i++) {
+				itm = snmpcmd_target_perf_item_getnext(t, itm->next, type);
+			}
+			
+		}
+
+		// Find the next item
+		if (reqinfo->mode == MODE_GETNEXT) {
+			if (rule_uid == 0 || !r) { // Get first rule
+				r = NULL;
+				snmpcmd_rules_find_next(main_config->rules, &r);
+				t = r->target;
+				itm = snmpcmd_target_perf_item_getnext(t, t->perfs->items, type);
+			}
+
+			if (target_uid == 0) { // Get the first target
+				t = NULL;
+				snmpcmd_target_find_next(r->target, &t);
+				if (t) {
+					itm = snmpcmd_target_perf_item_getnext(t, t->perfs->items, type);
+					item_id = 1;
+				}
+			} else {
+				// Get the next target parameter
+				if (itm) {
+					itm = snmpcmd_target_perf_item_getnext(t, itm->next, type);
+					item_id++;
+				}
+				if (!itm) {
+					// Get the next target
+					snmpcmd_target_find_next(r->target, &t);
+					if (!t) { // Got the end of the target, next rule, first target, first param
+						snmpcmd_rules_find_next(main_config->rules, &r);
+						if (!r) { // Last rule, back to first rule with first targeti, first param and next colnum
+							r = NULL;
+							snmpcmd_rules_find_next(main_config->rules, &r);
+							snmpcmd_target_find_next(r->target, &t);
+							table_info->colnum++;
+						} else { // First target of next rule
+							t = NULL;
+							snmpcmd_target_find_next(r->target, &t);
+						}
+					} 
+					
+					if (t) {
+						item_id = 1;
+						itm = snmpcmd_target_perf_item_getnext(t, t->perfs->items, type);
+					}
+				}
+			}
+		}
+
+		if (!r || !t || !itm || table_info->colnum > 8) {
+			requests = requests->next;
+			main_config_rules_unlock();
+			continue;
+		}
+
+		target_lock_instance(t, 0);
+		main_config_rules_unlock();
+
+		unsigned char res_type = ASN_NULL;
+		char *value = NULL;
+		size_t len = 0;
+
+		switch(table_info->colnum) {
+			case 1: // Rule Index
+				res_type = ASN_UNSIGNED;
+				value = (char *)&r->uid;
+				len = sizeof(r->uid);
+				break;
+
+			case 2: // Target Index
+				res_type = ASN_UNSIGNED;
+				value = (char *)&t->uid;
+				len = sizeof(t->uid);
+				break;
+			
+			case 3: // Item Index
+				res_type = ASN_UNSIGNED;
+				value = (char *)&item_id;
+				len = sizeof(item_id);
+				break;
+
+			case 4: // Item name
+				res_type = ASN_OCTET_STR;
+				value = itm->name;
+				len = strlen(value);
+				break;
+
+			case 5: // Item value
+				if (type == perf_item_type_counter) {
+					uint64_t v64 = perf_item_val_get_raw(itm);
+					struct counter64 vc64;
+					vc64.high = v64 >> 32;
+					vc64.low = v64 & 0xFFFFFFFF;
+					value = (char *) (&vc64);
+					res_type = ASN_COUNTER64;
+					len = sizeof(struct counter64);
+				} else if (type == perf_item_type_gauge) {
+					int32_t v = perf_item_val_get_raw(itm);
+					value = (char *)&v;
+					res_type = ASN_GAUGE;
+					len = sizeof(int32_t);
+				}
+
+				break;
+			
+			case 6: // Item description
+				res_type = ASN_OCTET_STR;
+				value = itm->descr;
+				len = strlen(value);
+				break;
+
+
+		}
+
+		target_unlock_instance(t);
+
+		if (reqinfo->mode == MODE_GETNEXT) {
+			*(table_info->indexes->val.integer) = r->uid;
+			*(table_info->indexes->next_variable->val.integer) = t->uid;
+			*(table_info->indexes->next_variable->next_variable->val.integer) = item_id;
+			netsnmp_table_build_result(reginfo, requests, table_info, res_type, (unsigned char *)value, len);
+		} else if (reqinfo->mode == MODE_GET && var->type == ASN_NULL) {
+			snmp_set_var_typed_value(var, res_type, (unsigned char*)value, len);
+		}
+
+		requests = requests->next;
+	}
+
 
 	return SNMP_ERR_NOERROR;
 }
