@@ -31,6 +31,8 @@
 #include <zlib.h>
 #endif
 
+#include "perf.h"
+
 #include "target_http.h"
 #include "target_http_mime.h"
 #include "target_http_log.h"
@@ -138,6 +140,16 @@ int target_init_http(struct target *t) {
 	target_register_param_value(t, mode_default, "dump_doc", priv->dump_doc);
 
 
+	priv->perf_tot_conn = perf_add_item(t->perfs, "tot_conn", perf_item_type_counter, "Total number of connections handled");
+	priv->perf_cur_conn = perf_add_item(t->perfs, "cur_conn", perf_item_type_gauge, "Current number of connections being handled");
+	priv->perf_dumped_files = perf_add_item(t->perfs, "dumped_files", perf_item_type_counter, "Number of files dumped from http payload");
+	priv->perf_dumped_bytes = perf_add_item(t->perfs, "dumped_bytes", perf_item_type_counter, "Number of bytes dumped from http payload");
+	priv->perf_open_files = perf_add_item(t->perfs, "open_files", perf_item_type_gauge, "Number of files currently open");
+	priv->perf_parsed_reqs = perf_add_item(t->perfs, "parsed_reqs", perf_item_type_counter, "Number of requests parsed");
+	priv->perf_parsed_resps = perf_add_item(t->perfs, "parsed_resps", perf_item_type_counter, "Number of response parsed");
+	priv->perf_parse_errors = perf_add_item(t->perfs, "parse_errors", perf_item_type_counter, "Number of errors while parsing");
+
+
 	return POM_OK;
 }
 
@@ -179,6 +191,16 @@ int target_cleanup_http(struct target *t) {
 		ptype_cleanup(priv->dump_txt);
 		ptype_cleanup(priv->dump_bin);
 		ptype_cleanup(priv->dump_doc);
+
+		perf_remove_item(t->perfs, priv->perf_tot_conn);
+		perf_remove_item(t->perfs, priv->perf_cur_conn);
+		perf_remove_item(t->perfs, priv->perf_dumped_files);
+		perf_remove_item(t->perfs, priv->perf_dumped_bytes);
+		perf_remove_item(t->perfs, priv->perf_open_files);
+		perf_remove_item(t->perfs, priv->perf_parsed_reqs);
+		perf_remove_item(t->perfs, priv->perf_parsed_resps);
+		perf_remove_item(t->perfs, priv->perf_parse_errors);
+
 		free(priv);
 	}
 
@@ -244,6 +266,9 @@ int target_process_http(struct target *t, struct frame *f) {
 		if (priv->ct_privs)
 			priv->ct_privs->prev = cp;
 		priv->ct_privs = cp;
+		
+		perf_item_val_inc(priv->perf_cur_conn, 1);
+		perf_item_val_inc(priv->perf_tot_conn, 1);
 
 	}
 
@@ -291,14 +316,15 @@ int target_process_http(struct target *t, struct frame *f) {
 				size_t len = target_parse_query_response_http(priv, cp, pload, psize);
 
 				if (len == POM_ERR) {
-					target_reset_conntrack_http(cp);
+					target_reset_conntrack_http(priv, cp);
 					cp->state = HTTP_INVALID;
 					return POM_OK;
 				} else if (len == 0) { // Buffer incomplete
 					if (psize > HTTP_MAX_HEADER_LINE) {
 						pom_log(POM_LOG_TSHOOT "Invalid HTTP query/request : too long");
-						target_reset_conntrack_http(cp);
+						target_reset_conntrack_http(priv, cp);
 						cp->state = HTTP_INVALID;
+						perf_item_val_inc(priv->perf_parse_errors, 1);
 						break;
 					} else  {
 						target_buffer_payload_http(cp, pload, psize);
@@ -319,8 +345,9 @@ int target_process_http(struct target *t, struct frame *f) {
 			if (!nl) { // Buffer incomplete
 				if (psize > HTTP_MAX_HEADER_LINE) {
 					pom_log(POM_LOG_TSHOOT "Header too long. Discarding");
-					target_reset_conntrack_http(cp);
+					target_reset_conntrack_http(priv, cp);
 					cp->state = HTTP_INVALID;
+						perf_item_val_inc(priv->perf_parse_errors, 1);
 					break;
 				} else {
 					target_buffer_payload_http(cp, pload, psize);
@@ -339,12 +366,14 @@ int target_process_http(struct target *t, struct frame *f) {
 
 				if (target_parse_response_headers_http(priv, cp) == POM_ERR) {
 					pom_log(POM_LOG_TSHOOT "Invalid HTTP header received. Ignoring connection");
-					target_reset_conntrack_http(cp);
+					target_reset_conntrack_http(priv, cp);
 					cp->state = HTTP_INVALID;
+					perf_item_val_inc(priv->perf_parse_errors, 1);
 					break;
 				}
 
 				if (cp->state == HTTP_QUERY) {
+					perf_item_val_inc(priv->perf_parsed_reqs, 1);
 					if (cp->info.flags & HTTP_FLAG_HAVE_CLEN && cp->info.content_len != 0) {
 						cp->state = HTTP_BODY;
 						cp->info.content_type = 0; // Make sure the body isn't matched
@@ -355,6 +384,7 @@ int target_process_http(struct target *t, struct frame *f) {
 						return POM_OK;
 					}
 				} else if (cp->state == HTTP_RESPONSE) {
+					perf_item_val_inc(priv->perf_parsed_resps, 1);
 					if ((cp->info.err_code >= 100 && cp->info.err_code < 200) || cp->info.err_code == 204 || cp->info.err_code == 304)
 						cp->state = HTTP_HEADER; // HTTP RFC specified that those reply don't have a body
 					else
@@ -362,8 +392,9 @@ int target_process_http(struct target *t, struct frame *f) {
 					continue;
 				} else {
 					pom_log(POM_LOG_TSHOOT "Internal error, invalid state");
-					target_reset_conntrack_http(cp);
-					cp->state = HTTP_INVALID;
+					target_reset_conntrack_http(priv, cp);
+					cp->state = HTTP_INVALID;	
+					perf_item_val_inc(priv->perf_parse_errors, 1);
 					break;
 				}
 				continue;
@@ -373,8 +404,9 @@ int target_process_http(struct target *t, struct frame *f) {
 			if (!colon) {
 				if (strsize > HTTP_MAX_HEADER_LINE) { // I've never seen a so long buffer name
 					pom_log(POM_LOG_TSHOOT "Invalid header line. Discarding connection");
-					target_reset_conntrack_http(cp);
+					target_reset_conntrack_http(priv, cp);
 					cp->state = HTTP_INVALID;
+					perf_item_val_inc(priv->perf_parse_errors, 1);
 					break;
 				} else {
 					target_buffer_payload_http(cp, pload, psize);
@@ -387,7 +419,7 @@ int target_process_http(struct target *t, struct frame *f) {
 			while (name_size > 0 && pload[name_size - 1] == ' ')
 				name_size--;
 			if (!name_size) {
-				target_reset_conntrack_http(cp);
+				target_reset_conntrack_http(priv, cp);
 				pom_log(POM_LOG_TSHOOT "Header name empty");
 				cp->state = HTTP_INVALID;
 				break;
@@ -414,7 +446,7 @@ int target_process_http(struct target *t, struct frame *f) {
 		if (cp->info.flags & HTTP_FLAG_HAVE_CLEN && cp->info.content_len == 0) {
 			if (target_write_log_http(priv, cp) == POM_ERR)
 				return POM_ERR;
-			target_reset_conntrack_http(cp);
+			target_reset_conntrack_http(priv, cp);
 			continue;
 		}
 
@@ -453,7 +485,7 @@ int target_process_http(struct target *t, struct frame *f) {
 							return POM_OK;
 						} else {
 							pom_log(POM_LOG_TSHOOT "Invalid chunk size : cannot find CRLF");
-							target_reset_conntrack_http(cp);
+							target_reset_conntrack_http(priv, cp);
 							cp->state = HTTP_INVALID;
 							break;
 						}
@@ -465,14 +497,14 @@ int target_process_http(struct target *t, struct frame *f) {
 						num[num_size] = 0;
 					} else {
 						pom_log(POM_LOG_TSHOOT "Invalid chunk size : too big");
-						target_reset_conntrack_http(cp);
+						target_reset_conntrack_http(priv, cp);
 						cp->state = HTTP_INVALID;
 						break;
 					}
 
 					if (sscanf(num, "%x", &cp->info.chunk_len) != 1) {
 						pom_log(POM_LOG_TSHOOT "Invalid chunk size : unparsable");
-						target_reset_conntrack_http(cp);
+						target_reset_conntrack_http(priv, cp);
 						cp->state = HTTP_INVALID;
 						break;
 					}
@@ -483,7 +515,7 @@ int target_process_http(struct target *t, struct frame *f) {
 				if (cp->info.chunk_len == 0) {
 					if (target_write_log_http(priv, cp) == POM_ERR)
 						return POM_ERR;
-					target_reset_conntrack_http(cp);
+					target_reset_conntrack_http(priv, cp);
 					if (size > 2) {
 						psize -= 2; // add the crlf
 						pload += 2;
@@ -513,7 +545,7 @@ int target_process_http(struct target *t, struct frame *f) {
 				if ((cp->info.flags & HTTP_FLAG_GZIP || cp->info.flags & HTTP_FLAG_DEFLATE) && PTYPE_BOOL_GETVAL(priv->decompress)) { // same shit, different headers
 					if (cp->fd == -1 && target_file_open_http(t, cp, f, 0) == POM_ERR)
 						return POM_ERR;
-					size_t len = target_process_gzip_http(cp, pload, size);
+					size_t len = target_process_gzip_http(priv, cp, pload, size);
 					if (len == POM_ERR)
 						return POM_ERR;
 					else if (len == 0) // Was marked as invalid
@@ -534,6 +566,7 @@ int target_process_http(struct target *t, struct frame *f) {
 							pom_log(POM_LOG_ERR "Unable to write into a file");
 							return POM_ERR;
 						}
+						perf_item_val_inc(priv->perf_dumped_bytes, wres);
 						pload += wres;
 						size -= wres;
 						psize -= wres;
@@ -554,7 +587,7 @@ int target_process_http(struct target *t, struct frame *f) {
 			if (cp->info.content_pos >= cp->info.content_len) {
 				if (target_write_log_http(priv, cp) == POM_ERR)
 					return POM_ERR;
-				target_reset_conntrack_http(cp);
+				target_reset_conntrack_http(priv, cp);
 			}
 		}
 	}
@@ -578,7 +611,7 @@ int target_close_connection_http(struct target *t, struct conntrack_entry *ce, v
 	cp = conntrack_priv;
 
 	int res = target_write_log_http(priv, cp);
-	target_reset_conntrack_http(cp);
+	target_reset_conntrack_http(priv, cp);
 
 	if (cp->buff)
 		free(cp->buff);
@@ -591,8 +624,9 @@ int target_close_connection_http(struct target *t, struct conntrack_entry *ce, v
 	if (cp->next)
 		cp->next->prev = cp->prev;
 
-
 	free(cp);
+	
+	perf_item_val_inc(priv->perf_cur_conn, -1);
 
 	return res;
 
@@ -668,7 +702,7 @@ size_t target_parse_query_response_http(struct target_priv_http *priv, struct ta
 					cp->state = HTTP_RESPONSE;
 				} else if (!strncasecmp(token, "GET ", strlen("GET ")) || !strncasecmp(token, "POST ", strlen("POST "))) {
 					if (cp->info.headers_num > 0) // New query but headers are present -> reset
-						target_reset_conntrack_http(cp);
+						target_reset_conntrack_http(priv, cp);
 
 					if (cp->log_info) {
 						if (cp->log_info->log_flags & HTTP_LOG_LOGGED_QUERY) {
@@ -775,7 +809,7 @@ int target_parse_response_headers_http(struct target_priv_http *priv, struct tar
 
 #ifdef HAVE_ZLIB
 
-size_t target_process_gzip_http(struct target_conntrack_priv_http *cp, char *pload, size_t size) {
+size_t target_process_gzip_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp, char *pload, size_t size) {
 
 	if (!cp->info.zbuff) {
 
@@ -827,6 +861,7 @@ size_t target_process_gzip_http(struct target_conntrack_priv_http *cp, char *plo
 					free(buff);
 					return POM_ERR;
 				}
+				perf_item_val_inc(priv->perf_dumped_bytes, wres);
 				wpos += wres;
 				wsize -= wres;
 					
@@ -861,7 +896,7 @@ size_t target_process_gzip_http(struct target_conntrack_priv_http *cp, char *plo
 
 #endif
 
-int target_reset_conntrack_http(struct target_conntrack_priv_http *cp) {
+int target_reset_conntrack_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp) {
 
 	cp->info.flags = 0;
 	if (cp->info.headers) {
@@ -879,6 +914,8 @@ int target_reset_conntrack_http(struct target_conntrack_priv_http *cp) {
 	if (cp->fd != -1) {
 		close(cp->fd);
 		cp->fd = -1;
+		perf_item_val_inc(priv->perf_open_files, -1);
+		perf_item_val_inc(priv->perf_dumped_files, 1);
 	}
 
 #ifdef HAVE_ZLIB
@@ -962,6 +999,8 @@ int target_file_open_http(struct target *t, struct target_conntrack_priv_http *c
 		cp->log_info->filename = malloc(strlen(filename_final) + 1);
 		strcpy(cp->log_info->filename, filename_final);
 	}
+
+	perf_item_val_inc(priv->perf_open_files, 1);
 
 	pom_log(POM_LOG_TSHOOT "%s opened", filename);
 

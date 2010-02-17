@@ -844,7 +844,7 @@ int snmpcmd_target_perf_extra_handler(netsnmp_mib_handler *handler, netsnmp_hand
 			
 			// Find the right item
 			int i;
-			for (i = 1; itm && item_id; i++) {
+			for (i = 1; itm && i < item_id; i++) {
 				itm = snmpcmd_target_perf_item_getnext(t, itm->next, type);
 			}
 			

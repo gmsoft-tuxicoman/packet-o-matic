@@ -958,6 +958,7 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 
 
 	int adapt_id = 0; // Will store from what adapter the packet comes
+	int timeout = 0;
 
 	while (dlen == 0) {
 
@@ -987,7 +988,7 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 				pom_log(POM_LOG_ERR "Error on select()");
 				return POM_ERR;
 			} else if (res > 0) {
-
+				timeout = 0;
 				for (adapt_id = 0; adapt_id < p->num_adapts_open; adapt_id++) {
 					if (FD_ISSET(p->adapts[adapt_id].dvr_fd, &rfds)) {
 						dlen = input_read_from_adapt_docsis(i, f, adapt_id);
@@ -1001,6 +1002,12 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 						if (dlen > 0) // Got a full packet
 							break;
 					}
+				}
+			} else {
+				timeout++;
+				if (timeout > 10) {
+					pom_log(POM_LOG_ERR "Timeout occured while waiting for data on all adaptors");
+					return POM_ERR;
 				}
 			}
 

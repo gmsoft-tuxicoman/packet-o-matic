@@ -1,3 +1,9 @@
+* 2010/02/17 Guy Martin <gmsoft@tuxicoman.be>
+Check for timeout when waiting for packets from all adapters in input_docsis.
+Fix SNMP target perf objects when more than one perf object exists.
+Use write() correctly in target_http.
+Added performance items in target_http.
+
 * 2010/02/08 Guy Martin <gmsoft@tuxicoman.be>
 Fix ioctl call to FE_READ_BER in input_docsis.
 Update SNMP MIB for perfs.

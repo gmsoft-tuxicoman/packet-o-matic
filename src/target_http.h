@@ -141,6 +141,15 @@ struct target_priv_http {
 
 	struct target_conntrack_priv_http *ct_privs;
 
+	struct perf_item *perf_tot_conn;
+	struct perf_item *perf_cur_conn;
+	struct perf_item *perf_dumped_files;
+	struct perf_item *perf_dumped_bytes;
+	struct perf_item *perf_open_files;
+	struct perf_item *perf_parsed_reqs;
+	struct perf_item *perf_parsed_resps;
+	struct perf_item *perf_parse_errors;
+
 };
 
 
@@ -156,9 +165,9 @@ int target_cleanup_http(struct target *t);
 size_t target_parse_query_response_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp, char *pload, size_t psize);
 int target_parse_response_headers_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp);
 #ifdef HAVE_ZLIB
-size_t target_process_gzip_http(struct target_conntrack_priv_http *cp, char * pload, size_t size);
+size_t target_process_gzip_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp, char * pload, size_t size);
 #endif
-int target_reset_conntrack_http(struct target_conntrack_priv_http *cp);
+int target_reset_conntrack_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp);
 int target_buffer_payload_http(struct target_conntrack_priv_http *cp, char *pload, size_t psize);
 int target_file_open_http(struct target *t, struct target_conntrack_priv_http *cp, struct frame *f, int is_gzip);
 

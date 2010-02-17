@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <ctype.h>
+#include <errno.h>
 
 #include "target_http_log.h"
 
@@ -301,6 +302,25 @@ int target_initial_log_http(struct target_conntrack_priv_http *cp, struct frame 
 	return POM_OK;
 }
 
+static int write_to_log(int fd, char *data, size_t size) {
+
+	size_t res;
+	while ((res = write(fd, data, size))) {
+		if (res < 0) {
+			char errbuff[256];
+			strerror_r(errno, errbuff, sizeof(errbuff) - 1);
+			pom_log(POM_LOG_ERR "Error while writing to the log file : %s", errbuff);
+			return POM_ERR;
+		}
+		size -= res;
+		data += res;
+		if (!size)
+			break;
+	}
+
+	return POM_OK;
+}
+
 int target_write_log_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp) {
 
 	struct http_log_info *info = cp->log_info;
@@ -368,11 +388,9 @@ int target_write_log_http(struct target_priv_http *priv, struct target_conntrack
 			
 			int i;
 
-			size_t size = pc - log_format, res;
-			while ((res = write(priv->log_fd, log_format, size))) {
-				log_format += res;
-				size -= res;
-			}
+			size_t size = pc - log_format;
+			if (write_to_log(priv->log_fd, log_format, size) == POM_ERR)
+				return POM_ERR;
 
 			char *output = NULL;
 			unsigned char mod = *(pc + 1);
@@ -527,19 +545,17 @@ int target_write_log_http(struct target_priv_http *priv, struct target_conntrack
 			if (!output)
 				output = "-";
 
-			write(priv->log_fd, output, strlen(output));
+			if (write_to_log(priv->log_fd, output, strlen(output)) == POM_ERR)
+				return POM_ERR;
 
 
 			log_format += 2;
 
 		}
 
-		size_t size = strlen(log_format), res;
-		while ((res = write(priv->log_fd, log_format, size))) {
-			log_format += res;
-			size -= res;
-		}
-		write(priv->log_fd, "\n", strlen("\n"));
+		if (write_to_log(priv->log_fd, log_format, strlen(log_format)) == POM_ERR ||
+			write(priv->log_fd, "\n", strlen("\n") == POM_ERR))
+				return POM_ERR;
 	}
 
 	// write to the database
