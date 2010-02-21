@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2008-2009 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2008-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -44,6 +44,8 @@ int target_msn_session_init_buddy_table(struct target *t) {
 }
 
 struct target_connection_party_msn *target_msn_session_found_party(struct target *t, struct target_conntrack_priv_msn *cp, char *account, char *nick, struct timeval *when) {
+
+	struct target_priv_msn *priv = t->target_priv;
 
 	struct target_buddy_list_session_msn *bud_lst = target_msn_session_found_buddy(cp, account, nick, NULL, when);
 	
@@ -92,6 +94,8 @@ struct target_connection_party_msn *target_msn_session_found_party(struct target
 
 				cp->conv = conv;
 				conv->refcount++;
+
+				perf_item_val_inc(priv->perf_cur_conv, 1);
 			}
 
 		}
@@ -136,6 +140,11 @@ struct target_connection_party_msn *target_msn_session_found_party(struct target
 	return tmp;
 }
 
+uint32_t target_msn_session_get_buddy_hash(char *account) {
+	uint32_t hash = jhash(account, strlen(account), INITVAL);
+	hash %= TARGET_MSN_BUDDY_TABLE_SIZE;
+	return hash;
+}
 
 struct target_buddy_msn *target_msn_session_get_buddy(struct target_priv_msn *priv, char *account) {
 
@@ -159,8 +168,7 @@ struct target_buddy_msn *target_msn_session_get_buddy(struct target_priv_msn *pr
 	}
 
 
-	uint32_t hash = jhash(account, strlen(account), INITVAL);
-	hash %= TARGET_MSN_BUDDY_TABLE_SIZE;
+	uint32_t hash = target_msn_session_get_buddy_hash(account);
 
 	// Find the buddy in the hash list
 	struct target_buddy_list_msn *tmp = priv->buddy_table[hash];
@@ -185,6 +193,7 @@ struct target_buddy_msn *target_msn_session_get_buddy(struct target_priv_msn *pr
 		tmp->bud = bud;
 		tmp->next = priv->buddy_table[hash];
 		priv->buddy_table[hash] = tmp;
+		perf_item_val_inc(priv->perf_cur_buddies, 1);
 	}
 
 	return tmp->bud;
@@ -672,6 +681,8 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 				ct_privs = ct_privs->next;
 			}
 			free(new_conv);
+			perf_item_val_inc(priv->perf_cur_conv, -1);
+
 		} else {
 			// Conversations are not the same, attach it to the old session
 			if (old_sess->conv)
@@ -765,6 +776,8 @@ struct target_session_priv_msn *target_msn_session_merge(struct target_priv_msn 
 	
 	free(new_sess->parsed_path);
 	free(new_sess);
+
+	perf_item_val_inc(priv->perf_cur_sess, -1);
 
 	return old_sess;
 }
@@ -873,6 +886,8 @@ int target_msn_session_process_event(struct target_event_msn *evt) {
 	struct target_conversation_msn *conv = evt->conv;
 	struct target_session_priv_msn *sess = evt->sess;
 
+	perf_item_val_inc(priv->perf_tot_evts, 1);
+
 	if (!(evt->type & MSN_EVT_SESSION_MASK) && !conv) {
 		struct target_buddy_msn *buddy = NULL;
 		if (evt->from && evt->from != sess->user) {
@@ -914,6 +929,7 @@ int target_msn_session_process_event(struct target_event_msn *evt) {
 
 			conv->parts = party;
 
+			perf_item_val_inc(priv->perf_cur_conv, 1);
 
 		} 
 
@@ -937,6 +953,7 @@ int target_msn_session_process_event(struct target_event_msn *evt) {
 	struct tm tmp_time;
 	localtime_r((time_t*)&evt->tv.tv_sec, &tmp_time);
 
+	// Open conversation logs
 	if (!(evt->type & MSN_EVT_SESSION_MASK) && (conv->fd == -1)) {
 
 		if (!conv->parts) {
@@ -951,10 +968,21 @@ int target_msn_session_process_event(struct target_event_msn *evt) {
 
 		char filename[NAME_MAX + 1];
 		strcpy(filename, sess->parsed_path);
-		strncat(filename, sess->user->account, NAME_MAX - strlen(filename));
+
+		// Make sure the account doesn't contain any '/'
+		char *tmp_account = strdup(sess->user->account), *pos = NULL;
+		while ((pos = strchr(tmp_account, '/')))
+			*pos = '_';
+		strncat(filename, tmp_account, NAME_MAX - strlen(filename));
+		free(tmp_account);
+
 		strncat(filename, "/", NAME_MAX - strlen(filename));
-		char *party_account = conv->parts->buddy->account;
+		char *party_account = strdup(conv->parts->buddy->account);
+		while ((pos = strchr(party_account, '/')))
+			*pos = '_';
 		strncat(filename, party_account, NAME_MAX - strlen(filename));
+		free(party_account);
+
 		strncat(filename, outstr, NAME_MAX - strlen(filename));
 
 		// Open could do the job but it's better to use the API if it changes later on
@@ -975,16 +1003,21 @@ int target_msn_session_process_event(struct target_event_msn *evt) {
 		if (!PTYPE_BOOL_GETVAL(priv->dump_session))
 			return POM_OK;
 
-		char outstr[24];
+		char outstr[32];
 		memset(outstr, 0, sizeof(outstr));
 		// session-YYYYMMDD-HH.txt
-		char *format = "session-%Y%m%d-%H.txt";
+		char *format = "/session-%Y%m%d-%H.txt";
 		strftime(outstr, sizeof(outstr), format, &tmp_time);
 
 		char filename[NAME_MAX + 1];
 		strcpy(filename, sess->parsed_path);
-		strncat(filename, sess->user->account, NAME_MAX - strlen(filename));
-		strncat(filename, "/", NAME_MAX - strlen(filename));
+		// Make sure the account doesn't contain any '/'
+		char *tmp_account = strdup(sess->user->account), *pos = NULL;
+		while ((pos = strchr(tmp_account, '/')))
+			*pos = '_';
+		strncat(filename, tmp_account, NAME_MAX - strlen(filename));
+		free(tmp_account);
+
 		strncat(filename, outstr, NAME_MAX - strlen(filename));
 
 		// Open could do the job but it's better to use the API if it changes later on
@@ -1023,6 +1056,7 @@ int target_msn_session_process_event(struct target_event_msn *evt) {
 			res += target_msn_session_write(conv->fd, evt->buff);
 			res += target_msn_session_write(conv->fd, "\n");
 			pom_log(POM_LOG_TSHOOT "%s says : \"%s\"", from->account, evt->buff);
+			perf_item_val_inc(priv->perf_tot_msgs, 1);
 			break;
 		case msn_evt_buddy_leave:
 			res += target_msn_session_write(conv->fd, timestamp);

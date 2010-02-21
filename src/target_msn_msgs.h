@@ -118,6 +118,6 @@ int target_process_uun_ubn_msn(struct target *t, struct target_conntrack_priv_ms
 
 int target_mirror_string_msn(char *value);
 int target_session_timeout_msn(void *priv);
-int target_session_close_file_msn(struct target_file_transfer_msn *file);
+int target_session_close_file_msn(struct target_priv_msn *priv, struct target_file_transfer_msn *file);
 
 #endif

@@ -614,11 +614,11 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 			struct tm tmp;
 			localtime_r((time_t*)&f->tv.tv_sec, &tmp);
 			if (file->filename) {
-				char *format = "files/%Y%m%d-%H%M%S-";
+				char *format = "%Y%m%d-%H%M%S-";
 				strftime(fname, NAME_MAX, format, &tmp);
 				strncat(fname, file->filename, NAME_MAX - strlen(fname));
 			} else {
-				strncpy(fname, "files/file-transfered-", NAME_MAX);
+				strncpy(fname, "file-transfered-", NAME_MAX);
 				char *format = "%Y%m%d-%H%M%S.unk";
 				strftime(fname + strlen(fname), NAME_MAX - strlen(fname), format, &tmp);
 
@@ -631,10 +631,22 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 			return POM_OK;
 		}
 
+		// Make sure the account and filename doesn't contain '/'
+		char *tmp_account = strdup(cp->session->user->account), *pos = NULL;
+		while ((pos = strchr(tmp_account, '/')))
+			*pos = '_';
+		while ((pos = strchr(fname, '/')))
+			*pos = '_';
+
 		char filename[NAME_MAX + 1];
 		strcpy(filename, cp->session->parsed_path);
-		strncat(filename, cp->session->user->account, NAME_MAX - strlen(filename));
-		strncat(filename, "/", NAME_MAX - strlen(filename));
+		strncat(filename, tmp_account, NAME_MAX - strlen(filename));
+		free(tmp_account);
+		if (file->type == msn_file_type_display_image)
+			strncat(filename, "/", NAME_MAX - strlen(filename));
+		else
+			strncat(filename, "/files/", NAME_MAX - strlen(filename));
+		
 		strncat(filename, fname, NAME_MAX - strlen(filename));
 		int fd = target_file_open(NULL, filename, O_WRONLY | O_CREAT, 0666);
 		
@@ -644,6 +656,8 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 			pom_log(POM_LOG_ERR "Error while opening file %s for writing", filename, errbuff);
 			return POM_ERR;
 		}
+
+		perf_item_val_inc(priv->perf_cur_files, 1);
 
 		if (cp->flags & MSN_CONN_FLAG_WLM2009_BIN) // WLM2009 doesn't provide the total_size
 			total_size = msg_size + remaining_size;
@@ -705,6 +719,8 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 }
 
 int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f, struct target_buddy_msn *buddy_dest, char *buddy_guid, int oob) {
+
+	struct target_priv_msn *priv = t->target_priv;
 
 	struct target_msg_msn *m = cp->msg[cp->curdir];
 
@@ -930,7 +946,7 @@ int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *c
 
 	if (m->sip_cmd == msn_msnmsgrp2p_sip_type_bye || m->sip_cmd == msn_msnmsgrp2p_sip_type_error) {
 		if (file) 
-			target_session_close_file_msn(file);
+			target_session_close_file_msn(priv, file);
 		free(hdrs);
 		return POM_OK;
 	}
@@ -1535,10 +1551,10 @@ int target_session_timeout_msn(void *priv) {
 	struct target_file_transfer_msn *file = priv;
 	pom_log(POM_LOG_TSHOOT "Session %u timed out. Closing.", file->session_id);
 
-	return target_session_close_file_msn(file);
+	return target_session_close_file_msn(file->conv->sess->target_priv, file);
 }
 
-int target_session_close_file_msn(struct target_file_transfer_msn *file) {
+int target_session_close_file_msn(struct target_priv_msn *priv, struct target_file_transfer_msn *file) {
 
 	int res = POM_OK;
 
@@ -1546,8 +1562,13 @@ int target_session_close_file_msn(struct target_file_transfer_msn *file) {
 	
 	if (file->fd != -1) {
 		close(file->fd);
-		if (file->written_len < file->len)
+		if (file->written_len < file->len) {
 			pom_log(POM_LOG_DEBUG "File for session %u is not complete");
+			perf_item_val_inc(priv->perf_partial_files, 1);
+		}
+
+		perf_item_val_inc(priv->perf_tot_files, 1);
+		perf_item_val_inc(priv->perf_cur_files, -1);
 
 		struct target_event_msn evt;
 		memset(&evt, 0, sizeof(struct target_event_msn));

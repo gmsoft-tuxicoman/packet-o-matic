@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2007-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2007-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -38,7 +38,7 @@ int mgmtvty_init(struct mgmt_connection *c) {
 		return POM_ERR;
 	}
 
-	mgmtsrv_send(c, "%s", "\nThis is packet-o-matic " POM_VERSION "\nCopyright Guy Martin 2006-2009\n\n");
+	mgmtsrv_send(c, "%s", "\nThis is packet-o-matic " POM_VERSION "\nCopyright Guy Martin 2006-2010\n\nType '?' for command list.\n");
 
 	char commands[] = { IAC, WILL, TELOPT_ECHO, IAC, WILL, TELOPT_SGA, IAC, DO, TELOPT_NAWS, IAC, DONT, TELOPT_LINEMODE };
 	send(c->fd, commands, sizeof(commands), 0);

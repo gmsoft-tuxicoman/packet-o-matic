@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2008-2009 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2008-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,6 +27,7 @@
 struct target_connection_party_msn *target_msn_session_found_party(struct target *t, struct target_conntrack_priv_msn *cp, char *account, char *nick, struct timeval *when);
 
 // Get the buddy from the hash table
+uint32_t target_msn_session_get_buddy_hash(char *account);
 struct target_buddy_msn *target_msn_session_get_buddy(struct target_priv_msn *priv, char *account);
 
 // Found someone in the buddy list

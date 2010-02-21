@@ -145,6 +145,22 @@ int target_init_msn(struct target *t) {
 	target_register_param_value(t, mode_default, "dump_avatar", priv->dump_avatar);
 	target_register_param_value(t, mode_default, "dump_file_transfer", priv->dump_file_transfer);
 
+	priv->perf_tot_conn = perf_add_item(t->perfs, "tot_conn", perf_item_type_counter, "Total number of connections handled");
+	priv->perf_cur_conn = perf_add_item(t->perfs, "cur_conn", perf_item_type_gauge, "Current number of connections being handled");
+	priv->perf_cur_sess = perf_add_item(t->perfs, "cur_sess", perf_item_type_gauge, "Current number of MSN sessions being handled");
+	priv->perf_cur_conv = perf_add_item(t->perfs, "cur_conv", perf_item_type_gauge, "Current number of MSN conversations being handled");
+	priv->perf_cur_buddies = perf_add_item(t->perfs, "cur_buddies", perf_item_type_gauge, "Current number of MSN buddies known");
+	priv->perf_tot_files = perf_add_item(t->perfs, "tot_files", perf_item_type_counter, "Total number of dumped files from MSN file transfer");
+	priv->perf_partial_files = perf_add_item(t->perfs, "partial_files", perf_item_type_counter, "Number of dumped files for which we only have partial content");
+	priv->perf_cur_files = perf_add_item(t->perfs, "cur_files", perf_item_type_gauge, "Current number of files open from MSN file transfer");
+	priv->perf_tot_msn_cmds = perf_add_item(t->perfs, "tot_msn_cmds", perf_item_type_counter, "Total number of MSN commands processed");
+	priv->perf_unk_msn_cmds = perf_add_item(t->perfs, "unk_msn_cmds", perf_item_type_counter, "Total number of unknown MSN commands seen");
+	priv->perf_tot_msgs = perf_add_item(t->perfs, "tot_msgs", perf_item_type_counter, "Total number of messages parsed");
+	priv->perf_dropped_msgs = perf_add_item(t->perfs, "dropped_msgs", perf_item_type_counter, "Number of messages dropped because of lack of information about the session");
+	priv->perf_tot_evts = perf_add_item(t->perfs, "tot_evts", perf_item_type_counter, "Total number of MSN events seen");
+	priv->perf_dropped_evts = perf_add_item(t->perfs, "dropped_evts", perf_item_type_counter, "Number of dropped MSN events because of lack of information about the session");
+	
+
 	return POM_OK;
 }
 
@@ -176,6 +192,7 @@ int target_close_msn(struct target *t) {
 			priv->buddy_table[i] = tmp->next;
 			free(tmp);
 			tmp = priv->buddy_table[i];
+			perf_item_val_inc(priv->perf_cur_buddies, -1);
 		}
 	}
 
@@ -192,6 +209,22 @@ int target_cleanup_msn(struct target *t) {
 		ptype_cleanup(priv->dump_session);
 		ptype_cleanup(priv->dump_avatar);
 		ptype_cleanup(priv->dump_file_transfer);
+
+		perf_remove_item(t->perfs, priv->perf_tot_conn);
+		perf_remove_item(t->perfs, priv->perf_cur_conn);
+		perf_remove_item(t->perfs, priv->perf_cur_sess);
+		perf_remove_item(t->perfs, priv->perf_cur_conv);
+		perf_remove_item(t->perfs, priv->perf_cur_buddies);
+		perf_remove_item(t->perfs, priv->perf_tot_files);
+		perf_remove_item(t->perfs, priv->perf_partial_files);
+		perf_remove_item(t->perfs, priv->perf_cur_files);
+		perf_remove_item(t->perfs, priv->perf_tot_msn_cmds);
+		perf_remove_item(t->perfs, priv->perf_unk_msn_cmds);
+		perf_remove_item(t->perfs, priv->perf_tot_msgs);
+		perf_remove_item(t->perfs, priv->perf_dropped_msgs);
+		perf_remove_item(t->perfs, priv->perf_tot_evts);
+		perf_remove_item(t->perfs, priv->perf_dropped_evts);
+
 		free(priv->buddy_table);
 		free(priv);
 
@@ -277,6 +310,11 @@ int target_process_msn(struct target *t, struct frame *f) {
 		priv->ct_privs = cp;
 
 
+		// Increment the counters
+		perf_item_val_inc(priv->perf_cur_conn, 1);
+		perf_item_val_inc(priv->perf_tot_conn, 1);
+		perf_item_val_inc(priv->perf_cur_sess, 1);
+
 	}
 
 	if (!cp->ce)
@@ -310,7 +348,7 @@ int target_process_msn(struct target *t, struct frame *f) {
 			uint32_t len = 0;
 			if (cp->flags & MSN_CONN_FLAG_UDP) {
 				if (plen < sizeof(struct msn_udp_frame_layer_hdr)) {
-					pom_log(POM_LOG_DEBUG "UDP frame too shor to contain a valid header");
+					pom_log(POM_LOG_DEBUG "UDP frame too short to contain a valid header");
 					return POM_OK;
 				}
 				//struct msn_udp_frame_layer_hdr *frame_hdr = (struct msn_udp_frame_layer_hdr*)(payload);
@@ -522,6 +560,7 @@ int target_process_msn(struct target *t, struct frame *f) {
 
 int target_process_line_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
 
+	struct target_priv_msn *priv = t->target_priv;
 
 	int (*handler) (struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 	handler = NULL;
@@ -562,8 +601,11 @@ int target_process_line_msn(struct target *t, struct target_conntrack_priv_msn *
 		}
 
 		pom_log(POM_LOG_DEBUG "Unhandled command %3s", cp->buffer[cp->curdir]);
+		perf_item_val_inc(priv->perf_unk_msn_cmds, 1);
 		return POM_OK;
 	}
+
+	perf_item_val_inc(priv->perf_tot_msn_cmds, 1);
 
 	return (*handler) (t, cp, f);
 
@@ -622,7 +664,7 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 	// Close files before the conversation gets closed
 	if (!sess->refcount) {
 		while (sess->file) {
-			target_session_close_file_msn(sess->file);
+			target_session_close_file_msn(priv, sess->file);
 		}
 	}
 
@@ -634,7 +676,7 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 				if (file->conv == conv) {
 					struct target_file_transfer_msn *tmp_file = file;
 					file = file->next;
-					target_session_close_file_msn(tmp_file);
+					target_session_close_file_msn(priv, tmp_file);
 					continue;
 				}
 				file = file->next;
@@ -650,8 +692,14 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 				conv->evt_buff = tmp->next;
 				if (tmp->buff)
 					free(tmp->buff);
+				if (tmp->type == msn_evt_message) {
+					perf_item_val_inc(priv->perf_tot_msgs, 1);
+					perf_item_val_inc(priv->perf_dropped_msgs, 1);
+				}
 				free(tmp);
 				pom_log(POM_LOG_TSHOOT "Dropped buffered message because account wasn't found");
+				perf_item_val_inc(priv->perf_tot_evts, 1);
+				perf_item_val_inc(priv->perf_dropped_evts, 1);
 			}
 
 			if (conv->fd != -1)
@@ -666,6 +714,8 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 				sess->conv = conv->next;
 
 			free(conv);
+
+			perf_item_val_inc(priv->perf_cur_conv, -1);
 		}
 
 	}
@@ -680,6 +730,8 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 		struct target_buddy_list_session_msn *bud_lst = sess->buddies;
 		while (bud_lst) {
 			sess->buddies = sess->buddies->next;
+
+			struct target_buddy_msn *bud = bud_lst->bud;
 			struct target_session_list_msn *prev_sess_lst = NULL, *sess_lst = bud_lst->bud->sess_lst;
 			while (sess_lst) {
 				if (sess_lst->sess == sess) {
@@ -696,6 +748,36 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 
 			free(bud_lst);
 			bud_lst = sess->buddies;
+
+			// Buddy doesn't belong to any session, remove it from the hash table
+			if (!bud->sess_lst) {
+				uint32_t hash = target_msn_session_get_buddy_hash(bud->account);
+				struct target_buddy_list_msn *bud_hash_lst = priv->buddy_table[hash], *prev_bud_hash_lst = NULL;
+				while (bud_hash_lst && bud_hash_lst->bud != bud) {
+					prev_bud_hash_lst = bud_hash_lst;
+					bud_hash_lst = bud_hash_lst->next;
+				}
+
+				if (!bud_hash_lst) {
+					pom_log(POM_LOG_WARN "Buddy not found while looking for it in the hash table");
+				} else {
+					if (prev_bud_hash_lst)
+						prev_bud_hash_lst->next = bud_hash_lst->next;
+					else
+						priv->buddy_table[hash] = bud_hash_lst->next;
+
+					free(bud->account);
+					if (bud->nick)
+						free(bud->nick);
+					if (bud->psm)
+						free(bud->psm);
+					free(bud);
+					free(bud_hash_lst);
+
+					perf_item_val_inc(priv->perf_cur_buddies, -1);
+				}
+				
+			}
 		}
 
 		while (sess->conv) {
@@ -717,8 +799,16 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 				conv->evt_buff = tmp->next;
 				if (tmp->buff)
 					free(tmp->buff);
+				
+				if (tmp->type == msn_evt_message) {
+					perf_item_val_inc(priv->perf_tot_msgs, 1);
+					perf_item_val_inc(priv->perf_dropped_msgs, 1);
+				}
+
 				free(tmp);
 				pom_log(POM_LOG_TSHOOT "Dropped buffered message because account wasn't found");
+				perf_item_val_inc(priv->perf_tot_evts, 1);
+				perf_item_val_inc(priv->perf_dropped_evts, 1);
 			}
 
 			if (conv->fd != -1)
@@ -726,6 +816,7 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 
 			sess->conv = conv->next;
 			free(conv);
+			perf_item_val_inc(priv->perf_cur_conv, -1);
 
 		}
 
@@ -736,6 +827,8 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 				free(tmp->buff);
 			free(tmp);
 			pom_log(POM_LOG_TSHOOT "Dropped buffered event because account wasn't found");
+			perf_item_val_inc(priv->perf_tot_evts, 1);
+			perf_item_val_inc(priv->perf_dropped_evts, 1);
 		}
 
 		// Remove session reference from the account
@@ -773,6 +866,8 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 		}
 
 		free(sess);
+
+		perf_item_val_inc(priv->perf_cur_sess, -1);
 	}
 
 
@@ -786,6 +881,8 @@ int target_close_connection_msn(struct target *t, struct conntrack_entry *ce, vo
 		cp->next->prev = cp->prev;
 
 	free(cp);
+
+	perf_item_val_inc(priv->perf_cur_conn, -1);
 
 	return POM_OK;
 
@@ -843,10 +940,15 @@ struct target_conntrack_priv_msn* target_msn_conntrack_priv_fork(struct target *
 		priv->ct_privs->prev = new_cp;
 	priv->ct_privs = new_cp;
 
+	perf_item_val_inc(priv->perf_cur_conn, 1);
+	perf_item_val_inc(priv->perf_tot_conn, 1);
+
 	return new_cp;
 }
 
 int target_add_expectation_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f, char *address, char *port, unsigned int flags) {
+
+	struct target_priv_msn *priv = t->target_priv;
 
 	// Create an expectation for the new connection
 	struct expectation_list *expt  = expectation_alloc(t, f->ce, f->input, EXPT_DIR_BOTH);
@@ -896,6 +998,7 @@ int target_add_expectation_msn(struct target *t, struct target_conntrack_priv_ms
 		pom_log(POM_LOG_WARN "Unable to add an expectation");
 		new_cp->session->refcount--;
 		free(new_cp);
+		perf_item_val_inc(priv->perf_cur_conn, -1);
 		return POM_ERR;
 	}
 
@@ -916,4 +1019,3 @@ int target_free_msg_msn(struct target_conntrack_priv_msn *cp, int dir) {
 
 	return POM_OK;
 }
-

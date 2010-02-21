@@ -278,6 +278,21 @@ struct target_priv_msn {
 
 	struct target_buddy_list_msn **buddy_table;
 
+	struct perf_item *perf_tot_conn;
+	struct perf_item *perf_cur_conn;
+	struct perf_item *perf_cur_sess;
+	struct perf_item *perf_cur_conv;
+	struct perf_item *perf_cur_buddies;
+	struct perf_item *perf_tot_files;
+	struct perf_item *perf_partial_files;
+	struct perf_item *perf_cur_files;
+	struct perf_item *perf_tot_msn_cmds;
+	struct perf_item *perf_unk_msn_cmds;
+	struct perf_item *perf_tot_msgs;
+	struct perf_item *perf_dropped_msgs;
+	struct perf_item *perf_tot_evts;
+	struct perf_item *perf_dropped_evts;
+
 };
 
 
