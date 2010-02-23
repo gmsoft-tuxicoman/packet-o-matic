@@ -304,15 +304,26 @@ int perf_item_val_reset(struct perf_item *itm) {
 		gettimeofday(&tv, NULL);
 		// Time is stored in centisecs
 		itm->value = (tv.tv_sec * 100) + (tv.tv_usec / 10000);
-	} else if (itm->update_hook) {
-		perf_item_unlock(itm);
-		pom_log(POM_LOG_WARN "Cannot reset item value when an update hook is set");
-		return POM_ERR;
 	} else {
 		itm->value = 0;
 	}
 
 	perf_item_unlock(itm);
+	return POM_OK;
+}
+
+int perf_instance_items_val_reset(struct perf_instance *instance) {
+
+	perf_instance_lock(instance, 0);
+
+	struct perf_item *itm = instance->items;
+	while (itm) {
+		perf_item_val_reset(itm);
+		itm = itm->next;
+	}
+
+	perf_instance_unlock(instance);
+
 	return POM_OK;
 }
 
@@ -326,6 +337,10 @@ uint64_t perf_item_val_inc(struct perf_item *itm, int64_t inc) {
 	} else {
 		itm->value += inc;
 	}
+
+	if (itm->type == perf_item_type_counter && inc < 0)
+		pom_log(POM_LOG_WARN "Trying to decrease the value of a counter");
+
 	perf_item_unlock(itm);
 	return itm->value;
 }

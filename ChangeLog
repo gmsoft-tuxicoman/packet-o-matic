@@ -1,3 +1,12 @@
+* 2010/02/23 Guy Martin <gmsoft@tuxicoman.be>
+Tune to all frequencies at once in DOCSIS MDD messages.
+Fix uncX counter for input_docsis.
+Fix snmp getnext processing for target perf when some target don't have extra items.
+Fix usage of write() in target_tap.
+Reset extra perfmon counters for input and targets as well as known ones when needed.
+Allow receiving presence for ourself with NLN messages in target_msn.
+Added extra perfmon items for target_pop.
+
 * 2010/02/21 Guy Martin <gmsoft@tuxicoman.be>
 Prevent crash when specifying an invalid target uid with snmp get.
 Sanitize written file names in target_msn.

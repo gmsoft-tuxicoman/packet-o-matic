@@ -111,11 +111,6 @@ struct target_connection_party_msn *target_msn_session_found_party(struct target
 
 		send_join_evt = 1;
 
-
-		if (conv->parts->next) { // Little debug
-			pom_log(POM_LOG_DEBUG "More than one party joined !");
-		}
-
 	}
 
 	if (!tmp->joined) {

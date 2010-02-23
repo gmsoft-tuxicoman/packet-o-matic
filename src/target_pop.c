@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2008-2009 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2008-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -97,6 +97,12 @@ static int target_init_pop(struct target *t) {
 	target_register_param_value(t, mode_default, "path", priv->path);
 	target_register_param_value(t, mode_default, "datastore_path", priv->ds_path);
 
+	priv->perf_tot_conn = perf_add_item(t->perfs, "tot_conn", perf_item_type_counter, "Total number of connections handled");
+	priv->perf_cur_conn = perf_add_item(t->perfs, "cur_conn", perf_item_type_gauge, "Current number of connections being handled");
+	priv->perf_cur_emails = perf_add_item(t->perfs, "cur_emails", perf_item_type_gauge, "Current number of emails being dumped");
+	priv->perf_tot_emails = perf_add_item(t->perfs, "tot_emails", perf_item_type_counter, "Total number of emails dumped");
+	priv->perf_found_creds = perf_add_item(t->perfs, "found_creds", perf_item_type_counter, "Total number of credentials found");
+
 	return POM_OK;
 }
 
@@ -140,6 +146,12 @@ static int target_cleanup_pop(struct target *t) {
 			
 		ptype_cleanup(priv->ds_path);
 		ptype_cleanup(priv->path);
+
+		perf_remove_item(t->perfs, priv->perf_tot_conn);
+		perf_remove_item(t->perfs, priv->perf_cur_conn);
+		perf_remove_item(t->perfs, priv->perf_cur_emails);
+		perf_remove_item(t->perfs, priv->perf_tot_emails);
+		perf_remove_item(t->perfs, priv->perf_found_creds);
 		free(priv);
 
 	}
@@ -193,7 +205,9 @@ static int target_process_pop(struct target *t, struct frame *f) {
 		if (priv->ct_privs)
 			priv->ct_privs->prev = cp;
 		priv->ct_privs = cp;
-	
+
+		perf_item_val_inc(priv->perf_cur_conn, 1);
+		perf_item_val_inc(priv->perf_tot_conn, 1);
 	
 	}
 
@@ -237,6 +251,7 @@ static int pop_process_line(struct target *t, struct target_conntrack_priv_pop *
 		pop_reply_err,
 	};
 
+	struct target_priv_pop *priv = t->target_priv;
 
 	int reply = pop_reply_unk;
 
@@ -280,22 +295,22 @@ static int pop_process_line(struct target *t, struct target_conntrack_priv_pop *
 				if (!strncmp(".\r\n", line, strlen(".\r\n")) || reply != pop_reply_unk) {
 					cp->lastcmd = pop_cmd_other;
 					if (cp->fd != -1)
-						pop_file_close(cp);
+						pop_file_close(priv, cp);
 					break;
 				}
 				if (cp->fd == -1) // We are not getting the +OK now so we have to open the file
-					if (pop_file_open(cp, &f->tv) == POM_ERR)
+					if (pop_file_open(priv, cp, &f->tv) == POM_ERR)
 						return POM_ERR;
 
 			case pop_cmd_retr:
 				if (!strncmp(".\r\n", line, strlen(".\r\n"))) {
 					cp->lastcmd = pop_cmd_other;
-					pop_file_close(cp);
+					pop_file_close(priv, cp);
 					break;
 				}
 
 				if (cp->fd == -1) { // No file opened, open one
-					if (pop_file_open(cp, &f->tv) == POM_ERR)
+					if (pop_file_open(priv, cp, &f->tv) == POM_ERR)
 						return POM_ERR;
 				} else {
 					// remove the /r
@@ -496,6 +511,8 @@ static int target_close_connection_pop(struct target *t, struct conntrack_entry 
 
 	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx", (unsigned long) conntrack_priv);
 
+	struct target_priv_pop *priv = t->target_priv;
+
 	struct target_conntrack_priv_pop *cp;
 	cp = conntrack_priv;
 
@@ -503,7 +520,7 @@ static int target_close_connection_pop(struct target *t, struct conntrack_entry 
 		pop_write_login_info(t, cp);
 	
 	if (cp->fd != -1)
-		pop_file_close(cp);
+		pop_file_close(priv, cp);
 
 	if (cp->logon_info_str)
 		free(cp->logon_info_str);
@@ -513,8 +530,6 @@ static int target_close_connection_pop(struct target *t, struct conntrack_entry 
 		free(cp->parsed_path);
 	if (cp->filename)
 		free(cp->filename);
-
-	struct target_priv_pop *priv = t->target_priv;
 
 	if (cp->prev)
 		cp->prev->next = cp->next;
@@ -526,48 +541,52 @@ static int target_close_connection_pop(struct target *t, struct conntrack_entry 
 
 	free(cp);
 
+	perf_item_val_inc(priv->perf_cur_conn, -1);
+
 	return POM_OK;
 
 }
 
-static int pop_file_open(struct target_conntrack_priv_pop *cp, struct timeval *recvd_time) {
+static int pop_file_open(struct target_priv_pop *priv, struct target_conntrack_priv_pop *cp, struct timeval *recvd_time) {
 
-		char filename[NAME_MAX + 1];
-		memset(filename, 0, NAME_MAX + 1);
+	char filename[NAME_MAX + 1];
+	memset(filename, 0, NAME_MAX + 1);
 
-		sprintf(filename, "%u.M%uP%uQ%llu.", (unsigned int)recvd_time->tv_sec, (unsigned int)recvd_time->tv_usec, getpid(), total_delivery);
+	sprintf(filename, "%u.M%uP%uQ%llu.", (unsigned int)recvd_time->tv_sec, (unsigned int)recvd_time->tv_usec, getpid(), total_delivery);
 
-		char hostname[HOST_NAME_MAX + 1];
-		if (gethostname(hostname, HOST_NAME_MAX) == -1)
-			strcpy(hostname, "unknow.host");
-		strncat(filename, hostname, NAME_MAX - strlen(filename));
+	char hostname[HOST_NAME_MAX + 1];
+	if (gethostname(hostname, HOST_NAME_MAX) == -1)
+		strcpy(hostname, "unknow.host");
+	strncat(filename, hostname, NAME_MAX - strlen(filename));
 
-		cp->filename = malloc(strlen(filename) + 1);
-		strcpy(cp->filename, filename);
+	cp->filename = malloc(strlen(filename) + 1);
+	strcpy(cp->filename, filename);
 
-		char final_name[NAME_MAX + 1];
+	char final_name[NAME_MAX + 1];
 
-		strncpy(final_name, cp->parsed_path, NAME_MAX);
-		strncat(final_name, "tmp/", NAME_MAX - strlen(final_name));
-		strncat(final_name, filename, NAME_MAX - strlen(final_name));
+	strncpy(final_name, cp->parsed_path, NAME_MAX);
+	strncat(final_name, "tmp/", NAME_MAX - strlen(final_name));
+	strncat(final_name, filename, NAME_MAX - strlen(final_name));
 
-		cp->fd = target_file_open(NULL, final_name, O_RDWR | O_CREAT, 0666);
+	cp->fd = target_file_open(NULL, final_name, O_RDWR | O_CREAT, 0666);
 
-		if (cp->fd == -1) {
-			char errbuff[256];
-			strerror_r(errno, errbuff, sizeof(errbuff));
-			pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s", filename, errbuff);
-			return POM_ERR;
-		}
+	if (cp->fd == -1) {
+		char errbuff[256];
+		strerror_r(errno, errbuff, sizeof(errbuff));
+		pom_log(POM_LOG_ERR "Unable to open file %s for writing : %s", filename, errbuff);
+		return POM_ERR;
+	}
 
-		total_delivery++;
+	total_delivery++;
 
-		pom_log(POM_LOG_TSHOOT "%s opened", filename);
+	perf_item_val_inc(priv->perf_cur_emails, 1);
+
+	pom_log(POM_LOG_TSHOOT "%s opened", filename);
 
 	return POM_OK;
 }
 
-static int pop_file_close(struct target_conntrack_priv_pop *cp) {
+static int pop_file_close(struct target_priv_pop *priv, struct target_conntrack_priv_pop *cp) {
 
 	if (cp->fd == -1)
 		return POM_ERR;
@@ -608,6 +627,9 @@ static int pop_file_close(struct target_conntrack_priv_pop *cp) {
 		return POM_ERR;
 	}
 
+	perf_item_val_inc(priv->perf_cur_emails, -1);
+	perf_item_val_inc(priv->perf_tot_emails, 1);
+
 	pom_log(POM_LOG_TSHOOT "%s closed and moved to directory new", old_name);
 	return POM_OK;
 
@@ -645,12 +667,26 @@ static int pop_write_login_info(struct target *t, struct target_conntrack_priv_p
 		pom_log(POM_LOG_ERR "Unable to open file %s to write credentials", final_name);
 		return POM_ERR;
 	}
-	write(fd, cp->logon_info_str, strlen(cp->logon_info_str));
+
+	size_t wres = 0, pos = 0, size = strlen(cp->logon_info_str);
+
+	while (size > 0) {
+		wres = write(fd, cp->logon_info_str + pos, size);
+		if (wres == -1) {
+			pom_log(POM_LOG_ERR "Error while writing to credential file");
+			close(fd);
+			return POM_ERR;
+		}
+		pos += wres;
+		size -= wres;
+	}
 	close(fd);
 
 	free(cp->logon_info_str);
 	cp->logon_info_str = NULL;
 	cp->logon_got_pass = 0;
+
+	perf_item_val_inc(priv->perf_found_creds, 1);
 
 	return POM_OK;
 }

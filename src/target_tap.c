@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -30,6 +30,7 @@
 #include <sys/ioctl.h>
 
 #include <net/if.h>
+#include <errno.h>
 
 static int match_ethernet_id;
 
@@ -143,7 +144,7 @@ static int target_process_tap(struct target *t, struct frame *f) {
 		return POM_ERR;
 	}
 	
-	int start = layer_find_start(f->l, match_ethernet_id);
+	size_t start = layer_find_start(f->l, match_ethernet_id);
 
 	if (start == POM_ERR) {
 		pom_log(POM_LOG_ERR "Unable to find the start of the packet");
@@ -151,7 +152,19 @@ static int target_process_tap(struct target *t, struct frame *f) {
 
 	}
 
-	write(priv->fd, f->buff + start, f->len - start);
+	size_t wres = 0, size = f->len - start;
+
+	while (size > 0) {
+		wres = write(priv->fd, f->buff + start, size);
+		if (wres == -1) {
+			char errbuff[256];
+			strerror_r(errno, errbuff, sizeof(errbuff) - 1);
+			pom_log(POM_LOG_ERR "Error while writing to the tap interface : %s", errbuff);
+			return POM_ERR;
+		}
+		start += wres;
+		size -= wres;
+	}
 
 	return POM_OK;
 }

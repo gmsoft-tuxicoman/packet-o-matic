@@ -1648,10 +1648,6 @@ static int input_parse_mdd_docsis(struct input *i, unsigned int adapt_id, unsign
 
 					pom_log(POM_LOG_INFO "New frequency %uHz found and locked on adapter %u", freq, p->num_adapts_open - 1);
 
-					// Try to open only one freq at a time to avoid buff overflows on other cards
-					return POM_OK;
-
-
 				}
 
 				break;
@@ -1721,8 +1717,8 @@ static int input_update_unc_docsis(struct perf_item *itm, void *priv) {
 	uint32_t unc = 0;
 	if (ioctl(adapt->frontend_fd, FE_READ_UNCORRECTED_BLOCKS , &unc) != 0)
 		return POM_ERR;
-
-	itm->value = unc;
+	// uncorrected blocks value get cleared after polling
+	itm->value += unc;
 	return POM_OK;
 }
 

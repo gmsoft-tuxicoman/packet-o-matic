@@ -857,43 +857,51 @@ int snmpcmd_target_perf_extra_handler(netsnmp_mib_handler *handler, netsnmp_hand
 		if (reqinfo->mode == MODE_GETNEXT) {
 			if (rule_uid == 0 || !r) { // Get first rule
 				r = NULL;
+				do {
 				snmpcmd_rules_find_next(main_config->rules, &r);
-				t = r->target;
-				itm = snmpcmd_target_perf_item_getnext(t, t->perfs->items, type);
+				} while (r && !r->target);
+
+				itm = NULL;
+				t = NULL;
+				item_id = 0;
+
 			}
 
-			if (target_uid == 0) { // Get the first target
-				t = NULL;
-				snmpcmd_target_find_next(r->target, &t);
-				if (t) {
-					itm = snmpcmd_target_perf_item_getnext(t, t->perfs->items, type);
-					item_id = 1;
-				}
-			} else {
-				// Get the next target parameter
-				if (itm) {
+			while (r) { // Browse through all the rules, target and items
+				if (itm) { // Get the next target item
 					itm = snmpcmd_target_perf_item_getnext(t, itm->next, type);
 					item_id++;
+					if (itm)
+						break;
 				}
+
 				if (!itm) {
 					// Get the next target
 					snmpcmd_target_find_next(r->target, &t);
-					if (!t) { // Got the end of the target, next rule, first target, first param
-						snmpcmd_rules_find_next(main_config->rules, &r);
-						if (!r) { // Last rule, back to first rule with first targeti, first param and next colnum
-							r = NULL;
+					if (!t) { // Got the end of the target. Go to next rule, first target, first param
+						do {
 							snmpcmd_rules_find_next(main_config->rules, &r);
-							snmpcmd_target_find_next(r->target, &t);
+						} while (r && !r->target);
+
+						if (!r) { // Last rule, back to first rule with first target, first param and next colnum
+							r = NULL;
+							do {
+								snmpcmd_rules_find_next(main_config->rules, &r);
+							} while (r && !r->target);
 							table_info->colnum++;
+							t = NULL;
 						} else { // First target of next rule
 							t = NULL;
 							snmpcmd_target_find_next(r->target, &t);
 						}
+						itm = NULL;
 					} 
 					
 					if (t) {
 						item_id = 1;
 						itm = snmpcmd_target_perf_item_getnext(t, t->perfs->items, type);
+						if (itm)
+							break;
 					}
 				}
 			}

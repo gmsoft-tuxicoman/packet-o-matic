@@ -972,12 +972,19 @@ int target_msn_handler_nln(struct target *t, struct target_conntrack_priv_msn *c
 			friendly = tokens[4];
 		}
 
-		struct target_buddy_list_session_msn *bud_lst = target_msn_session_found_buddy(cp, account, friendly, NULL, &f->tv);
-		if (!bud_lst) {
-			pom_log(POM_LOG_DEBUG "Invalid account in NLN message : %s", account);
-			return POM_OK;
+		// In MSNP 18->above, you can receive presence for yourself
+
+		if (cp->session->user->account && !strcasecmp(account, cp->session->user->account)) {
+			buddy = cp->session->user;
+		} else {
+
+			struct target_buddy_list_session_msn *bud_lst = target_msn_session_found_buddy(cp, account, friendly, NULL, &f->tv);
+			if (!bud_lst) {
+				pom_log(POM_LOG_DEBUG "Invalid account in NLN message : %s", account);
+				return POM_OK;
+			}
+			buddy = bud_lst->bud;
 		}
-		buddy = bud_lst->bud;
 	} else {
 		pom_log(POM_LOG_DEBUG "Warning, invalid NLN message : %s", tokens[3]);
 		return POM_OK;

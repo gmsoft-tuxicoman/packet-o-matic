@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2008-2009 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2008-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -57,6 +57,12 @@ struct target_priv_pop {
 	struct target_dataset *dset;
 
 	struct target_conntrack_priv_pop *ct_privs;
+
+	struct perf_item *perf_tot_conn;
+	struct perf_item *perf_cur_conn;
+	struct perf_item *perf_cur_emails;
+	struct perf_item *perf_tot_emails;
+	struct perf_item *perf_found_creds;
 };
 
 int target_register_pop(struct target_reg *r);
@@ -69,8 +75,8 @@ static int target_close_pop(struct target *t);
 static int target_cleanup_pop(struct target *t);
 
 static int pop_process_line(struct target *t, struct target_conntrack_priv_pop *cp, char *line, int size, struct frame *f, struct layer *lastl);
-static int pop_file_open(struct target_conntrack_priv_pop *cp, struct timeval *recvd_time);
-static int pop_file_close(struct target_conntrack_priv_pop *cp);
+static int pop_file_open(struct target_priv_pop *priv, struct target_conntrack_priv_pop *cp, struct timeval *recvd_time);
+static int pop_file_close(struct target_priv_pop *priv, struct target_conntrack_priv_pop *cp);
 static int pop_write_login_info(struct target *t, struct target_conntrack_priv_pop *cp);
 
 #endif

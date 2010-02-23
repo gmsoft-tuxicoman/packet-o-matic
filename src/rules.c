@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -911,9 +911,7 @@ int rule_list_enable(struct rule_list *rl) {
 
 	struct ptype* param_reset_counters_on_restart = core_get_param_value("reset_counters_on_item_restart");
 	if (PTYPE_BOOL_GETVAL(param_reset_counters_on_restart)) {
-		perf_item_val_reset(rl->perf_uptime);
-		perf_item_val_reset(rl->perf_pkts);
-		perf_item_val_reset(rl->perf_bytes);
+		perf_instance_items_val_reset(rl->perfs);
 	} else {
 		perf_item_val_uptime_restart(rl->perf_uptime);
 	}
