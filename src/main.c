@@ -1024,6 +1024,8 @@ err:
 	perf_cleanup();
 	ptype_unregister_all();
 
+	uid_cleanup();
+
 	pom_log_cleanup();
 
 	return 0;

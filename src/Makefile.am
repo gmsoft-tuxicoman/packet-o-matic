@@ -21,7 +21,7 @@ packet_o_matic_LDADD = libpom.la @xmlrpc_LIBS@ @netsnmp_LIBS@
 
 noinst_HEADERS = include/jhash.h
 
-libpom_la_SOURCES = input.c input.h match.c match.h conntrack.c conntrack.h target.c target.h timers.c timers.h helper.c helper.h ptype.c ptype.h expectation.c expectation.h common.c common.h layer.c layer.h include/jhash.h datastore.c datastore.h perf.c perf.h
+libpom_la_SOURCES = input.c input.h match.c match.h conntrack.c conntrack.h target.c target.h timers.c timers.h helper.c helper.h ptype.c ptype.h expectation.c expectation.h common.c common.h layer.c layer.h include/jhash.h datastore.c datastore.h perf.c perf.h uid.c uid.h
 libpom_la_CFLAGS = -DLIBDIR='"@LIB_DIR@"'
 
 INPUT_OBJS = @INPUT_OBJS@

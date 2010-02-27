@@ -62,6 +62,13 @@ struct target_priv_tftp {
 	/// All the connections of this target
 	struct target_conntrack_priv_tftp *ct_privs;
 
+	struct perf_item *perf_tot_conn;
+	struct perf_item *perf_cur_conn;
+	struct perf_item *perf_cur_files;
+	struct perf_item *perf_dumped_files;
+	struct perf_item *perf_dumped_bytes;
+	struct perf_item *perf_missed_blocks;
+
 };
 
 int target_register_tftp(struct target_reg *r);
@@ -73,7 +80,7 @@ static int target_close_tftp(struct target *t);
 static int target_cleanup_tftp(struct target *t);
 
 static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, struct target_conntrack_priv_tftp *cp, char *line, int size, struct frame *f);
-static int tftp_file_open(struct target_conntrack_priv_tftp *cp, struct timeval *recvd_time);
-static int tftp_file_close(struct target_conntrack_priv_tftp *cp);
+static int tftp_file_open(struct target_priv_tftp *priv, struct target_conntrack_priv_tftp *cp, struct timeval *recvd_time);
+static int tftp_file_close(struct target_priv_tftp *priv, struct target_conntrack_priv_tftp *cp);
 
 #endif

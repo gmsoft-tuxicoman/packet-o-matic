@@ -207,6 +207,18 @@ struct target *parse_target(xmlDocPtr doc, xmlNodePtr cur) {
 		return NULL;
 	}
 
+	char *target_uid;
+	target_uid = (char *) xmlGetProp(cur, (const xmlChar*) "uid");
+	if (target_uid) {
+		uint32_t uid = 0;
+		sscanf(target_uid, "%u", &uid);
+		if (uid) {
+			uid_release(tp->uid);
+			tp->uid = uid_set(uid);
+		}
+		xmlFree(target_uid);
+	}
+
 	char *target_mode;
 	target_mode = (char *) xmlGetProp(cur, (const xmlChar*) "mode");
 	if (target_mode) {
@@ -462,8 +474,20 @@ struct rule_node *parse_match(xmlDocPtr doc, xmlNodePtr cur) {
 struct rule_list *parse_rule(xmlDocPtr doc, xmlNodePtr cur) {
 
 
-	struct rule_list *r  = rule_list_alloc(NULL);
+	struct rule_list *r = rule_list_alloc(NULL);
 	
+	char *rule_uid;
+	rule_uid = (char *) xmlGetProp(cur, (const xmlChar*) "uid");
+	if (rule_uid) {
+		uint32_t uid = 0;
+		sscanf(rule_uid, "%u", &uid);
+		if (uid) {
+			uid_release(r->uid);
+			r->uid = uid_set(uid);
+		}
+		xmlFree(rule_uid);
+	}
+
 	struct ptype *disabled_pt = ptype_alloc("bool", NULL);
 	if (!disabled_pt) {
 		pom_log(POM_LOG_ERR "Unable to load ptype bool !");
@@ -566,6 +590,18 @@ struct datastore* config_parse_datastore(xmlDocPtr doc, xmlNodePtr cur) {
 		xmlFree(datastore_type);
 		xmlFree(datastore_name);
 		return NULL;
+	}
+
+	char *datastore_uid;
+	datastore_uid = (char *) xmlGetProp(cur, (const xmlChar*) "uid");
+	if (datastore_uid) {
+		uint32_t uid = 0;
+		sscanf(datastore_uid, "%u", &uid);
+		if (uid) {
+			uid_release(d->uid);
+			d->uid = uid_set(uid);
+		}
+		xmlFree(datastore_uid);
 	}
 
 	d->name = malloc(strlen(datastore_name) + 1);
@@ -1141,6 +1177,8 @@ int config_write(struct conf *c, char *filename) {
 		xmlTextWriterWriteFormatString(writer, "\n");
 	}
 
+	char uid_str[11];
+
 	// write the datastores
 	if (c->datastores) {
 		struct datastore *d = c->datastores;
@@ -1155,6 +1193,10 @@ int config_write(struct conf *c, char *filename) {
 			if (d->started)
 				yesno = "yes";
 			xmlTextWriterWriteAttribute(writer, BAD_CAST "start", BAD_CAST yesno);
+
+			sprintf(uid_str, "%u", d->uid);
+			xmlTextWriterWriteAttribute(writer, BAD_CAST "uid", BAD_CAST uid_str);
+
 			xmlTextWriterWriteFormatString(writer, "\n\t");
 			struct datastore_param *p = d->params;
 			while (p) {
@@ -1198,10 +1240,14 @@ int config_write(struct conf *c, char *filename) {
 		if (!rl->enabled)
 			xmlTextWriterWriteAttribute(writer, BAD_CAST "disabled", BAD_CAST "yes");
 
+		sprintf(uid_str, "%u", rl->uid);
+		xmlTextWriterWriteAttribute(writer, BAD_CAST "uid", BAD_CAST uid_str);
+
 		if (rl->description) {
 			xmlTextWriterWriteFormatString(writer, "\n\t\t");
 			xmlTextWriterWriteElement(writer, BAD_CAST "description", BAD_CAST rl->description);
 		}
+
 
 		struct target *t = rl->target;
 		while (t) {
@@ -1212,6 +1258,8 @@ int config_write(struct conf *c, char *filename) {
 			if (t->started)
 				yesno = "yes";
 			xmlTextWriterWriteAttribute(writer, BAD_CAST "start", BAD_CAST yesno);
+			sprintf(uid_str, "%u", t->uid);
+			xmlTextWriterWriteAttribute(writer, BAD_CAST "uid", BAD_CAST uid_str);
 
 			if (t->mode) {
 				xmlTextWriterWriteAttribute(writer, BAD_CAST "mode", BAD_CAST t->mode->name);

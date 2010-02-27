@@ -69,6 +69,14 @@ static int target_init_tftp(struct target *t) {
 
 	target_register_param_value(t, mode_default, "path", priv->path);
 
+
+	priv->perf_tot_conn = perf_add_item(t->perfs, "tot_conn", perf_item_type_counter, "Total number of connections handled");
+	priv->perf_cur_conn = perf_add_item(t->perfs, "cur_conn", perf_item_type_gauge, "Current number of connections being handled");
+	priv->perf_cur_files = perf_add_item(t->perfs, "cur_files", perf_item_type_gauge, "Number of files currently being dumped");
+	priv->perf_dumped_files = perf_add_item(t->perfs, "dumped_files", perf_item_type_counter, "Number of files dumped on the disk");
+	priv->perf_dumped_bytes = perf_add_item(t->perfs, "dumped_bytes", perf_item_type_counter, "Number of bytes dumped on the disk");
+	priv->perf_missed_blocks = perf_add_item(t->perfs, "missed_blocks", perf_item_type_counter, "Number of 512bytes blocks missed");
+
 	return POM_OK;
 }
 
@@ -92,6 +100,12 @@ static int target_cleanup_tftp(struct target *t) {
 	if (priv) {
 			
 		ptype_cleanup(priv->path);
+		perf_remove_item(t->perfs, priv->perf_tot_conn);
+		perf_remove_item(t->perfs, priv->perf_cur_conn);
+		perf_remove_item(t->perfs, priv->perf_dumped_files);
+		perf_remove_item(t->perfs, priv->perf_dumped_bytes);
+		perf_remove_item(t->perfs, priv->perf_missed_blocks);
+
 		free(priv);
 
 	}
@@ -143,7 +157,9 @@ static int target_process_tftp(struct target *t, struct frame *f) {
 		if (priv->ct_privs)
 			priv->ct_privs->prev = cp;
 		priv->ct_privs = cp;
-	
+		
+		perf_item_val_inc(priv->perf_tot_conn, 1);
+		perf_item_val_inc(priv->perf_cur_conn, 1);
 	
 	}
 
@@ -240,6 +256,8 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 			if (expectation_add(expt, TFTP_CONNECTION_TIMER) == POM_ERR)
 				return POM_ERR;
 			
+			perf_item_val_inc(priv->perf_tot_conn, 1);
+			perf_item_val_inc(priv->perf_cur_conn, 1);
 
 			break;
 		}
@@ -267,7 +285,7 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 			payload += sizeof(uint16_t);
 			size -= sizeof(uint16_t);
 
-			if (conn->fd == -1 && tftp_file_open(cp, &f->tv) == POM_ERR)
+			if (conn->fd == -1 && tftp_file_open(priv, cp, &f->tv) == POM_ERR)
 				return POM_ERR;
 
 			// Simply discard packets we were supposed to receive before
@@ -281,14 +299,43 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 				pom_log(POM_LOG_DEBUG "TFTP data block %u missed. Padding with 512 bytes", conn->last_block);
 				char missed[512];
 				memset(missed, 0, sizeof(missed));
-				write(conn->fd, missed, sizeof(missed));
+				size_t wres = 0, wsize = sizeof(missed);
+				while (wsize > 0) {
+					wres = write(conn->fd, missed, wsize);
+					if (wres < 0) {
+						char errbuff[256];
+						memset(errbuff, 0, sizeof(errbuff));
+						strerror_r(errno, errbuff, sizeof(errbuff) - 1);
+						pom_log(POM_LOG_ERR "Error while writing data on the disk : %s", errbuff);
+						return POM_ERR;
+					}
+					wsize -= wres;
+				}
 				conn->last_block++;
+				perf_item_val_inc(priv->perf_dumped_bytes, sizeof(missed));
+				perf_item_val_inc(priv->perf_missed_blocks, 1);
+
 			}
 
-			write(conn->fd, payload, size);
+			size_t wres = 0, wsize = size;
+			while (wsize > 0) {
+				wres = write(conn->fd, payload, wsize);
+				if (wres < 0) {
+					char errbuff[256];
+					memset(errbuff, 0, sizeof(errbuff));
+					strerror_r(errno, errbuff, sizeof(errbuff) - 1);
+					pom_log(POM_LOG_ERR "Error while writing data on the disk : %s", errbuff);
+					return POM_ERR;
+				}
+				wsize -= wres;
+				payload += wres;
+
+			}
+
+			perf_item_val_inc(priv->perf_dumped_bytes, size);
 
 			if (size < 512) // Last packet is shorter than 512 bytes
-				tftp_file_close(cp);
+				tftp_file_close(priv, cp);
 			break;
 		}
 		case tftp_ack: 
@@ -313,6 +360,8 @@ static int tftp_process_packet(struct target *t, struct conntrack_entry *ce, str
 
 static int target_close_connection_tftp(struct target *t, struct conntrack_entry *ce, void *conntrack_priv) {
 
+	struct target_priv_tftp *priv = t->target_priv;
+
 	// Remove any remaining expectation
 	expectation_cleanup_ce(t, ce);
 
@@ -323,7 +372,7 @@ static int target_close_connection_tftp(struct target *t, struct conntrack_entry
 
 	if (conn) {
 		if (conn->fd != -1)
-			tftp_file_close(cp);
+			tftp_file_close(priv, cp);
 		free(conn);
 	}
 
@@ -331,7 +380,6 @@ static int target_close_connection_tftp(struct target *t, struct conntrack_entry
 		free(cp->parsed_path);
 
 	pom_log(POM_LOG_TSHOOT "Closing connection 0x%lx", (unsigned long) conntrack_priv);
-	struct target_priv_tftp *priv = t->target_priv;
 
 	if (cp->prev)
 		cp->prev->next = cp->next;
@@ -343,11 +391,13 @@ static int target_close_connection_tftp(struct target *t, struct conntrack_entry
 
 	free(cp);
 
+	perf_item_val_inc(priv->perf_cur_conn, -1);
+
 	return POM_OK;
 
 }
 
-static int tftp_file_open(struct target_conntrack_priv_tftp *cp, struct timeval *recvd_time) {
+static int tftp_file_open(struct target_priv_tftp *priv, struct target_conntrack_priv_tftp *cp, struct timeval *recvd_time) {
 
 	char final_name[NAME_MAX + 1];
 
@@ -365,12 +415,14 @@ static int tftp_file_open(struct target_conntrack_priv_tftp *cp, struct timeval 
 		return POM_ERR;
 	}
 
+	perf_item_val_inc(priv->perf_cur_files, 1);
+
 	pom_log(POM_LOG_TSHOOT "TFTP : %s opened", final_name);
 
 	return POM_OK;
 }
 
-static int tftp_file_close(struct target_conntrack_priv_tftp *cp) {
+static int tftp_file_close(struct target_priv_tftp *priv, struct target_conntrack_priv_tftp *cp) {
 
 	struct target_connection_priv_tftp *conn = cp->conn;
 
@@ -380,6 +432,9 @@ static int tftp_file_close(struct target_conntrack_priv_tftp *cp) {
 	conn->fd = -1;
 	pom_log(POM_LOG_TSHOOT "TFTP : %s closed", conn->filename);
 	*conn->filename = 0;
+
+	perf_item_val_inc(priv->perf_cur_files, -1);
+	perf_item_val_inc(priv->perf_dumped_files, 1);
 
 	return POM_OK;
 

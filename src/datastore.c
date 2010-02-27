@@ -273,7 +273,7 @@ struct datastore *datastore_alloc(int datastore_type) {
 			return NULL;
 		}
 
-	d->uid = get_uid();
+	d->uid = uid_get_new();
 
 	datastores[datastore_type]->refcount++;
 		
@@ -1059,6 +1059,7 @@ int datastore_cleanup(struct datastore *d) {
 	datastores[d->type]->refcount--;
 	datastore_unlock_instance(d);
 	pthread_rwlock_destroy(&d->lock);
+	uid_release(d->uid);
 	free(d);
 
 	return POM_OK;

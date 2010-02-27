@@ -1,3 +1,10 @@
+* 2010/02/27 Guy Martin <gmsoft@tuxicoman.be>
+Save uid of targets/rules/datastores in the config and restore them.
+Added API to handle uids easily.
+Fix browsing oid of common perf targets when a rule has no target.
+Added extra perfmon items for target_tftp.
+Fix usage of write() in target_tftp.
+
 * 2010/02/23 Guy Martin <gmsoft@tuxicoman.be>
 Tune to all frequencies at once in DOCSIS MDD messages.
 Fix uncX counter for input_docsis.

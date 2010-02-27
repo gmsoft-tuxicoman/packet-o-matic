@@ -29,7 +29,6 @@
 
 int console_output;
 unsigned int console_debug_level;
-static unsigned int random_seed;
 
 static struct log_entry *log_head = NULL, *log_tail = NULL;
 static unsigned int log_buffer_size = 0;
@@ -345,20 +344,6 @@ char ** list_modules(char *type) {
 	free(mypath);
 
 	return res;
-}
-
-
-int uid_init() {
-
-	random_seed = (unsigned int) time(NULL) + (unsigned int) pthread_self();
-	srand(random_seed);
-
-	return POM_OK;
-}
-
-uint32_t get_uid() {
-
-	return (uint32_t) rand_r(&random_seed);
 }
 
 int get_current_time(struct timeval *cur_time) {

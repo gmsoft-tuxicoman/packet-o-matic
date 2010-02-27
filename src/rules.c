@@ -863,7 +863,7 @@ struct rule_list* rule_list_alloc(struct rule_node *n) {
 	rl = malloc(sizeof(struct rule_list));
 	memset(rl, 0, sizeof(struct rule_list));
 
-	rl->uid = get_uid();
+	rl->uid = uid_get_new();
 
 	rl->node = n;
 
@@ -894,6 +894,8 @@ int rule_list_cleanup(struct rule_list *rl) {
 
 	if (rl->description)
 		free(rl->description);
+
+	uid_release(rl->uid);
 
 	perf_unregister_instance(rules_perf_class, rl->perfs);
 	free(rl);

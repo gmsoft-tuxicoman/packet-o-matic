@@ -683,26 +683,27 @@ int snmpcmd_target_perf_handler(netsnmp_mib_handler *handler, netsnmp_handler_re
 		if (reqinfo->mode == MODE_GETNEXT) {
 			if (rule_uid == 0 || !r) { // Get first rule
 				r = NULL;
-				snmpcmd_rules_find_next(main_config->rules, &r);
-				t = r->target;
+				do {
+					snmpcmd_rules_find_next(main_config->rules, &r);
+				} while (r && !r->target);
+				t = NULL;
 			}
 
-			if (target_uid == 0) { // Get the first target
-				t = NULL;
-				snmpcmd_target_find_next(r->target, &t);
-			} else { // Get the next target
+			while (r) { // Get the next target
 				snmpcmd_target_find_next(r->target, &t);
 				if (!t) { // Got the end of the target, next rule, first target
-					snmpcmd_rules_find_next(main_config->rules, &r);
+					
+					do {
+						snmpcmd_rules_find_next(main_config->rules, &r);
+					} while (r && !r->target);
+
 					if (!r) { // Last rule, back to first rule with first target and next colnum
 						r = NULL;
 						snmpcmd_rules_find_next(main_config->rules, &r);
-						snmpcmd_target_find_next(r->target, &t);
 						table_info->colnum++;
-					} else { // First target of next rule
-						t = NULL;
-						snmpcmd_target_find_next(r->target, &t);
 					}
+				} else {
+					break;
 				}
 			}
 		}
@@ -858,7 +859,7 @@ int snmpcmd_target_perf_extra_handler(netsnmp_mib_handler *handler, netsnmp_hand
 			if (rule_uid == 0 || !r) { // Get first rule
 				r = NULL;
 				do {
-				snmpcmd_rules_find_next(main_config->rules, &r);
+					snmpcmd_rules_find_next(main_config->rules, &r);
 				} while (r && !r->target);
 
 				itm = NULL;

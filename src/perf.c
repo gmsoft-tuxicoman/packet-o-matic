@@ -303,7 +303,7 @@ int perf_item_val_reset(struct perf_item *itm) {
 		struct timeval tv;
 		gettimeofday(&tv, NULL);
 		// Time is stored in centisecs
-		itm->value = (tv.tv_sec * 100) + (tv.tv_usec / 10000);
+		itm->value = ((uint64_t)tv.tv_sec * 100LLU) + ((uint64_t)tv.tv_usec / 10000LLU);
 	} else {
 		itm->value = 0;
 	}
@@ -362,7 +362,7 @@ int perf_item_val_uptime_stop(struct perf_item *itm) {
 
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
-	uint64_t now = (tv.tv_sec * 100) + (tv.tv_usec / 10000);
+	uint64_t now = ((uint64_t)tv.tv_sec * 100LLU) + ((uint64_t)tv.tv_usec / 10000LLU);
 	itm->value = (now - itm->value) | PERF_UPTIME_STOPPED;
 
 	perf_item_unlock(itm);
@@ -388,7 +388,7 @@ int perf_item_val_uptime_restart(struct perf_item *itm) {
 
 	struct timeval tv;
 	gettimeofday(&tv, NULL);
-	uint64_t now = (tv.tv_sec * 100) + (tv.tv_usec / 10000);
+	uint64_t now = ((uint64_t)tv.tv_sec * 100LLU) + ((uint64_t)tv.tv_usec / 10000LLU);
 	itm->value = now - (itm->value & ~PERF_UPTIME_STOPPED);
 
 	perf_item_unlock(itm);
@@ -412,7 +412,7 @@ uint64_t perf_item_val_get_raw(struct perf_item *itm) {
 
 		struct timeval tv;
 		gettimeofday(&tv, NULL);
-		uint64_t now = (tv.tv_sec * 100) + (tv.tv_usec / 10000);
+		uint64_t now = ((uint64_t)tv.tv_sec * 100LLU) + ((uint64_t)tv.tv_usec / 10000LLU);
 		uint64_t val = now - itm->value;
 		perf_item_unlock(itm);
 		return val;

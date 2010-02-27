@@ -89,6 +89,7 @@
 #endif
 
 #include "layer.h"
+#include "uid.h"
 
 #ifndef NAME_MAX
 #define NAME_MAX 255
@@ -158,10 +159,6 @@ int pom_log_cleanup();
 int frame_alloc_aligned_buff(struct frame *f, int length);
 
 char ** list_modules(char *type);
-
-int uid_init();
-
-uint32_t get_uid();
 
 int get_current_time(struct timeval *cur_time);
 struct timeval *get_current_time_p();

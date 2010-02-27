@@ -258,7 +258,7 @@ struct target *target_alloc(int target_type) {
 	}
 
 	// Init the target internal stuff
-	t->uid = get_uid();
+	t->uid = uid_get_new();
 
 	// Default mode is the first one
 	t->mode = targets[target_type]->modes;
@@ -525,6 +525,8 @@ int target_cleanup_module(struct target *t) {
 
 	if (t->description)
 		free(t->description);
+
+	uid_release(t->uid);
 
 	free (t);
 
