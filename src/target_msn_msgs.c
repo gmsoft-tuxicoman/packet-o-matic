@@ -882,30 +882,36 @@ int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *c
 		}
 		if (!file) {
 			if (m->sip_cmd == msn_msnmsgrp2p_sip_type_invite || m->sip_cmd == msn_msnmsgrp2p_sip_type_200_ok) {
-				struct target_session_priv_msn *sess = cp->session;
 
-				file = malloc(sizeof(struct target_file_transfer_msn));
-				memset(file, 0, sizeof(struct target_file_transfer_msn));
-				file->fd = -1;
-				file->session_id = sess_id;
-				file->buddy = buddy_dest;
-				if (buddy_guid) {
-					file->buddy_guid = malloc(strlen(buddy_guid) + 1);
-					strcpy(file->buddy_guid, buddy_guid);
+				if (!cp->conv) {
+					pom_log(POM_LOG_DEBUG "No conversation for this session yet. Ignoring new file");
+				} else {
+
+					struct target_session_priv_msn *sess = cp->session;
+
+					file = malloc(sizeof(struct target_file_transfer_msn));
+					memset(file, 0, sizeof(struct target_file_transfer_msn));
+					file->fd = -1;
+					file->session_id = sess_id;
+					file->buddy = buddy_dest;
+					if (buddy_guid) {
+						file->buddy_guid = malloc(strlen(buddy_guid) + 1);
+						strcpy(file->buddy_guid, buddy_guid);
+					}
+
+					file->timer = timer_alloc(file, f->input, target_session_timeout_msn);
+					timer_queue(file->timer, MSN_SESSION_TIMEOUT);
+
+					file->next = sess->file;
+					if (sess->file)
+						sess->file->prev = file;
+
+					sess->file = file;
+					file->conv = cp->conv;
+
+
+					pom_log(POM_LOG_TSHOOT "New file transfer session : %u", sess_id);
 				}
-
-				file->timer = timer_alloc(file, f->input, target_session_timeout_msn);
-				timer_queue(file->timer, MSN_SESSION_TIMEOUT);
-
-				file->next = sess->file;
-				if (sess->file)
-					sess->file->prev = file;
-
-				sess->file = file;
-				file->conv = cp->conv;
-
-
-				pom_log(POM_LOG_TSHOOT "New file transfer session : %u", sess_id);
 			}
 		}
 	} else {

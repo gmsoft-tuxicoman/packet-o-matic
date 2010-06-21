@@ -1,3 +1,8 @@
+* 2010/06/21 Guy Martin <gmsoft@tuxicoman.be>
+Fix crash in target_pop when user command ends with \n and not \r\n.
+Fix crash in target_msn when no conversation is known while processing a INVITE.
+Fix month handling in datastore_mysql.
+
 * 2010/02/27 Guy Martin <gmsoft@tuxicoman.be>
 Save uid of targets/rules/datastores in the config and restore them.
 Added API to handle uids easily.

@@ -393,7 +393,11 @@ static int pop_process_line(struct target *t, struct target_conntrack_priv_pop *
 			len = strlen(line + strlen("USER "));
 			char *username = line + strlen("USER ");
 			char *end = strchr(username, '\r');
-			*end = 0;
+			if (!end)
+				end = strchr(username, '\n');
+
+			if (end)
+				*end = 0;
 
 			cp->lastcmd = pop_cmd_user;
 

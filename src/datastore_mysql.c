@@ -635,7 +635,7 @@ static int datastore_dataset_write_mysql(struct dataset *ds) {
 			localtime_r(&my_time, &split_time);
 
 			ts->year = split_time.tm_year + 1900;
-			ts->month = split_time.tm_mon;
+			ts->month = split_time.tm_mon + 1;
 			ts->day = split_time.tm_mday;
 
 			ts->hour = split_time.tm_hour;
