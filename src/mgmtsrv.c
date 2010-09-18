@@ -30,6 +30,8 @@
 #include <signal.h>
 #include <sys/select.h>
 
+struct mgmt_command *cmds;
+
 static struct mgmt_connection *conn_head;
 static struct mgmt_connection *conn_tail;
 

@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2008 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2010 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  target_irc : Dump IRC communication
  *  Copyright (C) 2007 Gouverneur Thomas <wildcat@espix.org>
@@ -24,62 +24,165 @@
 #ifndef __TARGET_IRC_H__
 #define __TARGET_IRC_H__
 
-#define IRC_MATCH	0x01
-#define IRC_NOMATCH	0x02
-#define IRC_UNKNOWN	0x04
-
 #include "modules_common.h"
 #include "rules.h"
 
-#define MAX_LINE	512
-#define MAX_FROM	256
-#define MAX_TOK		15
-#define MAX_CHANNEL	32
-#define MAX_NICK	32
 
-/*
- * Openned files mgr
- */
-struct open_file {
+#define TARGET_IRC_STATUS_CONV		"status"
+#define TARGET_CMD_TIMEOUT_IRC		60
+#define TARGET_MAX_LINE_IRC		512
+#define TARGET_MAX_FROM_IRC		256
 
+#define TARGET_QUERY_TIMEOUT_IRC	3600
+
+#define is_chan(x) (*x == '#' || *x == '&' || *x == '+' || *x == '!')
+
+#define TARGET_NICK_MODE_VOICED_IRC	0x1
+#define TARGET_NICK_MODE_HALFOP_IRC	0x2
+#define TARGET_NICK_MODE_OP_IRC		0x3
+
+struct target_conv_list_irc {
+
+	struct target_conversation_irc *conv;
+	struct target_conv_list_irc *next;
+	struct target_conv_list_irc *prev;
+
+};
+
+struct target_nick_list_irc {
+	struct target_nick_irc *nick;
+	unsigned int mode;
+
+	struct target_nick_list_irc *next;
+	struct target_nick_list_irc *prev;
+};
+
+struct target_nick_irc {
+
+	char *nick;
+	char *host;
+	
+	struct target_conv_list_irc *convs;
+
+	struct target_nick_irc *next;
+	struct target_nick_irc *prev;
+};
+
+enum irc_command_type {
+
+	irc_cmd_privmsg,
+	irc_cmd_nick,
+	irc_cmd_join,
+	irc_cmd_part,
+	irc_cmd_mode,
+	irc_cmd_oper,
+	irc_cmd_kick,
+	irc_cmd_topic,
+	irc_cmd_quit,
+
+// Todo
+	irc_cmd_invite,
+	irc_cmd_whois,
+	irc_cmd_kill,
+
+};
+
+union irc_cmd_args {
+
+
+	char *msg; // For PRIVMSG and others
+	char *nick; // For NICK
+	char *topic; // For TOPIC
+	char *key; // For JOIN
+
+	struct {
+		char *what;
+		char *modes;
+	} mode;
+	
+	struct {
+		char *who;
+		char *reason;
+	} kick;
+	
+	struct {
+		char *user;
+		char *pass;
+	} oper;
+
+
+};
+
+struct target_command_irc {
+
+	unsigned int type;
+
+	union irc_cmd_args *args;
+
+	struct timer *timeout;
+	struct target_conversation_irc *conv;
+
+	struct timeval ts;
+
+	struct target_command_irc *next;
+	struct target_command_irc *prev;
+
+};
+
+struct target_log_buffer_irc {
+	char *buff;
+	struct timeval ts;
+	struct target_conversation_irc *conv;
+	struct target_log_buffer_irc *next, *prev;
+};
+
+struct target_conversation_irc {
+
+	char *who;
 	int fd;
-	char what[MAX_NICK + 1];
+	char *filename;
 
-	struct open_file *n;
-	struct open_file *p;
+	struct timer *expiry; // Timeout queries after a while
+
+	struct target_command_irc *cmd_buff_head, *cmd_buff_tail;
+
+	struct target_log_buffer_irc *log_buff_head, *log_buff_tail;
+
+	struct target_conntrack_priv_irc *cp;
+
+	struct target_nick_list_irc *nicks;
+
+	struct target_conversation_irc *prev;
+	struct target_conversation_irc *next;
 };
 
 struct target_conntrack_priv_irc {
 
-	int fd; // FD for status file.
-	struct open_file *ofiles;
-
-	struct frame *f;
-
-	unsigned int state;
-	unsigned int direction;
-	unsigned int pos;
+	unsigned int is_invalid;
 
 	struct conntrack_entry *ce;
-	struct target_conntrack_priv_irc *next;
-	struct target_conntrack_priv_irc *prev;
-
-	/* 
-	 * struct target * to avoid passing it by arg 
-	 */
-	struct target *t;
 	struct target_priv_irc *tp;
 
-	/*
-	 * IRC Stuff:
-	 */
-	char	my_nick[MAX_NICK + 1];
+	// Nickname associated with the connection if found
+	char nick[TARGET_MAX_FROM_IRC + 1];
+
+	// Buffer
+	char *buff[2];
+	size_t buffpos[2], bufflen[2];
+
+	struct target_conversation_irc *conv;
+	struct target_nick_irc *nicks;
+
+	struct target_log_buffer_irc *logs;
+
+	struct target *t;
+
+	struct target_conntrack_priv_irc *next;
+	struct target_conntrack_priv_irc *prev;
 };
 
 
 struct target_priv_irc {
-
-	int match_mask;
 
 	struct ptype *path;
 
@@ -99,58 +202,80 @@ static int target_cleanup_irc(struct target *t);
  * Contain the token of IRC message along with
  * the function to execute when parsed.
  */
-struct irc_tok {
-	char * token;
-	int (*cb)(struct target_conntrack_priv_irc *,	/* context of target_irc */
-		  unsigned int is_srv,			/* comming from srv ? */
-		  char *from,				/* origin of msg */
-		  char *line
-		  );
-	unsigned int is_pass;
+struct irc_cmd_handler {
+	char *cmd;
+	int (*handler) (struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
 };
 
-/* utility functions */
-static int 	add_of(struct open_file*, struct open_file*);
-static struct 	open_file* get_of(struct open_file*, const char* what);
-static int 	open_of(struct open_file*, struct target_conntrack_priv_irc*);
-static int 	remove_all_of(struct open_file*);
-static char*	get_timestamp(void);
-static char*	get_time(void);
-static char*	getNick(char *);
+// Command handlers
 
-/* irc processing functions */
-#define TOKEN_FCT(x) 	static int x(	struct target_conntrack_priv_irc *, \
-					unsigned int is_srv, \
-					char *from, \
-					char *line);
+static int target_irc_handler_privmsg(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_notice(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_join(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_part(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_pass(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_user(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_nick(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_mode(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_topic(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_oper(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_kick(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_ping(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_pong(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_quit(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
 
-TOKEN_FCT(process_privmsg);
-TOKEN_FCT(process_notice);
-TOKEN_FCT(process_join);
-TOKEN_FCT(process_part);
-TOKEN_FCT(process_pass);
-TOKEN_FCT(process_nick);
-TOKEN_FCT(process_mode);
-TOKEN_FCT(process_topic);
-TOKEN_FCT(process_oper);
-TOKEN_FCT(process_kick);
+// Reply and error handlers
+static int target_irc_handler_numeric_msg(struct target_conntrack_priv_irc *cp, struct frame *f, unsigned int code, struct target_nick_irc *from, char *args);
 
-static int parse_msg(struct target_conntrack_priv_irc *,
-		  char * line,
-		  unsigned int len);
 
-#define NB_TOKENS 10
-static struct irc_tok Irc_MSG[] = {
-	{ "PRIVMSG", process_privmsg, 0 }, 	/* no password in PRIVMSG */
-	{ "NOTICE", process_notice, 0 }, 	/* no password in NOTICE */
-	{ "PART", process_part, 0 },		/* no password in PART */
-	{ "JOIN", process_join, 1 }, 		/* could have a password in JOIN */
-	{ "PASS", process_pass, 1 }, 		/* password to log on server */
-	{ "NICK", process_nick, 0 }, 		/* nickname change */
-	{ "MODE", process_mode, 0 }, 		/* mode change */
-	{ "TOPIC", process_topic, 0 }, 		/* topic check/change */
-	{ "OPER", process_oper, 1 }, 		/* ircop login */
-	{ "KICK", process_kick, 0 } 		/* kick */
+static struct target_nick_irc *target_add_nick_irc(struct target_conntrack_priv_irc *cp, char *nick, char *host);
+static int target_parse_msg_irc(struct target_conntrack_priv_irc *cp, struct frame *f, char *line, size_t len);
+static int target_queue_command_irc(struct target_conntrack_priv_irc *cp, struct frame *f, char *conv, unsigned int type, union irc_cmd_args *args);
+static struct target_conversation_irc* target_get_conv_irc(struct target_conntrack_priv_irc *cp, char *conv, struct target_nick_irc *from, struct frame *f);
+static int target_write_log_irc(int fd, char *buff, size_t count);
+static int target_process_expired_commands_irc(void *priv);
+static int target_log_irc(struct target_conversation_irc *c, struct timeval *when, const char *format, ...);
+static int target_open_log_irc(struct target_conversation_irc *c);
+static int target_add_conv_to_nick_irc(struct target_nick_irc *n, struct target_conversation_irc *conv);
+static int target_remove_conv_from_nick_irc(struct target_nick_irc *n, struct target_conversation_irc *conv);
+static int target_close_conv_irc(struct target_conversation_irc *c);
+static struct target_command_irc* target_pop_buffered_command(struct target_conversation_irc *c, enum irc_command_type type, union irc_cmd_args *arg);
+
+
+static int target_irc_handler_rpl_away(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_rpl_whoisuser(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_rpl_whoisserver(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_rpl_whoisidle(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_rpl_endofwhois(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_rpl_whoisaccount(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_rpl_whoischannels(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_rpl_namreply(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_rpl_endofnames(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_rpl_whoissecure(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+
+static int target_irc_handler_err_nosuchnick(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_err_cannotsendtochan(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_join_err(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+static int target_irc_handler_mode_user_err(struct target_conntrack_priv_irc *cp, struct frame *f, struct target_nick_irc *from, char *args);
+
+static struct irc_cmd_handler irc_cmds[] = {
+	{ "PRIVMSG", target_irc_handler_privmsg }, 
+	{ "NOTICE", target_irc_handler_notice },
+	{ "PART", target_irc_handler_part },
+	{ "JOIN", target_irc_handler_join },
+	{ "PASS", target_irc_handler_pass },
+	{ "USER", target_irc_handler_user },
+	{ "NICK", target_irc_handler_nick },
+	{ "MODE", target_irc_handler_mode },
+	{ "TOPIC", target_irc_handler_topic },
+	{ "OPER", target_irc_handler_oper },
+	{ "KICK", target_irc_handler_kick },
+	{ "PING", target_irc_handler_ping },
+	{ "PONG", target_irc_handler_pong },
+	{ "QUIT", target_irc_handler_quit },
+
+
+	{ NULL, NULL } // terminating entry
 };
 
 #endif

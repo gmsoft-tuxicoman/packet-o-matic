@@ -1,3 +1,12 @@
+* 2010/09/18 Guy Martin <gmsoft@tuxicoman.be>
+Add some video mime types in mime_types.db.
+Fix possible crash with extended headers in input_docsis.
+Recoded target_irc.
+Fix return code of xmlrpccmd_set_input_type() in case of error.
+Fix compilation on OSX.
+Return false for invalid operations in ptype_compare_val().
+Update autoreconf command in README.
+
 * 2010/06/21 Guy Martin <gmsoft@tuxicoman.be>
 Fix crash in target_pop when user command ends with \n and not \r\n.
 Fix crash in target_msn when no conversation is known while processing a INVITE.

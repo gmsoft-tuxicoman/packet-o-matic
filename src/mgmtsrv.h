@@ -31,8 +31,6 @@
 
 #include <errno.h>
 
-struct mgmt_command *cmds;
-
 // Command functions return this value if it's needed to print the usage
 #define MGMT_USAGE -2
 

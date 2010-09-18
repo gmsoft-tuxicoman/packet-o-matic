@@ -232,7 +232,7 @@ xmlrpc_value *xmlrpccmd_set_input_type(xmlrpc_env * const envP, xmlrpc_value * c
 		xmlrpc_faultf(envP, "Unable to register input %s", type);
 		free(type);
 		pthread_mutex_unlock(&rbuf->mutex);
-		return POM_OK;
+		return NULL;
 	}
 
 	i = input_alloc(input_type);

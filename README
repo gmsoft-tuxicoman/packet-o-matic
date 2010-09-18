@@ -13,7 +13,7 @@ It is designed to be as protocol independant as possible. Each protocol has it's
 
 Building from svn :
 -------------------
-You need at least autoconf-2.61. First run autoreconf to create ./configure and then follow the instructions as if you fetched from a tarball.
+You need at least autoconf-2.61. First run "autoreconf -f -i" to create ./configure and then follow the instructions as if you fetched from a tarball.
 
 
 Building from tarball :

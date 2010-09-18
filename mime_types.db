@@ -49,6 +49,12 @@ text/xml				xml	txt
 text/json				json	txt
 video/flv				flv	vid
 video/mpeg				mpg	vid
+video/mp2t				mpg	vid
+video/mpv				mpg	vid
+video/mp1s				mpg	vid
+video/mp2p				mpg	vid
+video/mpg				mpg	vid
+video/mpeg2				mpg	vid
 video/quicktime				mov	vid
 video/vnd.divx				avi	vid
 video/x-flv				flv	vid
@@ -75,4 +81,5 @@ video/x-ms-wm				wm	vid
 video/x-ms-wmx				wmx	vid
 application/x-ms-wmz			wmz	vid
 application/x-ms-wmd			wmd	vid
+video/mp4				mp4	vid
 application/vnd.ms.wms-hdr.asfv1	asf	bin

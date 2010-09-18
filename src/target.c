@@ -251,7 +251,7 @@ struct target *target_alloc(int target_type) {
 
 	t->type = target_type;
 	
-	// Init the log
+	// Init the lock
 	if (pthread_rwlock_init(&t->lock, NULL)) {
 		free(t);
 		return NULL;

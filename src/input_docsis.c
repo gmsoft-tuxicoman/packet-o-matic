@@ -1136,7 +1136,7 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 		
 		if (dhdr->ehdr_on) {
 			
-			if (dhdr->mac_parm > ntohs(dhdr->len)) {
+			if (dhdr->mac_parm > dlen) {
 				pom_log(POM_LOG_TSHOOT "Invalid EHDR size in DOCSIS packet. Discarding.");
 				f->len = 0;
 				return POM_OK;

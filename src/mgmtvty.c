@@ -26,6 +26,8 @@
 
 #define TELNET_SUBOPT_MAX 256
 
+extern struct mgmt_command *cmds;
+
 #define TELCMDS 1 // will populate the table telcmds
 #define TELOPTS 1 // will populate the table telopts
 #include <arpa/telnet.h>

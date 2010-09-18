@@ -297,8 +297,10 @@ int ptype_compare_val(int op, struct ptype *a, struct ptype *b) {
 		return 0; // false
 	}
 
-	if (!(ptypes[a->type]->ops & op))
+	if (!(ptypes[a->type]->ops & op)) {
 		pom_log(POM_LOG_ERR "Invalid operation %s for ptype %s", ptype_get_op_sign(op), ptypes[a->type]->name);
+		return 0;
+	}
 
 	if (op == PTYPE_OP_NEQ)
 		return !(*ptypes[a->type]->compare_val) (PTYPE_OP_EQ, a->value, b->value);
