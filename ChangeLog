@@ -1,3 +1,8 @@
+* 2010/10/20 Guy Martin <gmsoft@tuxicoman.be>
+Fix parsing log_format for target_http.
+Fix logging when content-type is provided in the request.
+Validate strings for UTF-8 in datstore_postgres.
+
 * 2010/09/18 Guy Martin <gmsoft@tuxicoman.be>
 Add some video mime types in mime_types.db.
 Fix possible crash with extended headers in input_docsis.

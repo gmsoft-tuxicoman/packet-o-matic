@@ -30,11 +30,12 @@
 #include <zlib.h>
 #endif
 
-#define HTTP_HEADER	1 ///< Looking for a header
-#define HTTP_QUERY	2 ///< This is a query
-#define HTTP_RESPONSE	3 ///< This is a response
-#define HTTP_BODY	4 ///< Handling the body
-#define HTTP_INVALID	9 ///< Invalid HTTP message, will discard the rest of the connection
+#define HTTP_HEADER		1 ///< Looking for a header
+#define HTTP_QUERY		2 ///< This is a query
+#define HTTP_RESPONSE		3 ///< This is a response
+#define HTTP_BODY_QUERY		4 ///< Handling the body
+#define HTTP_BODY_RESPONSE	5 ///< Handling the body of a response (e.g. POST)
+#define HTTP_INVALID		9 ///< Invalid HTTP message, will discard the rest of the connection
 
 #define HTTP_FLAG_HAVE_CLEN	0x01
 #define HTTP_FLAG_CHUNKED	0x04
@@ -168,6 +169,7 @@ int target_parse_response_headers_http(struct target_priv_http *priv, struct tar
 size_t target_process_gzip_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp, char * pload, size_t size);
 #endif
 int target_reset_conntrack_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp);
+int target_reset_conntrack_for_response_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp);
 int target_buffer_payload_http(struct target_conntrack_priv_http *cp, char *pload, size_t psize);
 int target_file_open_http(struct target *t, struct target_conntrack_priv_http *cp, struct frame *f, int is_gzip);
 

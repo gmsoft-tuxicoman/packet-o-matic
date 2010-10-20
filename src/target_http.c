@@ -375,7 +375,7 @@ int target_process_http(struct target *t, struct frame *f) {
 				if (cp->state == HTTP_QUERY) {
 					perf_item_val_inc(priv->perf_parsed_reqs, 1);
 					if (cp->info.flags & HTTP_FLAG_HAVE_CLEN && cp->info.content_len != 0) {
-						cp->state = HTTP_BODY;
+						cp->state = HTTP_BODY_QUERY;
 						cp->info.content_type = 0; // Make sure the body isn't matched
 						continue;
 					} else {
@@ -388,7 +388,7 @@ int target_process_http(struct target *t, struct frame *f) {
 					if ((cp->info.err_code >= 100 && cp->info.err_code < 200) || cp->info.err_code == 204 || cp->info.err_code == 304)
 						cp->state = HTTP_HEADER; // HTTP RFC specified that those reply don't have a body
 					else
-						cp->state = HTTP_BODY;
+						cp->state = HTTP_BODY_RESPONSE;
 					continue;
 				} else {
 					pom_log(POM_LOG_TSHOOT "Internal error, invalid state");
@@ -450,7 +450,7 @@ int target_process_http(struct target *t, struct frame *f) {
 			continue;
 		}
 
-		if (cp->state == HTTP_BODY) {
+		if (cp->state == HTTP_BODY_QUERY || cp->state == HTTP_BODY_RESPONSE) {
 			
 
 			size_t size = psize;
@@ -585,9 +585,13 @@ int target_process_http(struct target *t, struct frame *f) {
 		}
 		if (cp->info.flags & HTTP_FLAG_HAVE_CLEN) {
 			if (cp->info.content_pos >= cp->info.content_len) {
-				if (target_write_log_http(priv, cp) == POM_ERR)
-					return POM_ERR;
-				target_reset_conntrack_http(priv, cp);
+				if (cp->state == HTTP_BODY_QUERY) {
+					target_reset_conntrack_for_response_http(priv, cp);
+				} else {
+					if (target_write_log_http(priv, cp) == POM_ERR)
+						return POM_ERR;
+					target_reset_conntrack_http(priv, cp);
+				}
 			}
 		}
 	}
@@ -776,6 +780,10 @@ size_t target_parse_query_response_http(struct target_priv_http *priv, struct ta
 int target_parse_response_headers_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp) {
 	int i;
 	for (i = 0; i < cp->info.headers_num; i++) {
+		
+		if (cp->info.headers[i].type != cp->state)
+			continue;
+
 		if (!strcasecmp(cp->info.headers[i].name, "Content-Length")) {
 			if(sscanf(cp->info.headers[i].value, "%u", &cp->info.content_len) != 1)
 				return POM_ERR;
@@ -898,7 +906,6 @@ size_t target_process_gzip_http(struct target_priv_http *priv, struct target_con
 
 int target_reset_conntrack_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp) {
 
-	cp->info.flags = 0;
 	if (cp->info.headers) {
 		int i;
 		for (i = 0; i < cp->info.headers_num; i++) {
@@ -910,6 +917,10 @@ int target_reset_conntrack_http(struct target_priv_http *priv, struct target_con
 		cp->info.headers_num = 0;
 	}
 
+	return target_reset_conntrack_for_response_http(priv, cp);
+}
+
+int target_reset_conntrack_for_response_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp) {
 
 	if (cp->fd != -1) {
 		close(cp->fd);
@@ -925,6 +936,7 @@ int target_reset_conntrack_http(struct target_priv_http *priv, struct target_con
 		cp->info.zbuff = NULL;
 	}
 #endif
+	cp->info.flags = 0;
 	
 	cp->info.chunk_len = 0;
 	cp->info.chunk_pos = 0;
@@ -932,6 +944,7 @@ int target_reset_conntrack_http(struct target_priv_http *priv, struct target_con
 	cp->info.content_pos = 0;
 	cp->info.content_len = 0;
 	cp->state = HTTP_HEADER;
+
 	return POM_OK;
 }
 

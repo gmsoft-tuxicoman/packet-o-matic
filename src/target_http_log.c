@@ -549,12 +549,12 @@ int target_write_log_http(struct target_priv_http *priv, struct target_conntrack
 				return POM_ERR;
 
 
-			log_format += 2;
+			log_format = pc + 2;
 
 		}
 
 		if (write_to_log(priv->log_fd, log_format, strlen(log_format)) == POM_ERR ||
-			write(priv->log_fd, "\n", strlen("\n") == POM_ERR))
+			write_to_log(priv->log_fd, "\n", strlen("\n")) == POM_ERR)
 				return POM_ERR;
 	}
 
