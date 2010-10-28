@@ -236,6 +236,18 @@ int target_init_log_http(struct target *t) {
 	return POM_OK;
 }
 
+struct http_log_info *target_alloc_log_http(struct target_priv_http *priv) {
+	struct http_log_info *res = malloc(sizeof(struct http_log_info));
+	if (!res)
+		return NULL;
+	memset(res, 0, sizeof(struct http_log_info));
+	res->log_flags = priv->log_flags;
+	if (priv->dset)
+		res->dset_data = target_alloc_dataset_values(priv->dset);
+
+	return res;
+}
+
 int target_initial_log_http(struct target_conntrack_priv_http *cp, struct frame *f, struct layer *lastl) {
 
 	if (cp->state == HTTP_QUERY && (cp->log_info->log_flags & HTTP_LOG_TIME))

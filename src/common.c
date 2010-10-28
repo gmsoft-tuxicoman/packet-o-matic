@@ -302,8 +302,7 @@ char ** list_modules(char *type) {
 	if (!path) 
 		path = LIBDIR;
 
-	char *mypath = malloc(strlen(path) + 1);
-	strcpy(mypath, path);
+	char *mypath = strdup(path);
 
 	char *str, *token, *saveptr = NULL;
 	for (str = mypath; ; str = NULL) {
@@ -315,7 +314,8 @@ char ** list_modules(char *type) {
 		char **list;
 		list = list_modules_browse(token, type);
 		if (!list) 
-			return NULL;
+			continue;
+
 		for (i = 0; list[i]; i++) {
 			int j;
 			for (j = 0; res[j]; j++) {

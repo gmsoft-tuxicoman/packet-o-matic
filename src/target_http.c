@@ -147,6 +147,7 @@ int target_init_http(struct target *t) {
 	priv->perf_open_files = perf_add_item(t->perfs, "open_files", perf_item_type_gauge, "Number of files currently open");
 	priv->perf_parsed_reqs = perf_add_item(t->perfs, "parsed_reqs", perf_item_type_counter, "Number of requests parsed");
 	priv->perf_parsed_resps = perf_add_item(t->perfs, "parsed_resps", perf_item_type_counter, "Number of response parsed");
+	priv->perf_parsed_transactions  = perf_add_item(t->perfs, "parsed_transactions", perf_item_type_counter, "Number of transactions parsed (a transaction is either a single request, single response or both)");
 	priv->perf_parse_errors = perf_add_item(t->perfs, "parse_errors", perf_item_type_counter, "Number of errors while parsing");
 
 
@@ -199,6 +200,7 @@ int target_cleanup_http(struct target *t) {
 		perf_remove_item(t->perfs, priv->perf_open_files);
 		perf_remove_item(t->perfs, priv->perf_parsed_reqs);
 		perf_remove_item(t->perfs, priv->perf_parsed_resps);
+		perf_remove_item(t->perfs, priv->perf_parsed_transactions);
 		perf_remove_item(t->perfs, priv->perf_parse_errors);
 
 		free(priv);
@@ -279,8 +281,6 @@ int target_process_http(struct target *t, struct frame *f) {
 		return POM_OK;
 
 
-
-
 	size_t pstart, psize;
 	pstart = lastl->payload_start;
 	psize = lastl->payload_size;
@@ -305,13 +305,8 @@ int target_process_http(struct target *t, struct frame *f) {
 
 			if (cp->state == HTTP_HEADER) {
 
-				if (!cp->log_info && priv->log_flags) { // We need to log this
-					cp->log_info = malloc(sizeof(struct http_log_info));
-					memset(cp->log_info, 0, sizeof(struct http_log_info));
-					cp->log_info->log_flags = priv->log_flags;
-					if (priv->dset)
-						cp->log_info->dset_data = target_alloc_dataset_values(priv->dset);
-				}
+				if (!cp->log_info && priv->log_flags) // We need to log this
+					cp->log_info = target_alloc_log_http(priv);
 				
 				size_t len = target_parse_query_response_http(priv, cp, pload, psize);
 
@@ -364,7 +359,7 @@ int target_process_http(struct target *t, struct frame *f) {
 				pload += size;
 				psize -= size;
 
-				if (target_parse_response_headers_http(priv, cp) == POM_ERR) {
+				if (target_parse_payload_headers_http(priv, cp) == POM_ERR) {
 					pom_log(POM_LOG_TSHOOT "Invalid HTTP header received. Ignoring connection");
 					target_reset_conntrack_http(priv, cp);
 					cp->state = HTTP_INVALID;
@@ -381,7 +376,7 @@ int target_process_http(struct target *t, struct frame *f) {
 					} else {
 						// Wait for the reply
 						cp->state = HTTP_HEADER;
-						return POM_OK;
+						break;
 					}
 				} else if (cp->state == HTTP_RESPONSE) {
 					perf_item_val_inc(priv->perf_parsed_resps, 1);
@@ -549,7 +544,7 @@ int target_process_http(struct target *t, struct frame *f) {
 					if (len == POM_ERR)
 						return POM_ERR;
 					else if (len == 0) // Was marked as invalid
-						return POM_OK;
+						break;
 					pload += len;
 					psize -= len;
 					size -= len;
@@ -647,6 +642,7 @@ size_t target_parse_query_response_http(struct target_priv_http *priv, struct ta
 	if (!nl) {
 		if (psize > HTTP_MAX_HEADER_LINE) {
 			pom_log(POM_LOG_TSHOOT "Header line too big. Ignoring connection");
+			perf_item_val_inc(priv->perf_parse_errors, 1);
 			return POM_ERR; // There should have been a line return
 		} else {
 			return 0; // Buffer incomplete
@@ -658,6 +654,9 @@ size_t target_parse_query_response_http(struct target_priv_http *priv, struct ta
 		size -= 1;
 
 	size_t line_size = size;
+
+	char *url_token = NULL;
+	size_t url_tok_size = 0;
 
 	int tok_num = 0;
 	char *token = NULL, *tok_end = pload;
@@ -691,44 +690,27 @@ size_t target_parse_query_response_http(struct target_priv_http *priv, struct ta
 							// Let's log the previous one and start a new one
 							if (target_write_log_http(priv, cp) == POM_ERR)
 								return POM_ERR;
-							cp->log_info = malloc(sizeof(struct http_log_info));
-							memset(cp->log_info, 0, sizeof(struct http_log_info));
-							cp->log_info->log_flags = priv->log_flags;
+							cp->log_info = target_alloc_log_http(priv);
 						}
 						cp->log_info->log_flags |= HTTP_LOG_LOGGED_RESPONSE;
 						
-						if (cp->log_info->log_flags & HTTP_LOG_REQUEST_PROTOCOL) {
+						if ((cp->log_info->log_flags & HTTP_LOG_REQUEST_PROTOCOL) && ! cp->log_info->request_proto) {
 							cp->log_info->request_proto = malloc(tok_size + 1);
 							memcpy(cp->log_info->request_proto, token, tok_size);
 							cp->log_info->request_proto[tok_size] = 0;
 						}
 					}
 					cp->state = HTTP_RESPONSE;
-				} else if (!strncasecmp(token, "GET ", strlen("GET ")) || !strncasecmp(token, "POST ", strlen("POST "))) {
-					if (cp->info.headers_num > 0) // New query but headers are present -> reset
-						target_reset_conntrack_http(priv, cp);
-
-					if (cp->log_info) {
-						if (cp->log_info->log_flags & HTTP_LOG_LOGGED_QUERY) {
-							// We got a new query but we already have logging info from a previous one
-							// Let's log the previous one and start a new one
-							if (target_write_log_http(priv, cp) == POM_ERR)
-								return POM_ERR;
-							cp->log_info = malloc(sizeof(struct http_log_info));
-							memset(cp->log_info, 0, sizeof(struct http_log_info));
-							cp->log_info->log_flags = priv->log_flags;
-						}
-						cp->log_info->log_flags |= HTTP_LOG_LOGGED_QUERY;
-
-						if (cp->log_info->log_flags & HTTP_LOG_REQUEST_METHOD) {
-							cp->log_info->request_method = malloc(tok_size + 1);
-							memcpy(cp->log_info->request_method, token, tok_size);
-							cp->log_info->request_method[tok_size] = 0;
+				} else {
+					int i;
+					for (i = 0; i < tok_size; i++) {
+						if ((token[i]) < 'A' || (token[i] > 'Z' && token[i] < 'a') || (token[i] > 'z')) {
+							// Definitely not a HTTP method
+							perf_item_val_inc(priv->perf_parse_errors, 1);
+							return POM_ERR;
 						}
 					}
-					cp->state = HTTP_QUERY;
-				} else {
-					return POM_ERR; // Unhandled stuff that we won't care
+					cp->state = HTTP_QUERY; // possible query, will double-check later
 				}
 				break;
 			case 1:
@@ -738,16 +720,55 @@ size_t target_parse_query_response_http(struct target_priv_http *priv, struct ta
 					char err_num[5];
 					memcpy(err_num, token, tok_size);
 					err_num[tok_size] = 0;
-					if (sscanf(err_num, "%u", &cp->info.err_code) != 1)
+					if (sscanf(err_num, "%u", &cp->info.err_code) != 1) {
+						pom_log(POM_LOG_TSHOOT "Invalid status code in HTTP response : %s", token);
+						perf_item_val_inc(priv->perf_parse_errors, 1);
 						return POM_ERR;
+					}
 				} else if (cp->state == HTTP_QUERY && cp->log_info && (cp->log_info->log_flags & HTTP_LOG_URL)) {
-					cp->log_info->url = malloc(tok_size + 1);
-					memcpy(cp->log_info->url, token, tok_size);
-					cp->log_info->url[tok_size] = 0;
+					url_token = token;
+					url_tok_size = tok_size;
 				}
 				break;
 			case 2:
-				if (cp->state == HTTP_RESPONSE) {
+				if (cp->state == HTTP_QUERY) {
+					// This payload was identified as a possible query
+					if (strncasecmp(token, "HTTP/", strlen("HTTP/"))) {
+						// Doesn't seem to be a valid HTTP version
+						return POM_ERR;
+					}
+
+					if (cp->info.headers_num > 0) { // New query but headers are present -> reset
+						if (cp->log_info) {
+							if (cp->log_info->log_flags & HTTP_LOG_LOGGED_QUERY) {
+								// We got a new query but we already have logging info from a previous one
+								// Let's log the previous one and start a new one
+								if (target_write_log_http(priv, cp) == POM_ERR)
+									return POM_ERR;
+
+								cp->log_info = target_alloc_log_http(priv);
+							}
+						}
+						target_reset_conntrack_http(priv, cp);
+						cp->state = HTTP_QUERY;
+					}
+
+					if (cp->log_info) {
+						cp->log_info->log_flags |= HTTP_LOG_LOGGED_QUERY;
+
+						if (url_token) {
+							cp->log_info->url = malloc(url_tok_size + 1);
+							memcpy(cp->log_info->url, url_token, url_tok_size);
+							cp->log_info->url[tok_size] = 0;
+						}
+
+						if (cp->log_info->log_flags & HTTP_LOG_REQUEST_METHOD) {
+							cp->log_info->request_method = malloc(tok_size + 1);
+							memcpy(cp->log_info->request_method, token, tok_size);
+							cp->log_info->request_method[tok_size] = 0;
+						}
+					}
+					
 					if (cp->log_info && (cp->log_info->log_flags & HTTP_LOG_REQUEST_PROTOCOL) && !cp->log_info->request_proto) {
 						cp->log_info->request_proto = malloc(tok_size + 1);
 						memcpy(cp->log_info->request_proto, token, tok_size);
@@ -757,14 +778,22 @@ size_t target_parse_query_response_http(struct target_priv_http *priv, struct ta
 				break;
 
 			default:
+				if (cp->state == HTTP_QUERY) {
+					// No more than 3 tokens are expected for a query
+					pom_log(POM_LOG_TSHOOT "More than 3 token found for the HTTP query");
+					target_cleanup_log_http(cp);
+					perf_item_val_inc(priv->perf_parse_errors, 1);
+					return POM_ERR;
+				}
 				break;
 
 		}
 		tok_num++;
 	}
 
-	if (tok_num < 1) { // Stuff not matched
+	if (tok_num < 3) { // Stuff not matched
 		pom_log(POM_LOG_TSHOOT "Unable to parse the response/query");
+		perf_item_val_inc(priv->perf_parse_errors, 1);
 		return POM_ERR;
 	}
 
@@ -777,8 +806,10 @@ size_t target_parse_query_response_http(struct target_priv_http *priv, struct ta
 	return hdr_size;
 }
 
-int target_parse_response_headers_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp) {
+int target_parse_payload_headers_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp) {
+
 	int i;
+
 	for (i = 0; i < cp->info.headers_num; i++) {
 		
 		if (cp->info.headers[i].type != cp->state)
@@ -907,6 +938,7 @@ size_t target_process_gzip_http(struct target_priv_http *priv, struct target_con
 int target_reset_conntrack_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp) {
 
 	if (cp->info.headers) {
+		perf_item_val_inc(priv->perf_parsed_transactions, 1);
 		int i;
 		for (i = 0; i < cp->info.headers_num; i++) {
 			free(cp->info.headers[i].name);

@@ -149,6 +149,7 @@ struct target_priv_http {
 	struct perf_item *perf_open_files;
 	struct perf_item *perf_parsed_reqs;
 	struct perf_item *perf_parsed_resps;
+	struct perf_item *perf_parsed_transactions;
 	struct perf_item *perf_parse_errors;
 
 };
@@ -164,7 +165,7 @@ int target_close_http(struct target *t);
 int target_cleanup_http(struct target *t);
 
 size_t target_parse_query_response_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp, char *pload, size_t psize);
-int target_parse_response_headers_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp);
+int target_parse_payload_headers_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp);
 #ifdef HAVE_ZLIB
 size_t target_process_gzip_http(struct target_priv_http *priv, struct target_conntrack_priv_http *cp, char * pload, size_t size);
 #endif

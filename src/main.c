@@ -972,14 +972,14 @@ finish:
 
 	pom_log("Total packets read : %lu, dropped %lu (%.2f%%)", perf_item_val_get_raw(rbuf->perf_total_packets), perf_item_val_get_raw(rbuf->perf_dropped_packets), 100.0 / perf_item_val_get_raw(rbuf->perf_total_packets) * perf_item_val_get_raw(rbuf->perf_dropped_packets));
 
-	perf_unregister_instance(core_perf_class, core_perf_instance);
-
 	// Process remaining queued frames
 	conntrack_close_connections(main_config->rules, &main_config->rules_lock);
 
 	expectation_cleanup_all();
 
 err:
+
+	perf_unregister_instance(core_perf_class, core_perf_instance);
 
 	if (!disable_mgmtsrv)
 		mgmtsrv_cleanup();

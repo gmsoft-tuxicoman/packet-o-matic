@@ -1,3 +1,12 @@
+* 2010/10/28 Guy Martin <gmsoft@tuxicoman.be>
+Fix database logging when a request in the same connection has alreay been logged.
+Fix perf warning when pom is invoked incorrectly.
+Fix small memory leak and behavior when listing modules if path is not found.
+Add parsed_transactions to target_http.
+Fix buffer handling in target_http on connection state change.
+Handle all HTTP method and not only POST and GET in target_http.
+Fix parse_errors counter in target_http.
+
 * 2010/10/20 Guy Martin <gmsoft@tuxicoman.be>
 Fix parsing log_format for target_http.
 Fix logging when content-type is provided in the request.
