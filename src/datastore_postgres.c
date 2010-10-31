@@ -61,6 +61,7 @@ int datastore_register_postgres(struct datastore_reg *r) {
 	datastore_register_param(r, "port", "5432", "Port to connect to");
 	datastore_register_param(r, "user", "", "User");
 	datastore_register_param(r, "password", "", "Password");
+	datastore_register_param(r, "async_commit", "yes", "Perform asynchronous commit");
 
 	r->init = datastore_init_postgres;
 	r->open = datastore_open_postgres;
@@ -91,8 +92,9 @@ static int datastore_init_postgres(struct datastore *d) {
 	priv->port = ptype_alloc("string", NULL);
 	priv->user = ptype_alloc("string", NULL);
 	priv->password = ptype_alloc("string", NULL);
+	priv->async_commit = ptype_alloc("bool", NULL);
 
-	if (!priv->dbname || !priv->host || !priv->port || !priv->user || !priv->password) {
+	if (!priv->dbname || !priv->host || !priv->port || !priv->user || !priv->password || !priv->async_commit) {
 		datastore_cleanup_postgres(d);
 		return POM_ERR;
 	}
@@ -102,6 +104,7 @@ static int datastore_init_postgres(struct datastore *d) {
 	datastore_register_param_value(d, "port", priv->port);
 	datastore_register_param_value(d, "user", priv->user);
 	datastore_register_param_value(d, "password", priv->password);
+	datastore_register_param_value(d, "async_commit", priv->async_commit);
 
 	return POM_OK;
 }
@@ -174,44 +177,12 @@ static int datastore_open_postgres(struct datastore *d) {
 		free(epass);
 	}
 
+	priv->conninfo = conninfo;
 
-	priv->connection = PQconnectdb(conninfo);
-
-	if (PQstatus(priv->connection) != CONNECTION_OK) {
-		char *error = PQerrorMessage(priv->connection);
-		char *br = strchr(error, '\n');
-		if (br) *br = 0;
-		pom_log(POM_LOG_ERR "Connection to database failed: %s", error);
-		PQfinish(priv->connection);
-		priv->connection = NULL;
+	if (postgres_connect(priv) != POM_OK) {
 		free(conninfo);
 		return POM_ERR;
 	}
-	PQsetNoticeProcessor(priv->connection, postgres_notice_processor, NULL);
-
-	priv->conninfo = conninfo;
-
-	const char *integer_datetimes = PQparameterStatus(priv->connection, "integer_datetimes");
-	if (!integer_datetimes) {
-		pom_log(POM_LOG_INFO "Unable to determine binary format for TIMESTAMP fields");
-		free(priv->conninfo);
-		PQfinish(priv->connection);
-		priv->connection = NULL;
-		return POM_ERR;
-	}
-
-	if (!strcmp(integer_datetimes, "on"))
-		priv->integer_datetimes = 1;
-	else
-		priv->integer_datetimes = 0;
-
-	PGresult *res = PQexec(priv->connection, "SET client_encoding TO \"UTF-8\";");
-	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
-		pom_log(POM_LOG_ERR "Unable to set client encoding to UTF-8");
-		PQclear(res);
-		return POM_ERR;
-	}
-	PQclear(res);
 
 	pom_log(POM_LOG_INFO "Connected on database %s at %s", PTYPE_STRING_GETVAL(priv->dbname), PTYPE_STRING_GETVAL(priv->host));
 
@@ -1005,6 +976,7 @@ static int datastore_cleanup_postgres(struct datastore *d) {
 		ptype_cleanup(priv->port);
 		ptype_cleanup(priv->user);
 		ptype_cleanup(priv->password);
+		ptype_cleanup(priv->async_commit);
 		free(d->priv);
 		d->priv = NULL;
 	}
@@ -1036,7 +1008,12 @@ static int postgres_exec(struct dataset *ds, const char *query) {
 		if (PQstatus(priv->connection) == CONNECTION_BAD) { // Try to reconnect
 			PQclear(res);
 
-			if (postgres_reconnect(priv) == POM_ERR) {
+
+			pom_log(POM_LOG_WARN "Connection to database %s on %s lost. Reconnecting", PTYPE_STRING_GETVAL(priv->dbname), PTYPE_STRING_GETVAL(priv->host));
+			PQfinish(priv->connection);
+
+
+			if (postgres_connect(priv) == POM_ERR) {
 				ds->state = DATASET_STATE_DATASTORE_ERR;
 				return POM_ERR;
 			}
@@ -1078,13 +1055,10 @@ static int postgres_get_ds_state_error(struct dataset *ds, PGresult *res) {
 
 }
 
-static int postgres_reconnect(struct datastore_priv_postgres *priv) {
+static int postgres_connect(struct datastore_priv_postgres *priv) {
 
-	if (PQstatus(priv->connection) == CONNECTION_OK)
+	if (priv->connection && PQstatus(priv->connection) == CONNECTION_OK)
 		return POM_OK;
-
-	pom_log(POM_LOG_WARN "Connection to database %s on %s lost. Reconnecting", PTYPE_STRING_GETVAL(priv->dbname), PTYPE_STRING_GETVAL(priv->host));
-	PQfinish(priv->connection);
 
 	priv->connection = PQconnectdb(priv->conninfo);
 
@@ -1092,15 +1066,57 @@ static int postgres_reconnect(struct datastore_priv_postgres *priv) {
 		char *error = PQerrorMessage(priv->connection);
 		char *br = strchr(error, '\n');
 		if (br) *br = 0;
-		pom_log(POM_LOG_ERR "Unable to reconnect : %s", error);
-		PQfinish(priv->connection);
-		priv->connection = NULL;
-
-		return POM_ERR;
+		pom_log(POM_LOG_ERR "Unable to connect : %s", error);
+		goto err;
 	}
+	
 	PQsetNoticeProcessor(priv->connection, postgres_notice_processor, NULL);
 
+	// Find out how to deal with timestamps
+	const char *integer_datetimes = PQparameterStatus(priv->connection, "integer_datetimes");
+	if (!integer_datetimes) {
+		pom_log(POM_LOG_INFO "Unable to determine binary format for TIMESTAMP fields");
+		goto err;
+	}
+
+	if (!strcmp(integer_datetimes, "on"))
+		priv->integer_datetimes = 1;
+	else
+		priv->integer_datetimes = 0;
+
+	// Set client encoding to UTF-8
+	PGresult *res = PQexec(priv->connection, "SET client_encoding TO \"UTF-8\";");
+	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+		pom_log(POM_LOG_ERR "Unable to set client encoding to UTF-8");
+		PQclear(res);
+		goto err;
+	}
+	PQclear(res);
+
+	// Enable or disable asynchronous commit
+	char *async_commit_query = "SET synchronous_commit TO OFF;";
+	if (!PTYPE_BOOL_GETVAL(priv->async_commit))
+		async_commit_query = "SET synchronous_commit TO ON;";
+
+	res = PQexec(priv->connection, async_commit_query);
+	if (PQresultStatus(res) != PGRES_COMMAND_OK) {
+		pom_log(POM_LOG_ERR "Unable to set synchronous_commit parameter");
+		PQclear(res);
+		goto err;
+	}
+	PQclear(res);
+
 	return POM_OK;
+
+err:
+
+	if (priv->connection) {
+		PQfinish(priv->connection);
+		priv->connection = NULL;
+	}
+
+	return POM_ERR;
+
 }
 
 

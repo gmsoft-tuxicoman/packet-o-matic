@@ -1,3 +1,6 @@
+* 2010/10/31 Guy Martin <gmsoft@tuxicoman.be>
+Add async_commit parameter to datastore_postgres.
+
 * 2010/10/28 Guy Martin <gmsoft@tuxicoman.be>
 Fix database logging when a request in the same connection has alreay been logged.
 Fix perf warning when pom is invoked incorrectly.
