@@ -123,7 +123,7 @@ int input_register_docsis(struct input_reg *r);
 static int input_init_docsis(struct input *i);
 
 /// Open one DVB adapter
-static int input_open_adapt_docsis(struct input *i, unsigned int adapt_id, int eurodocsis);
+static int input_open_adapt_docsis(struct input *i, unsigned int adapt_id);
 
 /// Open the cable interface to read from it.
 static int input_open_docsis(struct input *i);

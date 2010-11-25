@@ -50,7 +50,7 @@
 static int match_ethernet_id, match_docsis_id, match_atm_id;
 
 static struct input_mode *mode_normal, *mode_scan, *mode_docsis3, *mode_file;
-static struct ptype *p_eurodocsis, *p_frequency, *p_modulation, *p_outlayer, *p_startfreq, *p_frontend_reinit, *p_tuning_timeout, *p_file;
+static struct ptype *p_frequency, *p_modulation, *p_outlayer, *p_startfreq, *p_frontend_reinit, *p_tuning_timeout, *p_file;
 
 static struct input_adapt_reg_docsis adapts[DOCSIS_MAX_ADAPT];
 
@@ -78,7 +78,6 @@ int input_register_docsis(struct input_reg *r) {
 	if (!mode_normal || !mode_scan || !mode_file || !mode_docsis3)
 		return POM_ERR;
 
-	p_eurodocsis = ptype_alloc("bool", NULL);
 	p_frequency = ptype_alloc("uint32", "Hz");
 	p_modulation = ptype_alloc("string", NULL);
 	p_outlayer = ptype_alloc("string", NULL);
@@ -87,7 +86,7 @@ int input_register_docsis(struct input_reg *r) {
 	p_tuning_timeout = ptype_alloc("uint32", "seconds");
 	p_file = ptype_alloc("string", NULL);
 	
-	if (!p_eurodocsis || !p_frequency || !p_modulation || !p_outlayer || !p_startfreq || !p_frontend_reinit || !p_tuning_timeout || !p_file) {
+	if (!p_frequency || !p_modulation || !p_outlayer || !p_startfreq || !p_frontend_reinit || !p_tuning_timeout || !p_file) {
 		input_unregister_docsis(r);
 		return POM_ERR;
 	}
@@ -104,7 +103,6 @@ int input_register_docsis(struct input_reg *r) {
 		}
 	}
 
-	input_register_param(mode_normal, "eurodocsis", "yes", p_eurodocsis, "Use EuroDOCSIS specification instead of normal DOCSIS specification");
 	input_register_param(mode_normal, "frequency", "440000000", p_frequency, "Frequency of the DOCSIS stream in Hz");
 	input_register_param(mode_normal, "modulation", "QAM256", p_modulation, "Modulation of the DOCSIS stream");
 	input_register_param(mode_normal, "adapter", "0", adapts[0].adapter, "ID of the DVB adapter to use");
@@ -112,7 +110,6 @@ int input_register_docsis(struct input_reg *r) {
 	input_register_param(mode_normal, "tuning_timeout", "3", p_tuning_timeout, "Timeout to wait until giving up when waiting for a lock");
 	input_register_param(mode_normal, "outlayer", "ethernet", p_outlayer, "Type of the output layer wanted");
 
-	input_register_param(mode_scan, "eurodocsis", "yes", p_eurodocsis, "Use EuroDOCSIS specification instead of normal DOCSIS specification");
 	input_register_param(mode_scan, "startfreq", "0", p_startfreq, "Starting frequency in Hz. Will use the default of the specification if 0");
 	input_register_param(mode_scan, "modulation", "QAM256", p_modulation, "Modulation of the DOCSIS stream");
 	input_register_param(mode_scan, "adapter", "0", adapts[0].adapter, "ID of the DVB adapter to use");
@@ -121,7 +118,6 @@ int input_register_docsis(struct input_reg *r) {
 	input_register_param(mode_scan, "tuning_timeout", "3", p_tuning_timeout, "Timeout to wait until giving up when waiting for a lock");
 	input_register_param(mode_scan, "outlayer", "ethernet", p_outlayer, "Type of the output layer wanted");
 
-	input_register_param(mode_docsis3, "eurodocsis", "yes", p_eurodocsis, "Use EuroDOCSIS specification instead of normal DOCSIS specification");
 	input_register_param(mode_docsis3, "frequency", "440000000", p_frequency, "Frequency of the DOCSIS stream in Hz");
 	input_register_param(mode_docsis3, "modulation", "QAM256", p_modulation, "Modulation of the DOCSIS stream");
 
@@ -187,7 +183,6 @@ static int input_cleanup_docsis(struct input *i) {
 
 static int input_unregister_docsis(struct input_reg *r) {
 
-	ptype_cleanup(p_eurodocsis);
 	ptype_cleanup(p_frequency);
 	ptype_cleanup(p_modulation);
 	int i;
@@ -207,7 +202,7 @@ static int input_unregister_docsis(struct input_reg *r) {
 }
 
 
-static int input_open_adapt_docsis(struct input *i, unsigned int adapt_id, int eurodocsis) {
+static int input_open_adapt_docsis(struct input *i, unsigned int adapt_id) {
 
 	struct input_priv_docsis *p = i->input_priv;
 
@@ -240,11 +235,6 @@ static int input_open_adapt_docsis(struct input *i, unsigned int adapt_id, int e
 
 	if (info.type != FE_QAM && info.type != FE_ATSC) {
 		pom_log(POM_LOG_ERR "Error, device %s is not a DVB-C or an ATSC device", frontend);
-		goto err;
-	}
-
-	if (info.type == FE_ATSC && eurodocsis) {
-		pom_log(POM_LOG_ERR "Error, EuroDOCSIS is not supported with ATSC cards");
 		goto err;
 	}
 
@@ -467,8 +457,13 @@ static int input_open_docsis(struct input *i) {
 		pom_log("Docsis stream opened successfully");
 
 	} else {
-		// Parse eurodocsis and frequency
-		int eurodocsis = PTYPE_BOOL_GETVAL(p_eurodocsis);
+
+		if (input_open_adapt_docsis(i, 0) == POM_ERR)
+			return POM_ERR;
+
+		int eurodocsis = 0;
+		if (p->adapts[0].frontend_type == FE_QAM)
+			eurodocsis = 1;
 
 		// Choose right symbolRate depending on modulation
 		fe_modulation_t modulation;
@@ -489,11 +484,6 @@ static int input_open_docsis(struct input *i) {
 		else // QAM_256
 			symbolRate = 5360537;
 
-
-
-		if (input_open_adapt_docsis(i, 0, eurodocsis) == POM_ERR)
-			return POM_ERR;
-				
 
 		if (i->mode == mode_normal || i->mode == mode_docsis3) {
 			unsigned int frequency = PTYPE_UINT32_GETVAL(p_frequency);
@@ -526,8 +516,8 @@ static int input_open_docsis(struct input *i) {
 				input_close_docsis(i);
 				return POM_ERR;
 			}
-			
-			pom_log("Docsis stream locked on adapter %u with frequency %uHz", 0, frequency);
+		
+			pom_log("%sDOCSIS stream locked on adapter %u with frequency %uHz with %uQAM", (eurodocsis ? "Euro" : "US"), 0, frequency, (modulation == QAM_64 ? 64 : 256));
 
 		} else if (i->mode == mode_scan) {
 
@@ -1092,6 +1082,7 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 					if (!(p->warning_flags & DOCSIS_WARN_DOCSIS3)) {
 						pom_log(POM_LOG_WARN "DOCSIS 3 stream found. Switch this input to mode docsis3 to capture on multiple cards");
 						p->warning_flags |= DOCSIS_WARN_DOCSIS3;
+					input_parse_mdd_docsis(i, adapt_id, f->buff + sizeof(struct docsis_hdr) + sizeof(struct docsis_mgmt_hdr), dlen - sizeof(struct docsis_hdr) - sizeof(struct docsis_mgmt_hdr));
 					}
 				} else if (i->mode == mode_docsis3) {
 					int res;
@@ -1597,56 +1588,70 @@ static int input_parse_mdd_docsis(struct input *i, unsigned int adapt_id, unsign
 					}
 
 
-
-					int j, found = 0;
-					for (j = 0; j < p->num_adapts_open; j++) {
-						if (p->adapts[j].freq == freq && p->adapts[j].modulation == adapt_modulation) {
-							//pom_log(POM_LOG_TSHOOT "Adapter %u already handles frequency %uHz", j, freq);
-							found = 1;
-							break;
+					if (i->mode == mode_docsis3) {
+						// Open the new freq
+						int j, found = 0;
+						for (j = 0; j < p->num_adapts_open; j++) {
+							if (p->adapts[j].freq == freq && p->adapts[j].modulation == adapt_modulation) {
+								//pom_log(POM_LOG_TSHOOT "Adapter %u already handles frequency %uHz", j, freq);
+								found = 1;
+								break;
+							}
 						}
-					}
 
-					if (found)
-						break;
-
-
-		
-					// Parse eurodocsis and frequency
-					int eurodocsis = PTYPE_BOOL_GETVAL(p_eurodocsis);
-		
-					if (input_open_adapt_docsis(i, p->num_adapts_open, eurodocsis) == POM_ERR)
-						return POM_ERR;
-
-					// Choose right symbolRate depending on modulation
-					unsigned int symbolRate;
-					if (eurodocsis)
-						symbolRate = 6952000;
-					else if (adapt_modulation == QAM_64)
-						symbolRate = 5056941;
-					else // QAM_256
-						symbolRate = 5360537;
-
-					int tuned = 0;
-
-					// Frequency and modulation supplied. Tuning to that
-					int try;
-					for (try = 0; try < 3; try++) {
-						tuned = input_docsis_tune(p, freq, symbolRate, adapt_modulation, p->num_adapts_open - 1);
-						if (tuned == 1)
+						if (found)
 							break;
-					}
-					
-					if (tuned != 1) {
-						pom_log(POM_LOG_ERR "Error while tuning to %uHz on adapter %u", freq, p->num_adapts_open - 1);
-						return POM_ERR;
-					}
-					if (pri_capable && input_docsis_check_downstream(i, p->num_adapts_open - 1) == POM_ERR) {
-						pom_log("Error, no DOCSIS SYNC message received within timeout on adapter %u for frequency %uHz", p->num_adapts_open - 1, freq);
-						return POM_ERR;
-					}
 
-					pom_log(POM_LOG_INFO "New frequency %uHz found and locked on adapter %u", freq, p->num_adapts_open - 1);
+
+			
+						// Parse frequency
+			
+						int adapt_id = p->num_adapts_open;
+						if (input_open_adapt_docsis(i, adapt_id) == POM_ERR)
+							return POM_ERR;
+
+						if (p->adapts[0].frontend_type != p->adapts[adapt_id].frontend_type) {
+							pom_log("Error adaptator %u is not the same as adaptator 0 (DVB != ATSC)");
+							return POM_ERR;
+						}
+
+						int eurodocsis = 0;
+						if (p->adapts[adapt_id].frontend_type == FE_QAM)
+							eurodocsis = 1;
+
+						// Choose right symbolRate depending on modulation
+						unsigned int symbolRate;
+						if (eurodocsis)
+							symbolRate = 6952000;
+						else if (adapt_modulation == QAM_64)
+							symbolRate = 5056941;
+						else // QAM_256
+							symbolRate = 5360537;
+
+						int tuned = 0;
+
+						// Frequency and modulation supplied. Tuning to that
+						int try;
+						for (try = 0; try < 3; try++) {
+							tuned = input_docsis_tune(p, freq, symbolRate, adapt_modulation, adapt_id);
+							if (tuned == 1)
+								break;
+						}
+						
+						if (tuned != 1) {
+							pom_log(POM_LOG_ERR "Error while tuning to %uHz on adapter %u", freq, adapt_id);
+							return POM_ERR;
+						}
+						if (pri_capable && input_docsis_check_downstream(i, p->num_adapts_open - 1) == POM_ERR) {
+							pom_log("Error, no DOCSIS SYNC message received within timeout on adapter %u for frequency %uHz", adapt_id, freq);
+							return POM_ERR;
+						}
+
+						pom_log(POM_LOG_INFO "New frequency %uHz found and locked on adapter %u", freq, adapt_id);
+					} else {
+						// Print info
+						pom_log(POM_LOG_INFO "Found DOCSIS 3 frequency %uHz (%uQAM)", freq, (adapt_modulation == QAM_64 ? 64 : 256));
+					}
 
 				}
 
