@@ -107,7 +107,10 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 int target_process_mail_notification_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f, struct msn_header *hdrs);
 int target_process_msg_profile_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f, struct msn_header *hdrs);
 
-int target_process_msg_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame*);
+int target_process_msg_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
+int target_process_nfy_put_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
+int target_process_nfy_del_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
+int target_process_sdg_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_process_mail_invite_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_process_status_msg_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_process_adl_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
@@ -117,7 +120,7 @@ int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *c
 int target_process_uun_ubn_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 
 int target_mirror_string_msn(char *value);
-int target_session_timeout_msn(void *priv);
+int target_file_transfer_timeout_msn(void *priv);
 int target_session_close_file_msn(struct target_priv_msn *priv, struct target_file_transfer_msn *file);
 
 #endif

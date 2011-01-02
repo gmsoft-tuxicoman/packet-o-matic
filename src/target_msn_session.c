@@ -314,6 +314,9 @@ int target_msn_session_found_account(struct target *t, struct target_conntrack_p
 	int res = POM_OK;
 	struct target_buddy_msn *bud = target_msn_session_get_buddy(cp->target_priv, account);
 
+	if (!bud) // Invalid account provided
+		return res;
+
 	if (!cp->session->user->account) {
 		// See if we added ourself as a buddy by mistake
 		if (cp->conv) {
@@ -1284,4 +1287,41 @@ int target_msn_session_dump_buddy_list(struct target_conntrack_priv_msn *cp) {
 		return POM_ERR;
 	
 	return POM_OK;
+}
+
+
+enum msn_status_type target_msn_session_decode_status(char *status_code, char **status_str) {
+
+	enum msn_status_type msn_status = msn_status_unknown;
+
+	if (!strcmp("NLN", status_code)) {
+		*status_str = "Available";
+		msn_status = msn_status_available;
+	} else if (!strcmp("BSY", status_code)) {
+		*status_str = "Busy";
+		msn_status = msn_status_busy;
+	} else if (!strcmp("IDL", status_code)) {
+		*status_str = "Idle";
+		msn_status = msn_status_idle;
+	} else if (!strcmp("BRB", status_code)) {
+		*status_str = "Be right back";
+		msn_status = msn_status_brb;
+	} else if (!strcmp("AWY", status_code)) {
+		*status_str = "Away";
+		msn_status = msn_status_away;
+	} else if (!strcmp("PHN", status_code)) {
+		*status_str = "On the phone";
+		msn_status = msn_status_phone;
+	} else if (!strcmp("LUN", status_code)) {
+		*status_str = "Out for lunch";
+		msn_status = msn_status_lunch;
+	} else if (!strcmp("HDN", status_code)) {
+		*status_str = "Hidden";
+		msn_status = msn_status_hidden;
+	} else {
+		*status_str = "Unknown";
+	}
+
+	return msn_status;
+
 }

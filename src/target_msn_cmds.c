@@ -77,6 +77,10 @@ int target_msn_handler_ver(struct target *t, struct target_conntrack_priv_msn *c
 			return POM_OK;
 		}
 		pom_log(POM_LOG_TSHOOT "Protocol version is %u" , sess->version);
+
+		// MSNP21 doesn't use switch boards anymore
+		if (sess->version >= 21)
+			cp->flags |= MSN_CONN_FLAG_NOSB;
 	}
 	return POM_OK;
 }
@@ -112,7 +116,7 @@ int target_msn_handler_cvr(struct target *t, struct target_conntrack_priv_msn *c
 // Authentication
 int target_msn_handler_usr(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
 
-	// MSNP 8->14 :
+	// MSNP8->14 :
 	// client : USR TrID TWN I account
 	// server : USR TrID TWN S auth_string
 	// client : USR TrID TWN S ticket
@@ -124,7 +128,7 @@ int target_msn_handler_usr(struct target *t, struct target_conntrack_priv_msn *c
 	// client : USR Trid SSO S base64_response
 	// server : USR TrID OK account verified 0
 
-	// MSNP18
+	// MSNP18->21
 	// client : USTR TrID SHA A credentials
 	
 	// Switchboard server :
@@ -258,6 +262,45 @@ int target_msn_handler_msg(struct target *t, struct target_conntrack_priv_msn *c
 	}
 
 	return POM_OK;
+}
+
+// Message
+int target_msn_handler_sdg(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
+
+	// MSNP21
+	// client : SDG TrID length
+	// server : SDG 0 length
+	
+	char *tokens[MSN_CMD_MAX_TOKEN];
+	unsigned int tok_num = msn_cmd_tokenize(cp->buffer[cp->curdir], tokens);
+
+	if (tok_num < 3) {
+		pom_log(POM_LOG_DEBUG "Not enough tokens to parse SDG command");
+		return POM_OK;
+	}
+
+	unsigned int trid = 0;
+	if (sscanf(tokens[1], "%u", &trid) != 1) {
+		pom_log(POM_LOG_DEBUG "Invalid TrID provided : %s", tokens[1]);
+		return POM_OK;
+	}
+
+	unsigned int size = 0;
+	if (sscanf(tokens[2], "%u", &size) != 1) {
+		pom_log(POM_LOG_DEBUG "Invalid size provided : %s", tokens[2]);
+		return POM_OK;
+	}
+
+	target_msn_chk_conn_dir(cp, f->ce->direction, (trid ? MSN_DIR_FROM_CLIENT : MSN_DIR_FROM_SERVER));
+
+	if (size > 0)
+		cp->msg[cp->curdir] = msn_cmd_alloc_msg(size, msn_payload_type_sdg);
+
+	// Make sure NOSB flag is set
+	cp->flags |= MSN_CONN_FLAG_NOSB;
+
+	return POM_OK;
+
 }
 
 // Getting/setting personal details
@@ -457,44 +500,15 @@ int target_msn_handler_chg(struct target *t, struct target_conntrack_priv_msn *c
 	char *tokens[MSN_CMD_MAX_TOKEN];
 	unsigned int tok_num = msn_cmd_tokenize(cp->buffer[cp->curdir], tokens);
 
-	if (tok_num < 2) {
+	if (tok_num <= 2) {
 		pom_log(POM_LOG_DEBUG "CHG command imcomplete");
 		return POM_OK;
 	}
 
 	struct target_session_priv_msn *sess = cp->session;
 
-	enum msn_status_type new_status = msn_status_unknown;
-
 	char *status_msg = NULL;
-	if (!strcmp("NLN", tokens[2])) {
-		status_msg = "Available";
-		new_status = msn_status_available;
-	} else if (!strcmp("BSY", tokens[2])) {
-		status_msg = "Busy";
-		new_status = msn_status_busy;
-	} else if (!strcmp("IDL", tokens[2])) {
-		status_msg = "Idle";
-		new_status = msn_status_idle;
-	} else if (!strcmp("BRB", tokens[2])) {
-		status_msg = "Be right back";
-		new_status = msn_status_brb;
-	} else if (!strcmp("AWY", tokens[2])) {
-		status_msg = "Away";
-		new_status = msn_status_away;
-	} else if (!strcmp("PHN", tokens[2])) {
-		status_msg = "On the phone";
-		new_status = msn_status_phone;
-	} else if (!strcmp("LUN", tokens[2])) {
-		status_msg = "Out for lunch";
-		new_status = msn_status_lunch;
-	} else if (!strcmp("HDN", tokens[2])) {
-		status_msg = "Hidden";
-		new_status = msn_status_hidden;
-	} else {
-		status_msg = "Unknown";
-	}
-
+	enum msn_status_type new_status = target_msn_session_decode_status(tokens[2], &status_msg);
 
 	if (sess->user->status != new_status) {
 		pom_log(POM_LOG_TSHOOT "Status changed : %s", status_msg);
@@ -991,35 +1005,8 @@ int target_msn_handler_nln(struct target *t, struct target_conntrack_priv_msn *c
 	}
 
 
-	int new_status = msn_status_unknown;
 	char *status_msg = NULL;
-	if (!strcmp("NLN", tokens[1])) {
-		status_msg = "Available";
-		new_status = msn_status_available;
-	} else if (!strcmp("BSY", tokens[1])) {
-		status_msg = "Busy";
-		new_status = msn_status_busy;
-	} else if (!strcmp("IDL", tokens[1])) {
-		status_msg = "Idle";
-		new_status = msn_status_idle;
-	} else if (!strcmp("BRB", tokens[1])) {
-		status_msg = "Be right back";
-		new_status = msn_status_brb;
-	} else if (!strcmp("AWY", tokens[1])) {
-		status_msg = "Away";
-		new_status = msn_status_away;
-	} else if (!strcmp("PHN", tokens[1])) {
-		status_msg = "On the phone";
-		new_status = msn_status_phone;
-	} else if (!strcmp("LUN", tokens[1])) {
-		status_msg = "Out for lunch";
-		new_status = msn_status_lunch;
-	} else if (!strcmp("HDN", tokens[1])) {
-		status_msg = "Hidden";
-		new_status = msn_status_hidden;
-	} else {
-		status_msg = "Unknown";
-	}
+	enum msn_status_type new_status = target_msn_session_decode_status(tokens[1], &status_msg);
 
 	if (buddy->status != new_status) {
 
@@ -1079,36 +1066,8 @@ int target_msn_handler_iln(struct target *t, struct target_conntrack_priv_msn *c
 		return POM_OK;
 	}
 
-
-	int new_status = msn_status_unknown;
 	char *status_msg = NULL;
-	if (!strcmp("NLN", tokens[2])) {
-		status_msg = "Available";
-		new_status = msn_status_available;
-	} else if (!strcmp("BSY", tokens[2])) {
-		status_msg = "Busy";
-		new_status = msn_status_busy;
-	} else if (!strcmp("IDL", tokens[2])) {
-		status_msg = "Idle";
-		new_status = msn_status_idle;
-	} else if (!strcmp("BRB", tokens[2])) {
-		status_msg = "Be right back";
-		new_status = msn_status_brb;
-	} else if (!strcmp("AWY", tokens[2])) {
-		status_msg = "Away";
-		new_status = msn_status_away;
-	} else if (!strcmp("PHN", tokens[2])) {
-		status_msg = "On the phone";
-		new_status = msn_status_phone;
-	} else if (!strcmp("LUN", tokens[2])) {
-		status_msg = "Out for lunch";
-		new_status = msn_status_lunch;
-	} else if (!strcmp("HDN", tokens[2])) {
-		status_msg = "Hidden";
-		new_status = msn_status_hidden;
-	} else {
-		status_msg = "Unknown";
-	}
+	enum msn_status_type new_status = target_msn_session_decode_status(tokens[2], &status_msg);
 
 	if (buddy->status != new_status) {
 
@@ -1666,10 +1625,12 @@ int target_msn_handler_rea(struct target *t, struct target_conntrack_priv_msn *c
 	return res;
 }
 
-// Not sure what this one does
+// Presence update from the server
 int target_msn_handler_nfy(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
 
+	// MSNP21
 	// server : NFY PUT length
+	// server : NFY DEL length
 	
 	char *tokens[MSN_CMD_MAX_TOKEN];
 	unsigned int tok_num = msn_cmd_tokenize(cp->buffer[cp->curdir], tokens);
@@ -1685,16 +1646,24 @@ int target_msn_handler_nfy(struct target *t, struct target_conntrack_priv_msn *c
 		return POM_OK;
 	}
 
-	if (strcmp(tokens[1], "PUT") && strcmp(tokens[1], "DEL")) {
+	enum msn_payload_type pload_type = msn_payload_type_ignore;
+
+	if (!strcmp(tokens[1], "PUT")) {
+		pload_type = msn_payload_type_nfy_put;
+	} else if (!strcmp(tokens[1], "DEL")) {
+		pload_type = msn_payload_type_nfy_del;
+	} else {
 		pom_log(POM_LOG_DEBUG "Unknown NFY command : %s", tokens[1]);
 		// no return since we parsed the length
 	}
 
 	target_msn_chk_conn_dir(cp, f->ce->direction, MSN_DIR_FROM_SERVER);
 
-	if (length > 0)
-		cp->msg[cp->curdir] = msn_cmd_alloc_msg(length, msn_payload_type_ignore);
+	if (length > 0) 
+		cp->msg[cp->curdir] = msn_cmd_alloc_msg(length, pload_type);
 
+	// MSNP21 doesn't use switch boards anymore
+	cp->flags |= MSN_CONN_FLAG_NOSB;
 
 	return POM_OK;
 }
@@ -1726,6 +1695,36 @@ int target_msn_handler_put(struct target *t, struct target_conntrack_priv_msn *c
 	unsigned int len = 0;
 	if (sscanf(length, "%u", &len) != 1) {
 		pom_log(POM_LOG_DEBUG "Invalid PUT message : %s", length);
+		return POM_OK;
+
+	}
+
+	if (len > 0)
+		cp->msg[cp->curdir] = msn_cmd_alloc_msg(len, msn_payload_type_ignore);
+
+
+	return POM_OK;
+}
+
+// Nor this one
+int target_msn_handler_del(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
+
+	// client/server? : DEL TrID length
+	
+	char *tokens[MSN_CMD_MAX_TOKEN];
+	unsigned int tok_num = msn_cmd_tokenize(cp->buffer[cp->curdir], tokens);
+
+	if (tok_num < 3) {
+		pom_log(POM_LOG_DEBUG "Not enough tokens to parse DEL command");
+		return POM_OK;
+	}
+
+	char *length = NULL;
+
+
+	unsigned int len = 0;
+	if (sscanf(tokens[2], "%u", &len) != 1) {
+		pom_log(POM_LOG_DEBUG "Invalid DEL message : %s", length);
 		return POM_OK;
 
 	}

@@ -1,3 +1,8 @@
+* 2011/01/02 Guy Martin <gmsoft@tuxicoman.be>
+Added partial support for MSNP21.
+Added some more error checking in target_msn.
+Fix possible segfault in target_msn.
+
 * 2010/11/25 Guy Martin <gmsoft@tuxicoman.be>
 Remove param eurodocsis from input_docsis and deduce the type from the card frontend type.
 Print all frequencies present in MDD when input_docsis is not in docsis3 mode.

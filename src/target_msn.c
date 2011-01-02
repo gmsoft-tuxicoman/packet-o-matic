@@ -43,6 +43,7 @@ struct msn_cmd_handler msn_cmds[] = {
 	{ "USR", target_msn_handler_usr },
 	{ "XFR", target_msn_handler_xfr },
 	{ "MSG", target_msn_handler_msg },
+	{ "SDG", target_msn_handler_sdg },
 	{ "UUM", target_msn_handler_uum },
 	{ "UBM", target_msn_handler_ubm },
 	{ "PRP", target_msn_handler_prp },
@@ -80,6 +81,7 @@ struct msn_cmd_handler msn_cmds[] = {
 	{ "NFY", target_msn_handler_nfy },
 	{ "PUT", target_msn_handler_put },
 	{ "ADD", target_msn_handler_add },
+	{ "DEL", target_msn_handler_del },
 	{ "ADC", target_msn_handler_adc },
 	{ "REM", target_msn_handler_rem },
 	{ "SBS", target_msn_handler_ignore },
@@ -502,6 +504,14 @@ int target_process_msn(struct target *t, struct frame *f) {
 			}
 		}
 
+		// MSNP21 doesn't use one connection per conversation
+		// We have to make sure that a conversation is not associated
+		// to this connection. The right conversation will be found
+		// while processing the message.
+
+		if (cp->flags & MSN_CONN_FLAG_NOSB)
+			cp->conv = NULL;
+
 		int res = POM_OK;
 		if (!msg) {
 			pom_log(POM_LOG_TSHOOT "Command : %s", cp->buffer[dir]);
@@ -516,6 +526,15 @@ int target_process_msn(struct target *t, struct frame *f) {
 				case msn_payload_type_msg_oob:
 					res = target_process_msg_msn(t, cp, f);
 					cp->conv = NULL; // Make sure conversation isn't assigned for out of band messages
+					break;
+				case msn_payload_type_nfy_put:
+					res = target_process_nfy_put_msn(t, cp, f);
+					break;
+				case msn_payload_type_nfy_del:
+					res = target_process_nfy_del_msn(t, cp, f);
+					break;
+				case msn_payload_type_sdg:
+					res = target_process_sdg_msn(t, cp, f);
 					break;
 				case msn_payload_type_mail_invite:
 					res = target_process_mail_invite_msn(t, cp, f);

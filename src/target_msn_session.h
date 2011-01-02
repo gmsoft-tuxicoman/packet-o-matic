@@ -52,5 +52,6 @@ int target_msn_session_event(struct target_event_msn *evt);
 int target_msn_session_process_event(struct target_event_msn *evt);
 int target_msn_session_write(int fd, char *buff);
 int target_msn_session_dump_buddy_list(struct target_conntrack_priv_msn *cp);
+enum msn_status_type target_msn_session_decode_status(char *status_code, char **status_str);
 
 #endif

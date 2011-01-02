@@ -36,6 +36,7 @@ int target_msn_handler_cvr(struct target *t, struct target_conntrack_priv_msn *c
 int target_msn_handler_usr(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_msn_handler_xfr(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_msn_handler_msg(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
+int target_msn_handler_sdg(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_msn_handler_uum(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_msn_handler_ubm(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_msn_handler_ubn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
@@ -71,6 +72,7 @@ int target_msn_handler_qry(struct target *t, struct target_conntrack_priv_msn *c
 int target_msn_handler_rea(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_msn_handler_nfy(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_msn_handler_put(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
+int target_msn_handler_del(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_msn_handler_add(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_msn_handler_adc(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);
 int target_msn_handler_rem(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f);

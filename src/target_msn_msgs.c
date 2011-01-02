@@ -145,7 +145,6 @@ int target_process_msg_msn(struct target *t, struct target_conntrack_priv_msn *c
 				pom_log(POM_LOG_DEBUG "Header Content-Type unknown : %s", hdrs[hdr_num].value);
 		} else if (!strcasecmp(hdrs[hdr_num].name, "Chunk") || !strcasecmp(hdrs[hdr_num].name, "Message-ID")) {
 			// Headers found in winks message
-			// Do nothHeaders found in winks message
 			// Do nothing for now
 		} else {
 			pom_log(POM_LOG_DEBUG "Unhandled header : %s : %s", hdrs[hdr_num].name, hdrs[hdr_num].value);
@@ -159,6 +158,522 @@ int target_process_msg_msn(struct target *t, struct target_conntrack_priv_msn *c
 	target_free_msg_msn(cp, cp->curdir);
 	free(hdrs);
 	return POM_OK;
+
+}
+
+int target_process_nfy_put_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
+
+	struct target_msg_msn *m = cp->msg[cp->curdir];
+
+	// There are 3 batches of headers
+
+	// Routing headers
+	struct msn_header *hdrs = header_split(cp);
+	unsigned int hdr_num = 0;
+	while (hdrs[hdr_num].name) {
+		if (!strcasecmp(hdrs[hdr_num].name, "To")) {
+			// Strip buddy type
+			char *colon = strchr(hdrs[hdr_num].value, ':');
+			if (colon)
+				hdrs[hdr_num].value = colon + 1;
+
+			// To will always be the account since those messages only come from the server
+			if (target_msn_session_found_account(t, cp, hdrs[hdr_num].value) == POM_ERR) {
+				free(hdrs);
+				target_free_msg_msn(cp, cp->curdir);
+				return POM_ERR;
+			}
+
+		} else if (!strcasecmp(hdrs[hdr_num].name, "From")) {
+			// Strip buddy type
+			char *colon = strchr(hdrs[hdr_num].value, ':');
+			if (colon)
+				hdrs[hdr_num].value = colon + 1;
+
+			// Found buddy
+			struct target_buddy_list_session_msn *bud_lst = target_msn_session_found_buddy(cp, hdrs[hdr_num].value, NULL, NULL, &f->tv);
+			if (!bud_lst) {
+				// Invalid buddy or NFY PUT for the account
+				// NFY PUT for the account doesn't contain any info -> skip
+				free(hdrs);
+				target_free_msg_msn(cp, cp->curdir);
+				return POM_OK;
+			}
+			m->from = bud_lst->bud;
+		}
+
+		hdr_num++;
+	}
+
+	free(hdrs);
+
+	if (!m->from) {
+		pom_log(POM_LOG_DEBUG "From user not provided in NFY PUT");
+		target_free_msg_msn(cp, cp->curdir);
+		return POM_OK;
+	}
+		
+
+	// Reliability header
+	hdrs = header_split(cp);
+	hdr_num = 0;
+	while (hdrs[hdr_num].name) {
+		if (!strcasecmp(hdrs[hdr_num].name, "Reliability")) {
+			// Nothing to do, just checking
+		} else {
+			pom_log(POM_LOG_DEBUG "Unhandled header : %s : %s", hdrs[hdr_num].name, hdrs[hdr_num].value);
+		}
+
+		hdr_num++;
+	}
+	free(hdrs);
+
+	// Message headers
+	hdrs = header_split(cp);
+	hdr_num = 0;
+	while (hdrs[hdr_num].name) {
+		if (!strcasecmp(hdrs[hdr_num].name, "Content-Type")) {
+			if (strcasecmp(hdrs[hdr_num].value, "application/user+xml")) {
+				pom_log(POM_LOG_DEBUG "Unexpected Content-Type in NFY : %s", hdrs[hdr_num].value);
+				free(hdrs);
+				target_free_msg_msn(cp, cp->curdir);
+				return POM_OK;
+			}
+			break;
+		}
+
+		hdr_num++;
+	}
+	free(hdrs);
+
+	int len = m->tot_len - m->cur_pos;
+
+	xmlDocPtr doc = NULL;
+	xmlNodePtr root, cur, s_cur;
+
+	doc = xmlReadMemory(cp->buffer[cp->curdir] + cp->msg[cp->curdir]->cur_pos, len, "noname.xml", NULL, 0);
+
+	if (!doc) {
+		pom_log(POM_LOG_DEBUG "Unable to parse the XML formated status message");
+		target_free_msg_msn(cp, cp->curdir);
+		return POM_OK;
+	}
+
+	root = xmlDocGetRootElement(doc);
+
+	if (!root) {
+		pom_log(POM_LOG_DEBUG "Unexpected empty status message");
+		goto out;
+	}
+
+	// Syntax 
+	// <user>
+	// 	<s n="IM">
+	// 		<Status>(NLN,IDL, ...)</Status>
+	// 		<CurrentMedia>playing song</CurrentMedia>
+	// 	</s>
+	// 	<s n="PE">
+	// 		<FriendlyName>friendly name</FriendlyName>
+	// 		<RUM>looks to be the same as PSM</RUM>
+	// 		<PSM>personal message</PSM>
+	// 		<other useless stuff/>
+	// 	</s>
+	// 	<sep n="IM" epid="{epid-guid}"> (can occur more than noce)
+	// 		<Capabilities>integer number</Capabilities>
+	// 	</sep>
+	// </user>
+	
+	if (xmlStrcmp(root->name, (const xmlChar*) "user")) {
+		pom_log(POM_LOG_DEBUG "Unexpected root element name : %s", root->name);
+		goto out;
+
+	}
+
+	int res = POM_OK;
+
+	cur = root->xmlChildrenNode;
+
+	struct target_buddy_msn *buddy = m->from;
+
+	// Let's try to parse the useful info
+	while (cur) {
+		if (!xmlStrcmp(cur->name, (const xmlChar*) "s")) {
+			
+			s_cur = cur->xmlChildrenNode;
+
+			while (s_cur) {
+
+				if (!xmlStrcmp(s_cur->name, (const xmlChar*) "Status")) {
+					char *status = (char*) xmlNodeListGetString(doc, s_cur->xmlChildrenNode, 1);
+					if (status) {
+						char *status_msg = NULL;
+						enum msn_status_type new_status = target_msn_session_decode_status(status, &status_msg);
+
+						if (buddy->status != new_status) {
+							struct target_event_msn evt;
+							memset(&evt, 0, sizeof(struct target_event_msn));
+							memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
+							evt.buff = status_msg;
+							evt.from = buddy;
+							evt.type = msn_evt_status_change;
+							evt.conv = cp->conv;
+							evt.sess = cp->session;
+							res += target_msn_session_broadcast_event(&evt);
+
+							buddy->status = new_status;
+						}
+
+						xmlFree(status);
+
+					}
+				} else if (!xmlStrcmp(s_cur->name, (const xmlChar*) "CurrentMedia")) {
+					// Handle current song
+					char *current_media = (char*) xmlNodeListGetString(doc, s_cur->xmlChildrenNode, 1);
+					if (current_media) {
+						pom_log(POM_LOG_TSHOOT "Currently playing song : %s", current_media);
+						xmlFree(current_media);
+					}
+				} else if (!xmlStrcmp(s_cur->name, (const xmlChar*) "FriendlyName")) {
+					// Handle Friendly name 
+					char *friendly_name = (char*) xmlNodeListGetString(doc, s_cur->xmlChildrenNode, 1);
+					if (friendly_name) {
+						target_msn_session_found_buddy2(cp, buddy, friendly_name, NULL, &f->tv);
+						xmlFree(friendly_name);
+					}
+				} else if (!xmlStrcmp(s_cur->name, (const xmlChar*) "PSM")) {
+
+					// Handle PSM
+					
+					struct target_event_msn evt;
+					memset(&evt, 0, sizeof(struct target_event_msn));
+					memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
+					evt.type = msn_evt_personal_msg_change;
+					evt.from = buddy;
+					evt.conv = cp->conv;
+					evt.sess = cp->session;
+
+					char *psm = (char*) xmlNodeListGetString(doc, s_cur->xmlChildrenNode, 1);
+					if (psm) { // Let's see if it changed since last time
+						if (!buddy->psm || strcmp(buddy->psm, psm)) {
+							pom_log(POM_LOG_TSHOOT "Status message changed : %s", psm);
+							free(buddy->psm);
+							buddy->psm = malloc(strlen(psm) + 1);
+							strcpy(buddy->psm, psm);
+
+							evt.buff = buddy->psm;
+							res += target_msn_session_broadcast_event(&evt);
+
+						}
+						xmlFree(psm);
+					} else if (buddy->psm) {
+						free(buddy->psm); // Message was unset
+						buddy->psm = NULL;
+						res += target_msn_session_broadcast_event(&evt);
+					}
+				}
+
+				s_cur = s_cur->next;
+			}
+		}
+		
+		cur = cur->next;
+	}
+
+
+out:
+
+	xmlFreeDoc(doc);
+	target_free_msg_msn(cp, cp->curdir);
+
+	return res;
+}
+
+int target_process_nfy_del_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
+
+	struct target_msg_msn *m = cp->msg[cp->curdir];
+
+	// There are 3 batches of headers but we only care about the From
+
+	// Routing headers
+	struct msn_header *hdrs = header_split(cp);
+	unsigned int hdr_num = 0;
+	while (hdrs[hdr_num].name) {
+		if (!strcasecmp(hdrs[hdr_num].name, "To")) {
+			// Strip buddy type
+			char *colon = strchr(hdrs[hdr_num].value, ':');
+			if (colon)
+				hdrs[hdr_num].value = colon + 1;
+
+			// To will always be the account since those messages only come from the server
+			if (target_msn_session_found_account(t, cp, hdrs[hdr_num].value) == POM_ERR) {
+				free(hdrs);
+				target_free_msg_msn(cp, cp->curdir);
+				return POM_ERR;
+			}
+
+		} else if (!strcasecmp(hdrs[hdr_num].name, "From")) {
+			// Strip buddy type
+			char *colon = strchr(hdrs[hdr_num].value, ':');
+			if (colon)
+				hdrs[hdr_num].value = colon + 1;
+
+			// Found buddy
+			struct target_buddy_list_session_msn *bud_lst = target_msn_session_found_buddy(cp, hdrs[hdr_num].value, NULL, NULL, &f->tv);
+			if (!bud_lst) {
+				// Invalid buddy or NFY DEL 
+				free(hdrs);
+				target_free_msg_msn(cp, cp->curdir);
+				return POM_OK;
+			}
+			m->from = bud_lst->bud;
+		}
+
+		hdr_num++;
+	}
+
+	free(hdrs);
+
+	if (!m->from) {
+		pom_log(POM_LOG_DEBUG "From user not provided in NFY DEL");
+		target_free_msg_msn(cp, cp->curdir);
+		return POM_OK;
+	}
+
+	struct target_buddy_msn *buddy = m->from;
+
+	int res = POM_OK;
+
+	if (buddy->status != msn_status_offline) {
+
+		struct target_event_msn evt;
+		memset(&evt, 0, sizeof(struct target_event_msn));
+		memcpy(&evt.tv, &f->tv, sizeof(struct timeval));
+		evt.buff = "Offline";
+		evt.from = buddy;
+		evt.type = msn_evt_status_change;
+		evt.conv = cp->conv;
+		evt.sess = cp->session;
+		
+		res = target_msn_session_broadcast_event(&evt);
+
+		buddy->status = msn_status_offline;
+	}
+
+	pom_log(POM_LOG_TSHOOT "User \"%s\" signed out", buddy->account);
+
+	target_free_msg_msn(cp, cp->curdir);
+	return res;
+}
+
+
+
+int target_process_sdg_msn(struct target *t, struct target_conntrack_priv_msn *cp, struct frame *f) {
+
+	struct target_msg_msn *m = cp->msg[cp->curdir];
+
+	// There are 3 batches of headers
+
+	if (cp->server_dir == CE_DIR_UNK) {
+		pom_log(POM_LOG_DEBUG "Server direction unknown while processing SDG");
+		return POM_OK;
+	}
+
+	// Routing headers
+	struct msn_header *hdrs = header_split(cp);
+	unsigned int hdr_num = 0;
+	struct target_buddy_msn *buddy_dest = NULL;
+	char *buddy_dest_guid = NULL;
+	while (hdrs[hdr_num].name) {
+		if (!strcasecmp(hdrs[hdr_num].name, "To")) {
+			// Strip buddy type
+			char *colon = strchr(hdrs[hdr_num].value, ':');
+			if (colon)
+				hdrs[hdr_num].value = colon + 1;
+
+			// Try to find out the account
+			if (cp->server_dir == cp->curdir) {
+				if (target_msn_session_found_account(t, cp, hdrs[hdr_num].value) == POM_ERR) {
+					free(hdrs);
+					target_free_msg_msn(cp, cp->curdir);
+					return POM_ERR;
+				}
+				m->to = cp->session->user;
+			} else {
+				// Format of the To: is type:account@domain.tld;epid={guid}
+				buddy_dest_guid = strchr(hdrs[hdr_num].value, '{');
+
+				struct target_connection_party_msn *party_dest = target_msn_session_found_party(t, cp, hdrs[hdr_num].value, NULL, &f->tv);
+				m->to = party_dest->buddy;
+				buddy_dest = m->to;
+			
+			}
+
+		} else if (!strcasecmp(hdrs[hdr_num].name, "From")) {
+			// Strip buddy type
+			char *colon = strchr(hdrs[hdr_num].value, ':');
+			if (colon)
+				hdrs[hdr_num].value = colon + 1;
+
+			// Try to find out the account
+			if (cp->server_dir != cp->curdir) {
+				if (target_msn_session_found_account(t, cp, hdrs[hdr_num].value) == POM_ERR) {
+					free(hdrs);
+					target_free_msg_msn(cp, cp->curdir);
+					return POM_ERR;
+				}
+				m->from = cp->session->user;
+			} else {
+				// Format of the From: is type:account@domain.tld;epid={guid}
+				buddy_dest_guid = strchr(hdrs[hdr_num].value, '{');
+
+				struct target_connection_party_msn *party_dest = target_msn_session_found_party(t, cp, hdrs[hdr_num].value, NULL, &f->tv);
+				m->from = party_dest->buddy;
+				buddy_dest = m->from;
+			}
+		}
+
+		hdr_num++;
+	}
+
+	free(hdrs);
+
+	if (!m->to || !m->from) {
+		pom_log(POM_LOG_DEBUG "To or From header missing from SDG message");
+		return POM_OK;
+	}
+
+	// Reliability header
+	hdrs = header_split(cp);
+	hdr_num = 0;
+	while (hdrs[hdr_num].name) {
+		if (!strcasecmp(hdrs[hdr_num].name, "Reliability")) {
+			// Nothing to do, just checking
+		} else {
+			pom_log(POM_LOG_DEBUG "Unhandled header : %s : %s", hdrs[hdr_num].name, hdrs[hdr_num].value);
+		}
+
+		hdr_num++;
+	}
+	free(hdrs);
+
+	// Message headers
+	hdrs = header_split(cp);
+	hdr_num = 0;
+	char *message_type = NULL, *bridging_offsets = NULL;
+	while (hdrs[hdr_num].name) {
+		if (!strcasecmp(hdrs[hdr_num].name, "Message-Type")) {
+			message_type = hdrs[hdr_num].value;
+		} else if (!strcasecmp(hdrs[hdr_num].name, "Bridging-Offsets")) {
+			bridging_offsets = hdrs[hdr_num].value;
+		}
+
+		hdr_num++;
+	}
+	free(hdrs);
+
+	if (!message_type) {
+		target_free_msg_msn(cp, cp->curdir);
+		return POM_OK;
+	}
+
+
+	// Parse Briding-Offsets, this header allow multiple messages to be bundles in a single SDG payload
+
+	unsigned int *offsets = NULL, offset_count = 0;
+
+	if (bridging_offsets) {
+		char *str, *token, *saveptr = NULL;
+		for (str = bridging_offsets; ; str = NULL) {
+			token = strtok_r(str, ",", &saveptr);
+			if (!token)
+				break;
+			offset_count++;
+			offsets = realloc(offsets, sizeof(int) * offset_count);
+			if (sscanf(token, "%u", &offsets[offset_count - 1]) != 1) {
+				pom_log(POM_LOG_DEBUG "Unable to parse bridging offset : %s", token);
+				offset_count--;
+			}
+		}
+
+	}
+	
+	if (!offset_count) {
+		unsigned int null_offset = 0;
+		offsets = &null_offset;
+		offset_count = 1;
+	}
+
+
+	// Microsoft decided to use Message-Type this time ...
+
+	int msg_type = -1;
+
+	int res = POM_OK;
+	if (!strcasecmp(message_type, "Text")) {
+		msg_type = 0;
+	} else if (!strcasecmp(message_type, "Signal/P2P") || !strcasecmp(message_type, "Signal/Turn")) {
+		msg_type = 1;
+	} else if (!strcasecmp(message_type, "Data")) {
+
+		if (buddy_dest_guid) // Buddy has a guid -> it supports WML2009 binary format
+			cp->flags |= MSN_CONN_FLAG_WLM2009_BIN;
+		else
+			cp->flags &= ~MSN_CONN_FLAG_WLM2009_BIN;
+		msg_type = 2;
+
+	} else if (!strcasecmp(message_type, "Control/Typing") ||
+		!strcasecmp(message_type, "Signal/MarkIMWindowRead") ||
+		!strcasecmp(message_type, "CustomEmoticon") ||
+		!strcasecmp(message_type, "Signal/AudioMeta") ||
+		!strcasecmp(message_type, "Signal/AudioTunnel")) {
+
+		// Ignore, unhandled
+	} else {
+		pom_log(POM_LOG_DEBUG "Unknown Message-Type in SDG : %s", message_type);
+	}
+
+	if (msg_type == -1) {
+		target_free_msg_msn(cp, cp->curdir);
+		return POM_OK;
+	}
+
+	unsigned int orig_pos = m->cur_pos, orig_len = m->cur_len;
+
+	int i;
+	for (i = 0; i < offset_count; i++) {
+
+		m->cur_pos = orig_pos + offsets[i];
+		if (i < offset_count - 1)
+			m->tot_len = orig_pos + offsets[i + 1];
+		else
+			m->tot_len = orig_len;
+
+		switch (msg_type) {
+			case 0: { // Text
+				struct msn_header empty_hdrs;
+				memset(&empty_hdrs, 0, sizeof(struct msn_header));
+				res = target_process_mime_text_plain_msg(t, cp, f, &empty_hdrs);
+				break;
+			}
+			case 1: // Signal (SIP)
+				res = target_process_sip_msn(t, cp, f, buddy_dest, buddy_dest_guid, 0);
+				break;
+			case 2: // Data (binary format)
+				res = target_process_bin_p2p_msg(t, cp, f, buddy_dest, buddy_dest_guid);
+				break;
+
+		}
+
+		if (res != POM_OK)
+			break;
+
+	}
+
+	if (bridging_offsets)
+		free(offsets);
+
+	target_free_msg_msn(cp, cp->curdir);
+	return res;
 
 }
 
@@ -292,7 +807,8 @@ int target_process_mime_msnmsgrp2p_msg(struct target *t, struct target_conntrack
 		if (p2p_dest_guid)
 			p2p_dest_guid++;
 		if (m->from) { // Message wasn't sent by the user
-			target_msn_session_found_account(t, cp, p2p_dest);
+			if (target_msn_session_found_account(t, cp, p2p_dest) == POM_ERR)
+				return POM_ERR;
 		} else {
 			struct target_connection_party_msn *party_dest = target_msn_session_found_party(t, cp, p2p_dest, NULL, &f->tv);
 			if (party_dest) {
@@ -316,7 +832,8 @@ int target_process_mime_msnmsgrp2p_msg(struct target *t, struct target_conntrack
 			} else
 				pom_log(POM_LOG_DEBUG "Invalid destination party in P2P message : %s", p2p_src);
 		} else {
-			target_msn_session_found_account(t, cp, p2p_src);
+			if (target_msn_session_found_account(t, cp, p2p_src) == POM_ERR)
+				return POM_ERR;
 		}
 	}
 
@@ -491,7 +1008,7 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 
 				cp->buffer[cp->curdir] = old_cp_buffer;
 				cp->buffer_len[cp->curdir] = old_cp_buffer_len;
-				m->cur_pos = old_msg_cur_pos;
+				m->cur_pos = old_msg_cur_pos + msg_size;
 				m->tot_len = old_msg_tot_len;
 
 				free(sip_msg->buffer);
@@ -505,7 +1022,7 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 			if (cp->flags & MSN_CONN_FLAG_WLM2009_BIN) // WLM2009 doesn't provide the total_size
 				total_size = msg_size + remaining_size;
 
-			if (total_size > (unsigned int)-1) { // Avoid integer overflow
+			if (total_size < msg_size || total_size < remaining_size) { // Avoid integer overflow
 				pom_log(POM_LOG_DEBUG "SIP payload too big. Ignoring");
 				return POM_OK;
 
@@ -661,6 +1178,12 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 
 		if (cp->flags & MSN_CONN_FLAG_WLM2009_BIN) // WLM2009 doesn't provide the total_size
 			total_size = msg_size + remaining_size;
+
+		if (total_size < msg_size || total_size < remaining_size) { // Avoid integer overflow
+			pom_log(POM_LOG_DEBUG "SIP payload too big. Ignoring");
+			return POM_OK;
+
+		}
 
 		file->fd = fd;
 		if (!file->len)
@@ -899,7 +1422,7 @@ int target_process_sip_msn(struct target *t, struct target_conntrack_priv_msn *c
 						strcpy(file->buddy_guid, buddy_guid);
 					}
 
-					file->timer = timer_alloc(file, f->input, target_session_timeout_msn);
+					file->timer = timer_alloc(file, f->input, target_file_transfer_timeout_msn);
 					timer_queue(file->timer, MSN_SESSION_TIMEOUT);
 
 					file->next = sess->file;
@@ -1436,21 +1959,18 @@ int target_process_adl_msn(struct target *t, struct target_conntrack_priv_msn *c
 						continue;
 					}
 
+					// TODO check how MSNP21 handles list id
+					// It seems there are multiple set of lists provided in <s> tags
 					char *list_id_str = (char *) xmlGetProp(contactPtr, (const xmlChar*) "l");
-					if (!list_id_str) {
-						pom_log(POM_LOG_DEBUG "No list id given in <c> tag");
-						xmlFree(account);
-						contactPtr = contactPtr->next;
-						continue;
-					}
-					
-					unsigned int list_id;
-					if (sscanf(list_id_str, "%u", &list_id) != 1) {
-						pom_log(POM_LOG_DEBUG "Unable to parse the list id : %s", list_id_str);
-						xmlFree(account);
-						xmlFree(list_id_str);
-						contactPtr = contactPtr->next;
-						continue;
+					unsigned int list_id = 0;
+					if (list_id_str) {
+						if (sscanf(list_id_str, "%u", &list_id) != 1) {
+							pom_log(POM_LOG_DEBUG "Unable to parse the list id : %s", list_id_str);
+							xmlFree(account);
+							xmlFree(list_id_str);
+							contactPtr = contactPtr->next;
+							continue;
+						}
 					}
 
 					char *full_account = malloc(strlen(account) + strlen("@") + strlen(domain) + 1);
@@ -1459,7 +1979,8 @@ int target_process_adl_msn(struct target *t, struct target_conntrack_priv_msn *c
 					strcat(full_account, domain);
 
 					xmlFree(account);
-					xmlFree(list_id_str);
+					if (list_id_str)
+						xmlFree(list_id_str);
 
 					struct target_buddy_list_session_msn *buddy = target_msn_session_found_buddy(cp, full_account, NULL, NULL, &f->tv);
 					free(full_account);
@@ -1553,7 +2074,7 @@ int target_mirror_string_msn(char *value) {
 }
 
 
-int target_session_timeout_msn(void *priv) {
+int target_file_transfer_timeout_msn(void *priv) {
 	struct target_file_transfer_msn *file = priv;
 	pom_log(POM_LOG_TSHOOT "Session %u timed out. Closing.", file->session_id);
 
