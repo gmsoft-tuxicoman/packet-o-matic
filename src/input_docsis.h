@@ -75,7 +75,8 @@ struct input_adapt_docsis {
 	struct perf_item *perf_mpeg_missed_pkts; ///< Number of missed MPEG packets
 	struct perf_item *perf_mpeg_err_pkts; ///< Number of erroneous MPEG packets
 	struct perf_item *perf_mpeg_invalid_pkts; ///< Number of invalid MPEG packets
-	struct perf_item *perf_pkts; ///< Number of packets read
+	struct perf_item *perf_docsis_pkts; ///< Number of packets read
+	struct perf_item *perf_docsis_checksum_errs; ///< Number of checksum errors
 	struct perf_item *perf_bytes; ///< Number of bytes read
 
 
@@ -99,17 +100,19 @@ struct input_priv_docsis {
 	unsigned int scan_step; ///< Frequency steps to use
 	unsigned int scan_endfreq; ///< Frequency to stop at
 	unsigned int scan_srate; ///< Symbol rate to use
-	fe_modulation_t scan_modulation; ////< Modulation to use
+	fe_modulation_t scan_modulation; ///< Modulation to use
 
 	// variables used in mode file to compute packet arrival time
 	uint32_t last_sync_tstamp;
 	struct timeval packet_time, packet_time_last_sync;
 
 	// stats stuff
-	struct perf_item *perf_tot_pkts; ///< Total packet read
-	struct perf_item *perf_missed_pkts; ///< Number of missed packets
-	struct perf_item *perf_err_pkts; ///< Number of erroneous packets
-	struct perf_item *perf_invalid_pkts; ///< Number of invalid packets
+	struct perf_item *perf_docsis_tot_pkts; ///< Total number of DOCSIS packet read
+	struct perf_item *perf_docsis_checksum_errs; ///< Number of checksum errors
+	struct perf_item *perf_mpeg_tot_pkts; ///< Total number of MPEG packet read
+	struct perf_item *perf_mpeg_missed_pkts; ///< Number of missed MPEG packets
+	struct perf_item *perf_mpeg_err_pkts; ///< Number of erroneous MPEG packets
+	struct perf_item *perf_mpeg_invalid_pkts; ///< Number of invalid MPEG packets
 
 	// misc stuff
 	int warning_flags; ///< Which warnings were displayed already

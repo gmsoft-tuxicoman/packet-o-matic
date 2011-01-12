@@ -1,3 +1,8 @@
+* 2011/01/12 Guy Martin <gmsoft@tuxicoman.be>
+Added header checksum validation in input_docsis.
+Reorganized perf counters in input_docsis.
+Update debug messages in input_docsis.
+
 * 2011/01/02 Guy Martin <gmsoft@tuxicoman.be>
 Added partial support for MSNP21.
 Added some more error checking in target_msn.
