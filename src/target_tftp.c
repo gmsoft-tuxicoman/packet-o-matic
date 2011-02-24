@@ -144,7 +144,7 @@ static int target_process_tftp(struct target *t, struct frame *f) {
 
 		char tmp[NAME_MAX + 1];
 		memset(tmp, 0, sizeof(tmp));
-		layer_field_parse(f->l, PTYPE_STRING_GETVAL(priv->path), tmp, NAME_MAX);
+		layer_field_parse(f->l, &f->tv, PTYPE_STRING_GETVAL(priv->path), tmp, NAME_MAX);
 		cp->parsed_path = malloc(strlen(tmp) + 3);
 		strcpy(cp->parsed_path, tmp);
 		if (*(cp->parsed_path + strlen(cp->parsed_path) - 1) != '/')
@@ -406,7 +406,7 @@ static int tftp_file_open(struct target_priv_tftp *priv, struct target_conntrack
 	strncpy(final_name, cp->parsed_path, NAME_MAX);
 	strncat(final_name, conn->filename, NAME_MAX - strlen(final_name));
 
-	conn->fd = target_file_open(NULL, final_name, O_RDWR | O_CREAT, 0666);
+	conn->fd = target_file_open(NULL, NULL, final_name, O_RDWR | O_CREAT, 0666);
 
 	if (conn->fd == -1) {
 		char errbuff[256];

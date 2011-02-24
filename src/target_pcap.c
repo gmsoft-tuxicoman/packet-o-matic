@@ -355,7 +355,7 @@ static int target_process_pcap(struct target *t, struct frame *f) {
 
 			char filename_final[NAME_MAX];
 			memset(filename_final, 0, NAME_MAX);
-			layer_field_parse(f->l, filename, filename_final, NAME_MAX);
+			layer_field_parse(f->l, &f->tv, filename, filename_final, NAME_MAX);
 
 			// Since we are not calling target_file_open(), we need to create the missing directories ourselves
 

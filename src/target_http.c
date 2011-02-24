@@ -1028,9 +1028,9 @@ int target_file_open_http(struct target *t, struct target_conntrack_priv_http *c
 	char filename_final[NAME_MAX];
 	memset(filename_final, 0, NAME_MAX);
 
-	layer_field_parse(f->l, filename, filename_final, NAME_MAX);
+	layer_field_parse(f->l, &f->tv, filename, filename_final, NAME_MAX);
 
-	cp->fd = target_file_open(NULL, filename_final, O_RDWR | O_CREAT, 0666);
+	cp->fd = target_file_open(NULL, NULL, filename_final, O_RDWR | O_CREAT, 0666);
 
 	if (cp->fd == -1) {
 		char errbuff[256];

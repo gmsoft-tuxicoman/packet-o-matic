@@ -183,7 +183,7 @@ static int target_process_rtp(struct target *t, struct frame *f) {
 		sprintf(outstr, "%u", (unsigned int)f->tv.tv_usec);
 		strcat(filename, outstr);
 		strcat(filename, ".au");
-		if (layer_field_parse(f->l, filename, cp->filename, NAME_MAX) == POM_ERR)
+		if (layer_field_parse(f->l, &f->tv, filename, cp->filename, NAME_MAX) == POM_ERR)
 			return POM_ERR;
 
 
@@ -302,7 +302,7 @@ static int write_packet(struct target_conntrack_priv_rtp *cp, struct target_priv
 static int open_file(struct target_priv_rtp *priv, struct target_conntrack_priv_rtp *cp) {
 
 
-	cp->fd = target_file_open(NULL, cp->filename, O_RDWR | O_CREAT, 0666);
+	cp->fd = target_file_open(NULL, NULL, cp->filename, O_RDWR | O_CREAT, 0666);
 
 	if (cp->fd == -1) {
 		char errbuff[256];

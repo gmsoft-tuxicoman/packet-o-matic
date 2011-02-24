@@ -41,7 +41,7 @@ int layer_init() {
 	poolused = 0;
 	poolsize = 0;
 
-	char *exp = "\\${[a-zA-Z0-9]*\\.[a-zA-Z0-9]*}";
+	char *exp = "\\${[a-zA-Z0-9]*\\.[a-zA-Z0-9%]*}";
 
 	if (regcomp(&parse_regex, exp, REG_ICASE)) {
 		pom_log(POM_LOG_ERR "Unable to compile regex for layer parsing");
@@ -175,12 +175,13 @@ int layer_field_pool_get(struct layer* l) {
 
 /**
  * @param l List of layers to use for replacing parsed values
+ * @param tv Time of the packet
  * @param expr Expression to parse
  * @param buff Preallocated buffer to save the result
  * @param size Size of the preallocated buffer
  * @return POM_OK on success, POM_ERR on failure.
  */
-int layer_field_parse(struct layer *l, char *expr, char *buff, size_t size) {
+int layer_field_parse(struct layer *l, struct timeval *tv, char *expr, char *buff, size_t size) {
 
 	regmatch_t pmatch;
 
@@ -206,31 +207,53 @@ int layer_field_parse(struct layer *l, char *expr, char *buff, size_t size) {
 		expr_sep++;
 
 		int found = 0;
-		
-		struct layer *tmpl = l;
-		while (tmpl) {
-			if (!strcmp(match, match_get_name(tmpl->type))) {
-				int i;
-				for (i = 0; i < MAX_LAYER_FIELDS; i++) {
-					struct match_field_reg *field = match_get_field(tmpl->type, i);
-					if (!field)
-						break;
-					if (!strcmp(field->name, expr_sep)) {
-						char vbuff[1024];
-						memset(vbuff, 0, sizeof(vbuff));
-						ptype_print_val(tmpl->fields[i], vbuff, sizeof(vbuff) - 1);
-						pom_log(POM_LOG_TSHOOT "Matched %s.%s -> %s", match, expr_sep, vbuff);
-						found = 1;
-						if (size < strlen(buff) + strlen(vbuff))
-							break;
-						strcat(buff, vbuff);
-						break;
-					}
-				}
-				break;
+
+		if (tv && !strcmp(match, "time")) {
+			struct tm tmp;
+			localtime_r((time_t*)&tv->tv_sec, &tmp);
+			char outstr[64];
+			memset(outstr, 0, sizeof(outstr));
+			if (strftime(outstr, sizeof(outstr) - 1, expr_sep, &tmp)) {
+
+				char *slash = NULL;
+				while ((slash = strchr(outstr, '/')))
+					*slash = '_';
+
+				strncat(buff, outstr, size - strlen(buff) - 1);
+
+				found = 1;
+			
 			}
-			tmpl = tmpl->next;
+
+
+		} else {
+		
+			struct layer *tmpl = l;
+			while (tmpl) {
+				if (!strcmp(match, match_get_name(tmpl->type))) {
+					int i;
+					for (i = 0; i < MAX_LAYER_FIELDS; i++) {
+						struct match_field_reg *field = match_get_field(tmpl->type, i);
+						if (!field)
+							break;
+						if (!strcmp(field->name, expr_sep)) {
+							char vbuff[1024];
+							memset(vbuff, 0, sizeof(vbuff));
+							ptype_print_val(tmpl->fields[i], vbuff, sizeof(vbuff) - 1);
+							pom_log(POM_LOG_TSHOOT "Matched %s.%s -> %s", match, expr_sep, vbuff);
+							found = 1;
+							if (size < strlen(buff) + strlen(vbuff))
+								break;
+							strncat(buff, vbuff, size - strlen(buff) - 1);
+							break;
+						}
+					}
+					break;
+				}
+				tmpl = tmpl->next;
+			}
 		}
+
 		if (!found) {
 			if (strlen(buff) + strlen(match) + strlen(expr_sep) + 1 < size) {
 				strcat(buff, match);

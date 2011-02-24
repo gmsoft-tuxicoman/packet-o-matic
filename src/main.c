@@ -525,6 +525,8 @@ void *input_thread_func(void *params) {
 
 	pom_log(POM_LOG_DEBUG "Input thread stopped");
 
+	pthread_detach(input_thread);
+
 	return NULL;
 }
 

@@ -984,7 +984,7 @@ int target_msn_session_process_event(struct target_event_msn *evt) {
 		strncat(filename, outstr, NAME_MAX - strlen(filename));
 
 		// Open could do the job but it's better to use the API if it changes later on
-		conv->fd = target_file_open(NULL, filename, O_WRONLY | O_CREAT | O_APPEND, 0666);
+		conv->fd = target_file_open(NULL, NULL, filename, O_WRONLY | O_CREAT | O_APPEND, 0666);
 		if (conv->fd == POM_ERR) {
 			char errbuff[256];
 			strerror_r(errno, errbuff, sizeof(errbuff) - 1);
@@ -1019,7 +1019,7 @@ int target_msn_session_process_event(struct target_event_msn *evt) {
 		strncat(filename, outstr, NAME_MAX - strlen(filename));
 
 		// Open could do the job but it's better to use the API if it changes later on
-		sess->fd = target_file_open(NULL, filename, O_WRONLY | O_CREAT | O_APPEND, 0666);
+		sess->fd = target_file_open(NULL, NULL, filename, O_WRONLY | O_CREAT | O_APPEND, 0666);
 		if (sess->fd == POM_ERR) {
 			char errbuff[256];
 			strerror_r(errno, errbuff, sizeof(errbuff) - 1);

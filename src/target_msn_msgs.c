@@ -1165,7 +1165,7 @@ int target_process_bin_p2p_msg(struct target *t, struct target_conntrack_priv_ms
 			strncat(filename, "/files/", NAME_MAX - strlen(filename));
 		
 		strncat(filename, fname, NAME_MAX - strlen(filename));
-		int fd = target_file_open(NULL, filename, O_WRONLY | O_CREAT, 0666);
+		int fd = target_file_open(NULL, NULL, filename, O_WRONLY | O_CREAT, 0666);
 		
 		if (fd == -1) {
 			char errbuff[256];

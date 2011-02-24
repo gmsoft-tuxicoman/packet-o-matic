@@ -281,7 +281,7 @@ int target_process_msn(struct target *t, struct frame *f) {
 
 		char tmp[NAME_MAX + 1];
 		memset(tmp, 0, sizeof(tmp));
-		if (layer_field_parse(f->l, PTYPE_STRING_GETVAL(priv->path), tmp, NAME_MAX) == POM_ERR) {
+		if (layer_field_parse(f->l, &f->tv, PTYPE_STRING_GETVAL(priv->path), tmp, NAME_MAX) == POM_ERR) {
 			pom_log(POM_LOG_WARN "Error while parsing the path");
 			return POM_ERR;
 		}

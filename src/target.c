@@ -680,13 +680,13 @@ void target_print_help() {
  * @param mode Mode as documented in open(2)
  * @return The file descriptor on success, POM_ERR on failure.
  */
-int target_file_open(struct layer *l, char *filename, int flags, mode_t mode) {
+int target_file_open(struct layer *l, struct timeval *tv, char *filename, int flags, mode_t mode) {
 
 	char buffer[NAME_MAX + 1];
 	memset(buffer, 0, NAME_MAX + 1);
 
 	if (l)
-		layer_field_parse(l, filename, buffer, NAME_MAX);
+		layer_field_parse(l, tv, filename, buffer, NAME_MAX);
 	else
 		strncpy(buffer, filename, NAME_MAX);
 

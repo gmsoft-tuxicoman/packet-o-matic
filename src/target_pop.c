@@ -189,7 +189,7 @@ static int target_process_pop(struct target *t, struct frame *f) {
 
 		char tmp[NAME_MAX + 1];
 		memset(tmp, 0, sizeof(tmp));
-		layer_field_parse(f->l, PTYPE_STRING_GETVAL(priv->path), tmp, NAME_MAX);
+		layer_field_parse(f->l, &f->tv, PTYPE_STRING_GETVAL(priv->path), tmp, NAME_MAX);
 		cp->parsed_path = malloc(strlen(tmp) + 3);
 		strcpy(cp->parsed_path, tmp);
 		if (*(cp->parsed_path + strlen(cp->parsed_path) - 1) != '/')
@@ -572,7 +572,7 @@ static int pop_file_open(struct target_priv_pop *priv, struct target_conntrack_p
 	strncat(final_name, "tmp/", NAME_MAX - strlen(final_name));
 	strncat(final_name, filename, NAME_MAX - strlen(final_name));
 
-	cp->fd = target_file_open(NULL, final_name, O_RDWR | O_CREAT, 0666);
+	cp->fd = target_file_open(NULL, NULL, final_name, O_RDWR | O_CREAT, 0666);
 
 	if (cp->fd == -1) {
 		char errbuff[256];
@@ -666,7 +666,7 @@ static int pop_write_login_info(struct target *t, struct target_conntrack_priv_p
 	strncat(final_name, "credentials", NAME_MAX - strlen(final_name));
 
 	int fd;
-	fd = target_file_open(NULL, final_name, O_RDWR | O_APPEND | O_CREAT, 0666);
+	fd = target_file_open(NULL, NULL, final_name, O_RDWR | O_APPEND | O_CREAT, 0666);
 	if (fd == POM_ERR) {
 		pom_log(POM_LOG_ERR "Unable to open file %s to write credentials", final_name);
 		return POM_ERR;

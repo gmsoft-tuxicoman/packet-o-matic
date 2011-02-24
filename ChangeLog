@@ -1,3 +1,8 @@
+* 2011/02/24 Guy Martin <gmsoft@tuxicoman.be>
+Add expansion %{time.<strftime_format>} for filenames.
+Fix memory leak when the input thread stops because of EOF thanks to Adrien Kunysz <adrien@kunysz.be>.
+Fix possible buffer overflow in layer_field_parse().
+
 * 2011/01/12 Guy Martin <gmsoft@tuxicoman.be>
 Added header checksum validation in input_docsis.
 Reorganized perf counters in input_docsis.

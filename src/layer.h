@@ -97,7 +97,7 @@ int layer_field_pool_get(struct layer* l);
 int layer_cleanup();
 
 /// Parse the provided expression and save it into the buffer
-int layer_field_parse(struct layer *l, char *expr, char *buff, size_t size);
+int layer_field_parse(struct layer *l, struct timeval *tv, char *expr, char *buff, size_t size);
 
 /*@}*/
 #endif

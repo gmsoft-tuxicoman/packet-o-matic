@@ -1821,7 +1821,7 @@ static struct target_conversation_irc* target_get_conv_irc(struct target_conntra
 		free(safe_conv);
 		char final_name[NAME_MAX];
 		memset(final_name, 0, NAME_MAX);
-		layer_field_parse(f->l, filename, final_name, NAME_MAX - 1);
+		layer_field_parse(f->l, &f->tv, filename, final_name, NAME_MAX - 1);
 
 		c->filename = strdup(final_name);
 
@@ -1984,7 +1984,7 @@ static int target_open_log_irc(struct target_conversation_irc *c) {
 	if (c->fd != -1)
 		return POM_OK;
 
-	c->fd = target_file_open(NULL, c->filename, O_WRONLY | O_CREAT, 0666);
+	c->fd = target_file_open(NULL, NULL, c->filename, O_WRONLY | O_CREAT, 0666);
 
 	if (c->fd == -1) {
 		char errbuff[256];

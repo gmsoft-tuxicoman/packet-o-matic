@@ -244,7 +244,7 @@ int target_cleanup();
 int target_sighup(struct target *t);
 
 /// Open a file for a target
-int target_file_open(struct layer *l, char *filename, int flags, mode_t mode);
+int target_file_open(struct layer *l, struct timeval *tv, char *filename, int flags, mode_t mode);
 
 /// Lock an instance of a target
 int target_lock_instance(struct target *t, int write);
