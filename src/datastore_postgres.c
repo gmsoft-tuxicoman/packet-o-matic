@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2010 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2011 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -309,7 +309,7 @@ static int datastore_dataset_alloc_postgres(struct dataset *ds) {
 				sprintf(buff, "$%u::timestamp", i + 1);
 				break;
 			default:
-				sprintf(buff, "$%u::varchar", i + 1);
+				sprintf(buff, "$%u::bytea", i + 1);
 				break;
 		}
 		size += strlen(buff) + strlen(", ");
@@ -370,7 +370,7 @@ static int datastore_dataset_create_postgres(struct dataset *ds) {
 	int i;
 	for (i = 0; dv[i].name; i++) {
 	
-		char *type = " varchar";
+		char *type = " bytea";
 		switch (dv[i].native_type) {
 			case POSTGRES_PTYPE_BOOL:
 				type = " boolean";
@@ -660,47 +660,6 @@ static int datastore_dataset_read_postgres(struct dataset *ds) {
 }
 
 
-static int datastore_check_utf8_postgres(unsigned char *data, int len) {
-
-	// Basic UTF-8 checking
-
-	const char replacement = '_';
-
-	int i, j, invalid;
-	unsigned char checks = 0;
-	for (i = 0; i < len; i++) {
-		invalid = 0;
-		if (data[i] < 0x80) {
-			continue;
-		} else if (data[i] > 0xF0) {
-			// Invalid byte as per RFC 3629
-			data[i] = replacement;
-			continue;
-		} else if (data[i] > 0xE0) {
-			checks = 4;
-		} else if (data[i] > 0xC0) {
-			checks = 3;
-		} else if (data[i] > 0x80) {
-			checks = 2;
-		}
-		for (j = 1; j < checks; j++) {
-			if (((i + j) >= len) || ((data[i + j] ^ 0xC0) != 0x80)) {
-				invalid = 1;
-				break;
-			}
-		}
-		if (invalid) {
-			data[i] = replacement;
-			for (j = 1; j < checks && (i + j) < len && (data[i + j] & 0x80); j++)
-				data[i + j] = replacement;
-		}
-		i += j - 1;
-
-	}
-
-	return POM_OK;
-}
-
 static int datastore_dataset_write_postgres(struct dataset *ds) {
 
 
@@ -776,7 +735,6 @@ static int datastore_dataset_write_postgres(struct dataset *ds) {
 				char *value = PTYPE_STRING_GETVAL(dv[i].value);
 				priv->write_query_param_val[i] = value;
 				if (value) {
-					datastore_check_utf8_postgres((unsigned char *)value, strlen(value));
 					priv->write_query_param_len[i] = strlen(priv->write_query_param_val[i]);
 				} else {
 					priv->write_query_param_len[i] = 0;

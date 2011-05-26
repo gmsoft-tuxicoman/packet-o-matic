@@ -1,3 +1,7 @@
+* 2011/05/26 Guy Martin <gmsoft@tuxicoman.be>
+Use bytea instead of varchara for strings handling in datastore_postgres and get rid of the UTF8 checks.
+Slight optimization in http log handling.
+
 * 2011/02/24 Guy Martin <gmsoft@tuxicoman.be>
 Add expansion %{time.<strftime_format>} for filenames.
 Fix memory leak when the input thread stops because of EOF thanks to Adrien Kunysz <adrien@kunysz.be>.

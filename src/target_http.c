@@ -1,6 +1,6 @@
 /*
  *  packet-o-matic : modular network traffic processor
- *  Copyright (C) 2006-2009 Guy Martin <gmsoft@tuxicoman.be>
+ *  Copyright (C) 2006-2011 Guy Martin <gmsoft@tuxicoman.be>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -657,6 +657,8 @@ size_t target_parse_query_response_http(struct target_priv_http *priv, struct ta
 
 	char *url_token = NULL;
 	size_t url_tok_size = 0;
+	char *request_method_token = NULL;
+	size_t request_method_tok_size = 0;
 
 	int tok_num = 0;
 	char *token = NULL, *tok_end = pload;
@@ -710,6 +712,10 @@ size_t target_parse_query_response_http(struct target_priv_http *priv, struct ta
 							return POM_ERR;
 						}
 					}
+					if (cp->log_info->log_flags & HTTP_LOG_REQUEST_METHOD) {
+						request_method_token = token;
+						request_method_tok_size = tok_size;
+					}
 					cp->state = HTTP_QUERY; // possible query, will double-check later
 				}
 				break;
@@ -762,10 +768,10 @@ size_t target_parse_query_response_http(struct target_priv_http *priv, struct ta
 							cp->log_info->url[tok_size] = 0;
 						}
 
-						if (cp->log_info->log_flags & HTTP_LOG_REQUEST_METHOD) {
-							cp->log_info->request_method = malloc(tok_size + 1);
-							memcpy(cp->log_info->request_method, token, tok_size);
-							cp->log_info->request_method[tok_size] = 0;
+						if (request_method_token) {
+							cp->log_info->request_method = malloc(request_method_tok_size + 1);
+							memcpy(cp->log_info->request_method, request_method_token, request_method_tok_size);
+							cp->log_info->request_method[request_method_tok_size] = 0;
 						}
 					}
 					
@@ -815,11 +821,11 @@ int target_parse_payload_headers_http(struct target_priv_http *priv, struct targ
 		if (cp->info.headers[i].type != cp->state)
 			continue;
 
-		if (!strcasecmp(cp->info.headers[i].name, "Content-Length")) {
+		if (!(cp->info.flags & HTTP_FLAG_HAVE_CLEN) && !strcasecmp(cp->info.headers[i].name, "Content-Length")) {
 			if(sscanf(cp->info.headers[i].value, "%u", &cp->info.content_len) != 1)
 				return POM_ERR;
 			cp->info.flags |= HTTP_FLAG_HAVE_CLEN;
-		} else if (!strcasecmp(cp->info.headers[i].name, "Content-Encoding")) {
+		} else if (!(cp->info.flags & (HTTP_FLAG_GZIP | HTTP_FLAG_DEFLATE)) && !strcasecmp(cp->info.headers[i].name, "Content-Encoding")) {
 			if (!strcasecmp(cp->info.headers[i].value, "gzip"))
 				cp->info.flags |= HTTP_FLAG_GZIP;
 			if (!strcasecmp(cp->info.headers[i].value, "deflate"))
@@ -835,7 +841,7 @@ int target_parse_payload_headers_http(struct target_priv_http *priv, struct targ
 
 			cp->info.content_type = target_http_mime_type_get_id(priv, cp->info.headers[i].value);
 
-		} else if (!strcasecmp(cp->info.headers[i].name, "Transfer-Encoding")) {
+		} else if (!(cp->info.flags & HTTP_FLAG_CHUNKED) && !strcasecmp(cp->info.headers[i].name, "Transfer-Encoding")) {
 			if (!strcasecmp(cp->info.headers[i].value, "chunked"))
 				cp->info.flags |= HTTP_FLAG_CHUNKED;
 		}
