@@ -712,7 +712,7 @@ size_t target_parse_query_response_http(struct target_priv_http *priv, struct ta
 							return POM_ERR;
 						}
 					}
-					if (cp->log_info->log_flags & HTTP_LOG_REQUEST_METHOD) {
+					if (cp->log_info && (cp->log_info->log_flags & HTTP_LOG_REQUEST_METHOD)) {
 						request_method_token = token;
 						request_method_tok_size = tok_size;
 					}
