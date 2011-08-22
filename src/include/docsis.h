@@ -102,5 +102,6 @@ struct docsis_mgmt_mdd_hdr {
 #define EH_TYPE_ACK		0x1	// Ack request
 #define EH_TYPE_BP_UP		0x2	// Upstream privacy element
 #define EH_TYPE_BP_DOWN		0x4	// Downstream privacy element
+#define EH_TYPE_DS		0x8	// Downstream service extended header
 
 #endif

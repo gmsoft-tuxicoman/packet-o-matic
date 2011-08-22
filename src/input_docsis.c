@@ -50,7 +50,7 @@
 static int match_ethernet_id, match_docsis_id, match_atm_id;
 
 static struct input_mode *mode_normal, *mode_scan, *mode_docsis3, *mode_file;
-static struct ptype *p_frequency, *p_modulation, *p_outlayer, *p_startfreq, *p_frontend_reinit, *p_tuning_timeout, *p_file, *p_validate_checksum;
+static struct ptype *p_frequency, *p_modulation, *p_outlayer, *p_startfreq, *p_frontend_reinit, *p_tuning_timeout, *p_file, *p_validate_checksum, *p_filter_docsis3;
 
 static struct input_adapt_reg_docsis adapts[DOCSIS_MAX_ADAPT];
 
@@ -128,8 +128,9 @@ int input_register_docsis(struct input_reg *r) {
 	p_tuning_timeout = ptype_alloc("uint32", "seconds");
 	p_file = ptype_alloc("string", NULL);
 	p_validate_checksum = ptype_alloc("bool", NULL);
+	p_filter_docsis3 = ptype_alloc("bool", NULL);
 	
-	if (!p_frequency || !p_modulation || !p_outlayer || !p_startfreq || !p_frontend_reinit || !p_tuning_timeout || !p_file || !p_validate_checksum) {
+	if (!p_frequency || !p_modulation || !p_outlayer || !p_startfreq || !p_frontend_reinit || !p_tuning_timeout || !p_file || !p_validate_checksum || !p_filter_docsis3) {
 		input_unregister_docsis(r);
 		return POM_ERR;
 	}
@@ -153,6 +154,7 @@ int input_register_docsis(struct input_reg *r) {
 	input_register_param(mode_normal, "tuning_timeout", "3", p_tuning_timeout, "Timeout to wait until giving up when waiting for a lock");
 	input_register_param(mode_normal, "outlayer", "ethernet", p_outlayer, "Type of the output layer wanted");
 	input_register_param(mode_normal, "validate_checksum", "yes", p_validate_checksum, "Perform checksum validation");
+	input_register_param(mode_normal, "filter_docsis3", "yes", p_filter_docsis3, "Filter out DOCSIS 3 packets from bounded streams");
 
 	input_register_param(mode_scan, "startfreq", "0", p_startfreq, "Starting frequency in Hz. Will use the default of the specification if 0");
 	input_register_param(mode_scan, "modulation", "QAM256", p_modulation, "Modulation of the DOCSIS stream");
@@ -247,6 +249,7 @@ static int input_unregister_docsis(struct input_reg *r) {
 	ptype_cleanup(p_tuning_timeout);
 	ptype_cleanup(p_file);
 	ptype_cleanup(p_validate_checksum);
+	ptype_cleanup(p_filter_docsis3);
 
 	return POM_OK;
 }
@@ -1156,7 +1159,7 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 	// Check for encrypted packets
 
 	if (dhdr->ehdr_on) {
-		struct docsis_ehdr *ehdr = (struct docsis_ehdr*) (dhdr + offsetof(struct docsis_hdr, hcs));
+		struct docsis_ehdr *ehdr = (struct docsis_ehdr*) (f->buff + offsetof(struct docsis_hdr, hcs));
 		// EH_TYPE_BP_UP should not occur as we only support downstream
 		if (ehdr->eh_type == EH_TYPE_BP_DOWN) {
 			if (!(p->warning_flags & DOCSIS_WARN_ENCRYPTED)) {
@@ -1227,6 +1230,14 @@ static int input_read_docsis(struct input *i, struct frame *f) {
 		unsigned int new_start = sizeof(struct docsis_hdr);
 		
 		if (dhdr->ehdr_on) {
+
+			struct docsis_ehdr *ehdr = (struct docsis_ehdr*) (f->buff + offsetof(struct docsis_hdr, hcs));
+			if (i->mode == mode_normal && ehdr->eh_type == EH_TYPE_DS && ehdr->eh_len == 5 && PTYPE_BOOL_GETVAL(p_filter_docsis3)) {
+				f->len = 0;
+				return POM_OK;
+			}
+			
+
 			new_start += dhdr->mac_parm;
 			dlen -= dhdr->mac_parm;
 		}
@@ -1616,7 +1627,7 @@ static int input_parse_mdd_docsis(struct input *i, unsigned int adapt_id, unsign
 	while (len >= 2) {
 		
 		unsigned char tlvlen = *(buff + 1);
-		if (len < tlvlen)
+		if (len < tlvlen + 2)
 			break;
 
 		switch (*buff) {

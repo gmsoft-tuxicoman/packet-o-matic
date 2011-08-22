@@ -114,10 +114,10 @@ int ptype_unserialize_timestamp(struct ptype *p, char *val) {
 
 	time_t *v = p->value;
 	unsigned long long uv;
-	if (sscanf(val,"%llu", &uv) == 1)
-		return POM_OK;
+	if (sscanf(val,"%llu", &uv) != 1)
+		return POM_ERR;
 	*v = uv;
-	return POM_ERR;
+	return POM_OK;
 };
 
 int ptype_copy_timestamp(struct ptype *dst, struct ptype *src) {

@@ -1,3 +1,8 @@
+* 2011/08/22 Guy Martin <gmsoft@tuxicoman.be>
+Add filter_docsis3 parameter to input_docsis to drop docsis 3 packets when sniffing with only one card.
+Don't cleanup automatically cleaned up libxml2 stuff.
+Fix unserialization of ptype_timestamp.
+
 * 2011/05/26 Guy Martin <gmsoft@tuxicoman.be>
 Use bytea instead of varchara for strings handling in datastore_postgres and get rid of the UTF8 checks.
 Slight optimization in http log handling.

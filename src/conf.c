@@ -84,9 +84,6 @@ int config_cleanup(struct conf* c) {
 
 	free(c);
 
-	// Cleanup XML stuff here
-	xmlCleanupCharEncodingHandlers();
-	xmlCleanupParser();
 	return POM_OK ;
 }
 
