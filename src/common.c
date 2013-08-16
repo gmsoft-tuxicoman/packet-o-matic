@@ -75,6 +75,7 @@ void pom_log_internal(char *file, const char *format, ...) {
 		return; // never reached
 	}
 
+	struct log_entry tmp = { 0 };
 	if (level < *POM_LOG_TSHOOT) {
 		entry = malloc(sizeof(struct log_entry));
 		memset(entry, 0, sizeof(struct log_entry));
@@ -86,13 +87,9 @@ void pom_log_internal(char *file, const char *format, ...) {
 		strcpy(entry->data, buff);
 		
 		entry->level = level;
-		if (level < *POM_LOG_TSHOOT) {
-			entry->id = log_buffer_entry_id;
-			log_buffer_entry_id++;
-		}
+		entry->id = log_buffer_entry_id;
+		log_buffer_entry_id++;
 	} else {
-		struct log_entry tmp;
-		memset(&tmp, 0, sizeof(struct log_entry));
 		strncpy(tmp.file, file, len);
 		tmp.data = buff;
 		tmp.level = level;
