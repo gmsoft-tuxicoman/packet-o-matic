@@ -1652,9 +1652,12 @@ static int input_parse_mdd_docsis(struct input *i, unsigned int adapt_id, unsign
 						case 2: { // Frequency
 							if (subtlvlen < sizeof(uint32_t))
 								return POM_OK;
-							freq = ntohl(*((uint32_t *)(buff + 2)));
+							uint32_t val;
+							memcpy(&val, buff + 2, sizeof(val));
+							freq = ntohl(val);
 							realsublen = sizeof(uint32_t);
 							break;
+							}
 						case 3:
 							modulation = *(buff + 2);
 							realsublen = sizeof(char);
@@ -1667,7 +1670,7 @@ static int input_parse_mdd_docsis(struct input *i, unsigned int adapt_id, unsign
 							realsublen = subtlvlen;
 							break;
 
-						}
+						
 					}
 
 					if (realsublen != subtlvlen)
