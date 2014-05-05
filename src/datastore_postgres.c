@@ -1080,6 +1080,24 @@ err:
 
 static void postgres_notice_processor(void *arg, const char *message) {
 
+	if (!message)
+		return;
+
+	char *msg = strdup(message);
+
+	if (!msg) {
+		pom_oom(strlen(message));
+		return;
+	}
+
+	do {
+		size_t len = strlen(msg);
+		if (msg[len] == '\r' || msg[len] == '\n')
+			msg[len] = 0;
+		else
+			break;
+	} while (1);
+
 	pom_log(POM_LOG_DEBUG "%s", message);
 
 }
