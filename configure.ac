@@ -244,7 +244,7 @@ then
 		want_netsnmp=no
 	else
 		netsnmp_LIBS="`net-snmp-config --agent-libs`"
-		netsnmp_CFLAGS="`net-snmp-config --base-cflags | sed -e 's/-W[[a-zA-Z-]]*//g'`"
+		netsnmp_CFLAGS="`net-snmp-config --base-cflags | sed -e 's/-W[[a-zA-Z=-]]*//g'`"
 		AC_DEFINE(USE_NETSNMP, , [Compile net-snmp interface])
 	fi
 fi
